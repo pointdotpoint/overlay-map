@@ -106,8 +106,12 @@ public class NMSelfTest {
             let n = NMGrid.Side(level) * NMGrid.Side(level);
             let cntB: array<Int32>;
             let sxB: array<Float>;
+            let syB: array<Float>;
+            let tB: array<Int32>;
             ArrayResize(cntB, n);
             ArrayResize(sxB, n);
+            ArrayResize(syB, n);
+            ArrayResize(tB, n * NMGrid.MaxCats());
             let total = 0;
             let id = 0;
             while id < ArraySize(L.alive) {
@@ -116,6 +120,8 @@ public class NMSelfTest {
                     if L.cellOf[id * 3 + level] != c { return "cellOf mismatch id=" + ToString(id) + " level=" + ToString(level); }
                     cntB[c - base] += 1;
                     sxB[c - base] += L.px[id];
+                    syB[c - base] += L.py[id];
+                    tB[(c - base) * NMGrid.MaxCats() + L.cat[id]] += 1;
                     // the item must be reachable from its cell's list head
                     let walk = L.head[c];
                     let found = false;
@@ -131,6 +137,25 @@ public class NMSelfTest {
             while k < n {
                 if L.cnt[base + k] != cntB[k] { return "count mismatch level=" + ToString(level) + " cell=" + ToString(k); }
                 if AbsF(L.sumX[base + k] - sxB[k]) > 0.5 { return "sumX mismatch level=" + ToString(level) + " cell=" + ToString(k); }
+                if AbsF(L.sumY[base + k] - syB[k]) > 0.5 { return "sumY mismatch level=" + ToString(level) + " cell=" + ToString(k); }
+                let t = 0;
+                while t < NMGrid.MaxCats() {
+                    if L.tally[(base + k) * NMGrid.MaxCats() + t] != tB[k * NMGrid.MaxCats() + t] { return "tally mismatch level=" + ToString(level) + " cell=" + ToString(k) + " cat=" + ToString(t); }
+                    t += 1;
+                }
+                // list integrity: alive nodes only, right cell, prev links, length == cnt, cycle-capped
+                let node = L.head[base + k];
+                let prev = -1;
+                let steps = 0;
+                while node >= 0 && steps <= L.cnt[base + k] {
+                    if !L.IsAlive(node) { return "dead node " + ToString(node) + " linked level=" + ToString(level) + " cell=" + ToString(k); }
+                    if L.cellOf[node * 3 + level] != base + k { return "list cell mismatch id=" + ToString(node) + " level=" + ToString(level); }
+                    if L.prevIn[node * 3 + level] != prev { return "prevIn mismatch id=" + ToString(node) + " level=" + ToString(level); }
+                    prev = node;
+                    node = L.nextIn[node * 3 + level];
+                    steps += 1;
+                }
+                if steps != L.cnt[base + k] || node >= 0 { return "list length/cycle level=" + ToString(level) + " cell=" + ToString(k) + " steps=" + ToString(steps); }
                 total += L.cnt[base + k];
                 k += 1;
             }
@@ -194,6 +219,9 @@ public class NMSelfTest {
             c += 1;
         }
         this.Check("grid.clear", L.count == 0 && sum == 0, ToString(L.count));
+        let first = L.Add(NightMapItem.Create(new Vector4(100.0, 200.0, 0.0, 1.0), n"test.b", r"base\\x.inkatlas", n"p"));
+        err = this.GridConsistent(L);
+        this.Check("grid.add_after_clear", first == 0 && L.count == 1 && Equals(err, ""), ToString(first) + " " + err);
     }
 
     private func ApiCases() {
