@@ -255,6 +255,16 @@ public class NMSelfTest {
 
     private func InputCases() {
         let s = new NightMapSettings();
+        // Mod Settings applies the user's saved bindings to class defaults, so pin every key the test relies on.
+        s.keyToggle = EInputKey.IK_Backslash;
+        s.keyPanUp = EInputKey.IK_NumPad8;
+        s.keyPanDown = EInputKey.IK_NumPad2;
+        s.keyPanLeft = EInputKey.IK_NumPad4;
+        s.keyPanRight = EInputKey.IK_NumPad6;
+        s.keyZoomIn = EInputKey.IK_NumPlus;
+        s.keyZoomOut = EInputKey.IK_NumMinus;
+        s.keyRecenter = EInputKey.IK_NumPad5;
+        s.keyAct = EInputKey.IK_NumPad0;
         let inp = new NMInput();
         let press = EInputAction.IACT_Press;
         let release = EInputAction.IACT_Release;
