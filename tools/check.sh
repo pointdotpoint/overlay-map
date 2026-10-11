@@ -17,7 +17,8 @@ cp "$GAME"/red4ext/plugins/mod_settings/*.reds "$SANDBOX/r6/scripts/ModSettings/
 cp -r "$HERE/r6/scripts/NightMap" "$SANDBOX/r6/scripts/NightMap"
 
 # scc only scans the scripts dir reliably when given a path relative to its own tree.
-(cd "$SANDBOX" && WINEDEBUG=-all wine engine/tools/scc.exe -compile 'r6\scripts' \
+# On a compile error scc hangs instead of exiting, so bound it with a timeout.
+(cd "$SANDBOX" && WINEDEBUG=-all timeout -k 5 90 wine engine/tools/scc.exe -compile 'r6\scripts' \
    -customCacheDir 'r6\cache' >/dev/null 2>&1) || true
 
 LOG="$SANDBOX/r6/logs/redscript_rCURRENT.log"
