@@ -7,6 +7,8 @@ public class NMSelfTest {
     private let failed: Int32;
 
     public func Run() {
+        this.passed = 0;
+        this.failed = 0;
         NMLog.Info("TEST|START");
         this.MathCases();
         this.CameraCases();
@@ -78,6 +80,13 @@ public class NMSelfTest {
         cam.Tick(200.0);
         this.Check("camera.ease_reaches_target", mid && !cam.IsEasing() && this.Near(cam.cx, -500.0, 0.01) && this.Near(cam.cy, 300.0, 0.01) && this.Near(cam.mpp, 4.0, 0.001),
             this.F(cam.cx) + "," + this.F(cam.cy) + "," + this.F(cam.mpp));
+        cam.EaseTo(0.0, 0.0, 8.0, 250.0);
+        cam.Tick(50.0);
+        cam.ZoomBy(2.0);
+        let zoomed = cam.mpp;
+        cam.Tick(16.0);
+        this.Check("camera.zoom_cancels_ease", !cam.IsEasing() && cam.mpp == zoomed, this.F(cam.mpp) + "/" + this.F(zoomed));
+        cam.SetMpp(4.0);
         let v = cam.VisibleRect(0.0);
         this.Check("camera.visible_rect", this.Near(v.maxX - v.minX, 1880.0 * 4.0, 0.1) && this.Near(v.maxY - v.minY, 1480.0 * 4.0, 0.1), "");
     }

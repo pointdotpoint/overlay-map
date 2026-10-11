@@ -51,7 +51,13 @@ public class NMCamera {
     }
 
     // The center stays inside the world bounds: at most half a view of empty space past the edge.
+    // User-driven setters cancel an active ease; Tick uses the Apply* variants.
     public func SetCenter(x: Float, y: Float) {
+        this.easing = false;
+        this.ApplyCenter(x, y);
+    }
+
+    private func ApplyCenter(x: Float, y: Float) {
         let nx = ClampF(x, this.bounds.minX, this.bounds.maxX);
         let ny = ClampF(y, this.bounds.minY, this.bounds.maxY);
         if nx != this.cx || ny != this.cy {
@@ -62,6 +68,11 @@ public class NMCamera {
     }
 
     public func SetMpp(m: Float) {
+        this.easing = false;
+        this.ApplyMpp(m);
+    }
+
+    private func ApplyMpp(m: Float) {
         let nm = ClampF(m, this.minMpp, this.maxMpp);
         if nm != this.mpp {
             this.mpp = nm;
@@ -105,8 +116,8 @@ public class NMCamera {
         this.eT += dtMs;
         let t = MinF(this.eT / this.eDur, 1.0);
         let k = NMMath.EaseOut(t);
-        this.SetMpp(NMMath.Lerp(this.e0m, this.e1m, k));
-        this.SetCenter(NMMath.Lerp(this.e0x, this.e1x, k), NMMath.Lerp(this.e0y, this.e1y, k));
+        this.ApplyMpp(NMMath.Lerp(this.e0m, this.e1m, k));
+        this.ApplyCenter(NMMath.Lerp(this.e0x, this.e1x, k), NMMath.Lerp(this.e0y, this.e1y, k));
         if t >= 1.0 {
             this.easing = false;
         }
