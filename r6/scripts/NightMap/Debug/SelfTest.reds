@@ -12,6 +12,8 @@ public class NMSelfTest {
         NMLog.Info("TEST|START");
         this.MathCases();
         this.CameraCases();
+        this.GridCases();
+        this.ApiCases();
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 
@@ -89,5 +91,135 @@ public class NMSelfTest {
         cam.SetMpp(4.0);
         let v = cam.VisibleRect(0.0);
         this.Check("camera.visible_rect", this.Near(v.maxX - v.minX, 1880.0 * 4.0, 0.1) && this.Near(v.maxY - v.minY, 1480.0 * 4.0, 0.1), "");
+    }
+
+    // Deterministic pseudo-random world coordinate in [-11000, 11000).
+    private func Coord(i: Int32, mul: Int32) -> Float {
+        return Cast<Float>((i * mul) % 22000 - 11000);
+    }
+
+    // Brute-force check of every pyramid level against the alive items.
+    private func GridConsistent(L: ref<NightMapLayer>) -> String {
+        let level = 0;
+        while level < 3 {
+            let base = NMGrid.Base(level);
+            let n = NMGrid.Side(level) * NMGrid.Side(level);
+            let cntB: array<Int32>;
+            let sxB: array<Float>;
+            ArrayResize(cntB, n);
+            ArrayResize(sxB, n);
+            let total = 0;
+            let id = 0;
+            while id < ArraySize(L.alive) {
+                if L.alive[id] {
+                    let c = NMGrid.CellIndex(level, L.px[id], L.py[id]);
+                    if L.cellOf[id * 3 + level] != c { return "cellOf mismatch id=" + ToString(id) + " level=" + ToString(level); }
+                    cntB[c - base] += 1;
+                    sxB[c - base] += L.px[id];
+                    // the item must be reachable from its cell's list head
+                    let walk = L.head[c];
+                    let found = false;
+                    while walk >= 0 && !found {
+                        if walk == id { found = true; }
+                        walk = L.nextIn[walk * 3 + level];
+                    }
+                    if !found { return "id " + ToString(id) + " not linked at level " + ToString(level); }
+                }
+                id += 1;
+            }
+            let k = 0;
+            while k < n {
+                if L.cnt[base + k] != cntB[k] { return "count mismatch level=" + ToString(level) + " cell=" + ToString(k); }
+                if AbsF(L.sumX[base + k] - sxB[k]) > 0.5 { return "sumX mismatch level=" + ToString(level) + " cell=" + ToString(k); }
+                total += L.cnt[base + k];
+                k += 1;
+            }
+            if total != L.count { return "total " + ToString(total) + " != count " + ToString(L.count); }
+            level += 1;
+        }
+        return "";
+    }
+
+    private func GridCases() {
+        let api = NightMap.Create();
+        let L = api.CreateLayer(n"test.grid", "Grid test", 10);
+        L.SetCategory(n"test.a", "A", NMTheme.Cyan());
+        L.SetCategory(n"test.b", "B", NMTheme.Pink());
+        let ids: array<Int32>;
+        let i = 0;
+        while i < 500 {
+            let cat = i % 2 == 0 ? n"test.a" : n"test.b";
+            ArrayPush(ids, L.Add(NightMapItem.Create(new Vector4(this.Coord(i, 7919), this.Coord(i, 104729), 0.0, 1.0), cat, r"base\\x.inkatlas", n"p")));
+            i += 1;
+        }
+        this.Check("grid.add_count", L.count == 500 && ids[499] == 499, ToString(L.count));
+        let err = this.GridConsistent(L);
+        this.Check("grid.consistent_after_add", Equals(err, ""), err);
+        let tallyA = 0;
+        let c = 0;
+        while c < 36 {
+            tallyA += L.tally[(NMGrid.Base(2) + c) * NMGrid.MaxCats() + 0];
+            c += 1;
+        }
+        this.Check("grid.tally_level2", tallyA == 250, ToString(tallyA));
+        i = 0;
+        while i < 100 {
+            L.Move(ids[i], new Vector4(this.Coord(i + 900, 31), this.Coord(i + 900, 17), 0.0, 1.0));
+            i += 1;
+        }
+        err = this.GridConsistent(L);
+        this.Check("grid.consistent_after_move", Equals(err, ""), err);
+        i = 100;
+        while i < 200 {
+            L.Remove(ids[i]);
+            i += 1;
+        }
+        err = this.GridConsistent(L);
+        this.Check("grid.consistent_after_remove", Equals(err, "") && L.count == 400, err);
+        let reused = L.Add(NightMapItem.Create(new Vector4(0.0, 0.0, 0.0, 1.0), n"test.a", r"base\\x.inkatlas", n"p"));
+        this.Check("grid.id_recycled", reused >= 100 && reused < 200, ToString(reused));
+        this.Check("grid.remove_twice_false", !L.Remove(ids[150]) && !L.Move(ids[150], new Vector4(0.0, 0.0, 0.0, 1.0)), "");
+        // edges of the grid extent (world bounds default to the whole grid)
+        let lo = L.Add(NightMapItem.Create(new Vector4(-12000.0, -12000.0, 0.0, 1.0), n"test.a", r"base\\x.inkatlas", n"p"));
+        let hi = L.Add(NightMapItem.Create(new Vector4(11999.0, 11999.0, 0.0, 1.0), n"test.a", r"base\\x.inkatlas", n"p"));
+        let out = L.Add(NightMapItem.Create(new Vector4(12000.0, 0.0, 0.0, 1.0), n"test.a", r"base\\x.inkatlas", n"p"));
+        this.Check("grid.edges", lo >= 0 && hi >= 0 && out == -1, ToString(lo) + "/" + ToString(hi) + "/" + ToString(out));
+        err = this.GridConsistent(L);
+        this.Check("grid.consistent_at_edges", Equals(err, ""), err);
+        L.Clear();
+        let sum = 0;
+        c = 0;
+        while c < 36 {
+            sum += L.cnt[NMGrid.Base(2) + c];
+            c += 1;
+        }
+        this.Check("grid.clear", L.count == 0 && sum == 0, ToString(L.count));
+    }
+
+    private func ApiCases() {
+        let api = NightMap.Create();
+        api.SetWorld(-6000.0, -4600.0, 4600.0, 7400.0);
+        let L = api.CreateLayer(n"test.api", "API test", 5);
+        this.Check("api.create_layer_idempotent", api.CreateLayer(n"test.api", "again", 1) == L && ArraySize(api.layers) == 1, "");
+        let inside = L.Add(NightMapItem.Create(new Vector4(5500.0, 0.0, 0.0, 1.0), n"x", r"base\\x.inkatlas", n"p"));
+        let outside = L.Add(NightMapItem.Create(new Vector4(5700.0, 0.0, 0.0, 1.0), n"x", r"base\\x.inkatlas", n"p"));
+        this.Check("api.world_bounds_plus_1km", inside >= 0 && outside == -1, ToString(inside) + "/" + ToString(outside));
+        let i = 0;
+        while i < 10 {
+            L.Add(NightMapItem.Create(new Vector4(0.0, 0.0, 0.0, 1.0), StringToName("cat" + ToString(i)), r"base\\x.inkatlas", n"p"));
+            i += 1;
+        }
+        this.Check("api.category_overflow_to_other", ArraySize(L.catNames) == NMGrid.MaxCats() && Equals(L.catNames[NMGrid.MaxCats() - 1], n"other"),
+            ToString(ArraySize(L.catNames)));
+        let g = api.CategoryIndex(n"x");
+        this.Check("api.global_category", g >= 0 && Equals(api.catNames[g], n"x"), ToString(g));
+        let rev = api.revision;
+        L.SetOpacity(0.5);
+        this.Check("api.revision_bumps", api.revision > rev && L.opacity == 0.5, "");
+        let d = NightMapDetails.Create("GIG", "TITLE").AddRow("a", "1").AddRow("b", "2").AddRow("c", "3").AddRow("d", "4")
+            .AddRow("e", "5").AddRow("f", "6").AddRow("g", "7").AddAction("K", "one").AddAction("K", "two").AddAction("K", "three").AddAction("K", "four");
+        this.Check("api.details_caps", ArraySize(d.rowKeys) == 6 && ArraySize(d.actionKeys) == 3, "");
+        api.RemoveLayer(n"test.api");
+        this.Check("api.remove_layer", ArraySize(api.layers) == 0 && !IsDefined(api.GetLayer(n"test.api")), "");
     }
 }
