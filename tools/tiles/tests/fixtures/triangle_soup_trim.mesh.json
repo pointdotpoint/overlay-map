@@ -1,0 +1,812 @@
+{
+ "Data": {
+  "RootChunk": {
+   "$type": "CMesh",
+   "materialEntries": [
+    {
+     "$type": "CMeshMaterialEntry",
+     "index": 0,
+     "isLocalInstance": 1,
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "westbrook"
+     }
+    },
+    {
+     "$type": "CMeshMaterialEntry",
+     "index": 1,
+     "isLocalInstance": 1,
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "city_center"
+     }
+    },
+    {
+     "$type": "CMeshMaterialEntry",
+     "index": 2,
+     "isLocalInstance": 1,
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "heywood"
+     }
+    },
+    {
+     "$type": "CMeshMaterialEntry",
+     "index": 3,
+     "isLocalInstance": 1,
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "pacifica"
+     }
+    },
+    {
+     "$type": "CMeshMaterialEntry",
+     "index": 4,
+     "isLocalInstance": 1,
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "santo_domingo"
+     }
+    },
+    {
+     "$type": "CMeshMaterialEntry",
+     "index": 5,
+     "isLocalInstance": 1,
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "sw5"
+     }
+    },
+    {
+     "$type": "CMeshMaterialEntry",
+     "index": 6,
+     "isLocalInstance": 1,
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "watson"
+     }
+    },
+    {
+     "$type": "CMeshMaterialEntry",
+     "index": 7,
+     "isLocalInstance": 1,
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "ep1_dogtown"
+     }
+    },
+    {
+     "$type": "CMeshMaterialEntry",
+     "index": 8,
+     "isLocalInstance": 1,
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "ep1_spaceport"
+     }
+    }
+   ],
+   "localMaterialBuffer": {
+    "materials": [
+     {
+      "$type": "CMaterialInstance",
+      "audioTag": {
+       "$type": "CName",
+       "$storage": "string",
+       "$value": "None"
+      },
+      "baseMaterial": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\materials\\3d_map_cubes.mt"
+       },
+       "Flags": "Default"
+      },
+      "cookingPlatform": "PLATFORM_None",
+      "enableMask": 1,
+      "metadata": null,
+      "resourceVersion": 4,
+      "values": [
+       {
+        "$type": "Float",
+        "PointCloudTextureHeight": 197
+       },
+       {
+        "$type": "rRef:ITexture",
+        "WorldPosTex": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\westbrook_data.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMin": {
+         "$type": "Vector4",
+         "W": 0,
+         "X": -1078.94739,
+         "Y": -1148.69434,
+         "Z": -18.4205875
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMax": {
+         "$type": "Vector4",
+         "W": 1,
+         "X": 1155.12,
+         "Y": 1562.87903,
+         "Z": 507.894714
+        }
+       },
+       {
+        "$type": "Float",
+        "CubeSize": 197
+       },
+       {
+        "$type": "rRef:ITexture",
+        "BaseColor": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\c_westbrook_m.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Float",
+        "Is3DMap": 1
+       }
+      ]
+     },
+     {
+      "$type": "CMaterialInstance",
+      "audioTag": {
+       "$type": "CName",
+       "$storage": "string",
+       "$value": "None"
+      },
+      "baseMaterial": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\materials\\3d_map_cubes.mt"
+       },
+       "Flags": "Default"
+      },
+      "cookingPlatform": "PLATFORM_None",
+      "enableMask": 1,
+      "metadata": null,
+      "resourceVersion": 4,
+      "values": [
+       {
+        "$type": "Float",
+        "PointCloudTextureHeight": 204
+       },
+       {
+        "$type": "rRef:ITexture",
+        "WorldPosTex": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\city_center_data.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMin": {
+         "$type": "Vector4",
+         "W": 0,
+         "X": -770.609192,
+         "Y": -530.549133,
+         "Z": -40.6581497
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMax": {
+         "$type": "Vector4",
+         "W": 1,
+         "X": 1316.82483,
+         "Y": 649.75531,
+         "Z": 642.893127
+        }
+       },
+       {
+        "$type": "Float",
+        "CubeSize": 168.289993
+       },
+       {
+        "$type": "rRef:ITexture",
+        "BaseColor": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\city_center_m.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Float",
+        "DissolveDistance": 200
+       },
+       {
+        "$type": "Float",
+        "DissolveBandWidth": 120
+       },
+       {
+        "$type": "Float",
+        "Is3DMap": 1
+       }
+      ]
+     },
+     {
+      "$type": "CMaterialInstance",
+      "audioTag": {
+       "$type": "CName",
+       "$storage": "string",
+       "$value": "None"
+      },
+      "baseMaterial": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\materials\\3d_map_cubes.mt"
+       },
+       "Flags": "Default"
+      },
+      "cookingPlatform": "PLATFORM_None",
+      "enableMask": 1,
+      "metadata": null,
+      "resourceVersion": 4,
+      "values": [
+       {
+        "$type": "Float",
+        "PointCloudTextureHeight": 205
+       },
+       {
+        "$type": "rRef:ITexture",
+        "WorldPosTex": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\heywood_data.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMin": {
+         "$type": "Vector4",
+         "W": 0,
+         "X": -1080.35107,
+         "Y": -418.153046,
+         "Z": -38.4002304
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMax": {
+         "$type": "Vector4",
+         "W": 1,
+         "X": 1136.94556,
+         "Y": 1372.15979,
+         "Z": 374.181305
+        }
+       },
+       {
+        "$type": "Float",
+        "CubeSize": 197.236832
+       },
+       {
+        "$type": "rRef:ITexture",
+        "BaseColor": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\heywood_m.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Float",
+        "EdgeThickness": 0.000500000024
+       },
+       {
+        "$type": "Float",
+        "EdgeSharpnessPower": 50
+       },
+       {
+        "$type": "Float",
+        "Is3DMap": 1
+       }
+      ]
+     },
+     {
+      "$type": "CMaterialInstance",
+      "audioTag": {
+       "$type": "CName",
+       "$storage": "string",
+       "$value": "None"
+      },
+      "baseMaterial": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\materials\\3d_map_cubes.mt"
+       },
+       "Flags": "Default"
+      },
+      "cookingPlatform": "PLATFORM_None",
+      "enableMask": 1,
+      "metadata": null,
+      "resourceVersion": 4,
+      "values": [
+       {
+        "$type": "Float",
+        "PointCloudTextureHeight": 153
+       },
+       {
+        "$type": "rRef:ITexture",
+        "WorldPosTex": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\pacifica_data.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMin": {
+         "$type": "Vector4",
+         "W": 0,
+         "X": -4008.396,
+         "Y": -4575.14941,
+         "Z": -51.9539986
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMax": {
+         "$type": "Vector4",
+         "W": 1,
+         "X": 8258.31641,
+         "Y": 7254.10059,
+         "Z": 264.306946
+        }
+       },
+       {
+        "$type": "Float",
+        "CubeSize": 305.600006
+       },
+       {
+        "$type": "rRef:ITexture",
+        "BaseColor": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\c_pacifica_m.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Float",
+        "EdgeThickness": 0.000500000024
+       },
+       {
+        "$type": "Float",
+        "EdgeSharpnessPower": 50
+       },
+       {
+        "$type": "Float",
+        "Is3DMap": 1
+       }
+      ]
+     },
+     {
+      "$type": "CMaterialInstance",
+      "audioTag": {
+       "$type": "CName",
+       "$storage": "string",
+       "$value": "None"
+      },
+      "baseMaterial": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\materials\\3d_map_cubes.mt"
+       },
+       "Flags": "Default"
+      },
+      "cookingPlatform": "PLATFORM_None",
+      "enableMask": 1,
+      "metadata": null,
+      "resourceVersion": 4,
+      "values": [
+       {
+        "$type": "Float",
+        "PointCloudTextureHeight": 195
+       },
+       {
+        "$type": "rRef:ITexture",
+        "WorldPosTex": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\santo_domingo_data.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMin": {
+         "$type": "Vector4",
+         "W": 0,
+         "X": -1328.95288,
+         "Y": -1880.02502,
+         "Z": -37.5960007
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMax": {
+         "$type": "Vector4",
+         "W": 1,
+         "X": 1555.26318,
+         "Y": 1369.01294,
+         "Z": 332.348328
+        }
+       },
+       {
+        "$type": "Float",
+        "CubeSize": 139.342102
+       },
+       {
+        "$type": "rRef:ITexture",
+        "BaseColor": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\santo_domingo_m.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Float",
+        "Is3DMap": 1
+       }
+      ]
+     },
+     {
+      "$type": "CMaterialInstance",
+      "audioTag": {
+       "$type": "CName",
+       "$storage": "string",
+       "$value": "None"
+      },
+      "baseMaterial": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\materials\\3d_map_cubes.mt"
+       },
+       "Flags": "Default"
+      },
+      "cookingPlatform": "PLATFORM_None",
+      "enableMask": 1,
+      "metadata": null,
+      "resourceVersion": 4,
+      "values": [
+       {
+        "$type": "Float",
+        "PointCloudTextureHeight": 152
+       },
+       {
+        "$type": "rRef:ITexture",
+        "WorldPosTex": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\sw1_data.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Float",
+        "CubeSize": 300.312256
+       },
+       {
+        "$type": "Float",
+        "EdgeThickness": 0.000500000024
+       },
+       {
+        "$type": "Float",
+        "EdgeSharpnessPower": 50
+       },
+       {
+        "$type": "Float",
+        "Is3DMap": 1
+       }
+      ]
+     },
+     {
+      "$type": "CMaterialInstance",
+      "audioTag": {
+       "$type": "CName",
+       "$storage": "string",
+       "$value": "None"
+      },
+      "baseMaterial": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\materials\\3d_map_cubes.mt"
+       },
+       "Flags": "Default"
+      },
+      "cookingPlatform": "PLATFORM_None",
+      "enableMask": 1,
+      "metadata": null,
+      "resourceVersion": 4,
+      "values": [
+       {
+        "$type": "Float",
+        "PointCloudTextureHeight": 206
+       },
+       {
+        "$type": "rRef:ITexture",
+        "WorldPosTex": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\watson_data.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMin": {
+         "$type": "Vector4",
+         "W": 0,
+         "X": -1254.46997,
+         "Y": -1258.68469,
+         "Z": -24.7028503
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMax": {
+         "$type": "Vector4",
+         "W": 1,
+         "X": 1988.5448,
+         "Y": 2032.52405,
+         "Z": 475.268005
+        }
+       },
+       {
+        "$type": "Float",
+        "CubeSize": 237.175003
+       },
+       {
+        "$type": "rRef:ITexture",
+        "BaseColor": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\c_watson_m.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Float",
+        "EdgeThickness": 0.000500000024
+       },
+       {
+        "$type": "Float",
+        "EdgeSharpnessPower": 50
+       },
+       {
+        "$type": "Float",
+        "Is3DMap": 1
+       }
+      ]
+     },
+     {
+      "$type": "CMaterialInstance",
+      "audioTag": {
+       "$type": "CName",
+       "$storage": "string",
+       "$value": "None"
+      },
+      "baseMaterial": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\materials\\3d_map_cubes.mt"
+       },
+       "Flags": "Default"
+      },
+      "cookingPlatform": "PLATFORM_None",
+      "enableMask": 1,
+      "metadata": null,
+      "resourceVersion": 4,
+      "values": [
+       {
+        "$type": "Float",
+        "PointCloudTextureHeight": 148
+       },
+       {
+        "$type": "rRef:ITexture",
+        "WorldPosTex": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\ep1_dogtown_data.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMin": {
+         "$type": "Vector4",
+         "W": 0,
+         "X": -2650,
+         "Y": -3126.6084,
+         "Z": -0.750015974
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMax": {
+         "$type": "Vector4",
+         "W": 1,
+         "X": -1025.51855,
+         "Y": -1803.58118,
+         "Z": 493.576111
+        }
+       },
+       {
+        "$type": "Float",
+        "CubeSize": 198.020691
+       },
+       {
+        "$type": "rRef:ITexture",
+        "BaseColor": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\ep1_dogtown_m.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Float",
+        "EdgeThickness": 0.000500000024
+       },
+       {
+        "$type": "Float",
+        "EdgeSharpnessPower": 50
+       },
+       {
+        "$type": "Float",
+        "Is3DMap": 1
+       }
+      ]
+     },
+     {
+      "$type": "CMaterialInstance",
+      "audioTag": {
+       "$type": "CName",
+       "$storage": "string",
+       "$value": "None"
+      },
+      "baseMaterial": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\materials\\3d_map_cubes.mt"
+       },
+       "Flags": "Default"
+      },
+      "cookingPlatform": "PLATFORM_None",
+      "enableMask": 1,
+      "metadata": null,
+      "resourceVersion": 4,
+      "values": [
+       {
+        "$type": "Float",
+        "PointCloudTextureHeight": 94
+       },
+       {
+        "$type": "rRef:ITexture",
+        "WorldPosTex": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\ep1_spaceport_data.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMin": {
+         "$type": "Vector4",
+         "W": 0,
+         "X": -1168.5874,
+         "Y": -765.104614,
+         "Z": -41.4592323
+        }
+       },
+       {
+        "$type": "Vector4",
+        "TransMax": {
+         "$type": "Vector4",
+         "W": 1,
+         "X": 1219.45483,
+         "Y": 1018.70129,
+         "Z": 296.498138
+        }
+       },
+       {
+        "$type": "Float",
+        "CubeSize": 115.298218
+       },
+       {
+        "$type": "rRef:ITexture",
+        "BaseColor": {
+         "DepotPath": {
+          "$type": "ResourcePath",
+          "$storage": "string",
+          "$value": "base\\fx\\textures\\3dmap\\static\\ep1_spaceport_m.xbm"
+         },
+         "Flags": "Default"
+        }
+       },
+       {
+        "$type": "Float",
+        "EdgeThickness": 0.000500000024
+       },
+       {
+        "$type": "Float",
+        "EdgeSharpnessPower": 50
+       },
+       {
+        "$type": "Float",
+        "Is3DMap": 1
+       }
+      ]
+     }
+    ]
+   }
+  }
+ }
+}

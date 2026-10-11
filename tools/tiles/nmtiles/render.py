@@ -5,8 +5,9 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
-from PIL import Image, ImageChops, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 
+from nmtiles.buildings import Boxes, box_corners
 from nmtiles.glb import Mesh
 from nmtiles.style import STYLE
 from nmtiles.world import Transform
@@ -73,21 +74,38 @@ def rasterize_mask(meshes: list[Mesh], tf: Transform, origin_x: float, origin_to
     return np.asarray(img) > 0
 
 
-def render_level(styled: dict[str, list[Mesh]], tf: Transform, grid: LevelGrid) -> Image.Image:
+OUTLINE_MAX_MPP = 4.0   # coarser levels drop the per-box outline: it would be noise
+
+
+def _draw_boxes(draw: ImageDraw.ImageDraw, boxes: Boxes, grid: LevelGrid, spec: dict) -> None:
+    """World-space rotated rectangles; each box's fill alpha grows with its height (metres)."""
+    corners = box_corners(boxes)
+    px = np.empty_like(corners)
+    px[..., 0] = (corners[..., 0] - grid.origin_x) / grid.mpp
+    px[..., 1] = (grid.origin_top - corners[..., 1]) / grid.mpp
+    lo, hi = px.min(axis=1), px.max(axis=1)
+    keep = (hi[:, 0] >= 0) & (lo[:, 0] < grid.width) & (hi[:, 1] >= 0) & (lo[:, 1] < grid.height)
+    fr, fg, fb, fa = spec["fill"]
+    alpha = (fa + spec.get("height_alpha", 0) * np.clip(boxes.dz / 150.0, 0.0, 1.0)).astype(int)
+    outline = tuple(spec["outline"]) if grid.mpp <= OUTLINE_MAX_MPP and "outline" in spec else None
+    for i in np.nonzero(keep)[0]:
+        draw.polygon([tuple(p) for p in px[i]], fill=(fr, fg, fb, int(alpha[i])), outline=outline)
+
+
+def render_level(styled: dict[str, list[Mesh]], tf: Transform, grid: LevelGrid,
+                 boxes: Boxes | None = None) -> Image.Image:
     w, h = grid.width, grid.height
     out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    for style in sorted(styled, key=lambda s: STYLE[s]["order"]):
+    names = set(styled) | ({"building"} if boxes is not None and len(boxes) else set())
+    for style in sorted(names, key=lambda s: STYLE[s]["order"]):
         spec = STYLE[style]
         layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(layer)
-        for m in styled[style]:
+        for m in styled.get(style, []):
             _draw_mesh(draw, m, tf, grid.origin_x, grid.origin_top, grid.mpp, w, h, spec["fill"],
                        spec.get("height_alpha", 0))
-        if "outline" in spec:
-            edges = layer.getchannel("A").point(lambda a: 255 if a > 0 else 0).filter(ImageFilter.FIND_EDGES)
-            outline = Image.new("RGBA", (w, h), spec["outline"])
-            outline.putalpha(ImageChops.multiply(edges, Image.new("L", (w, h), spec["outline"][3])))
-            layer = Image.alpha_composite(layer, outline)
+        if style == "building" and boxes is not None:
+            _draw_boxes(draw, boxes, grid, spec)
         if "glow" in spec:
             radius = max(1.0, 6.0 / grid.mpp)
             glow = Image.new("RGBA", (w, h), spec["glow"])

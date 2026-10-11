@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 from nmtiles.glb import Mesh
@@ -48,3 +50,32 @@ def test_slice_tiles_omits_fully_transparent_tiles():
     img = render_level({"water": [_mesh(10, 10, 50, 50)]}, Transform(), grid)
     tiles = slice_tiles(img, grid)
     assert list(tiles) == [(0, 0)]
+
+
+def _boxes(cx, cy, dx, dy, dz, yaw=0.0):
+    from nmtiles.buildings import Boxes
+    return Boxes(*(np.array([v], float) for v in (cx, cy, dx, dy, dz, yaw)))
+
+
+def test_render_box_fills_inside_and_outlines_only_at_fine_mpp():
+    # one 40x20 m box centred at world (100, 100); grid origin top-left of tile (0, 512*mpp)
+    for mpp, outline in ((2.0, True), (8.0, False)):
+        grid = level_grid((0.0, 0.0, 200.0, 200.0), mpp=mpp)
+        alpha = np.asarray(render_level({}, Transform(), grid, boxes=_boxes(100, 100, 40, 20, 150)))[:, :, 3]
+        px = lambda x, y: alpha[int((grid.origin_top - y) / mpp), int((x - grid.origin_x) / mpp)]
+        inside = px(100, 100)
+        assert inside >= 15 + 30 - 1                    # fill alpha + height_alpha at h >= 150 m
+        assert px(100, 140) == 0 and px(160, 100) == 0   # outside the box
+        edge = alpha[int((grid.origin_top - 110) / mpp) - 1: int((grid.origin_top - 110) / mpp) + 2, :].max()
+        assert (edge >= 115) == outline                  # outline alpha 115 only when mpp <= 4
+        if not outline:
+            assert alpha.max() == inside
+
+
+def test_render_box_respects_yaw_and_height_scaling():
+    grid = level_grid((0.0, 0.0, 200.0, 200.0), mpp=1.0)
+    tall = np.asarray(render_level({}, Transform(), grid, boxes=_boxes(100, 100, 40, 10, 150, math.pi / 2)))[:, :, 3]
+    short = np.asarray(render_level({}, Transform(), grid, boxes=_boxes(100, 100, 40, 10, 15, math.pi / 2)))[:, :, 3]
+    top = grid.origin_top
+    assert tall[int(top - 120), 100] > 0 and tall[int(top - 100), 130] == 0   # yawed: long axis is N-S
+    assert short[int(top - 100) + 3, 100] < tall[int(top - 100) + 3, 100]

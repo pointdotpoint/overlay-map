@@ -1,0 +1,999 @@
+{
+ "Data": {
+  "RootChunk": {
+   "$type": "entEntityTemplate",
+   "components": [
+    {
+     "$type": "entTargetPointComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "target_point"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 12687770
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entMeshComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "city_center_data"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -277431872
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 13960164
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entMeshComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "santo_domingo_data"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -2089856
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": -211036368
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entMeshComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "heywood_data"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -206665440
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": -131440464
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entMeshComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "westbrook_data"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -12741328
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 77443808
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entMeshComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "watson_data"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -259440224
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 245622464
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entMeshComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "pacifica_data0633"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -317514176
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": -310398912
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "corpo_plaza_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 104703936
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": -25008430
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "downtown_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -31771648
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 18868414
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "glen_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": -45875200
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "vista_del_rey_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 99859416
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "wellspring_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -123610720
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 21749200
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "coastview_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0.537299991,
+       "r": 0.843391001
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 123195776
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 41849312
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "west_wind_estate_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0.537299991,
+       "r": 0.843391001
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -51775648
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": -47824032
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "arroyo_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -34142160
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 3961856
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "rancho_coronado_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 72530240
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": -11920080
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "kabuki_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 144101568
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": -24882992
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "little_china_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -9659584
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": -85093776
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "northside_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 46290560
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 90549760
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "charter_hill_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 26237544
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": -92231928
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "japan_town_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -85757936
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 21305920
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "north_oaks_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 43336432
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 3203424
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "ncx_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "dogtown_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 317514176
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 310398912
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "pacifica_transform_fix"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entTransformComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "pacifica_transform"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0.537299991,
+       "r": 0.843391001
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 123195776
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 41849312
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entMeshComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "ep1_dogtown_data"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 1
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entMeshComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "ep1_spaceport_data"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": 0,
+       "r": 1
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -550502400
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 26214400
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 0
+       }
+      }
+     }
+    },
+    {
+     "$type": "entMeshComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "ferris_wheel_pacifica"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": 0,
+       "j": 0,
+       "k": -0.725374401,
+       "r": 0.688354552
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": -2618848
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 24918048
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 4490527
+       }
+      }
+     }
+    },
+    {
+     "$type": "entMeshComponent",
+     "name": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "ferris_wheel_collapsed"
+     },
+     "localTransform": {
+      "$type": "WorldTransform",
+      "Orientation": {
+       "$type": "Quaternion",
+       "i": -0.451310128,
+       "j": -0.223868057,
+       "k": 0.459145129,
+       "r": 0.731702209
+      },
+      "Position": {
+       "$type": "WorldPosition",
+       "x": {
+        "$type": "FixedPoint",
+        "Bits": 375868544
+       },
+       "y": {
+        "$type": "FixedPoint",
+        "Bits": 91226064
+       },
+       "z": {
+        "$type": "FixedPoint",
+        "Bits": 1424753
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+}

@@ -9,11 +9,13 @@ from pathlib import Path
 
 import numpy as np
 
+from nmtiles.buildings import load_boxes
 from nmtiles.encode import encode_bc7
-from nmtiles.export import export_meshes, style_for
+from nmtiles.export import export_building_data, export_meshes, style_for
 from nmtiles.glb import keep_best_lod, read_glb
 from nmtiles.manifest import emit_manifest
 from nmtiles.pack import deserialize_all, pack_archive, write_resource
+from nmtiles.preview import write_previews
 from nmtiles.render import level_grid, render_level, slice_tiles
 from nmtiles.resources import make_inkatlas_json, make_xbm_json
 from nmtiles.ui_atlas import build_ui_atlas
@@ -29,25 +31,28 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--game", type=Path, default=Path.home() / "cyberpunk_symlink")
     ap.add_argument("--out", type=Path, default=HERE / "build")
     ap.add_argument("--levels", default="2,4,8,16")
-    ap.add_argument("--skip-export", action="store_true", help="reuse build/meshes")
+    ap.add_argument("--skip-export", action="store_true", help="reuse build/meshes and build/bdata")
     ap.add_argument("--game-version", default="2.31")
     args = ap.parse_args(argv)
     game = args.game.resolve()
     out = args.out
     mesh_dir = out / "meshes"
+    bdata_dir = out / "bdata"
     if not args.skip_export:
         shutil.rmtree(mesh_dir, ignore_errors=True)
         export_meshes(game, mesh_dir)
+        export_building_data(game, bdata_dir)
 
     styled: dict[str, list] = {}
     for p in sorted(mesh_dir.rglob("*.glb")):
         style = style_for(p.stem)
         if style:
             styled.setdefault(style, []).extend(keep_best_lod(read_glb(p)))
+    boxes = load_boxes(bdata_dir)     # world-space already: never goes through the mesh Transform
     tf = Transform.load(HERE / "calibration.json")
-    world = np.vstack([tf.apply(m.positions) for s in ("land", "road", "building") for m in styled.get(s, [])])
+    world = np.vstack([tf.apply(m.positions) for s in ("land", "road") for m in styled.get(s, [])])
     bounds = (float(world[:, 0].min()), float(world[:, 1].min()), float(world[:, 0].max()), float(world[:, 1].max()))
-    print(f"styles={ {k: len(v) for k, v in styled.items()} } bounds={bounds} transform={tf}")
+    print(f"styles={ {k: len(v) for k, v in styled.items()} } boxes={len(boxes)} bounds={bounds} transform={tf}")
 
     png_dir = out / "png"
     shutil.rmtree(png_dir, ignore_errors=True)
@@ -55,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
     levels, tile_pngs = [], []
     for li, mpp in enumerate(float(x) for x in args.levels.split(",")):
         grid = level_grid(bounds, mpp)
-        tiles = slice_tiles(render_level(styled, tf, grid), grid)
+        tiles = slice_tiles(render_level(styled, tf, grid, boxes), grid)
         for (ix, iy), img in tiles.items():
             p = png_dir / f"L{li}_t_{ix}_{iy}.png"
             img.save(p)
@@ -63,6 +68,9 @@ def main(argv: list[str] | None = None) -> int:
         levels.append({"mpp": mpp, "origin_x": grid.origin_x, "origin_top": grid.origin_top,
                        "nx": grid.nx, "ny": grid.ny, "tiles": sorted(tiles)})
         print(f"level {li}: {mpp} m/px grid {grid.nx}x{grid.ny} tiles={len(tiles)}", flush=True)
+
+    for p in write_previews(levels, tile_pngs, out):
+        print(f"preview {p}")
 
     ui_img, ui_parts = build_ui_atlas()
     ui_png = png_dir / "ui.png"
