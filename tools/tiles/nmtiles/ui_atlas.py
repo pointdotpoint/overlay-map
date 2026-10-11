@@ -37,12 +37,15 @@ def _hex(size: int, r: int, stroke: int) -> Image.Image:
     c = size * SS / 2
     d.polygon(_hex_points(c, c, r * SS), fill=_FILL)
     pts = _hex_points(c, c, (r - stroke / 2) * SS)
-    d.line(pts + [pts[0]], fill=_WHITE, width=stroke * SS, joint="curve")
+    d.line(pts + [pts[0], pts[1]], fill=_WHITE, width=stroke * SS, joint="curve")
     return _down(img, size)
 
 
 def _glow(img: Image.Image, radius: float) -> Image.Image:
-    halo = img.filter(ImageFilter.GaussianBlur(radius))
+    # blur alpha only; halo RGB stays pure white (blurring RGBA would darken it toward the transparent black)
+    alpha = img.getchannel("A").filter(ImageFilter.GaussianBlur(radius))
+    halo = Image.new("RGBA", img.size, (255, 255, 255, 0))
+    halo.putalpha(alpha)
     return Image.alpha_composite(halo, img)
 
 

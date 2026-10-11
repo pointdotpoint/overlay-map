@@ -33,3 +33,19 @@ def test_atlas_is_deterministic():
     a, _ = build_ui_atlas()
     b, _ = build_ui_atlas()
     assert a.tobytes() == b.tobytes()
+
+
+def test_glow_halo_is_pure_white():
+    img, parts = build_ui_atlas()
+    ring = img.crop(parts["ring"])
+    soft = [px for px in ring.getdata() if 0 < px[3] < 255]
+    assert soft
+    assert all(min(px[:3]) >= 250 for px in soft)
+
+
+def test_chip_vertex0_has_no_dark_speck():
+    img, parts = build_ui_atlas()
+    chip = img.crop(parts["chip"])
+    for xy in [(96, 79), (96, 80)]:   # lower-right vertex, just outside the stroke
+        r, g, b, a = chip.getpixel(xy)
+        assert not (a > 200 and r < 200), (xy, (r, g, b, a))
