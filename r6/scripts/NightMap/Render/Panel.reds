@@ -118,9 +118,12 @@ public class NMPanel {
         NMUi.Rect(this.overlay, -0.5 * l.mapW, -0.5 * l.mapH, 2.0 * l.mapW, 2.0 * l.mapH, NMTheme.Pink(), 0.12);
     }
 
-    public func Destroy(window: wref<inkCompoundWidget>) {
-        if IsDefined(window) && IsDefined(this.root) {
-            window.RemoveChild(this.root);
+    public func Destroy() {
+        if IsDefined(this.root) {
+            let parent = this.root.GetParentWidget() as inkCompoundWidget;
+            if IsDefined(parent) {
+                parent.RemoveChild(this.root);
+            }
         }
     }
 }

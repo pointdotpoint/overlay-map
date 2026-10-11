@@ -274,7 +274,11 @@ public class NMSelfTest {
         inp.Handle(s, EInputKey.IK_NumPad9, press, false, false, false, true);
         let v3 = inp.PanVector();
         inp.ResetHeld();
-        this.Check("input.numpad9_diagonal", v3.X == 1.0 && v3.Y == -1.0, this.F(v3.X) + "," + this.F(v3.Y));
+        this.Check("input.numpad9_diagonal", this.Near(v3.X, 0.7071, 0.001) && this.Near(v3.Y, -0.7071, 0.001), this.F(v3.X) + "," + this.F(v3.Y));
+        inp.Handle(s, EInputKey.IK_Backslash, press, true, true, false, false);
+        inp.Handle(s, EInputKey.IK_Backslash, press, true, false, false, false);
+        inp.Handle(s, EInputKey.IK_Backslash, press, false, false, true, false);
+        this.Check("input.debug_chords", inp.debugLayer && inp.debugPerf && inp.debugCalib && !inp.toggle, "");
         inp.Handle(s, EInputKey.IK_NumPlus, press, false, false, false, true);
         this.Check("input.zoom_held", inp.zoomIn && !inp.zoomOut, "");
         this.Check("input.key_names", Equals(NMInput.KeyName(EInputKey.IK_NumPad8), "NUM 8") && Equals(NMInput.KeyName(EInputKey.IK_Backslash), "\\")

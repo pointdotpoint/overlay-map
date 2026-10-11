@@ -83,6 +83,10 @@ public class NMInput {
         if this.right || this.d9 || this.d3 { x += 1.0; }
         if this.up || this.d7 || this.d9 { y -= 1.0; }
         if this.down || this.d1 || this.d3 { y += 1.0; }
+        if x != 0.0 && y != 0.0 {
+            x *= 0.70710678;
+            y *= 0.70710678;
+        }
         return new Vector2(x, y);
     }
 

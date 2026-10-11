@@ -35,8 +35,8 @@ public class NightMapSystem extends ScriptableSystem {
 
     // Loading a save or quitting to menu ends the session: tear the overlay down so nothing is orphaned.
     private func OnDetach() {
-        this.Close();
         GameInstance.GetCallbackSystem().UnregisterCallback(n"Input/Key", this);
+        this.Close();
     }
 
     public func Api() -> ref<NightMap> { return this.api; }
@@ -49,7 +49,11 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private func HudWindow() -> wref<inkCompoundWidget> {
-        return GameInstance.GetInkSystem().GetLayer(n"inkHUDLayer").GetVirtualWindow();
+        let layer = GameInstance.GetInkSystem().GetLayer(n"inkHUDLayer");
+        if !IsDefined(layer) {
+            return null;
+        }
+        return layer.GetVirtualWindow();
     }
 
     private cb func OnKeyInput(evt: ref<KeyInputEvent>) {
@@ -129,9 +133,12 @@ public class NightMapSystem extends ScriptableSystem {
         if IsDefined(this.camera) {
             this.savedMpp = this.camera.mpp;
         }
+        if IsDefined(this.input) {
+            this.input.ResetHeld();
+        }
         this.OnClosing();
         if IsDefined(this.panel) {
-            this.panel.Destroy(this.HudWindow());
+            this.panel.Destroy();
         }
         this.panel = null;
         NMLog.Info("closed");
