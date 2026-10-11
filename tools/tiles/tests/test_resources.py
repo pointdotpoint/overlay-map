@@ -60,7 +60,7 @@ def test_encode_write_pack_roundtrip(tmp_path):
     from PIL import Image
 
     from nmtiles.encode import encode_bc7
-    from nmtiles.pack import pack_archive, write_resource
+    from nmtiles.pack import deserialize_all, pack_archive, write_resource
     png = tmp_path / "t.png"
     # noise, not a flat colour: the CR2W stores the payload Kraken-compressed, so a flat tile shrinks to ~1.7 KB
     Image.frombytes("RGBA", (512, 512), os.urandom(512 * 512 * 4)).save(png)
@@ -70,6 +70,37 @@ def test_encode_write_pack_roundtrip(tmp_path):
     write_resource(ws, r"nightmap\test\t.xbm", make_xbm_json(_tpl("tile.xbm.json"), 512, 512, payload))
     write_resource(ws, r"nightmap\test\t.inkatlas",
                    make_inkatlas_json(_tpl("atlas.inkatlas.json"), r"nightmap\test\t.xbm", {"full": (0, 0, 512, 512)}, 512, 512))
+    deserialize_all(ws)
     assert (ws / "nightmap/test/t.xbm").stat().st_size > 262144
     arc = pack_archive(ws, tmp_path / "out" / "Test.archive")
     assert arc.stat().st_size > 262144
+
+
+def test_deserialize_all_runs_once_and_checks_targets(tmp_path, monkeypatch):
+    import subprocess
+
+    import pytest
+
+    from nmtiles import pack
+
+    ws = tmp_path / "ws"
+    t1 = pack.write_resource(ws, r"a\b\x.xbm", {"k": 1})
+    t2 = pack.write_resource(ws, r"a\y.inkatlas", {"k": 2})
+    assert t1 == ws / "a" / "b" / "x.xbm" and not t1.exists()
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        for j in ws.rglob("*.json"):
+            j.with_name(j.name[:-5]).write_bytes(b"cr2w")
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(pack.subprocess, "run", fake_run)
+    assert set(pack.deserialize_all(ws)) == {t1, t2}
+    assert len(calls) == 1 and calls[0][:3] == ["WolvenKit.CLI", "convert", "d"]
+    assert t1.is_file() and not list(ws.rglob("*.json"))
+
+    pack.write_resource(ws, r"a\z.xbm", {})
+    monkeypatch.setattr(pack.subprocess, "run", lambda cmd, **kw: subprocess.CompletedProcess(cmd, 0))
+    with pytest.raises(RuntimeError, match="did not produce"):
+        pack.deserialize_all(ws)

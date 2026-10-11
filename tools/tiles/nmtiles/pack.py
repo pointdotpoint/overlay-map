@@ -7,17 +7,29 @@ import subprocess
 from pathlib import Path
 
 
-def write_resource(workspace: Path, depot_path: str, js: dict, wolvenkit: str = "WolvenKit.CLI") -> Path:
+def write_resource(workspace: Path, depot_path: str, js: dict) -> Path:
+    """Write the WolvenKit JSON for a resource; returns the expected CR2W target path.
+
+    Call deserialize_all() once after writing every resource to convert them in one pass.
+    """
     target = workspace / Path(*depot_path.split("\\"))
     target.parent.mkdir(parents=True, exist_ok=True)
-    jpath = target.with_name(target.name + ".json")
-    jpath.write_text(json.dumps(js))
-    subprocess.run([wolvenkit, "convert", "d", str(jpath)], check=True, cwd=workspace.parent,
-                   stdout=subprocess.DEVNULL)
-    jpath.unlink()
-    if not target.is_file():
-        raise RuntimeError(f"WolvenKit did not produce {target}")
+    target.with_name(target.name + ".json").write_text(json.dumps(js))
     return target
+
+
+def deserialize_all(workspace: Path, wolvenkit: str = "WolvenKit.CLI") -> list[Path]:
+    """Convert every *.json under workspace to CR2W in one WolvenKit run, then delete the JSON."""
+    jsons = sorted(workspace.rglob("*.json"))
+    targets = [j.with_name(j.name[: -len(".json")]) for j in jsons]
+    subprocess.run([wolvenkit, "convert", "d", str(workspace)], check=True, cwd=workspace.parent,
+                   stdout=subprocess.DEVNULL)
+    for j in jsons:
+        j.unlink(missing_ok=True)
+    missing = [t for t in targets if not t.is_file()]
+    if missing:
+        raise RuntimeError(f"WolvenKit did not produce {len(missing)} resources: {[str(m) for m in missing[:10]]}")
+    return targets
 
 
 def pack_archive(workspace: Path, out_archive: Path, wolvenkit: str = "WolvenKit.CLI") -> Path:
