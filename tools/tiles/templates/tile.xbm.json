@@ -1,0 +1,98 @@
+{
+ "Header": {
+  "WolvenKitVersion": "8.19.0",
+  "WKitJsonVersion": "0.0.9",
+  "GameVersion": 2310,
+  "ExportedDateTime": "2026-09-22T23:33:28.8266867Z",
+  "DataType": "CR2W",
+  "ArchiveFileName": ""
+ },
+ "Data": {
+  "Version": 195,
+  "BuildVersion": 1056784,
+  "RootChunk": {
+   "$type": "CBitmapTexture",
+   "cookingPlatform": "PLATFORM_PC",
+   "depth": 1,
+   "height": 1028,
+   "histBiasAddCoef": {
+    "$type": "Vector3",
+    "X": 0,
+    "Y": 0,
+    "Z": 0
+   },
+   "histBiasMulCoef": {
+    "$type": "Vector3",
+    "X": 1,
+    "Y": 1,
+    "Z": 1
+   },
+   "renderResourceBlob": null,
+   "renderTextureResource": {
+    "$type": "rendRenderTextureResource",
+    "renderResourceBlobPC": {
+     "HandleId": "0",
+     "Data": {
+      "$type": "rendRenderTextureBlobPC",
+      "header": {
+       "$type": "rendRenderTextureBlobHeader",
+       "flags": 1,
+       "histogramData": [],
+       "mipMapInfo": [
+        {
+         "$type": "rendRenderTextureBlobMipMapInfo",
+         "layout": {
+          "$type": "rendRenderTextureBlobMemoryLayout",
+          "rowPitch": 4112,
+          "slicePitch": 1056784
+         },
+         "placement": {
+          "$type": "rendRenderTextureBlobPlacement",
+          "offset": 0,
+          "size": 1056784
+         }
+        }
+       ],
+       "sizeInfo": {
+        "$type": "rendRenderTextureBlobSizeInfo",
+        "depth": 1,
+        "height": 1028,
+        "width": 1028
+       },
+       "textureInfo": {
+        "$type": "rendRenderTextureBlobTextureInfo",
+        "dataAlignment": 8,
+        "mipCount": 1,
+        "sliceCount": 1,
+        "sliceSize": 1056784,
+        "textureDataSize": 1056784,
+        "type": "TEXTYPE_2D"
+       },
+       "version": 2
+      },
+      "textureData": {
+       "BufferId": "0",
+       "Flags": 131072,
+       "Bytes": ""
+      }
+     }
+    }
+   },
+   "setup": {
+    "$type": "STextureGroupSetup",
+    "allowTextureDowngrade": 1,
+    "alphaToCoverageThreshold": 0,
+    "compression": "TCM_QualityColor",
+    "group": "TEXG_Generic_Color",
+    "hasMipchain": 0,
+    "isGamma": 0,
+    "isStreamable": 1,
+    "platformMipBiasConsole": 1,
+    "platformMipBiasPC": 0,
+    "rawFormat": "TRF_TrueColor"
+   },
+   "width": 1028
+  },
+  "EmbeddedFiles": []
+ }
+}

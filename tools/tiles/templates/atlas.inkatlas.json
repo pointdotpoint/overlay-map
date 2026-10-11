@@ -1,0 +1,164 @@
+{
+ "Header": {
+  "WolvenKitVersion": "8.19.0",
+  "WKitJsonVersion": "0.0.9",
+  "GameVersion": 2310,
+  "ExportedDateTime": "2026-10-11T20:16:48.2785892Z",
+  "DataType": "CR2W",
+  "ArchiveFileName": ""
+ },
+ "Data": {
+  "Version": 195,
+  "BuildVersion": 0,
+  "RootChunk": {
+   "$type": "inkTextureAtlas",
+   "activeTexture": "StaticTexture",
+   "cookingPlatform": "PLATFORM_PC",
+   "dynamicTexture": {
+    "DepotPath": {
+     "$type": "ResourcePath",
+     "$storage": "uint64",
+     "$value": "0"
+    },
+    "Flags": "Soft"
+   },
+   "dynamicTextureSlot": {
+    "$type": "inkDynamicTextureSlot",
+    "parts": [],
+    "texture": {
+     "DepotPath": {
+      "$type": "ResourcePath",
+      "$storage": "uint64",
+      "$value": "0"
+     },
+     "Flags": "Soft"
+    }
+   },
+   "isSingleTextureMode": 0,
+   "parts": [],
+   "slices": [],
+   "slots": {
+    "Elements": [
+     {
+      "$type": "inkTextureSlot",
+      "parts": [
+       {
+        "$type": "inkTextureAtlasMapper",
+        "clippingRectInPixels": {
+         "$type": "Rect",
+         "bottom": 0,
+         "left": 0,
+         "right": 0,
+         "top": 0
+        },
+        "clippingRectInUVCoords": {
+         "$type": "RectF",
+         "Bottom": 0.924107134,
+         "Left": 0.806640625,
+         "Right": 0.861328125,
+         "Top": 0.875744045
+        },
+        "partName": {
+         "$type": "CName",
+         "$storage": "string",
+         "$value": "arrow_bg"
+        }
+       }
+      ],
+      "slices": [],
+      "texture": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\gameplay\\gui\\common\\shapes\\atlas_shapes_sync.xbm"
+       },
+       "Flags": "Soft"
+      }
+     },
+     {
+      "$type": "inkTextureSlot",
+      "parts": [
+       {
+        "$type": "inkTextureAtlasMapper",
+        "clippingRectInPixels": {
+         "$type": "Rect",
+         "bottom": 0,
+         "left": 0,
+         "right": 0,
+         "top": 0
+        },
+        "clippingRectInUVCoords": {
+         "$type": "RectF",
+         "Bottom": 0.983870983,
+         "Left": 0.181640625,
+         "Right": 0.236328125,
+         "Top": 0.939516127
+        },
+        "partName": {
+         "$type": "CName",
+         "$storage": "string",
+         "$value": "arrow_bg"
+        }
+       }
+      ],
+      "slices": [],
+      "texture": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\gameplay\\gui\\common\\shapes\\atlas_shapes_sync_1080p.xbm"
+       },
+       "Flags": "Soft"
+      }
+     },
+     {
+      "$type": "inkTextureSlot",
+      "parts": [
+       {
+        "$type": "inkTextureAtlasMapper",
+        "clippingRectInPixels": {
+         "$type": "Rect",
+         "bottom": 0,
+         "left": 0,
+         "right": 0,
+         "top": 0
+        },
+        "clippingRectInUVCoords": {
+         "$type": "RectF",
+         "Bottom": 0.592391312,
+         "Left": 0.858606577,
+         "Right": 0.897540987,
+         "Top": 0.532608688
+        },
+        "partName": {
+         "$type": "CName",
+         "$storage": "string",
+         "$value": "arrow_bg"
+        }
+       }
+      ],
+      "slices": [],
+      "texture": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\gameplay\\gui\\common\\shapes\\atlas_shapes_sync_720p.xbm"
+       },
+       "Flags": "Soft"
+      }
+     }
+    ]
+   },
+   "texture": {
+    "DepotPath": {
+     "$type": "ResourcePath",
+     "$storage": "uint64",
+     "$value": "0"
+    },
+    "Flags": "Soft"
+   },
+   "textureResolution": "UltraHD_3840_2160"
+  },
+  "EmbeddedFiles": []
+ }
+}
