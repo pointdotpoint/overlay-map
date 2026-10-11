@@ -14,6 +14,8 @@ public class NMSelfTest {
         this.CameraCases();
         this.GridCases();
         this.ApiCases();
+        this.InputCases();
+        this.LayoutCases();
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 
@@ -249,5 +251,49 @@ public class NMSelfTest {
         this.Check("api.details_caps", ArraySize(d.rowKeys) == 6 && ArraySize(d.actionKeys) == 3, "");
         api.RemoveLayer(n"test.api");
         this.Check("api.remove_layer", ArraySize(api.layers) == 0 && !IsDefined(api.GetLayer(n"test.api")), "");
+    }
+
+    private func InputCases() {
+        let s = new NightMapSettings();
+        let inp = new NMInput();
+        let press = EInputAction.IACT_Press;
+        let release = EInputAction.IACT_Release;
+        this.Check("input.toggle", inp.Handle(s, EInputKey.IK_Backslash, press, false, false, false, false) && inp.toggle, "");
+        inp.toggle = false;
+        inp.Handle(s, EInputKey.IK_Backslash, press, false, true, false, false);
+        this.Check("input.ctrl_toggle_is_selftest", inp.debugSelfTest && !inp.toggle, "");
+        this.Check("input.ignored_when_closed", !inp.Handle(s, EInputKey.IK_NumPad8, press, false, false, false, false), "");
+        let usedArrow = inp.Handle(s, EInputKey.IK_Up, press, false, false, false, true);
+        let v0 = inp.PanVector();
+        this.Check("input.arrows_never_pan", !usedArrow && v0.X == 0.0 && v0.Y == 0.0 && inp.arrowSeen, "");
+        inp.Handle(s, EInputKey.IK_NumPad8, press, false, false, false, true);
+        let v1 = inp.PanVector();
+        inp.Handle(s, EInputKey.IK_NumPad8, release, false, false, false, true);
+        let v2 = inp.PanVector();
+        this.Check("input.numpad8_pans_up", v1.X == 0.0 && v1.Y == -1.0 && v2.Y == 0.0, this.F(v1.Y));
+        inp.Handle(s, EInputKey.IK_NumPad9, press, false, false, false, true);
+        let v3 = inp.PanVector();
+        inp.ResetHeld();
+        this.Check("input.numpad9_diagonal", v3.X == 1.0 && v3.Y == -1.0, this.F(v3.X) + "," + this.F(v3.Y));
+        inp.Handle(s, EInputKey.IK_NumPlus, press, false, false, false, true);
+        this.Check("input.zoom_held", inp.zoomIn && !inp.zoomOut, "");
+        this.Check("input.key_names", Equals(NMInput.KeyName(EInputKey.IK_NumPad8), "NUM 8") && Equals(NMInput.KeyName(EInputKey.IK_Backslash), "\\")
+            && Equals(NMInput.KeyName(EInputKey.IK_NumPlus), "NUM +"), NMInput.KeyName(EInputKey.IK_NumPad8));
+    }
+
+    private func LayoutCases() {
+        let sizes: array<Vector2> = [new Vector2(3840.0, 2160.0), new Vector2(5120.0, 2160.0), new Vector2(2560.0, 1600.0), new Vector2(1920.0, 1080.0)];
+        let ok = true;
+        let detail = "";
+        for sz in sizes {
+            let l = NMPanelLayout.Compute(sz.X, sz.Y);
+            let inside = l.x >= 0.0 && l.y >= 0.0 && l.x + l.w <= sz.X + 0.01 && l.y + l.h <= sz.Y + 0.01;
+            let parts = l.mapW > 0.0 && l.mapH > 0.0 && l.cardW > 0.0 && this.Near(l.mapW, l.w * 0.70, 0.5);
+            if !inside || !parts {
+                ok = false;
+                detail += this.F(sz.X) + "x" + this.F(sz.Y) + " ";
+            }
+        }
+        this.Check("layout.fits_all_aspects", ok, detail);
     }
 }
