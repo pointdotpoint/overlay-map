@@ -1,0 +1,157 @@
+<h2>NightMap — combined design, final check</h2>
+<p class="subtitle">Everything you picked together: hologram style, centered panel over the live game, docked info card, hex chips. Top: zoomed out (city overview, mostly clusters). Bottom: zoomed in (street level, individual pins). Approve, or tell me what to change.</p>
+
+<style>
+  .cards { grid-template-columns: 1fr !important; max-width: 1200px; }
+  .nm-card svg { width: 100%; height: auto; display: block; border-radius: 6px; }
+</style>
+
+<div class="cards">
+  <div class="card nm-card" data-choice="overview" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="fn-far" viewBox="0 0 1600 900"></svg></div>
+    <div class="card-body"><h3>Zoomed out — city overview</h3><p>Whole city in the panel; dense areas collapse into hex clusters with their top-3 icons. Crosshair on a cluster shows its breakdown in the card.</p></div>
+  </div>
+  <div class="card nm-card" data-choice="street" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="fn-near" viewBox="0 0 1600 900"></svg></div>
+    <div class="card-body"><h3>Zoomed in — street level</h3><p>Individual hex pins, V's marker, crosshair on a gig; card shows full details and actions.</p></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function rng(seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(p, tag, a, text) { var e = document.createElementNS(NS, tag); for (var k in a) if (a[k] != null) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; p.appendChild(e); return e; }
+  var FONT = "'Share Tech Mono','JetBrains Mono',monospace";
+  var C = '#7af0ff', T = '#c8f6ff', PINK = '#ff4fd8';
+  var col = { quest: '#ffe066', gig: '#ff4fd8', vendor: '#7af0ff', ft: '#7af0ff', undisc: 'rgba(170,220,235,0.7)' };
+
+  function glyph(g, kind, c, s) {
+    s = s || 1; var a = { fill: 'none', stroke: c, 'stroke-width': 2 / s, 'stroke-linejoin': 'round', transform: 'scale(' + s + ')' };
+    if (kind === 'quest') { el(g, 'path', Object.assign({ d: 'M0,-9 L9,0 L0,9 L-9,0 Z' }, a)); el(g, 'path', { d: 'M0,-4 L0,1 M0,4 L0,4.5', stroke: c, 'stroke-width': 2.2, transform: a.transform }); }
+    else if (kind === 'gig') { el(g, 'rect', Object.assign({ x: -8, y: -5, width: 16, height: 11 }, a)); el(g, 'path', Object.assign({ d: 'M-4,-5 L-4,-8 L4,-8 L4,-5' }, a)); }
+    else if (kind === 'vendor') { el(g, 'path', Object.assign({ d: 'M-8,-3 L8,-3 L6,8 L-6,8 Z M-4,-3 C-4,-9 4,-9 4,-3' }, a)); }
+    else if (kind === 'ft') { el(g, 'path', Object.assign({ d: 'M-8,-3 L6,-3 M3,-6 L6,-3 L3,0 M8,3 L-6,3 M-3,0 L-6,3 L-3,6' }, a)); }
+    else { el(g, 'text', { x: 0, y: 6 * s, 'text-anchor': 'middle', 'font-size': 17 * s, fill: c, 'font-family': FONT }, '?'); }
+  }
+  function hex(r) { var p = []; for (var i = 0; i < 6; i++) { var t = Math.PI / 3 * i + Math.PI / 6; p.push((r * Math.cos(t)).toFixed(1) + ',' + (r * Math.sin(t)).toFixed(1)); } return 'M' + p.join(' L') + ' Z'; }
+  function chip(p, x, y, k, sel, scale) {
+    scale = scale || 1; var g = el(p, 'g', { transform: 'translate(' + x + ',' + y + ') scale(' + scale + ')' });
+    el(g, 'path', { d: hex(sel ? 25 : 20), fill: 'rgba(6,24,34,.92)', stroke: col[k], 'stroke-width': sel ? 3 : 2 });
+    el(g, 'path', { d: hex(sel ? 25 : 20), fill: col[k], opacity: .14 }); glyph(g, k, col[k], sel ? 1.12 : 1); return g;
+  }
+  function cluster(p, x, y, n, mix, sel) {
+    var g = el(p, 'g', { transform: 'translate(' + x + ',' + y + ')' });
+    var top = Object.keys(mix).sort(function (a, b) { return mix[b] - mix[a]; }).slice(0, 3);
+    top.forEach(function (k, i) { var fg = el(g, 'g', { transform: 'translate(' + (-((top.length - 1) * 14) + i * 28) + ',-44)' });
+      el(fg, 'path', { d: hex(14), fill: 'rgba(6,24,34,.95)', stroke: col[k], 'stroke-width': 1.5 }); glyph(fg, k, col[k], .6); });
+    el(g, 'path', { d: hex(sel ? 38 : 33), fill: 'rgba(6,24,34,.95)', stroke: C, 'stroke-width': sel ? 3 : 2.5 });
+    el(g, 'text', { x: 0, y: 8, 'text-anchor': 'middle', 'font-size': n > 99 ? 20 : 24, fill: T, 'font-family': FONT }, n);
+  }
+
+  function game(s, id) {
+    var d = el(s, 'defs', {}), g = el(d, 'linearGradient', { id: id + 'sky', x1: 0, y1: 0, x2: 0, y2: 1 });
+    el(g, 'stop', { offset: 0, 'stop-color': '#3b1d3f' }); el(g, 'stop', { offset: .55, 'stop-color': '#c0466a' }); el(g, 'stop', { offset: .56, 'stop-color': '#1a1420' });
+    el(s, 'rect', { width: 1600, height: 900, fill: 'url(#' + id + 'sky)' });
+    for (var t = 0; t < 46; t++) { var w = 26 + (t * 37) % 60, h = 90 + (t * 53) % 330; el(s, 'rect', { x: t * 36 - 10, y: 500 - h, width: w, height: h, fill: '#1b1424' }); }
+    el(s, 'path', { d: 'M0,900 L700,500 L900,500 L1600,900 Z', fill: '#121016' });
+    el(s, 'path', { d: 'M200,900 C500,760 1100,760 1400,900 Z', fill: '#0b0a0e' });
+    el(s, 'text', { x: 1520, y: 860, 'text-anchor': 'end', 'font-size': 40, fill: '#ffe066', 'font-family': FONT }, '87');
+    var f = el(d, 'filter', { id: id + 'glow', x: '-50%', y: '-50%', width: '200%', height: '200%' });
+    el(f, 'feGaussianBlur', { stdDeviation: 2.5, result: 'b' }); var m = el(f, 'feMerge', {}); el(m, 'feMergeNode', { in: 'b' }); el(m, 'feMergeNode', { in: 'SourceGraphic' });
+    return d;
+  }
+
+  // shared panel chrome; body(mapG, cx, cy, glow) draws the map content, card(cg, x, y, w) the info card
+  function frame(s, id, body, card, sub, zoomTxt) {
+    var d = game(s, id), rx = 240, ry = 110, rw = 1120, rh = 640, mapW = 780, glow = 'url(#' + id + 'glow)';
+    var cp = el(d, 'clipPath', { id: id + 'clip' }); el(cp, 'rect', { x: rx, y: ry, width: mapW, height: rh - 46 });
+    el(s, 'rect', { x: rx, y: ry, width: rw, height: rh, fill: 'rgba(6,20,30,.74)' });
+    var mapG = el(s, 'g', { 'clip-path': 'url(#' + id + 'clip)' });
+    var cx = rx + mapW / 2, cy = ry + (rh - 46) / 2;
+    body(mapG, cx, cy, glow);
+    var cr = el(mapG, 'g', { stroke: C, 'stroke-width': 2, fill: 'none', filter: glow });
+    el(cr, 'circle', { cx: cx, cy: cy, r: 40 });
+    [[-64, -48], [48, 64]].forEach(function (z) { el(cr, 'line', { x1: cx + z[0], y1: cy, x2: cx + z[1], y2: cy }); el(cr, 'line', { x1: cx, y1: cy + z[0], x2: cx, y2: cy + z[1] }); });
+    el(s, 'text', { x: rx + 28, y: ry + 46, 'font-size': 26, fill: T, 'font-family': FONT, 'letter-spacing': 3 }, 'NIGHT CITY');
+    el(s, 'text', { x: rx + 28, y: ry + 70, 'font-size': 14, fill: C, 'font-family': FONT }, sub);
+    var zs = el(s, 'g', { transform: 'translate(' + (rx + mapW - 170) + ',' + (ry + 40) + ')' });
+    el(zs, 'path', { d: 'M0,-6 L0,0 L140,0 L140,-6', stroke: T, 'stroke-width': 2, fill: 'none' });
+    el(zs, 'text', { x: 70, y: 22, 'text-anchor': 'middle', 'font-size': 14, fill: T, 'font-family': FONT }, zoomTxt);
+    var x0 = rx + mapW, cg = el(s, 'g', {});
+    el(cg, 'line', { x1: x0, y1: ry, x2: x0, y2: ry + rh - 46, stroke: 'rgba(122,240,255,.35)', 'stroke-width': 1.5 });
+    el(cg, 'rect', { x: x0, y: ry, width: rw - mapW, height: rh - 46, fill: 'rgba(10,40,55,.5)' });
+    card(cg, x0 + 26, ry + 50, rw - mapW - 52);
+    el(s, 'rect', { x: rx, y: ry + rh - 46, width: rw, height: 46, fill: 'rgba(10,40,55,.6)' });
+    ['↑↓←→ PAN', '= − ZOOM', 'HOME FOLLOW', 'ENTER ACT', 'T TRACK', '[ ] FILTER'].forEach(function (h, i) {
+      el(s, 'text', { x: rx + 24 + i * (rw / 6), y: ry + rh - 17, 'font-size': 14, fill: C, 'font-family': FONT }, h); });
+    el(s, 'rect', { x: rx, y: ry, width: rw, height: rh, fill: 'none', stroke: 'rgba(122,240,255,.35)', 'stroke-width': 1.5 });
+    [[rx, ry, 1, 1], [rx + rw, ry, -1, 1], [rx, ry + rh, 1, -1], [rx + rw, ry + rh, -1, -1]].forEach(function (c) {
+      el(s, 'path', { d: 'M' + c[0] + ',' + (c[1] + 40 * c[3]) + ' L' + c[0] + ',' + c[1] + ' L' + (c[0] + 40 * c[2]) + ',' + c[1], stroke: C, 'stroke-width': 4, fill: 'none', filter: glow }); });
+  }
+  function row(cg, x, y, k, v) { el(cg, 'text', { x: x, y: y, 'font-size': 13, fill: 'rgba(200,246,255,.6)', 'font-family': FONT }, k); el(cg, 'text', { x: x + 130, y: y, 'font-size': 15, fill: T, 'font-family': FONT }, v); }
+  function key(cg, x, y, k, label) { el(cg, 'rect', { x: x, y: y, width: 54, height: 32, fill: 'none', stroke: C, 'stroke-width': 1.5 });
+    el(cg, 'text', { x: x + 27, y: y + 21, 'text-anchor': 'middle', 'font-size': 13, fill: C, 'font-family': FONT }, k);
+    el(cg, 'text', { x: x + 70, y: y + 21, 'font-size': 15, fill: T, 'font-family': FONT }, label); }
+
+  // ---- zoomed out: city silhouette, district outlines, clusters ----
+  frame(document.getElementById('fn-far'), 'f', function (g, cx, cy, glow) {
+    var R = rng(9), w = el(g, 'g', { transform: 'translate(' + (cx - 390) + ',' + (cy - 297) + ')' });
+    el(w, 'path', { d: 'M40,40 L700,30 L760,300 L700,520 L520,580 L300,560 L120,600 L30,380 Z', fill: 'rgba(40,200,255,0.06)', stroke: 'rgba(120,235,255,.5)', 'stroke-width': 1.5 });
+    el(w, 'path', { d: 'M700,520 C740,560 780,580 800,600 L800,600 L780,600 Z', fill: 'rgba(40,200,255,.13)' });
+    [['M40,40 L300,35 L330,260 L60,300 Z', 'WATSON'], ['M300,35 L700,30 L720,220 L330,260 Z', 'CITY CENTER'], ['M60,300 L330,260 L360,560 L120,600 L30,380 Z', 'HEYWOOD'],
+     ['M330,260 L720,220 L760,300 L700,520 L520,580 L360,560 Z', 'SANTO DOMINGO']].forEach(function (dd, i) {
+      el(w, 'path', { d: dd[0], fill: 'none', stroke: 'rgba(122,240,255,.28)', 'stroke-width': 1.5, 'stroke-dasharray': '6 5' });
+      var lx = [150, 470, 170, 540][i], ly = [150, 120, 440, 400][i];
+      el(w, 'text', { x: lx, y: ly, 'text-anchor': 'middle', 'font-size': 15, fill: 'rgba(200,246,255,.55)', 'font-family': FONT, 'letter-spacing': 3 }, dd[1]); });
+    for (var i = 0; i < 26; i++) el(w, 'path', { d: 'M' + (60 + R() * 640) + ',' + (40 + R() * 40) + ' L' + (60 + R() * 640) + ',' + (520 + R() * 60), stroke: 'rgba(80,220,255,.13)', 'stroke-width': 1 });
+    el(w, 'path', { d: 'M40,250 C250,230 500,280 760,240', stroke: 'rgba(120,235,255,.8)', 'stroke-width': 2.5, fill: 'none', filter: glow });
+    el(w, 'path', { d: 'M330,30 C340,200 320,400 360,600', stroke: 'rgba(120,235,255,.8)', 'stroke-width': 2.5, fill: 'none', filter: glow });
+    cluster(w, 170, 210, 64, { gig: 30, vendor: 20, quest: 14 });
+    cluster(w, 390, 297, 128, { vendor: 60, ft: 40, gig: 28 }, true);
+    cluster(w, 560, 170, 41, { quest: 20, gig: 12, ft: 9 });
+    cluster(w, 200, 470, 23, { gig: 15, undisc: 8 });
+    cluster(w, 560, 470, 57, { undisc: 30, gig: 17, vendor: 10 });
+    chip(w, 680, 80, 'quest', false); chip(w, 90, 340, 'ft', false);
+    var pg = el(w, 'g', { transform: 'translate(470,390) rotate(-30) scale(.8)' });
+    el(pg, 'circle', { r: 22, fill: C, opacity: .2 }); el(pg, 'path', { d: 'M0,-17 L11,12 L0,5 L-11,12 Z', fill: C });
+  }, function (cg, x, y, w) {
+    el(cg, 'text', { x: x, y: y, 'font-size': 14, fill: C, 'font-family': FONT, 'letter-spacing': 2 }, 'CLUSTER');
+    el(cg, 'text', { x: x, y: y + 36, 'font-size': 26, fill: T, 'font-family': FONT }, '128 LOCATIONS');
+    el(cg, 'text', { x: x, y: y + 62, 'font-size': 15, fill: C, 'font-family': FONT }, 'City Center · Corporate Plaza');
+    el(cg, 'line', { x1: x, y1: y + 84, x2: x + w, y2: y + 84, stroke: 'rgba(122,240,255,.35)' });
+    [['vendor', 'Vendors', 60], ['ft', 'Fast travel', 40], ['gig', 'Gigs', 28]].forEach(function (r, i) {
+      chip(cg, x + 16, y + 122 + i * 48, r[0], false, .7);
+      el(cg, 'text', { x: x + 46, y: y + 128 + i * 48, 'font-size': 16, fill: T, 'font-family': FONT }, r[1]);
+      el(cg, 'text', { x: x + w, y: y + 128 + i * 48, 'text-anchor': 'end', 'font-size': 16, fill: C, 'font-family': FONT }, r[2]); });
+    key(cg, x, y + 300, 'ENTER', 'ZOOM INTO CLUSTER');
+  }, 'NIGHT CITY · OVERVIEW', '2 KM');
+
+  // ---- zoomed in: street level ----
+  frame(document.getElementById('fn-near'), 'n', function (g, cx, cy, glow) {
+    var R = rng(41);
+    for (var x = 220; x < 1100; x += 120 + Math.floor(R() * 40)) el(g, 'path', { d: 'M' + x + ',100 L' + (x + 30 - R() * 60) + ',760', stroke: 'rgba(80,220,255,.2)', 'stroke-width': 3 });
+    for (var y = 140; y < 760; y += 110 + Math.floor(R() * 40)) el(g, 'path', { d: 'M230,' + y + ' L1030,' + (y + 20 - R() * 40), stroke: 'rgba(80,220,255,.2)', 'stroke-width': 3 });
+    for (var i = 0; i < 70; i++) el(g, 'rect', { x: 240 + R() * 760, y: 110 + R() * 560, width: 30 + R() * 80, height: 24 + R() * 60, fill: 'rgba(80,220,255,0.05)', stroke: 'rgba(120,235,255,0.35)', 'stroke-width': 1.3 });
+    el(g, 'path', { d: 'M230,560 C450,520 760,600 1030,500', stroke: 'rgba(120,235,255,.85)', 'stroke-width': 5, fill: 'none', filter: glow });
+    el(g, 'path', { d: 'M520,100 C540,320 500,520 560,760', stroke: 'rgba(120,235,255,.85)', 'stroke-width': 5, fill: 'none', filter: glow });
+    el(g, 'path', { d: 'M230,690 C450,620 700,300 1030,180', stroke: PINK, 'stroke-width': 3, fill: 'none', 'stroke-dasharray': '5 7', opacity: .9 });
+    chip(g, 330, 220, 'quest'); chip(g, 930, 200, 'quest'); chip(g, 430, 520, 'gig'); chip(g, 830, 600, 'gig');
+    chip(g, 980, 430, 'vendor'); chip(g, 290, 600, 'vendor'); chip(g, 700, 190, 'ft'); chip(g, 880, 330, 'undisc');
+    chip(g, cx, cy, 'gig', true);
+    cluster(g, 380, 360, 9, { vendor: 5, gig: 4 });
+    var pg = el(g, 'g', { transform: 'translate(' + (cx - 60) + ',' + (cy + 130) + ') rotate(-30)' });
+    el(pg, 'circle', { r: 24, fill: C, opacity: .2 }); el(pg, 'path', { d: 'M0,-18 L12,13 L0,5 L-12,13 Z', fill: C });
+  }, function (cg, x, y, w) {
+    el(cg, 'text', { x: x, y: y, 'font-size': 14, fill: PINK, 'font-family': FONT, 'letter-spacing': 2 }, 'GIG');
+    el(cg, 'text', { x: x, y: y + 36, 'font-size': 26, fill: T, 'font-family': FONT }, 'SHOOT TO THRILL');
+    el(cg, 'text', { x: x, y: y + 62, 'font-size': 15, fill: C, 'font-family': FONT }, 'Fixer: Regina Jones');
+    el(cg, 'line', { x1: x, y1: y + 84, x2: x + w, y2: y + 84, stroke: 'rgba(122,240,255,.35)' });
+    row(cg, x, y + 120, 'DISTRICT', 'Watson · Kabuki'); row(cg, x, y + 156, 'THREAT', 'Moderate');
+    row(cg, x, y + 192, 'DISTANCE', '1.2 km'); row(cg, x, y + 228, 'REWARD', '€$ 4,500');
+    ['Retrieve the stolen shard from', 'the Kabuki market before the', 'Tyger Claws move it.'].forEach(function (l, i) {
+      el(cg, 'text', { x: x, y: y + 280 + i * 20, 'font-size': 13, fill: 'rgba(200,246,255,.75)', 'font-family': FONT }, l); });
+    key(cg, x, y + 360, 'ENTER', 'TRACK'); key(cg, x, y + 406, 'J', 'OPEN IN JOURNAL');
+  }, 'WATSON · KABUKI', '200 M');
+})();
+</script>

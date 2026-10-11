@@ -1,0 +1,137 @@
+<h2>NightMap — pin and cluster style</h2>
+<p class="subtitle">Zoomed-in crop of the map panel. Same pins in each: quests (yellow), gigs (pink), vendors, fast travel, an undiscovered "?", the selected pin, and two clusters. In-game the glyphs will be the game's own mappin icons recolored — the shapes here stand in for them.</p>
+
+<style>
+  .cards { grid-template-columns: 1fr !important; max-width: 1200px; }
+  .nm-card svg { width: 100%; height: auto; display: block; border-radius: 6px; }
+</style>
+
+<div class="cards">
+  <div class="card nm-card" data-choice="rings" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="pn-rings" viewBox="0 0 1600 700"></svg></div>
+    <div class="card-body"><h3>A — Minimal rings</h3>
+      <p>Thin ring + dot, small type tag. Cluster = dashed ring with a count. Lightest and calmest; types are told apart mostly by color.</p></div>
+  </div>
+  <div class="card nm-card" data-choice="icons" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="pn-icons" viewBox="0 0 1600 700"></svg></div>
+    <div class="card-body"><h3>B — Game icons in rings</h3>
+      <p>The game's own icon inside a holo ring, tinted by category. Cluster ring is split into colored arcs showing what's inside (e.g. mostly gigs).</p></div>
+  </div>
+  <div class="card nm-card" data-choice="hex" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="pn-hex" viewBox="0 0 1600 700"></svg></div>
+    <div class="card-body"><h3>C — Hex chips</h3>
+      <p>Filled hexagon badges with the icon, strongest contrast against busy map areas. Cluster = larger hex with count and a fan of the top 3 icons.</p></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function rng(seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(p, tag, a, text) { var e = document.createElementNS(NS, tag); for (var k in a) if (a[k] != null) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; p.appendChild(e); return e; }
+  var FONT = "'Share Tech Mono','JetBrains Mono',monospace";
+  var C = '#7af0ff', T = '#c8f6ff';
+  var col = { quest: '#ffe066', gig: '#ff4fd8', vendor: '#7af0ff', ft: '#7af0ff', undisc: 'rgba(170,220,235,0.7)' };
+  var tag = { quest: 'QUEST', gig: 'GIG', vendor: 'VENDOR', ft: 'FAST TRAVEL', undisc: '?' };
+
+  // stand-in glyphs (24x24 box, centered at 0,0)
+  function glyph(g, kind, c, s) {
+    s = s || 1; var a = { fill: 'none', stroke: c, 'stroke-width': 2 / s, 'stroke-linejoin': 'round', transform: 'scale(' + s + ')' };
+    if (kind === 'quest') { el(g, 'path', Object.assign({ d: 'M0,-9 L9,0 L0,9 L-9,0 Z' }, a)); el(g, 'path', { d: 'M0,-4 L0,1 M0,4 L0,4.5', stroke: c, 'stroke-width': 2.2, transform: a.transform }); }
+    else if (kind === 'gig') { el(g, 'rect', Object.assign({ x: -8, y: -5, width: 16, height: 11 }, a)); el(g, 'path', Object.assign({ d: 'M-4,-5 L-4,-8 L4,-8 L4,-5' }, a)); }
+    else if (kind === 'vendor') { el(g, 'path', Object.assign({ d: 'M-8,-3 L8,-3 L6,8 L-6,8 Z M-4,-3 C-4,-9 4,-9 4,-3' }, a)); }
+    else if (kind === 'ft') { el(g, 'path', Object.assign({ d: 'M-8,-3 L6,-3 M3,-6 L6,-3 L3,0 M8,3 L-6,3 M-3,0 L-6,3 L-3,6' }, a)); }
+    else { el(g, 'text', { x: 0, y: 6 * s, 'text-anchor': 'middle', 'font-size': 17 * s, fill: c, 'font-family': FONT }, '?'); }
+  }
+  function hex(r) { var p = []; for (var i = 0; i < 6; i++) { var t = Math.PI / 3 * i + Math.PI / 6; p.push((r * Math.cos(t)).toFixed(1) + ',' + (r * Math.sin(t)).toFixed(1)); } return 'M' + p.join(' L') + ' Z'; }
+
+  var pins = [
+    { x: 300, y: 180, k: 'quest' }, { x: 1180, y: 140, k: 'quest' }, { x: 520, y: 470, k: 'gig' }, { x: 960, y: 520, k: 'gig' },
+    { x: 1350, y: 400, k: 'vendor' }, { x: 180, y: 520, k: 'vendor' }, { x: 700, y: 170, k: 'ft' }, { x: 1080, y: 330, k: 'undisc' },
+    { x: 800, y: 350, k: 'gig', sel: true }
+  ];
+  var clusters = [{ x: 420, y: 300, n: 37, mix: { gig: 22, vendor: 9, quest: 6 } }, { x: 1300, y: 600, n: 12, mix: { ft: 2, vendor: 6, undisc: 4 } }];
+
+  function base(s, id) {
+    var R = rng(77), d = el(s, 'defs', {});
+    var f = el(d, 'filter', { id: id + 'glow', x: '-50%', y: '-50%', width: '200%', height: '200%' });
+    el(f, 'feGaussianBlur', { stdDeviation: 2.5, result: 'b' }); var m = el(f, 'feMerge', {}); el(m, 'feMergeNode', { in: 'b' }); el(m, 'feMergeNode', { in: 'SourceGraphic' });
+    el(s, 'rect', { width: 1600, height: 700, fill: '#08161f' });
+    for (var x = 40; x < 1600; x += 140 + Math.floor(R() * 40)) el(s, 'path', { d: 'M' + x + ',-5 L' + (x + 30 - R() * 60) + ',705', stroke: 'rgba(80,220,255,.2)', 'stroke-width': 3 });
+    for (var y = 60; y < 700; y += 120 + Math.floor(R() * 40)) el(s, 'path', { d: 'M-5,' + y + ' L1605,' + (y + 20 - R() * 40), stroke: 'rgba(80,220,255,.2)', 'stroke-width': 3 });
+    for (var i = 0; i < 120; i++) el(s, 'rect', { x: R() * 1560, y: R() * 680, width: 30 + R() * 90, height: 24 + R() * 70, fill: 'rgba(80,220,255,0.05)', stroke: 'rgba(120,235,255,0.35)', 'stroke-width': 1.3 });
+    el(s, 'path', { d: 'M-10,420 C400,380 900,460 1610,360', stroke: 'rgba(120,235,255,.85)', 'stroke-width': 5, fill: 'none', filter: 'url(#' + id + 'glow)' });
+    el(s, 'path', { d: 'M620,-10 C650,250 600,450 660,710', stroke: 'rgba(120,235,255,.85)', 'stroke-width': 5, fill: 'none', filter: 'url(#' + id + 'glow)' });
+    return 'url(#' + id + 'glow)';
+  }
+
+  function crosshairAt(s, x, y, glow) {
+    var cr = el(s, 'g', { stroke: C, 'stroke-width': 2, fill: 'none', filter: glow });
+    el(cr, 'circle', { cx: x, cy: y, r: 40 });
+    [[-64, -48], [48, 64]].forEach(function (z) { el(cr, 'line', { x1: x + z[0], y1: y, x2: x + z[1], y2: y }); el(cr, 'line', { x1: x, y1: y + z[0], x2: x, y2: y + z[1] }); });
+  }
+
+  // A — minimal rings
+  (function () {
+    var s = document.getElementById('pn-rings'), glow = base(s, 'a');
+    pins.forEach(function (p) {
+      var c = col[p.k], g = el(s, 'g', { transform: 'translate(' + p.x + ',' + p.y + ')', filter: glow });
+      el(g, 'circle', { r: p.sel ? 22 : 17, fill: 'rgba(10,30,40,.5)', stroke: c, 'stroke-width': p.sel ? 3 : 2 });
+      el(g, 'circle', { r: 4, fill: c });
+      el(g, 'text', { x: 24, y: -12, 'font-size': 15, fill: c, 'font-family': FONT }, tag[p.k]);
+    });
+    clusters.forEach(function (cl) {
+      var g = el(s, 'g', { transform: 'translate(' + cl.x + ',' + cl.y + ')', filter: glow });
+      el(g, 'circle', { r: 34, fill: 'rgba(10,30,40,.5)', stroke: C, 'stroke-width': 2, 'stroke-dasharray': '7 5' });
+      el(g, 'text', { x: 0, y: 9, 'text-anchor': 'middle', 'font-size': 26, fill: T, 'font-family': FONT }, cl.n);
+    });
+    crosshairAt(s, 800, 350, glow);
+  })();
+
+  // B — game icons in rings, cluster ring split into category arcs
+  (function () {
+    var s = document.getElementById('pn-icons'), glow = base(s, 'b');
+    pins.forEach(function (p) {
+      var c = col[p.k], g = el(s, 'g', { transform: 'translate(' + p.x + ',' + p.y + ')', filter: glow });
+      el(g, 'circle', { r: p.sel ? 25 : 20, fill: 'rgba(10,30,40,.6)', stroke: c, 'stroke-width': p.sel ? 3 : 2 });
+      glyph(g, p.k, c, p.sel ? 1.15 : 1);
+    });
+    clusters.forEach(function (cl) {
+      var g = el(s, 'g', { transform: 'translate(' + cl.x + ',' + cl.y + ')', filter: glow }), r = 36, start = -Math.PI / 2, gap = 0.08;
+      el(g, 'circle', { r: r - 6, fill: 'rgba(10,30,40,.6)' });
+      Object.keys(cl.mix).forEach(function (k) {
+        var sweep = cl.mix[k] / cl.n * Math.PI * 2, a0 = start + gap / 2, a1 = start + sweep - gap / 2;
+        var large = (a1 - a0) > Math.PI ? 1 : 0;
+        el(g, 'path', { d: 'M' + (r * Math.cos(a0)).toFixed(1) + ',' + (r * Math.sin(a0)).toFixed(1) + ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + (r * Math.cos(a1)).toFixed(1) + ',' + (r * Math.sin(a1)).toFixed(1),
+          stroke: col[k], 'stroke-width': 5, fill: 'none' });
+        start += sweep;
+      });
+      el(g, 'text', { x: 0, y: 9, 'text-anchor': 'middle', 'font-size': 26, fill: T, 'font-family': FONT }, cl.n);
+    });
+    crosshairAt(s, 800, 350, glow);
+  })();
+
+  // C — hex chips, cluster with fan of top icons
+  (function () {
+    var s = document.getElementById('pn-hex'), glow = base(s, 'c');
+    pins.forEach(function (p) {
+      var c = col[p.k], g = el(s, 'g', { transform: 'translate(' + p.x + ',' + p.y + ')', filter: p.sel ? glow : null });
+      el(g, 'path', { d: hex(p.sel ? 26 : 21), fill: 'rgba(6,24,34,.92)', stroke: c, 'stroke-width': p.sel ? 3 : 2 });
+      el(g, 'path', { d: hex(p.sel ? 26 : 21), fill: c, opacity: .14 });
+      glyph(g, p.k, c, p.sel ? 1.15 : 1);
+    });
+    clusters.forEach(function (cl) {
+      var g = el(s, 'g', { transform: 'translate(' + cl.x + ',' + cl.y + ')' });
+      var top = Object.keys(cl.mix).sort(function (a, b) { return cl.mix[b] - cl.mix[a]; }).slice(0, 3);
+      top.forEach(function (k, i) {
+        var fx = -30 + i * 30, fy = -46, fg = el(g, 'g', { transform: 'translate(' + fx + ',' + fy + ')' });
+        el(fg, 'path', { d: hex(15), fill: 'rgba(6,24,34,.95)', stroke: col[k], 'stroke-width': 1.5 });
+        glyph(fg, k, col[k], .65);
+      });
+      el(g, 'path', { d: hex(36), fill: 'rgba(6,24,34,.95)', stroke: C, 'stroke-width': 2.5 });
+      el(g, 'text', { x: 0, y: 9, 'text-anchor': 'middle', 'font-size': 26, fill: T, 'font-family': FONT }, cl.n);
+    });
+    crosshairAt(s, 800, 350, glow);
+  })();
+})();
+</script>

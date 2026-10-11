@@ -1,0 +1,115 @@
+<h2>NightMap — how much screen should the map take?</h2>
+<p class="subtitle">Hologram style (B). The game keeps running behind the map and V can still drive, so the layout decides how much of the road you can still see. Each mockup is a 16:9 game frame with the map overlaid.</p>
+
+<style>
+  .cards { grid-template-columns: 1fr !important; max-width: 1200px; }
+  .nm-card svg { width: 100%; height: auto; display: block; border-radius: 6px; }
+</style>
+
+<div class="cards">
+  <div class="card nm-card" data-choice="fullscreen" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="ly-full" viewBox="0 0 1600 900"></svg></div>
+    <div class="card-body"><h3>A — Full screen, translucent</h3>
+      <p>Map covers everything; the game shows through. Most map area, but you're driving "through" the map. Opacity adjustable.</p></div>
+  </div>
+  <div class="card nm-card" data-choice="panel" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="ly-panel" viewBox="0 0 1600 900"></svg></div>
+    <div class="card-body"><h3>B — Centered panel</h3>
+      <p>Large framed window (~70% of the screen) with holo corner brackets. Game edges stay visible; feels like a projected display.</p></div>
+  </div>
+  <div class="card nm-card" data-choice="side" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="ly-side" viewBox="0 0 1600 900"></svg></div>
+    <div class="card-body"><h3>C — Side panel</h3>
+      <p>Right ~40% of the screen, full height. The road ahead stays clear — best for navigating while driving.</p></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function rng(seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(p, tag, a, text) { var e = document.createElementNS(NS, tag); for (var k in a) if (a[k] != null) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; p.appendChild(e); return e; }
+
+  var R = rng(2077);
+  var coast = 'M0,0 L1600,0 L1600,610 C1500,640 1430,700 1380,760 C1330,820 1250,870 1180,900 L0,900 Z';
+  var bay = 'M1180,900 C1250,870 1330,820 1380,760 C1430,700 1500,640 1600,610 L1600,900 Z';
+  var major = ['M-20,300 C300,280 600,330 900,300 C1150,280 1350,250 1620,260', 'M380,-20 C400,200 360,450 420,650 C450,760 430,840 440,920',
+    'M980,-20 C1000,180 1040,380 1010,560 C990,680 1060,760 1150,880', 'M-20,640 C250,600 520,660 760,620 C900,600 1000,600 1150,560 C1300,520 1420,470 1620,440'];
+  var minor = []; for (var x = 80; x < 1600; x += 92 + Math.floor(R() * 30)) minor.push('M' + x + ',-10 L' + (x + 40 - R() * 80) + ',910');
+  for (var y = 70; y < 900; y += 80 + Math.floor(R() * 30)) minor.push('M-10,' + y + ' L1610,' + (y + 30 - R() * 60));
+  var blds = []; for (var i = 0; i < 260; i++) { var bx = R() * 1580, by = R() * 880; if (by > 600 && bx > 1200) continue; blds.push([bx, by, 14 + R() * 46, 12 + R() * 40]); }
+  var metro = 'M120,840 C300,700 460,560 640,500 C820,440 980,420 1180,330 C1300,280 1420,200 1560,120';
+  var pins = [[520, 220, 'q'], [1250, 380, 'q'], [700, 700, 'g'], [300, 470, 'g'], [1120, 180, 'g'], [860, 260, 'v'], [210, 160, 'v'], [1400, 300, 'v'], [800, 450, 'f'], [1080, 640, 'f'], [620, 360, 'u'], [1330, 520, 'u']];
+  var col = { q: '#ffe066', g: '#ff4fd8', v: '#7af0ff', f: '#7af0ff', u: 'rgba(160,220,240,0.6)' };
+  var lab = { q: 'Q', g: 'G', v: 'V', f: 'FT', u: '?' };
+  var FONT = "'Share Tech Mono','JetBrains Mono',monospace";
+
+  // the live game frame: dusk sky, skyline, road in perspective, car hood + HUD bits
+  function game(s, id) {
+    var d = el(s, 'defs', {});
+    var g = el(d, 'linearGradient', { id: id + 'sky', x1: 0, y1: 0, x2: 0, y2: 1 });
+    el(g, 'stop', { offset: 0, 'stop-color': '#3b1d3f' }); el(g, 'stop', { offset: .55, 'stop-color': '#c0466a' }); el(g, 'stop', { offset: .56, 'stop-color': '#1a1420' });
+    el(s, 'rect', { x: 0, y: 0, width: 1600, height: 900, fill: 'url(#' + id + 'sky)' });
+    for (var t = 0; t < 46; t++) { var w = 26 + (t * 37) % 60, h = 90 + (t * 53) % 330; el(s, 'rect', { x: t * 36 - 10, y: 500 - h, width: w, height: h, fill: '#1b1424' });
+      for (var k = 0; k < 6; k++) el(s, 'rect', { x: t * 36 - 4 + (k % 3) * 8, y: 500 - h + 14 + Math.floor(k / 3) * 22, width: 3, height: 6, fill: '#ffb36b', opacity: .7 }); }
+    el(s, 'path', { d: 'M0,900 L700,500 L900,500 L1600,900 Z', fill: '#121016' });
+    el(s, 'path', { d: 'M796,500 L804,500 L830,900 L770,900 Z', fill: '#e8c96a', opacity: .55 });
+    el(s, 'path', { d: 'M200,900 C500,760 1100,760 1400,900 Z', fill: '#0b0a0e' });
+    el(s, 'text', { x: 1520, y: 860, 'text-anchor': 'end', 'font-size': 40, fill: '#ffe066', 'font-family': FONT }, '87');
+    el(s, 'text', { x: 1520, y: 880, 'text-anchor': 'end', 'font-size': 14, fill: '#ffe066', 'font-family': FONT }, 'MPH');
+    el(s, 'circle', { cx: 120, cy: 120, r: 80, fill: 'rgba(0,0,0,.35)', stroke: '#ff4f5e', 'stroke-width': 2 }); // vanilla minimap
+    el(s, 'rect', { x: 40, y: 830, width: 260, height: 10, fill: '#ff4f5e', opacity: .8 }); // health bar
+  }
+
+  // hologram map drawn into a region; mapScale zooms the shared city
+  function holo(s, id, rx, ry, rw, rh, opts) {
+    var d = s.querySelector('defs');
+    var cp = el(d, 'clipPath', { id: id + 'clip' }); el(cp, 'rect', { x: rx, y: ry, width: rw, height: rh });
+    var f = el(d, 'filter', { id: id + 'glow', x: '-50%', y: '-50%', width: '200%', height: '200%' });
+    el(f, 'feGaussianBlur', { stdDeviation: 2.5, result: 'b' }); var m = el(f, 'feMerge', {}); el(m, 'feMergeNode', { in: 'b' }); el(m, 'feMergeNode', { in: 'SourceGraphic' });
+    var root = el(s, 'g', { 'clip-path': 'url(#' + id + 'clip)' });
+    el(root, 'rect', { x: rx, y: ry, width: rw, height: rh, fill: 'rgba(6,20,30,' + opts.bg + ')' });
+    var sc = opts.scale, cx = rx + rw / 2, cy = ry + rh / 2;
+    var w = el(root, 'g', { transform: 'translate(' + (cx - 800 * sc) + ',' + (cy - 450 * sc) + ') scale(' + sc + ')' });
+    el(w, 'path', { d: coast, fill: 'rgba(40,200,255,0.05)' }); el(w, 'path', { d: bay, fill: 'rgba(40,200,255,0.13)' });
+    minor.forEach(function (p) { el(w, 'path', { d: p, stroke: 'rgba(80,220,255,0.2)', 'stroke-width': 1.2 / sc, fill: 'none' }); });
+    blds.forEach(function (b) { el(w, 'rect', { x: b[0], y: b[1], width: b[2], height: b[3], fill: 'rgba(80,220,255,0.06)', stroke: 'rgba(120,235,255,0.45)', 'stroke-width': 1 / sc }); });
+    major.forEach(function (p) { el(w, 'path', { d: p, stroke: 'rgba(120,235,255,0.85)', 'stroke-width': 2.5 / sc, fill: 'none', filter: 'url(#' + id + 'glow)' }); });
+    el(w, 'path', { d: metro, stroke: '#ff4fd8', 'stroke-width': 3 / sc, fill: 'none', 'stroke-dasharray': (4 / sc) + ' ' + (6 / sc) });
+    // pins / cluster / player drawn in screen space so they keep a constant size
+    function scr(x, y) { return [cx + (x - 800) * sc, cy + (y - 450) * sc]; }
+    pins.forEach(function (p) { var q = scr(p[0], p[1]), c = col[p[2]], g = el(root, 'g', { transform: 'translate(' + q[0] + ',' + q[1] + ')', filter: 'url(#' + id + 'glow)' });
+      el(g, 'circle', { r: 13, fill: 'rgba(10,30,40,.45)', stroke: c, 'stroke-width': 2 }); el(g, 'circle', { r: 3, fill: c });
+      el(g, 'text', { x: 18, y: -9, 'font-size': 13, fill: c, 'font-family': FONT }, lab[p[2]]); });
+    var cl = scr(260, 700), cg = el(root, 'g', { transform: 'translate(' + cl[0] + ',' + cl[1] + ')', filter: 'url(#' + id + 'glow)' });
+    el(cg, 'circle', { r: 26, fill: 'rgba(10,30,40,.4)', stroke: '#7af0ff', 'stroke-width': 2, 'stroke-dasharray': '6 4' });
+    el(cg, 'text', { x: 0, y: 7, 'text-anchor': 'middle', 'font-size': 20, fill: '#c8f6ff', 'font-family': FONT }, '37');
+    var pl = scr(760, 560), pg = el(root, 'g', { transform: 'translate(' + pl[0] + ',' + pl[1] + ') rotate(-30)' });
+    el(pg, 'circle', { r: 22, fill: '#7af0ff', opacity: .18 }); el(pg, 'path', { d: 'M0,-17 L11,12 L0,5 L-11,12 Z', fill: '#7af0ff' });
+    // crosshair + selection label
+    var cr = el(root, 'g', { stroke: '#7af0ff', 'stroke-width': 2, fill: 'none', opacity: .95, filter: 'url(#' + id + 'glow)' });
+    el(cr, 'circle', { cx: cx, cy: cy, r: 30 });
+    [[-50, -36], [36, 50]].forEach(function (z) { el(cr, 'line', { x1: cx + z[0], y1: cy, x2: cx + z[1], y2: cy }); el(cr, 'line', { x1: cx, y1: cy + z[0], x2: cx, y2: cy + z[1] }); });
+    var lw = Math.min(360, rw - 120), lg = el(root, 'g', { transform: 'translate(' + (cx + 46) + ',' + (cy - 64) + ')' });
+    el(lg, 'rect', { width: lw, height: 56, fill: 'rgba(10,40,55,.6)', stroke: '#7af0ff', 'stroke-width': 1.5 });
+    el(lg, 'text', { x: 14, y: 23, 'font-size': 18, fill: '#c8f6ff', 'font-family': FONT }, 'FAST TRAVEL — CORPO PLAZA');
+    el(lg, 'text', { x: 14, y: 44, 'font-size': 13, fill: '#7af0ff', 'font-family': FONT }, 'ENTER: TRAVEL · T: TRACK');
+    // header + hints inside region
+    el(root, 'text', { x: rx + 28, y: ry + 46, 'font-size': 26, fill: '#c8f6ff', 'font-family': FONT, 'letter-spacing': 3 }, 'NIGHT CITY');
+    el(root, 'text', { x: rx + 28, y: ry + 70, 'font-size': 14, fill: '#7af0ff', 'font-family': FONT }, 'CITY CENTER · CORPORATE PLAZA');
+    var hb = el(root, 'g', {}); el(hb, 'rect', { x: rx, y: ry + rh - 46, width: rw, height: 46, fill: 'rgba(10,40,55,.55)' });
+    var hints = ['↑↓←→ PAN', '= − ZOOM', 'HOME FOLLOW', 'ENTER ACT', 'T TRACK'], step = rw / hints.length;
+    hints.forEach(function (h, i) { el(hb, 'text', { x: rx + 24 + i * step, y: ry + rh - 17, 'font-size': 14, fill: '#7af0ff', 'font-family': FONT }, h); });
+    // frame decoration
+    if (opts.frame) {
+      el(s, 'rect', { x: rx, y: ry, width: rw, height: rh, fill: 'none', stroke: 'rgba(122,240,255,.35)', 'stroke-width': 1.5 });
+      [[rx, ry, 1, 1], [rx + rw, ry, -1, 1], [rx, ry + rh, 1, -1], [rx + rw, ry + rh, -1, -1]].forEach(function (c) {
+        el(s, 'path', { d: 'M' + c[0] + ',' + (c[1] + 40 * c[3]) + ' L' + c[0] + ',' + c[1] + ' L' + (c[0] + 40 * c[2]) + ',' + c[1], stroke: '#7af0ff', 'stroke-width': 4, fill: 'none', filter: 'url(#' + id + 'glow)' }); });
+    }
+  }
+
+  var a = document.getElementById('ly-full'); game(a, 'a'); holo(a, 'a', 0, 0, 1600, 900, { bg: .55, scale: 1, frame: false });
+  var b = document.getElementById('ly-panel'); game(b, 'b'); holo(b, 'b', 240, 110, 1120, 640, { bg: .72, scale: .8, frame: true });
+  var c = document.getElementById('ly-side'); game(c, 'c'); holo(c, 'c', 940, 0, 660, 900, { bg: .78, scale: .75, frame: true });
+})();
+</script>

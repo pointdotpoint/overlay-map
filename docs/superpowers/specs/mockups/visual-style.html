@@ -1,0 +1,201 @@
+<h2>NightMap — which visual direction?</h2>
+<p class="subtitle">Same scene in three styles: map tiles, pins (quest, gig, vendor, fast travel), a cluster, the center crosshair selecting a fast-travel point, V's marker, and the key-hint bar. Click the one closest to what you want — mixing is fine, just say which parts.</p>
+
+<style>
+  .cards { grid-template-columns: 1fr !important; max-width: 1200px; }
+  .nm-card svg { width: 100%; height: auto; display: block; border-radius: 6px; }
+  .nm-card .card-body p { margin: 4px 0 0; }
+</style>
+
+<div class="cards">
+  <div class="card nm-card" data-choice="vanilla" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="nm-vanilla" viewBox="0 0 1600 900"></svg></div>
+    <div class="card-body">
+      <h3>A — Vanilla HUD</h3>
+      <p>Matches the game's own map/HUD: near-black, red-salmon roads, teal buildings, yellow quest accents, condensed caps type.</p>
+    </div>
+  </div>
+  <div class="card nm-card" data-choice="hologram" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="nm-hologram" viewBox="0 0 1600 900"></svg></div>
+    <div class="card-body">
+      <h3>B — Hologram / blueprint</h3>
+      <p>Kiroshi-optics feel: translucent cyan linework over the live game, outlined buildings, glow on selection. Lightest on screen.</p>
+    </div>
+  </div>
+  <div class="card nm-card" data-choice="clean" onclick="toggleSelect(this)">
+    <div class="card-image"><svg id="nm-clean" viewBox="0 0 1600 900"></svg></div>
+    <div class="card-body">
+      <h3>C — Clean navigation</h3>
+      <p>Google-Maps-like legibility in dark mode: solid filled land, clear road hierarchy, soft pin badges. Most readable at a glance.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // deterministic RNG so all three cards show the same city
+  function rng(seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(parent, tag, attrs, text) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    parent.appendChild(e); return e;
+  }
+
+  // ---- shared city geometry -------------------------------------------------
+  var R = rng(2077);
+  var coast = 'M0,0 L1600,0 L1600,610 C1500,640 1430,700 1380,760 C1330,820 1250,870 1180,900 L0,900 Z';
+  var bay = 'M1180,900 C1250,870 1330,820 1380,760 C1430,700 1500,640 1600,610 L1600,900 Z';
+  var roadsMajor = [
+    'M-20,300 C300,280 600,330 900,300 C1150,280 1350,250 1620,260',
+    'M380,-20 C400,200 360,450 420,650 C450,760 430,840 440,920',
+    'M980,-20 C1000,180 1040,380 1010,560 C990,680 1060,760 1150,880',
+    'M-20,640 C250,600 520,660 760,620 C900,600 1000,600 1150,560 C1300,520 1420,470 1620,440'
+  ];
+  var roadsMinor = [];
+  for (var x = 80; x < 1600; x += 92 + Math.floor(R() * 30)) roadsMinor.push('M' + x + ',-10 L' + (x + 40 - R() * 80) + ',910');
+  for (var y = 70; y < 900; y += 80 + Math.floor(R() * 30)) roadsMinor.push('M-10,' + y + ' L1610,' + (y + 30 - R() * 60));
+  var buildings = [];
+  for (var i = 0; i < 260; i++) {
+    var bx = R() * 1580, by = R() * 880, w = 14 + R() * 46, h = 12 + R() * 40;
+    if (by > 600 && bx > 1200) continue; // keep water clear
+    buildings.push([bx, by, w, h, R()]);
+  }
+  var metro = 'M120,840 C300,700 460,560 640,500 C820,440 980,420 1180,330 C1300,280 1420,200 1560,120';
+  var pins = [
+    { x: 520, y: 220, k: 'quest' }, { x: 1250, y: 380, k: 'quest' },
+    { x: 700, y: 700, k: 'gig' }, { x: 300, y: 470, k: 'gig' }, { x: 1120, y: 180, k: 'gig' },
+    { x: 860, y: 260, k: 'vendor' }, { x: 210, y: 160, k: 'vendor' }, { x: 1400, y: 300, k: 'vendor' },
+    { x: 800, y: 450, k: 'ft', sel: true }, { x: 1080, y: 640, k: 'ft' },
+    { x: 620, y: 360, k: 'undisc' }, { x: 1330, y: 520, k: 'undisc' }
+  ];
+  var cluster = { x: 260, y: 700, n: 37 };
+  var player = { x: 760, y: 560, yaw: -30 };
+
+  var themes = {
+    vanilla: {
+      bg: '#06080b', land: '#0d1218', water: '#05131b', minor: '#3a1c20', minorW: 2, major: '#e2584f', majorW: 5,
+      bldFill: function (t) { return t > .6 ? '#1b3a3f' : '#14262b'; }, bldStroke: 'none', metro: '#f2c94c', metroDash: '10 8',
+      pin: { quest: '#f2c94c', gig: '#e2584f', vendor: '#5ef2e6', ft: '#5ef2e6', undisc: '#7a858f' },
+      pinStyle: 'diamond', text: '#f2e9d8', accent: '#5ef2e6', danger: '#e2584f', panel: 'rgba(6,8,11,.86)', panelStroke: '#e2584f',
+      font: "'Rajdhani','Barlow Condensed','Arial Narrow',sans-serif", upper: true, hint: '#e2584f', overlayOpacity: 1, cross: '#f2e9d8'
+    },
+    hologram: {
+      bg: '#0b1a24', land: 'rgba(40,200,255,0.05)', water: 'rgba(40,200,255,0.12)', minor: 'rgba(80,220,255,0.18)', minorW: 1.2,
+      major: 'rgba(120,235,255,0.85)', majorW: 2.5, bldFill: function () { return 'rgba(80,220,255,0.06)'; }, bldStroke: 'rgba(120,235,255,0.45)',
+      metro: '#ff4fd8', metroDash: '4 6',
+      pin: { quest: '#ffe066', gig: '#ff4fd8', vendor: '#7af0ff', ft: '#7af0ff', undisc: 'rgba(160,220,240,0.6)' },
+      pinStyle: 'ring', text: '#c8f6ff', accent: '#7af0ff', danger: '#ff4fd8', panel: 'rgba(10,40,55,.55)', panelStroke: '#7af0ff',
+      font: "'Share Tech Mono','JetBrains Mono',monospace", upper: true, hint: '#7af0ff', overlayOpacity: 1, cross: '#7af0ff', glow: true, scene: true
+    },
+    clean: {
+      bg: '#1f2329', land: '#2a2f36', water: '#1b3550', minor: '#3b424b', minorW: 4, major: '#b9c2cc', majorW: 9,
+      bldFill: function (t) { return t > .5 ? '#353c45' : '#323840'; }, bldStroke: 'none', metro: '#59a8ff', metroDash: '0',
+      pin: { quest: '#ffc94d', gig: '#ff7a59', vendor: '#4dd6a8', ft: '#59a8ff', undisc: '#8a939e' },
+      pinStyle: 'badge', text: '#eef2f6', accent: '#59a8ff', danger: '#ff7a59', panel: 'rgba(31,35,41,.95)', panelStroke: 'rgba(255,255,255,.12)',
+      font: "'Inter','Segoe UI',system-ui,sans-serif", upper: false, hint: '#b9c2cc', overlayOpacity: 1, cross: '#eef2f6'
+    }
+  };
+  var labels = { quest: 'Q', gig: 'G', vendor: '\u0024', ft: '⇄', undisc: '?' };
+
+  function draw(id, T) {
+    var s = document.getElementById(id);
+    var defs = el(s, 'defs', {});
+    if (T.glow) {
+      var f = el(defs, 'filter', { id: id + '-glow', x: '-50%', y: '-50%', width: '200%', height: '200%' });
+      el(f, 'feGaussianBlur', { stdDeviation: '3', result: 'b' });
+      var m = el(f, 'feMerge', {}); el(m, 'feMergeNode', { in: 'b' }); el(m, 'feMergeNode', { in: 'SourceGraphic' });
+    }
+    // live game "behind" the overlay for the hologram style
+    if (T.scene) {
+      var g0 = el(defs, 'linearGradient', { id: id + '-sky', x1: 0, y1: 0, x2: 0, y2: 1 });
+      el(g0, 'stop', { offset: '0', 'stop-color': '#2a1830' }); el(g0, 'stop', { offset: '1', 'stop-color': '#0a1218' });
+      el(s, 'rect', { x: 0, y: 0, width: 1600, height: 900, fill: 'url(#' + id + '-sky)' });
+      for (var t = 0; t < 40; t++) { var w = 30 + (t * 37) % 70, h = 120 + (t * 53) % 380; el(s, 'rect', { x: t * 41, y: 900 - h, width: w, height: h, fill: '#0f1a22', opacity: .9 }); }
+    } else {
+      el(s, 'rect', { x: 0, y: 0, width: 1600, height: 900, fill: T.bg });
+    }
+    el(s, 'path', { d: coast, fill: T.land });
+    el(s, 'path', { d: bay, fill: T.water });
+    roadsMinor.forEach(function (d) { el(s, 'path', { d: d, stroke: T.minor, 'stroke-width': T.minorW, fill: 'none' }); });
+    buildings.forEach(function (b) { el(s, 'rect', { x: b[0], y: b[1], width: b[2], height: b[3], fill: T.bldFill(b[4]), stroke: T.bldStroke, 'stroke-width': 1 }); });
+    roadsMajor.forEach(function (d) {
+      if (T.pinStyle === 'badge') el(s, 'path', { d: d, stroke: '#14171b', 'stroke-width': T.majorW + 4, fill: 'none', 'stroke-linecap': 'round' });
+      el(s, 'path', { d: d, stroke: T.major, 'stroke-width': T.majorW, fill: 'none', 'stroke-linecap': 'round', filter: T.glow ? 'url(#' + id + '-glow)' : null });
+    });
+    el(s, 'path', { d: metro, stroke: T.metro, 'stroke-width': 3, fill: 'none', 'stroke-dasharray': T.metroDash, opacity: .9 });
+
+    // pins
+    pins.forEach(function (p) {
+      var c = T.pin[p.k], g = el(s, 'g', { transform: 'translate(' + p.x + ',' + p.y + ')', filter: T.glow ? 'url(#' + id + '-glow)' : null });
+      if (T.pinStyle === 'diamond') {
+        el(g, 'rect', { x: -13, y: -13, width: 26, height: 26, transform: 'rotate(45)', fill: '#06080b', stroke: c, 'stroke-width': 3 });
+        el(g, 'text', { x: 0, y: 7, 'text-anchor': 'middle', 'font-size': 18, 'font-weight': 700, fill: c, 'font-family': T.font }, labels[p.k]);
+      } else if (T.pinStyle === 'ring') {
+        el(g, 'circle', { r: 14, fill: 'rgba(10,30,40,.4)', stroke: c, 'stroke-width': 2 });
+        el(g, 'circle', { r: 3, fill: c });
+        el(g, 'text', { x: 20, y: -10, 'font-size': 14, fill: c, 'font-family': T.font }, labels[p.k]);
+      } else {
+        el(g, 'path', { d: 'M0,18 C-6,8 -16,2 -16,-8 A16,16 0 1 1 16,-8 C16,2 6,8 0,18 Z', fill: c, stroke: '#14171b', 'stroke-width': 2 });
+        el(g, 'text', { x: 0, y: -2, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 700, fill: '#14171b', 'font-family': T.font }, labels[p.k]);
+      }
+    });
+
+    // cluster
+    var cg = el(s, 'g', { transform: 'translate(' + cluster.x + ',' + cluster.y + ')', filter: T.glow ? 'url(#' + id + '-glow)' : null });
+    if (T.pinStyle === 'diamond') {
+      el(cg, 'rect', { x: -24, y: -24, width: 48, height: 48, transform: 'rotate(45)', fill: '#06080b', stroke: T.danger, 'stroke-width': 3 });
+      el(cg, 'text', { x: 0, y: 9, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 700, fill: T.text, 'font-family': T.font }, cluster.n);
+    } else if (T.pinStyle === 'ring') {
+      el(cg, 'circle', { r: 30, fill: 'rgba(10,30,40,.35)', stroke: T.accent, 'stroke-width': 2, 'stroke-dasharray': '6 4' });
+      el(cg, 'text', { x: 0, y: 8, 'text-anchor': 'middle', 'font-size': 24, fill: T.text, 'font-family': T.font }, cluster.n);
+    } else {
+      el(cg, 'circle', { r: 30, fill: T.accent, stroke: '#14171b', 'stroke-width': 3 });
+      el(cg, 'text', { x: 0, y: 8, 'text-anchor': 'middle', 'font-size': 22, 'font-weight': 700, fill: '#14171b', 'font-family': T.font }, cluster.n);
+    }
+
+    // player marker
+    var pg = el(s, 'g', { transform: 'translate(' + player.x + ',' + player.y + ') rotate(' + player.yaw + ')' });
+    el(pg, 'circle', { r: 26, fill: T.accent, opacity: .18 });
+    el(pg, 'path', { d: 'M0,-20 L13,14 L0,6 L-13,14 Z', fill: T.accent, stroke: T.pinStyle === 'badge' ? '#14171b' : '#000', 'stroke-width': 2 });
+
+    // crosshair at screen center (800,450) + selection
+    var cx = 800, cy = 450, cr = el(s, 'g', { stroke: T.cross, 'stroke-width': 2, fill: 'none', opacity: .9 });
+    el(cr, 'circle', { cx: cx, cy: cy, r: 34 });
+    [[-58, -40], [40, 58]].forEach(function (seg) {
+      el(cr, 'line', { x1: cx + seg[0], y1: cy, x2: cx + seg[1], y2: cy });
+      el(cr, 'line', { x1: cx, y1: cy + seg[0], x2: cx, y2: cy + seg[1] });
+    });
+    // selection label
+    var title = T.upper ? 'FAST TRAVEL — CORPO PLAZA' : 'Fast travel · Corpo Plaza';
+    var sub = T.upper ? 'CITY CENTER  /  ENTER: TRAVEL  ·  T: TRACK' : 'City Center — Enter to travel, T to track';
+    var lg = el(s, 'g', { transform: 'translate(' + (cx + 52) + ',' + (cy - 70) + ')' });
+    el(lg, 'rect', { x: 0, y: 0, width: 400, height: 64, rx: T.pinStyle === 'badge' ? 10 : 0, fill: T.panel, stroke: T.panelStroke, 'stroke-width': T.pinStyle === 'badge' ? 1 : 2 });
+    if (T.pinStyle === 'diamond') el(lg, 'rect', { x: 0, y: 0, width: 6, height: 64, fill: T.accent });
+    el(lg, 'text', { x: 18, y: 27, 'font-size': 21, 'font-weight': 700, fill: T.text, 'font-family': T.font }, title);
+    el(lg, 'text', { x: 18, y: 50, 'font-size': 15, fill: T.accent, 'font-family': T.font, opacity: .9 }, sub);
+
+    // top-left status + bottom key hints
+    var top = el(s, 'g', { transform: 'translate(40,40)' });
+    el(top, 'text', { x: 0, y: 24, 'font-size': 30, 'font-weight': 700, fill: T.text, 'font-family': T.font, 'letter-spacing': T.upper ? 3 : 0 }, T.upper ? 'NIGHT CITY' : 'Night City');
+    el(top, 'text', { x: 0, y: 50, 'font-size': 17, fill: T.accent, 'font-family': T.font }, T.upper ? 'CITY CENTER · CORPORATE PLAZA' : 'City Center · Corporate Plaza');
+    var hints = T.upper
+      ? ['↑↓←→ PAN', '= / − ZOOM', 'HOME FOLLOW V', 'ENTER ACT', 'T TRACK', '[ ] FILTER']
+      : ['Arrows  pan', '= −  zoom', 'Home  follow V', 'Enter  act', 'T  track', '[ ]  filter'];
+    var hx = 40;
+    var hb = el(s, 'g', { transform: 'translate(0,846)' });
+    el(hb, 'rect', { x: 0, y: -10, width: 1600, height: 64, fill: T.panel });
+    hints.forEach(function (h) { el(hb, 'text', { x: hx, y: 28, 'font-size': 18, fill: T.hint, 'font-family': T.font }, h); hx += 230; });
+    // zoom scale
+    var zs = el(s, 'g', { transform: 'translate(1400,60)' });
+    el(zs, 'line', { x1: 0, y1: 0, x2: 150, y2: 0, stroke: T.text, 'stroke-width': 2 });
+    el(zs, 'line', { x1: 0, y1: -6, x2: 0, y2: 6, stroke: T.text, 'stroke-width': 2 });
+    el(zs, 'line', { x1: 150, y1: -6, x2: 150, y2: 6, stroke: T.text, 'stroke-width': 2 });
+    el(zs, 'text', { x: 75, y: 24, 'text-anchor': 'middle', 'font-size': 15, fill: T.text, 'font-family': T.font }, '500 m');
+  }
+  draw('nm-vanilla', themes.vanilla);
+  draw('nm-hologram', themes.hologram);
+  draw('nm-clean', themes.clean);
+})();
+</script>
