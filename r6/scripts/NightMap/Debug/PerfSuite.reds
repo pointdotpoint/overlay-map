@@ -7,6 +7,8 @@ public class NMPerfSuite {
     private let names: array<String>;
     private let counts: array<Int32>;
     private let shows: array<Bool>;
+    private let modes: array<Int32>;      // 0 = circle + 1..16 sweep, 1 = fixed downtown view, 2 = circle + 0.5..32 sweep
+    private let mpps: array<Float>;
     private let idx: Int32;
     private let phase: Int32;
     private let frames: Int32;
@@ -19,22 +21,32 @@ public class NMPerfSuite {
     private let savedY: Float;
     private let saved: Bool;
 
-    private func Add(name: String, count: Int32, show: Bool) {
+    private func Add(name: String, count: Int32, show: Bool, mode: Int32, mpp: Float) {
         ArrayPush(this.names, name);
         ArrayPush(this.counts, count);
         ArrayPush(this.shows, show);
+        ArrayPush(this.modes, mode);
+        ArrayPush(this.mpps, mpp);
     }
 
     public func Start() {
         ArrayClear(this.names);
         ArrayClear(this.counts);
         ArrayClear(this.shows);
-        this.Add("closed_baseline", 0, false);
-        this.Add("open_empty", 0, true);
-        this.Add("items_5000", 5000, true);
-        this.Add("items_20000", 20000, true);
-        this.Add("items_50000", 50000, true);
-        this.Add("closed_end", 0, false);
+        ArrayClear(this.modes);
+        ArrayClear(this.mpps);
+        this.Add("closed_baseline", 0, false, 0, 0.0);
+        this.Add("open_empty", 0, true, 0, 0.0);
+        this.Add("items_5000", 5000, true, 0, 0.0);
+        this.Add("items_20000", 20000, true, 0, 0.0);
+        this.Add("items_50000", 50000, true, 0, 0.0);
+        this.Add("vector_V0_idle", 0, true, 1, 0.65);
+        this.Add("vector_V1_idle", 0, true, 1, 1.2);
+        this.Add("vector_V2_idle", 0, true, 1, 2.8);
+        this.Add("vector_V3_idle", 0, true, 1, 7.0);
+        this.Add("vector_V4_idle", 0, true, 1, 20.0);
+        this.Add("vector_panzoom", 0, true, 2, 0.0);
+        this.Add("closed_end", 0, false, 0, 0.0);
         this.idx = 0;
         this.phase = 0;
         this.saved = false;
@@ -77,8 +89,18 @@ public class NMPerfSuite {
         let a = 6.2831853 * Cast<Float>(this.frames) / 300.0;
         let cam = sys.Camera();
         cam.follow = false;
-        cam.SetCenter(-700.0 + 2500.0 * CosF(a), 1500.0 + 2500.0 * SinF(a));
-        cam.SetMpp(PowF(16.0, 0.5 - 0.5 * CosF(2.0 * a)));
+        let mode = this.modes[this.idx];
+        if mode == 1 {
+            cam.SetCenter(-1800.0, 150.0);
+            cam.SetMpp(this.mpps[this.idx]);
+        } else {
+            cam.SetCenter(-700.0 + 2500.0 * CosF(a), 1500.0 + 2500.0 * SinF(a));
+            if mode == 2 {
+                cam.SetMpp(0.5 * PowF(64.0, 0.5 - 0.5 * CosF(2.0 * a)));
+            } else {
+                cam.SetMpp(PowF(16.0, 0.5 - 0.5 * CosF(2.0 * a)));
+            }
+        }
         ArrayPush(this.samples, dt);
         ArrayPush(this.script, scriptMs);
         if this.frames >= 300 {

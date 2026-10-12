@@ -7,6 +7,8 @@ from pathlib import Path
 GAMELOG = Path.home() / "cyberpunk_symlink/bin/x64/plugins/cyber_engine_tweaks/gamelog.log"
 AVG_BUDGET_MS = 3.0
 P95_BUDGET_MS = 6.0
+VEC_AVG_BUDGET_MS = 2.0
+VEC_P95_BUDGET_MS = 4.0
 
 
 class SuiteError(Exception):
@@ -52,7 +54,21 @@ def verdict(rows: list[dict]) -> tuple[bool, str]:
     d_avg = test["frame_avg"] - base["frame_avg"]
     d_p95 = test["frame_p95"] - base["frame_p95"]
     ok = d_avg <= AVG_BUDGET_MS and d_p95 <= P95_BUDGET_MS
-    return ok, f"items_50000: avg +{d_avg:.2f} ms (budget {AVG_BUDGET_MS}), p95 +{d_p95:.2f} ms (budget {P95_BUDGET_MS})"
+    parts = [f"items_50000: avg +{d_avg:.2f} ms (budget {AVG_BUDGET_MS}), p95 +{d_p95:.2f} ms (budget {P95_BUDGET_MS})"]
+    vec = [r for r in rows if r["name"].startswith("vector_")]
+    for r in vec:
+        if "frame_avg" not in r or "frame_p95" not in r:
+            ok = False
+            parts.append(f"{r['name']}: lacks frame_avg/frame_p95")
+            continue
+        va, vp = r["frame_avg"] - base["frame_avg"], r["frame_p95"] - base["frame_p95"]
+        good = va <= VEC_AVG_BUDGET_MS and vp <= VEC_P95_BUDGET_MS
+        ok = ok and good
+        parts.append(f"{r['name']}: avg +{va:.2f} ms (budget {VEC_AVG_BUDGET_MS}), p95 +{vp:.2f} ms "
+                     f"(budget {VEC_P95_BUDGET_MS}){'' if good else ' OVER'}")
+    if not vec:
+        parts.append("no vector rows (raster run)")
+    return ok, "; ".join(parts)
 
 
 def main() -> int:
@@ -66,11 +82,11 @@ def main() -> int:
         print(f"no RESULT lines in {path}")
         return 1
     base = next((r["frame_avg"] for r in rows if r["name"] == "closed_baseline"), None)
-    print(f"{'scenario':18} {'items':>7} {'setup ms':>9} {'avg':>7} {'+base':>7} {'p95':>7} {'p99':>7} {'max':>7} {'script':>7}")
+    print(f"{'scenario':22} {'items':>7} {'setup ms':>9} {'avg':>7} {'+base':>7} {'p95':>7} {'p99':>7} {'max':>7} {'script':>7}")
     rows = [r for r in rows if all(k in r for k in ("items", "setup_ms", "frame_avg", "frame_p95", "frame_p99", "frame_max", "script_avg"))]
     for r in rows:
         delta = f"{r['frame_avg'] - base:+.2f}" if base is not None else "?"
-        print(f"{r['name']:18} {int(r['items']):>7} {r['setup_ms']:>9.1f} {r['frame_avg']:>7.2f} {delta:>7} "
+        print(f"{r['name']:22} {int(r['items']):>7} {r['setup_ms']:>9.1f} {r['frame_avg']:>7.2f} {delta:>7} "
               f"{r['frame_p95']:>7.2f} {r['frame_p99']:>7.2f} {r['frame_max']:>7.2f} {r['script_avg']:>7.2f}")
     ok, msg = verdict(rows)
     print(("PASS: " if ok else "FAIL: ") + msg)

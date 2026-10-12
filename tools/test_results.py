@@ -79,3 +79,29 @@ def test_cli_exit_codes(tmp_path):
     assert run(bad).returncode == 1
     r = run(part)
     assert r.returncode == 1 and "incomplete suite" in r.stdout
+
+
+VEC = """
+[t] [1] [NightMap] PERF|SUITE|start
+[t] [1] [NightMap] RESULT|closed_baseline|items=0|frames=300|setup_ms=0.1|frame_avg=20.0|frame_p95=29.0|frame_p99=40.0|frame_max=60.0|script_avg=0.01|script_p95=0.02
+[t] [1] [NightMap] RESULT|items_50000|items=50000|frames=300|setup_ms=900.0|frame_avg=22.5|frame_p95=33.0|frame_p99=45.0|frame_max=70.0|script_avg=1.9|script_p95=3.0
+[t] [1] [NightMap] RESULT|vector_V0_idle|items=0|frames=300|setup_ms=0|frame_avg=21.5|frame_p95=32.0|frame_p99=40.0|frame_max=60.0|script_avg=0.1|script_p95=0.2
+[t] [1] [NightMap] RESULT|vector_panzoom|items=0|frames=300|setup_ms=0|frame_avg=21.0|frame_p95=31.0|frame_p99=40.0|frame_max=60.0|script_avg=0.5|script_p95=1.0
+[t] [1] [NightMap] PERF|SUITE|done
+"""
+
+
+def test_vector_rows_pass_within_budget():
+    ok, msg = results.verdict(results.parse(VEC))
+    assert ok, msg
+    assert "vector_V0_idle" in msg and "vector_panzoom" in msg
+
+
+def test_vector_row_over_budget_fails():
+    ok, msg = results.verdict(results.parse(VEC.replace("frame_avg=21.5", "frame_avg=22.5")))
+    assert not ok and "vector_V0_idle" in msg
+
+
+def test_vector_p95_over_budget_fails():
+    ok, msg = results.verdict(results.parse(VEC.replace("frame_p95=31.0", "frame_p95=33.5")))
+    assert not ok and "vector_panzoom" in msg
