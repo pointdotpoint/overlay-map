@@ -10,10 +10,10 @@ from nmtiles.vector_cells import Cell, VGrid, order
 from nmtiles.vector_config import BLOCK_STYLES, STYLES, POINT_BUDGET, SHAPE_BUDGET, VIEW_UNITS, VLevel
 from nmtiles.vector_geom import douglas_peucker
 
-# Order fixed by the spec: smallest blocks, then road width, then tolerance (at most 2x).
-STEPS = (("area", 2.0), ("area", 4.0), ("area", 8.0),
-         ("road", 4.0), ("road", 8.0), ("road", 12.0),
-         ("tol", 1.25), ("tol", 1.5625), ("tol", 2.0))
+# Streets are the last thing sacrificed: smallest blocks, then tolerance (at most 2x), then road width.
+STEPS = (("area", 2.0), ("area", 4.0), ("area", 8.0), ("area", 16.0), ("area", 32.0),
+         ("tol", 1.25), ("tol", 1.5625), ("tol", 2.0),
+         ("road", 4.0), ("road", 8.0), ("road", 12.0))
 
 
 class BudgetError(RuntimeError):

@@ -171,7 +171,7 @@ def test_tiles_match_per_cell_reference_and_workers():
 
 def _fit_setup():
     g = VGrid(0.0, 100.0, 2, 1, 50.0)
-    road = Shape("road", np.array([[0.0, 10.0], [40.0, 10.0]]), 40.0)
+    road = Shape("road", np.array([[0, 10], [40, 10], [40, 20], [0, 20], [0, 10]], float), 400.0)
     blk = sq(5, 5, 13.0, prio=169.0)
     cells = {(0, 0): Cell(0, 0, order([blk, road, road]))}
     return g, cells, road
@@ -179,16 +179,16 @@ def _fit_setup():
 
 def test_fit_level_road_step_and_new_cell():
     g, cells, road = _fit_setup()
-    new = Shape("road", np.array([[60.0, 10.0], [90.0, 10.0]]), 30.0)
+    new = Shape("road", np.array([[60, 10], [90, 10], [90, 20], [60, 20], [60, 10]], float), 300.0)
     seen = []
 
     def rebuild(l):
         seen.append(l.road_min_width)
         return {(1, 0): [new]}
     lv, out, rep = fit_level(LV, g, cells, rebuild_roads=rebuild, log=lambda *_: None,
-                             point_budget=1000, shape_budget=2)
-    assert rep["steps"][-1] == "road 4" and seen == [4.0] and lv.road_min_width == 4.0
-    assert set(out) == {(0, 0), (1, 0)} and [s.style for s in out[(0, 0)].shapes] == ["block0"]
+                             point_budget=1000, shape_budget=1)    # area and tol steps cannot help: roads are last
+    assert rep["steps"][-1] == "road 4" and rep["steps"][-2] == "tol 2" and seen == [4.0] and lv.road_min_width == 4.0
+    assert set(out) == {(1, 0)}      # the small block went in the area steps, the old roads with the rebuild
     assert out[(1, 0)].shapes[0].style == "road"
     assert set(rep) == {"level", "steps", "points", "shapes", "at", "over_budget"}
 
@@ -204,10 +204,10 @@ def test_replace_roads_keeps_style_order():
 def test_fit_level_tol_steps_keep_rings_closed():
     g = VGrid(0.0, 100.0, 1, 1, 50.0)
     t = np.linspace(0, 2 * np.pi, 400)
-    ring = np.column_stack((20 + 10 * np.cos(t), 20 + 10 * np.sin(t)))
+    ring = np.column_stack((25 + 20 * np.cos(t), 25 + 20 * np.sin(t)))
     ring[-1] = ring[0]
     sliver = Shape("block0", np.array([[0, 0], [0.01, 0], [0, 0.0]]), 1e6)
-    cells = {(0, 0): Cell(0, 0, [Shape("block1", ring, 300.0), sliver])}
+    cells = {(0, 0): Cell(0, 0, [Shape("block1", ring, 1250.0), sliver])}
     lv, out, rep = fit_level(LV, g, cells, rebuild_roads=lambda l: {(0, 0): []}, log=lambda *_: None,
                              point_budget=150, shape_budget=100)
     assert any(s.startswith("tol") for s in rep["steps"]) and set(rep) == {"level", "steps", "points", "shapes", "at", "over_budget"}
