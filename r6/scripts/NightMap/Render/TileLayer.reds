@@ -28,7 +28,9 @@ public class NMTileLayer {
                     ArrayPush(t.present, false);
                     k += 1;
                 }
-                for idx in NMTileManifest.LevelTiles(i) {
+                // Bind to a local: iterating a call temporary is unverified in-game (see self-test tiles.level*).
+                let present: array<Int32> = NMTileManifest.LevelTiles(i);
+                for idx in present {
                     t.present[base + idx] = true;
                 }
                 base += n;
