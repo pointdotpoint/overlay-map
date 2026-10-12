@@ -3,3 +3,4 @@ archive/
 tools/tiles/build/
 __pycache__/
 *.pyc
+.scratch/
