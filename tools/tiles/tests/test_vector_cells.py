@@ -6,7 +6,8 @@ from nmtiles.glb import Mesh
 from nmtiles.vector_budget import BudgetError, fit_level, worst_view
 from nmtiles.vector_cells import Cell, VGrid, build_level, grid_for, order
 from nmtiles.vector_config import VLevel
-from nmtiles.vector_extract import Shape, Sources
+from nmtiles.buildings import box_corners
+from nmtiles.vector_extract import Shape, Sources, block_features
 from nmtiles.world import Transform
 
 TF = Transform(1.0, -1.0, 0.0, 0.0)
@@ -46,7 +47,7 @@ def test_cell_bounds_and_style_counts():
     assert counts == [0, 0, 1, 0, 0, 1, 0] and points == [0, 0, 5, 0, 0, 5, 0]
 
 
-def test_build_level_small_world():
+def test_build_level_small_road_mesh():
     road = Mesh("r", np.array([[-10, 0, -20], [110, 0, -20], [110, 0, -30], [-10, 0, -30]], float),
                 np.array([[0, 1, 2], [0, 2, 3]]))
     src = Sources([road], [], [quad(0, 0, 100, 50)], [], boxes([25, 40, 6, 6, 50, 0]), TF)
@@ -98,14 +99,14 @@ def test_fit_level_raises_when_nothing_helps():
                   point_budget=3, shape_budget=100)
 
 
-def _world(n_boxes=0):
+def _road_mesh():
     road = Mesh("r", np.array([[-10, 0, -20], [210, 0, -20], [210, 0, -30], [-10, 0, -30]], float),
                 np.array([[0, 1, 2], [0, 2, 3]]))
     return road
 
 
 def test_build_level_workers_identical():
-    src = Sources([_world()], [], [quad(0, 0, 200, 100)], [quad(120, 10, 160, 40)],
+    src = Sources([_road_mesh()], [], [quad(0, 0, 200, 100)], [quad(120, 10, 160, 40)],
                   boxes([25, 40, 6, 6, 50, 0], [75, 60, 6, 6, 20, 0], [160, 70, 8, 8, 90, 0]), TF)
     ext = (0.0, 0.0, 200.0, 100.0)
     g1, c1 = build_level(LV, src, ext, log=lambda *_: None, workers=1)
@@ -122,3 +123,86 @@ def test_blocks_land_in_own_cell_once():
     assert (g.nx, g.ny) == (2, 1)
     blocks = {k: [s.style for s in c.shapes if s.style.startswith("block")] for k, c in cells.items()}
     assert blocks == {(0, 0): ["block0"], (1, 0): ["block1"]}
+
+
+def test_tiles_match_per_cell_reference_and_workers():
+    rows = [[10, 240, 6, 6, 20, 0], [60, 20, 8, 8, 50, 0], [180, 130, 6, 6, 90, 0],
+            [290, 40, 7, 7, 10, 0], [270, 200, 6, 6, 60, 0], [155, 100, 12, 6, 30, 0]]
+    rows.append([200, 100, 30, 6, 40, 0])     # x 185..215 spans the column 3|4 border at x=200
+    src = Sources([_road_mesh()], [], [quad(0, 0, 300, 250)], [], boxes(*rows), TF)
+    ext = (0.0, 0.0, 300.0, 250.0)
+    lv = VLevel("T", 0.5, 1.0, 0.25, 50.0, 0.5, 0.0, 2.0, 0.0, 20.0)
+    g, c1 = build_level(lv, src, ext, log=lambda *_: None, workers=1)
+    _, c2 = build_level(lv, src, ext, log=lambda *_: None, workers=2)
+    assert (g.nx, g.ny) == (6, 5) and list(c1) == list(c2)
+    for k in c1:
+        assert [s.style for s in c1[k].shapes] == [s.style for s in c2[k].shapes]
+        assert all(np.array_equal(a.pts, b.pts) for a, b in zip(c1[k].shapes, c2[k].shapes))
+    corners = box_corners(src.boxes) + np.array([TF.dx, TF.dy])
+    centres, heights = corners.mean(axis=1), np.asarray(src.boxes.dz, float)
+
+    def cents(shapes):
+        return sorted((s.style, *np.round(s.pts[:-1].mean(axis=0), 3)) for s in shapes if s.style.startswith("block"))
+    total = 0
+    for iy in range(g.ny):
+        for ix in range(g.nx):
+            ref = block_features(corners, centres, heights, g.rect(ix, iy), lv)
+            got = c1[(ix, iy)].shapes if (ix, iy) in c1 else []
+            assert cents(got) == cents(ref), (ix, iy)
+            total += len(ref)
+    assert total >= 6
+    wide = [s for c in c1.values() for s in c.shapes if s.style.startswith("block")
+            and s.pts[:, 0].min() < 200 < s.pts[:, 0].max()]
+    assert len(wide) == 1
+
+
+def _fit_setup():
+    g = VGrid(0.0, 100.0, 2, 1, 50.0)
+    road = Shape("road", np.array([[0.0, 10.0], [40.0, 10.0]]), 40.0)
+    blk = sq(5, 5, 13.0, prio=169.0)
+    cells = {(0, 0): Cell(0, 0, order([blk, road, road]))}
+    return g, cells, road
+
+
+def test_fit_level_road_step_and_new_cell():
+    g, cells, road = _fit_setup()
+    new = Shape("road", np.array([[60.0, 10.0], [90.0, 10.0]]), 30.0)
+    seen = []
+
+    def rebuild(l):
+        seen.append(l.road_min_width)
+        return {(1, 0): [new]}
+    lv, out, rep = fit_level(LV, g, cells, rebuild_roads=rebuild, log=lambda *_: None,
+                             point_budget=1000, shape_budget=2)
+    assert rep["steps"][-1] == "road 4" and seen == [4.0] and lv.road_min_width == 4.0
+    assert set(out) == {(0, 0), (1, 0)} and [s.style for s in out[(0, 0)].shapes] == ["block0"]
+    assert out[(1, 0)].shapes[0].style == "road"
+    assert set(rep) == {"level", "steps", "points", "shapes", "at"}
+
+
+def test_replace_roads_keeps_style_order():
+    from nmtiles.vector_budget import _replace_roads
+    g, cells, road = _fit_setup()
+    out = _replace_roads(cells, {(0, 0): [road, road]})
+    st = [s.style for s in out[(0, 0)].shapes]
+    assert st == ["block0", "road", "road"]
+
+
+def test_fit_level_tol_steps_keep_rings_closed():
+    g = VGrid(0.0, 100.0, 1, 1, 50.0)
+    t = np.linspace(0, 2 * np.pi, 400)
+    ring = np.column_stack((20 + 10 * np.cos(t), 20 + 10 * np.sin(t)))
+    ring[-1] = ring[0]
+    sliver = Shape("block0", np.array([[0, 0], [0.01, 0], [0, 0.0]]), 4.0)
+    cells = {(0, 0): Cell(0, 0, [Shape("block1", ring, 300.0), sliver])}
+    lv, out, rep = fit_level(LV, g, cells, rebuild_roads=lambda l: {(0, 0): []}, log=lambda *_: None,
+                             point_budget=150, shape_budget=100)
+    assert any(s.startswith("tol") for s in rep["steps"]) and set(rep) == {"level", "steps", "points", "shapes", "at"}
+    shapes = out[(0, 0)].shapes
+    assert all(np.array_equal(s.pts[0], s.pts[-1]) and len(s.pts) >= 4 for s in shapes)
+    assert [s.style for s in shapes] == ["block1"]
+
+
+def test_worst_view_custom_budget_picks_by_that_budget():
+    g, cells = _grid_cells(10)
+    assert worst_view(LV, g, cells, point_budget=10, shape_budget=10)[1] == 40

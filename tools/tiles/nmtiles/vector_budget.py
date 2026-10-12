@@ -20,7 +20,8 @@ class BudgetError(RuntimeError):
     pass
 
 
-def worst_view(level: VLevel, grid: VGrid, cells: dict) -> tuple[int, int, tuple[float, float]]:
+def worst_view(level: VLevel, grid: VGrid, cells: dict, point_budget: int = POINT_BUDGET,
+               shape_budget: int = SHAPE_BUDGET) -> tuple[int, int, tuple[float, float]]:
     """Largest (points, shapes) any worst-case view at the level's max zoom-out can touch (half-cell steps)."""
     if not cells:
         return 0, 0, (0.0, 0.0)
@@ -39,7 +40,7 @@ def worst_view(level: VLevel, grid: VGrid, cells: dict) -> tuple[int, int, tuple
         for y1 in np.arange(b[:, 1].min(), b[:, 3].max() + vh + step, step):
             hit = inx & (b[:, 3] >= y1 - vh) & (b[:, 1] <= y1)
             p, s = int(pts[hit].sum()), int(shp[hit].sum())
-            load = max(p / POINT_BUDGET, s / SHAPE_BUDGET)
+            load = max(p / point_budget, s / shape_budget)
             if load > best_load:
                 best_load, best = load, (p, s, (float(x0), float(y1)))
     return best
@@ -70,7 +71,7 @@ def _resimplify(cells: dict, tol: float) -> dict:
         shapes = []
         for s in c.shapes:
             pts = douglas_peucker(s.pts, tol)
-            if len(pts) >= 2:
+            if len(pts) >= (4 if s.style not in ("road", "metro") else 2):
                 shapes.append(type(s)(s.style, pts, s.prio))
         if shapes:
             out[k] = Cell(c.ix, c.iy, shapes)
@@ -83,8 +84,8 @@ def fit_level(level: VLevel, grid: VGrid, cells: dict, rebuild_roads: Callable[[
     cur, steps = level, []
 
     def fits() -> tuple[bool, tuple]:
-        global_view = worst_view(cur, grid, cells)
-        return global_view[0] <= point_budget and global_view[1] <= shape_budget, global_view
+        view = worst_view(cur, grid, cells, point_budget, shape_budget)
+        return view[0] <= point_budget and view[1] <= shape_budget, view
 
     ok, view = fits()
     log(f"{level.name}: worst view {view[0]} points / {view[1]} shapes at {view[2]}")

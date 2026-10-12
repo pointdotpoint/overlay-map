@@ -133,7 +133,12 @@ def build_level(level: VLevel, src: Sources, extent: Rect, log: Callable[[str], 
         rows = _run(_row_job, [(iy, ("area", "road", "metro")) for iy in range(g.ny)], workers)
         log(f"{level.name}: rows done, grid {g.nx} x {g.ny}")
         tiles = [(tx, ty) for ty in range(math.ceil(g.ny / BLOCK_TILE)) for tx in range(math.ceil(g.nx / BLOCK_TILE))]
-        blocks = _run(_tile_job, tiles, workers)
+        margin = level.block_margin
+        tw = min(g.nx, BLOCK_TILE) * g.cell + 2 * margin
+        th = min(g.ny, BLOCK_TILE) * g.cell + 2 * margin
+        window_px = tw / level.res * th / level.res
+        n = (os.cpu_count() or 1) if workers is None else workers
+        blocks = _run(_tile_job, tiles, min(n, max(1, int(8e9 // (window_px * 24)))))
     finally:
         _JOB.clear()
     by_cell: dict = {}
