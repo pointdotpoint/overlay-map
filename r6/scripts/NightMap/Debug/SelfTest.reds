@@ -16,6 +16,7 @@ public class NMSelfTest {
         this.ApiCases();
         this.InputCases();
         this.LayoutCases();
+        this.TileCases();
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 
@@ -310,5 +311,26 @@ public class NMSelfTest {
             }
         }
         this.Check("layout.fits_all_aspects", ok, detail);
+    }
+
+    private func TileCases() {
+        if !NMTileManifest.Available() {
+            this.Check("tiles.manifest_available", false, "Generated/TileManifest.reds is the stub; run the tile build");
+            return;
+        }
+        let n = NMTileManifest.LevelCount();
+        let ascending = true;
+        let i = 1;
+        while i < n {
+            if NMTileManifest.LevelMpp(i) <= NMTileManifest.LevelMpp(i - 1) { ascending = false; }
+            i += 1;
+        }
+        this.Check("tiles.levels_ascending", n >= 1 && ascending, ToString(n));
+        let first = NMTileManifest.LevelMpp(0);
+        let last = NMTileManifest.LevelMpp(n - 1);
+        this.Check("tiles.pick_level", NMTileLayer.PickLevel(first * 0.25) == 0 && NMTileLayer.PickLevel(first) == 0
+            && (n < 2 || NMTileLayer.PickLevel(first * 1.01) == 1) && NMTileLayer.PickLevel(last * 10.0) == n - 1, "");
+        this.Check("tiles.ui_atlas_in_depot", GameInstance.GetResourceDepot().ResourceExists(NMTheme.UiAtlas()), "nightmap\\ui\\ui.inkatlas not found: archive not installed?");
+        this.Check("tiles.level0_has_tiles", ArraySize(NMTileManifest.LevelTiles(0)) > 0, "");
     }
 }

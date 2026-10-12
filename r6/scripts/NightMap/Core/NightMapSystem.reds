@@ -22,6 +22,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let holdMs: Float;
     private let savedMpp: Float = 4.0;
     private let frameNo: Int32;
+    private let tiles: ref<NMTileLayer>;
 
     private func OnAttach() {
         this.api = NightMap.Create();
@@ -215,9 +216,15 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     // Module hooks; Tasks 12-14 fill these in.
-    private func OnOpened() {}
+    private func OnOpened() {
+        this.tiles = NMTileLayer.Create(this.panel.tiles);
+    }
 
-    private func OnClosing() {}
+    private func OnClosing() {
+        this.tiles = null;
+    }
 
-    private func UpdateModules(dt: Float) {}
+    private func UpdateModules(dt: Float) {
+        this.tiles.Update(this.camera);
+    }
 }
