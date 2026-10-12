@@ -164,10 +164,12 @@ public class NMVectorLayer {
             NMLog.Error("vector: " + ToString(this.missing) + " visible cells have no shape resource (archive stale or missing?)");
         }
         let plan = NMVectorLayer.PlanGroups(lv, cells, NMTheme.VecPointBudget(), NMTheme.VecShapeBudget());
-        let full = NMVectorLayer.PlanGroups(lv, cells, 2147483647, 2147483647);
-        if ArraySize(plan) < ArraySize(full) && !this.warnedBudget {
-            this.warnedBudget = true;
-            NMLog.Info("vector: view over budget, skipped " + ToString(ArraySize(full) - ArraySize(plan)) + " shape groups");
+        if !this.warnedBudget {
+            let full = NMVectorLayer.PlanGroups(lv, cells, 2147483647, 2147483647);
+            if ArraySize(plan) < ArraySize(full) {
+                this.warnedBudget = true;
+                NMLog.Info("vector: view over budget, skipped " + ToString(ArraySize(full) - ArraySize(plan)) + " shape groups");
+            }
         }
         let i = ArraySize(this.used) - 1;
         while i >= 0 {
@@ -206,6 +208,11 @@ public class NMVectorLayer {
                 if !this.warnedPool {
                     this.warnedPool = true;
                     NMLog.Error("vector: widget pool exhausted (" + ToString(NMTheme.VecPoolSize()) + ")");
+                }
+                let r = 0;
+                while r < k {
+                    this.DetachAt(ArraySize(this.used) - 1);
+                    r += 1;
                 }
                 return false;
             }
