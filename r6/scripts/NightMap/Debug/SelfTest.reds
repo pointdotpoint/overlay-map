@@ -465,6 +465,10 @@ public class NMSelfTest {
         this.Check("vector.thickness_compensates", this.Near(NMVectorLayer.LineWidthFor(5, 0, 2.0), 0.75, 0.001), this.F(NMVectorLayer.LineWidthFor(5, 0, 2.0)));
         this.Check("vector.thickness_step", !NMVectorLayer.NeedsThickness(1.0, 1.04, 0.05) && NMVectorLayer.NeedsThickness(1.0, 1.06, 0.05)
             && NMVectorLayer.NeedsThickness(0.0, 1.0, 0.05), "");
+        this.Check("vector.raster_max_mpp", NightMapSystem.MaxMppFor(false) <= 16.001, this.F(NightMapSystem.MaxMppFor(false)));
+        if NMVectorManifest.Available() {
+            this.Check("vector.vector_max_mpp", NightMapSystem.MaxMppFor(true) > 16.0, this.F(NightMapSystem.MaxMppFor(true)));
+        }
 
         if NMVectorManifest.Available() {
             let k: array<Int32> = NMVectorManifest.LevelCells(0);
