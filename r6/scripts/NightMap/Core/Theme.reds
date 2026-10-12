@@ -38,4 +38,42 @@ public abstract class NMTheme {
 
     // 1.0 if ink rotates clockwise for positive angles; verified at Checkpoint 2.
     public static func PlayerRotationSign() -> Float { return 1.0; }
+
+    // Vector layer (sub-project 1b). Style ids match tools/tiles nmtiles.vector_config.STYLES:
+    // 0 land, 1 water, 2 block0, 3 block1, 4 block2, 5 road, 6 metro.
+    public static func VecStyleCount() -> Int32 { return 7; }
+    public static func VecPoolSize() -> Int32 { return 800; }
+    public static func VecPointBudget() -> Int32 { return 30000; }
+    public static func VecShapeBudget() -> Int32 { return 400; }
+    public static func VecHysteresis() -> Float { return 0.08; }
+    public static func VecThicknessStep() -> Float { return 0.05; }
+    public static func VecFailMs() -> Float { return 3000.0; }
+    public static func VecIsBlock(style: Int32) -> Bool { return style >= 2 && style <= 4; }
+    public static func VecVariant(style: Int32) -> inkEShapeVariant {
+        if style <= 1 { return inkEShapeVariant.Fill; }
+        if style <= 4 { return inkEShapeVariant.FillAndBorder; }
+        return inkEShapeVariant.Border;
+    }
+    public static func VecColor(style: Int32) -> HDRColor { return style == 6 ? NMTheme.Pink() : NMTheme.Cyan(); }
+    public static func VecFillOpacity(style: Int32) -> Float {
+        if style == 0 { return 0.05; }
+        if style == 1 { return 0.13; }
+        if style == 2 { return 0.06; }
+        if style == 3 { return 0.09; }
+        if style == 4 { return 0.12; }
+        return 0.0;
+    }
+    public static func VecBorderOpacity(style: Int32) -> Float {
+        if NMTheme.VecIsBlock(style) { return 0.45; }
+        if style == 5 { return 0.85; }
+        if style == 6 { return 0.80; }
+        return 0.0;
+    }
+    // Target stroke width in map (screen) units.
+    public static func VecLineWidth(style: Int32, level: Int32) -> Float {
+        if style == 6 { return 2.0; }
+        if style == 5 { return level <= 2 ? 1.5 : 1.2; }
+        if NMTheme.VecIsBlock(style) { return 1.0; }
+        return 0.0;
+    }
 }

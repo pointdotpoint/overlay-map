@@ -20,6 +20,7 @@ public class NMSelfTest {
         this.RendererCases();
         this.PickCases();
         this.VersionCases();
+        this.VectorCases();
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 
@@ -391,6 +392,88 @@ public class NMSelfTest {
         L.SetVisible(false);
         r.Update(cam, 1880.0, 1480.0);
         this.Check("renderer.hidden_layer_draws_nothing", r.chipsUsed == 0 && r.clustersUsed == 0, ToString(r.chipsUsed) + "/" + ToString(r.clustersUsed));
+    }
+
+    private func VectorCaseLevel() -> ref<NMVecLevel> {
+        let lv = new NMVecLevel();
+        lv.index = 0;
+        lv.minMpp = 0.5;
+        lv.maxMpp = 0.8;
+        lv.unit = 1.0;
+        lv.ox = 0.0;
+        lv.otop = 300.0;
+        lv.nx = 3;
+        lv.ny = 3;
+        lv.cell = 100.0;
+        let counts: array<Int32> = [1, 0, 3, 0, 0, 2, 0];
+        let pts: array<Int32> = [5, 0, 30, 0, 0, 40, 0];
+        let c = 0;
+        while c < 9 {
+            ArrayPush(lv.keys, c);
+            ArrayPush(lv.bounds, Cast<Float>(c % 3) * 100.0);
+            ArrayPush(lv.bounds, Cast<Float>(c / 3) * 100.0);
+            ArrayPush(lv.bounds, 100.0);
+            ArrayPush(lv.bounds, 100.0);
+            for v in counts { ArrayPush(lv.counts, v); }
+            for v in pts { ArrayPush(lv.points, v); }
+            c += 1;
+        }
+        lv.BuildLookup();
+        return lv;
+    }
+
+    private func VectorCases() {
+        let mins: array<Float> = [0.5, 0.8, 1.6];
+        let maxs: array<Float> = [0.8, 1.6, 4.0];
+        this.Check("vector.pick_initial", NMVectorLayer.PickLevel(mins, maxs, -1, 0.6, 0.08) == 0
+            && NMVectorLayer.PickLevel(mins, maxs, -1, 1.0, 0.08) == 1, "");
+        this.Check("vector.pick_hysteresis_holds", NMVectorLayer.PickLevel(mins, maxs, 0, 0.85, 0.08) == 0, "");
+        this.Check("vector.pick_hysteresis_switches", NMVectorLayer.PickLevel(mins, maxs, 0, 0.9, 0.08) == 1, "");
+        this.Check("vector.pick_back_down_holds", NMVectorLayer.PickLevel(mins, maxs, 1, 0.76, 0.08) == 1, "");
+        // Hovering around the 0.8 boundary from level 0: 0.79, 0.83, 0.79, 0.85 must never leave level 0.
+        let cur = 0;
+        let hover: array<Float> = [0.79, 0.83, 0.79, 0.85];
+        let flips = 0;
+        for m in hover {
+            let next = NMVectorLayer.PickLevel(mins, maxs, cur, m, 0.08);
+            if next != cur { flips += 1; }
+            cur = next;
+        }
+        this.Check("vector.pick_no_flicker", flips == 0, ToString(flips));
+        this.Check("vector.pick_beyond_last", NMVectorLayer.PickLevel(mins, maxs, -1, 50.0, 0.08) == 2, "");
+        let none: array<Float>;
+        this.Check("vector.pick_no_levels", NMVectorLayer.PickLevel(none, none, -1, 1.0, 0.08) == -1, "");
+
+        let lv = this.VectorCaseLevel();
+        let c1 = NMVectorLayer.VisibleCells(lv, NMRect.Create(120.0, 120.0, 180.0, 180.0));
+        this.Check("vector.visible_centre_only", ArraySize(c1) == 1 && c1[0] == 4, ToString(ArraySize(c1)));
+        let c2 = NMVectorLayer.VisibleCells(lv, NMRect.Create(90.0, 90.0, 210.0, 210.0));
+        this.Check("vector.visible_centre_first", ArraySize(c2) == 9 && c2[0] == 4, ToString(ArraySize(c2)));
+        let c3 = NMVectorLayer.VisibleCells(lv, NMRect.Create(1000.0, 1000.0, 1200.0, 1200.0));
+        this.Check("vector.visible_outside_empty", ArraySize(c3) == 0, ToString(ArraySize(c3)));
+        this.Check("vector.path", Equals(lv.Path(5), "nightmap\\vec\\V0\\c_2_1.inkshapecollection"), lv.Path(5));
+        this.Check("vector.first_preset", lv.FirstPreset(4, 0) == 0 && lv.FirstPreset(4, 2) == 1 && lv.FirstPreset(4, 5) == 4, "");
+
+        let three: array<Int32> = [4, 0, 1];
+        let all = NMVectorLayer.PlanGroups(lv, three, 100000, 100000);
+        this.Check("vector.plan_all", ArraySize(all) == 9 && all[0] == 4 * 8 + 0 && all[6] == 4 * 8 + 2, ToString(ArraySize(all)));
+        let pts = NMVectorLayer.PlanGroups(lv, three, 170, 100000);       // 3 x (5 + 40) = 135, +30 for one block group
+        this.Check("vector.plan_points_blocks_last", ArraySize(pts) == 7 && ArrayContains(pts, 4 * 8 + 2) && !ArrayContains(pts, 0 * 8 + 2), ToString(ArraySize(pts)));
+        let shp = NMVectorLayer.PlanGroups(lv, three, 100000, 7);         // land 1 + road 2 per cell
+        this.Check("vector.plan_shapes", ArraySize(shp) == 5, ToString(ArraySize(shp)));
+
+        this.Check("vector.thickness_compensates", this.Near(NMVectorLayer.LineWidthFor(5, 0, 2.0), 0.75, 0.001), this.F(NMVectorLayer.LineWidthFor(5, 0, 2.0)));
+        this.Check("vector.thickness_step", !NMVectorLayer.NeedsThickness(1.0, 1.04, 0.05) && NMVectorLayer.NeedsThickness(1.0, 1.06, 0.05)
+            && NMVectorLayer.NeedsThickness(0.0, 1.0, 0.05), "");
+
+        if NMVectorManifest.Available() {
+            let k: array<Int32> = NMVectorManifest.LevelCells(0);
+            let b: array<Float> = NMVectorManifest.LevelBounds(0);
+            let n: array<Int32> = NMVectorManifest.LevelCounts(0);
+            this.Check("vector.manifest_arrays", ArraySize(k) > 0 && ArraySize(b) == 4 * ArraySize(k)
+                && ArraySize(n) == NMTheme.VecStyleCount() * ArraySize(k), ToString(ArraySize(k)));
+            this.Check("vector.manifest_styles", NMVectorManifest.StyleCount() == NMTheme.VecStyleCount(), "");
+        }
     }
 
     private func VersionCases() {

@@ -75,6 +75,13 @@ public class NightMapSettings extends ScriptableSystem {
     public let panelOpacity: Float = 0.74;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Vector map")
+    @runtimeProperty("ModSettings.description", "Draws the map as smooth vector shapes. Off = the older raster tiles.")
+    public let vectorMap: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Debug")
     @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Debug tools")
