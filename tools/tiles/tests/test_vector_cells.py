@@ -54,7 +54,7 @@ def test_build_level_small_road_mesh():
     g, cells = build_level(LV, src, (0.0, 0.0, 100.0, 50.0), log=lambda *_: None)
     assert (g.nx, g.ny) == (2, 1) and set(cells) == {(0, 0), (1, 0)}
     styles0 = [s.style for s in cells[(0, 0)].shapes]
-    assert styles0[0] == "land" and "road" in styles0 and "block1" in styles0
+    assert "land" not in styles0 and "road" in styles0 and "block1" in styles0
     assert styles0 == sorted(styles0, key=["land", "water", "block0", "block1", "block2", "road", "metro"].index)
 
 

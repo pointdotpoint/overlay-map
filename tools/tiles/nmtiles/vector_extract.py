@@ -135,12 +135,14 @@ def road_features(meshes: list[Mesh], tf: Transform, cell: Rect, level: VLevel, 
 
 
 def area_features(src: Sources, cell: Rect, level: VLevel) -> list[Shape]:
-    """Exact fills: water = water - land, land = land, both clipped to the cell (see the task-9a report on land)."""
-    land = tri_union(src.land, src.tf, cell)
+    """Exact water fill (water mesh minus land mesh) clipped to the cell. Land is not drawn (fix round 1)."""
     water = tri_union(src.water, src.tf, cell)
+    if water.is_empty:
+        return []
+    land = tri_union(src.land, src.tf, cell)
     if not land.is_empty:
         water = water.difference(land)
-    return _shapes("land", land, cell, level) + _shapes("water", water, cell, level)
+    return _shapes("water", water, cell, level)
 
 
 def owner_point(pts: np.ndarray) -> tuple[float, float]:

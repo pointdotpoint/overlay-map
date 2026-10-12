@@ -112,11 +112,9 @@ def test_road_pieces_meet_exactly_at_shared_cell_edge():
 def test_water_minus_land_clipped_to_cell():
     src = Sources([], [], [quad(-100, -100, 25, 200)], [quad(-100, -100, 200, 200)], boxes([0, 0, 1, 1, 1, 0]), TF)
     shapes = area_features(src, CELL, LV)
-    land = [s for s in shapes if s.style == "land"]
     water = [s for s in shapes if s.style == "water"]
-    assert len(land) == 1 and len(water) == 1
+    assert len(shapes) == 1 and len(water) == 1          # land is not extracted
     assert _poly(water[0]).area == pytest.approx(25 * 50, abs=1.0) and water[0].pts[:, 0].min() == pytest.approx(25.0)
-    assert _poly(land[0]).area == pytest.approx(25 * 50, abs=1.0) and land[0].pts[:, 0].max() == pytest.approx(25.0)
     for s in shapes:
         assert np.allclose(s.pts[0], s.pts[-1])
         assert s.pts.min() >= -1e-9 and s.pts.max() <= 50 + 1e-9

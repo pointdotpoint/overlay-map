@@ -9,7 +9,7 @@ MIN_BOX_HEIGHT = 5.0               # boxes lower than this (ground, plazas, road
 HEIGHT_BUCKETS = (30.0, 80.0)        # block0 < 30 m <= block1 < 80 m <= block2
 VIEW_UNITS = (1882.0, 1480.0)        # worst-case map area (4K panel; the 1.75 aspect cap bounds ultra-wide)
 POINT_BUDGET = 27_000                # 30k minus 10 % headroom
-SHAPE_BUDGET = 360                   # 400 minus 10 % headroom
+SHAPE_BUDGET = 810                   # 900 minus 10 % headroom
 
 
 @dataclass(frozen=True)
