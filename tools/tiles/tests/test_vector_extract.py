@@ -126,3 +126,12 @@ def test_small_junction_blob_dropped_long_road_kept():
     lv0 = VLevel("T", 0.5, 1.0, 0.25, 200.0, 2.0, 0.0, 2.0, 0.0, 20.0)
     assert line_features([quad(94, 94, 106, 106)], TF, cell, lv0, "road") == []       # 12 m blob < 10 * res
     assert len(line_features([strip((-40, 100), (240, 100), 14)], TF, cell, lv, "road", min_width=8.0)) == 2
+
+
+def test_short_clipped_piece_at_cell_edge_is_kept_but_inner_ring_dropped():
+    lv = VLevel("T", 0.5, 1.0, 0.25, 200.0, 2.0, 0.0, 2.0, 0.0, 20.0)       # size threshold 20 m
+    cell = (0.0, 0.0, 200.0, 200.0)
+    clipped = line_features([strip((-60, 100), (6, 100), 6)], TF, cell, lv, "road")   # only ~6 m lies inside
+    assert clipped and all(np.isclose(s.pts[:, 0].min(), 0.0) for s in clipped)
+    ring = line_features([quad(94, 94, 106, 106)], TF, cell, lv, "road")
+    assert ring == []

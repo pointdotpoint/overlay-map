@@ -56,6 +56,10 @@ def window_mask(meshes: list[Mesh], tf: Transform, rect: Rect, res: float) -> np
     return fine.reshape(h, 2, w, 2).sum(axis=(1, 3)) > 2
 
 
+def _on_edge(p: np.ndarray, r: Rect, eps: float = 1e-6) -> bool:
+    return (abs(p[0] - r[0]) < eps or abs(p[0] - r[2]) < eps or abs(p[1] - r[1]) < eps or abs(p[1] - r[3]) < eps)
+
+
 def line_features(meshes: list[Mesh], tf: Transform, cell: Rect, level: VLevel, style: str,
                   min_width: float = 0.0) -> list[Shape]:
     """Edge lines of a surface (iso-0.5 contours), clipped to the cell. min_width removes narrower parts."""
@@ -69,7 +73,10 @@ def line_features(meshes: list[Mesh], tf: Transform, cell: Rect, level: VLevel, 
             s = douglas_peucker(run, level.tol)
             length = float(np.hypot(*np.diff(s, axis=0).T).sum()) if len(s) >= 2 else 0.0
             extent = float(np.ptp(s, axis=0).max()) if len(s) else 0.0
-            if length >= 3 * level.tol and extent >= max(2 * min_width, 10 * level.res):   # junction blobs, stubs
+            # Junction blobs and stubs inside the cell are dropped; pieces clipped at a cell border are real roads
+            # that continue next door, so they only need to pass the length check.
+            on_border = len(s) > 0 and any(_on_edge(p, cell) for p in (s[0], s[-1]))
+            if length >= 3 * level.tol and (on_border or extent >= max(2 * min_width, 10 * level.res)):
                 out.append(Shape(style, s, length))
     return out
 

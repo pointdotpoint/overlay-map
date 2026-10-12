@@ -250,3 +250,11 @@ def test_resimplify_drops_slivers_keeps_lines_and_closed_rings():
     out = _resimplify({(0, 0): Cell(0, 0, [sliver, road, square])}, 0.5)[(0, 0)].shapes
     assert [s.style for s in out] == ["road", "block1"]
     assert np.array_equal(out[1].pts[0], out[1].pts[-1]) and len(out[1].pts) >= 4
+
+
+def test_build_level_ignores_boxes_below_min_height():
+    b = boxes([20, 25, 10, 10, 3, 0], [80, 25, 10, 10, 10, 0])       # 3 m (ground) and 10 m tall
+    src = Sources([], [], [], [], b, TF)
+    _, cells = build_level(LV, src, (0.0, 0.0, 100.0, 50.0), log=lambda *_: None, workers=1)
+    blocks = [s for c in cells.values() for s in c.shapes if s.style.startswith("block")]
+    assert len(blocks) == 1 and blocks[0].pts[:, 0].min() > 50
