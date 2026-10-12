@@ -334,7 +334,22 @@ public class NMSelfTest {
         this.Check("tiles.pick_level", NMTileLayer.PickLevel(first * 0.25) == 0 && NMTileLayer.PickLevel(first) == 0
             && (n < 2 || NMTileLayer.PickLevel(first * 1.01) == 1) && NMTileLayer.PickLevel(last * 10.0) == n - 1, "");
         this.Check("tiles.ui_atlas_in_depot", GameInstance.GetResourceDepot().ResourceExists(NMTheme.UiAtlas()), "nightmap\\ui\\ui.inkatlas not found: archive not installed?");
-        this.Check("tiles.level0_has_tiles", ArraySize(NMTileManifest.LevelTiles(0)) > 0, "");
+        let allNonEmpty = n >= 1;
+        let counts = "";
+        let t0: array<Int32>;
+        let li = 0;
+        while li < n {
+            let t: array<Int32> = NMTileManifest.LevelTiles(li);
+            if li == 0 { t0 = t; }
+            let cnt = ArraySize(t);
+            if cnt <= 0 { allNonEmpty = false; }
+            counts += (li > 0 ? "," : "") + ToString(cnt);
+            NMLog.Info("TEST|INFO|tiles.level" + ToString(li) + "|count=" + ToString(cnt) + "|nx=" + ToString(NMTileManifest.LevelNx(li)) + "|ny=" + ToString(NMTileManifest.LevelNy(li)));
+            li += 1;
+        }
+        NMLog.Info("TEST|INFO|tiles.level0_temp_count=" + ToString(ArraySize(NMTileManifest.LevelTiles(0))));
+        this.Check("tiles.level0_has_tiles", ArraySize(t0) > 0, "count=" + ToString(ArraySize(t0)));
+        this.Check("tiles.all_levels_have_tiles", allNonEmpty, "counts=" + counts);
     }
 
     private func RendererCases() {
