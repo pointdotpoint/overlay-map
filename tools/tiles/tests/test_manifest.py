@@ -25,3 +25,29 @@ def test_empty_tile_list_uses_typed_empty_array():
 def test_stub_reports_unavailable():
     src = emit_stub()
     assert "return false;" in src and "LevelCount() -> Int32 {\n        return 0;" in src
+
+
+def _level_text(n):
+    import re
+    from nmtiles.manifest import emit_manifest
+    nx = 20
+    tiles = [(i % nx, i // nx) for i in range(n)]
+    lv = [dict(mpp=1.0, origin_x=0.0, origin_top=0.0, nx=nx, ny=n // nx + 1, tiles=tiles)]
+    src = emit_manifest(lv, (0.0, 0.0, 1.0, 1.0), "t")
+    return src, list(range(n)), re
+
+
+def test_literals_capped_at_128():
+    src, _, re = _level_text(300)
+    lits = re.findall(r"\[([^\]]*)\]", src)
+    assert lits
+    assert max(len(l.split(",")) for l in lits) <= 128
+
+
+def test_chunked_order_reconstructs():
+    src, expect, re = _level_text(300)
+    body = src.split("func LevelTiles")[1].split("case 0:")[1].split("default:")[0]
+    got = []
+    for l in re.findall(r"\[([^\]]*)\]", body):
+        got += [int(x) for x in l.split(",")]
+    assert got == expect and len(got) == 300
