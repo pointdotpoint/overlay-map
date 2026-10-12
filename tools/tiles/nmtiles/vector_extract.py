@@ -62,7 +62,7 @@ def line_features(meshes: list[Mesh], tf: Transform, cell: Rect, level: VLevel, 
     win = grow(cell, 2 * level.res + min_width)
     mask = window_mask(meshes, tf, win, level.res)
     if min_width > 0 and mask.any():
-        mask = ndimage.binary_opening(mask, structure=disk(max(1, int(round(min_width / 2 / level.res)))))
+        mask = ndimage.binary_opening(mask, structure=disk(max(1, int((min_width / level.res - 1) // 2))))
     out = []
     for ring in mask_rings(mask, win[0], win[3], level.res):
         for run in clip_polyline(ring, cell):

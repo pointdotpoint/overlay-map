@@ -97,3 +97,12 @@ def test_block_min_area_filter():
 
 def test_height_style_buckets():
     assert (height_style(5), height_style(30), height_style(79.9), height_style(80)) == ("block0", "block1", "block1", "block2")
+
+
+@pytest.mark.parametrize("res,min_w,keep,drop", [(2.0, 14.0, 14, 10), (4.0, 20.0, 20, None)])
+def test_road_width_opening_keeps_road_of_exactly_min_width(res, min_w, keep, drop):
+    lv = VLevel("T", 0.5, 1.0, 0.25, 200.0, res, min_w, 2.0, 0.0, 20.0)
+    cell = (0.0, 0.0, 200.0, 200.0)
+    assert len(line_features([strip((-40, 100), (240, 100), keep)], TF, cell, lv, "road", min_width=min_w)) == 2
+    if drop:
+        assert line_features([strip((-40, 100), (240, 100), drop)], TF, cell, lv, "road", min_width=min_w) == []
