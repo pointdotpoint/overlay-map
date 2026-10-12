@@ -77,19 +77,19 @@ public abstract class NMTileManifest {
     }
 
     public static func WorldMinX() -> Float {
-        return -7999.3;
+        return -7998.5;
     }
 
     public static func WorldMinY() -> Float {
-        return -8000.7;
+        return -8000.1;
     }
 
     public static func WorldMaxX() -> Float {
-        return 7998.5;
+        return 7999.3;
     }
 
     public static func WorldMaxY() -> Float {
-        return 8000.1;
+        return 8000.7;
     }
 
 }
