@@ -7,7 +7,7 @@ from typing import Callable
 import numpy as np
 
 from nmtiles.vector_cells import Cell, VGrid, order
-from nmtiles.vector_config import BLOCK_STYLES, POINT_BUDGET, SHAPE_BUDGET, VIEW_UNITS, VLevel
+from nmtiles.vector_config import BLOCK_STYLES, STYLES, POINT_BUDGET, SHAPE_BUDGET, VIEW_UNITS, VLevel
 from nmtiles.vector_geom import douglas_peucker
 
 # Order fixed by the spec: smallest blocks, then road width, then tolerance (at most 2x).
@@ -44,6 +44,20 @@ def worst_view(level: VLevel, grid: VGrid, cells: dict, point_budget: int = POIN
             if load > best_load:
                 best_load, best = load, (p, s, (float(x0), float(y1)))
     return best
+
+
+def view_breakdown(level: VLevel, cells: dict, at: tuple[float, float]) -> dict:
+    """Per-style {shapes, points} over the cells a worst-case view at `at` (min x, max y) touches."""
+    x0, y1 = at
+    vw, vh = VIEW_UNITS[0] * level.max_mpp, VIEW_UNITS[1] * level.max_mpp
+    out = {st: {"shapes": 0, "points": 0} for st in STYLES}
+    for c in cells.values():
+        b = c.bounds()
+        if b[2] >= x0 and b[0] <= x0 + vw and b[3] >= y1 - vh and b[1] <= y1:
+            for sh in c.shapes:
+                out[sh.style]["shapes"] += 1
+                out[sh.style]["points"] += len(sh.pts)
+    return out
 
 
 def _drop_small_blocks(cells: dict, min_area: float) -> dict:

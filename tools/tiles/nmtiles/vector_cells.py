@@ -11,7 +11,7 @@ from typing import Callable
 import numpy as np
 
 from nmtiles.buildings import box_corners
-from nmtiles.vector_config import STYLES, VLevel
+from nmtiles.vector_config import MIN_BOX_HEIGHT, STYLES, VLevel
 from nmtiles.vector_extract import Rect, Shape, Sources, area_features, block_features, line_features
 
 
@@ -90,13 +90,13 @@ def _tile_job(tile):
     iy0, iy1 = ty * BLOCK_TILE, min(g.ny, (ty + 1) * BLOCK_TILE)
     ra, rb = g.rect(ix0, iy1 - 1), g.rect(ix1 - 1, iy0)
     rect = (ra[0], ra[1], rb[2], rb[3])
-    out = []
-    for s in block_features(_JOB["corners"], _JOB["centres"], _JOB["heights"], rect, level):
+    out, stats = [], {}
+    for s in block_features(_JOB["corners"], _JOB["centres"], _JOB["heights"], rect, level, stats):
         c = s.pts[:-1].mean(axis=0)
         ix = min(max(math.floor((c[0] - g.ox) / g.cell), ix0), ix1 - 1)
         iy = min(max(math.floor((g.otop - c[1]) / g.cell), iy0), iy1 - 1)
         out.append(((ix, iy), s))
-    return out
+    return out, stats.get("dropped", 0)
 
 
 def _run(fn, items, workers: int | None):
@@ -125,10 +125,11 @@ def road_shapes(level: VLevel, src: Sources, grid: VGrid,
 def build_level(level: VLevel, src: Sources, extent: Rect, log: Callable[[str], None] = print,
                 workers: int | None = None) -> tuple[VGrid, dict[tuple[int, int], Cell]]:
     g = grid_for(level, extent)
-    corners = box_corners(src.boxes) + np.array([src.tf.dx, src.tf.dy])
+    keep = np.asarray(src.boxes.dz, float) >= MIN_BOX_HEIGHT       # the single place low boxes are ignored
+    corners = (box_corners(src.boxes) + np.array([src.tf.dx, src.tf.dy]))[keep]
     _JOB.clear()
     _JOB.update(level=level, src=src, grid=g, corners=corners, centres=corners.mean(axis=1),
-                heights=np.asarray(src.boxes.dz, float))
+                heights=np.asarray(src.boxes.dz, float)[keep])
     try:
         rows = _run(_row_job, [(iy, ("area", "road", "metro")) for iy in range(g.ny)], workers)
         log(f"{level.name}: rows done, grid {g.nx} x {g.ny}")
@@ -138,7 +139,9 @@ def build_level(level: VLevel, src: Sources, extent: Rect, log: Callable[[str], 
         th = min(g.ny, BLOCK_TILE) * g.cell + 2 * margin
         window_px = tw / level.res * th / level.res
         n = (os.cpu_count() or 1) if workers is None else workers
-        blocks = _run(_tile_job, tiles, min(n, max(1, int(8e9 // (window_px * 24)))))
+        tile_out = _run(_tile_job, tiles, min(n, max(1, int(8e9 // (window_px * 24)))))
+        blocks = [b for b, _ in tile_out]
+        log(f"{level.name}: dropped {sum(d for _, d in tile_out)} truncated blocks (touching the window border)")
     finally:
         _JOB.clear()
     by_cell: dict = {}

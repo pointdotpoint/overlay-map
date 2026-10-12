@@ -68,7 +68,8 @@ def line_features(meshes: list[Mesh], tf: Transform, cell: Rect, level: VLevel, 
         for run in clip_polyline(ring, cell):
             s = douglas_peucker(run, level.tol)
             length = float(np.hypot(*np.diff(s, axis=0).T).sum()) if len(s) >= 2 else 0.0
-            if length >= 3 * level.tol:
+            extent = float(np.ptp(s, axis=0).max()) if len(s) else 0.0
+            if length >= 3 * level.tol and extent >= max(2 * min_width, 10 * level.res):   # junction blobs, stubs
                 out.append(Shape(style, s, length))
     return out
 
@@ -95,8 +96,10 @@ def height_style(h: float) -> str:
 
 
 def block_features(corners: np.ndarray, centres: np.ndarray, heights: np.ndarray, cell: Rect,
-                   level: VLevel) -> list[Shape]:
+                   level: VLevel, stats: dict | None = None) -> list[Shape]:
     """Merged building blocks whose outline centroid lies in the cell.
+
+    Blocks whose traced outline touches the window border are truncated and dropped (counted in stats["dropped"]).
 
     corners: (N,4,2) world box corners; centres: (N,2); heights: (N,) metres.
     """
@@ -136,6 +139,11 @@ def block_features(corners: np.ndarray, centres: np.ndarray, heights: np.ndarray
         for ring in mask_rings(sub, ox, oy, res):
             s = douglas_peucker(ring, level.tol)
             if len(s) < 4:
+                continue
+            if (s[:, 0].min() <= x0 + res or s[:, 0].max() >= x1 - res
+                    or s[:, 1].min() <= y0 + res or s[:, 1].max() >= y1 - res):
+                if stats is not None:
+                    stats["dropped"] = stats.get("dropped", 0) + 1
                 continue
             a = polygon_area(s)
             c = s[:-1].mean(axis=0)

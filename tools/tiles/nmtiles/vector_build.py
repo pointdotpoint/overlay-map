@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Callable
 
-from nmtiles.vector_budget import fit_level
+from nmtiles.vector_budget import fit_level, view_breakdown
 from nmtiles.vector_cells import build_level, road_shapes
 from nmtiles.vector_config import LEVELS
 from nmtiles.vector_extract import Sources
@@ -27,7 +27,7 @@ def build_vector(styled: dict, boxes, tf, extent, ws: Path, out_dir: Path, templ
         grid, cells = build_level(level, src, extent, log)
         used, cells, rep = fit_level(level, grid, cells, lambda lv: road_shapes(lv, src, grid), log, strict=strict)
         rows.append(write_level(ws, li, used, grid, cells, template))
-        report.append({**rep, "cells": len(cells), "params": used.__dict__, "seconds": round(time.time() - t0)})
+        report.append({**rep, "cells": len(cells), "params": used.__dict__, "styles": view_breakdown(used, cells, rep["at"]), "seconds": round(time.time() - t0)})
         cx, cy = DOWNTOWN
         write_svg(out_dir / f"vector_V{li}_downtown.svg", cells,
                   (cx - CROP[0] / 2, cy - CROP[1] / 2, cx + CROP[0] / 2, cy + CROP[1] / 2), used.min_mpp)
@@ -39,5 +39,6 @@ def build_vector(styled: dict, boxes, tf, extent, ws: Path, out_dir: Path, templ
     for r in report:
         log(f"  {r['level']}: {r['points']} points / {r['shapes']} shapes, over_budget={r['over_budget']}, "
             f"{r['cells']} cells, {r['seconds']}s")
+        log("      " + ", ".join(f"{k} {v['shapes']}/{v['points']}" for k, v in r["styles"].items() if v["shapes"]))
     (out_dir / "vector_budget.json").write_text(json.dumps(report, indent=2))
     return rows

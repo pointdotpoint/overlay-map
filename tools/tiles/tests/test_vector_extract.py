@@ -106,3 +106,23 @@ def test_road_width_opening_keeps_road_of_exactly_min_width(res, min_w, keep, dr
     assert len(line_features([strip((-40, 100), (240, 100), keep)], TF, cell, lv, "road", min_width=min_w)) == 2
     if drop:
         assert line_features([strip((-40, 100), (240, 100), drop)], TF, cell, lv, "road", min_width=min_w) == []
+
+
+def test_block_touching_window_border_is_dropped():
+    lv = VLevel("T", 0.5, 1.0, 0.25, 50.0, 0.5, 0.0, 2.0, 0.0, 20.0)
+    cell = (0.0, 0.0, 50.0, 50.0)                       # window -20..70
+    stats = {}
+    b = boxes([25, 25, 140, 8, 10, 0])                    # 140 m long: runs off both window sides
+    corners = box_corners(b)
+    assert block_features(corners, corners.mean(axis=1), np.asarray(b.dz), cell, lv, stats) == []
+    assert stats["dropped"] == 1
+    assert len(_blocks([[25, 25, 8, 8, 10, 0]], cell, lv)) == 1
+
+
+def test_small_junction_blob_dropped_long_road_kept():
+    lv = VLevel("T", 0.5, 1.0, 0.25, 200.0, 2.0, 8.0, 2.0, 0.0, 20.0)
+    cell = (0.0, 0.0, 200.0, 200.0)
+    assert line_features([quad(97, 97, 103, 103)], TF, cell, lv, "road", min_width=8.0) == []
+    lv0 = VLevel("T", 0.5, 1.0, 0.25, 200.0, 2.0, 0.0, 2.0, 0.0, 20.0)
+    assert line_features([quad(94, 94, 106, 106)], TF, cell, lv0, "road") == []       # 12 m blob < 10 * res
+    assert len(line_features([strip((-40, 100), (240, 100), 14)], TF, cell, lv, "road", min_width=8.0)) == 2
