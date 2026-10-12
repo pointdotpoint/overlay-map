@@ -1,6 +1,6 @@
 # NightMap sub-project 1b: vector map layer
 
-Status: approved in brainstorming on 2026-10-12. Awaiting written-spec review.
+Status: approved in brainstorming on 2026-10-12. Revised while planning on 2026-10-12: vector blocks instead of individual buildings, contour-based road edges, and per-style manifest counts.
 Builds on: `docs/superpowers/specs/2026-10-11-nightmap-core-design.md` (sub-project 1, merged to `main` at 56a63d4).
 Evidence: `notes/VECTOR-SPIKE.md` (three in-game spikes), `notes/CHECKPOINTS.md` (checkpoint 2).
 
@@ -17,7 +17,8 @@ Sub-project 1 draws the map from baked raster tiles at 2/4/8/16 m per pixel. At 
 | Frame budget for the map | **+2 ms average / +4 ms p95** over the closed baseline, with the map open and no markers. The markers keep their own existing budget on top. |
 | Approach | **A: vector tiles.** Pipeline-built shape resources, one per zoom level and grid cell. The runtime attaches only the visible cells. |
 | Metro line | **Solid** thin pink line. This departs from the mockup's dashes, because dashing a shape costs widgets. |
-| Fallback | A **Map renderer: Vector / Raster** setting, default Vector. The renderer falls back to raster automatically if the vector data is missing. |
+| Buildings | **Vector blocks at every level** (decided while planning, 2026-10-12). A downtown view at the closest zoom holds about 21,000 building boxes, about 50× the outline budget. Merged with a 2 m gap, the same view holds about 100 blocks (about 225 at a 1.4 km view). Individual buildings are not drawn. |
+| Fallback | A **Vector map** on/off setting (on by default; off = raster tiles). The renderer falls back to raster automatically if the vector data is missing. |
 
 ### Hard constraints proven in-game (`notes/VECTOR-SPIKE.md`)
 
@@ -43,56 +44,64 @@ Sub-project 1 draws the map from baked raster tiles at 2/4/8/16 m per pixel. At 
 
 ## 3. Zoom levels and cells
 
-Each vector level covers a range of camera zoom, given in m per map unit. "Unit" means a HUD virtual-window unit. The worst-case map area is **1882 × 1480 units**: the 4K panel, with the 1.75 aspect cap bounding ultrawide screens.
+Each of the five vector levels covers a range of camera zoom, given in m per map unit. "Unit" means a HUD virtual-window unit. The worst-case map area is **1882 × 1480 units**: the 4K panel, with the 1.75 aspect cap bounding ultrawide screens.
 
-| Level | Camera range | Simplify tolerance | Cell size | Content |
-|---|---|---|---|---|
-| V0 | 0.5 – 1.5 | 0.25 m | 250 m | All roads (edges), individual buildings, water, land, metro |
-| V1 | 1.5 – 4 | 0.75 m | 600 m | All roads, buildings merged into blocks (gap ≤ 2 m), water, land, metro |
-| V2 | 4 – 10 | 2 m | 1500 m | Roads above a width threshold, blocks merged with gap ≤ 8 m, water, land, metro |
-| V3 | 10 – 32 | 5 m | 4000 m | Major roads only, district-scale blocks or none, coastline, water, metro |
+| Level | Camera range | Simplify tolerance | Cell size | Raster | Content |
+|---|---|---|---|---|---|
+| V0 | 0.5 – 0.8 | 0.25 m | 250 m | 0.5 m | All roads (edges), blocks (gap 2 m), water, land, metro |
+| V1 | 0.8 – 1.6 | 0.4 m | 500 m | 0.5 m | All roads, blocks (gap 6 m, ≥ 100 m²), water, land, metro |
+| V2 | 1.6 – 4 | 0.8 m | 1000 m | 1 m | Roads ≥ 8 m wide, blocks (gap 12 m, ≥ 600 m²), water, land, metro |
+| V3 | 4 – 10 | 2 m | 2000 m | 2 m | Roads ≥ 14 m wide, blocks (gap 30 m, ≥ 4000 m²), water, land, metro |
+| V4 | 10 – 32 | 5 m | 4000 m | 4 m | Roads ≥ 20 m wide, blocks (gap 60 m, ≥ 20000 m²), coastline, water, metro |
+
+Downtown density, measured on the real data, sets these ranges. With a 2 m gap there are about 146 blocks per km². The view's area in km² is 2.79 × mpp² (1882 × 1480 units). Each level therefore keeps its blocks at or below about 250 per view, which leaves room for road-edge rings within the 360-shape headroom.
 
 - **Simplify tolerance** is half a pixel at the level's most zoomed-in end. Paths are therefore never visibly faceted, and no points are spent beyond that.
 - **Hysteresis:** a level switches when the camera passes its boundary by 8% in either direction.
 - **Cell size** is chosen so the worst-case view covers about 3×3 to 4×4 cells.
 - **Tuning:** the content thresholds (road width, merge gap, smallest building kept) are tuning parameters in one Python config table. The budget check (§4.5) tunes them, and the table above gives the starting values.
-- **Camera range:** the camera's max zoom-out rises from 16 to 32 m/unit, so the whole city fits at V3. The raster fallback still stops at 16, so in Raster mode it clamps to 16.
+- **Camera range:** the camera's max zoom-out rises from 16 to 32 m/unit, so the whole city fits at V4. The raster fallback still stops at 16, so in Raster mode it clamps to 16.
 
 ## 4. Pipeline (offline, `tools/tiles/nmtiles/`, Python)
 
 It reuses the existing mesh export, `glb` reader, building boxes and calibration transform. New modules each have one job.
 
 ### 4.1 Feature extraction (`vector_extract.py`)
-- **Roads.** Rasterize the road surface (`3dmap_roads`) into a 1 m/px mask in world space, then:
-  1. Skeletonize the mask to centrelines. Implement Zhang–Suen thinning in numpy (scikit-image is not available).
-  2. Trace the skeleton into polylines between junctions and endpoints.
-  3. Attach a road width from the distance transform: twice the median distance along the path.
-  4. Emit **road edge lines** by offsetting each centreline by ±width/2. Edge lines are the approved look: cyan road outlines.
-  5. Keep the centreline and width. V2 and V3 filter on width.
-- **Metro.** Use the same skeleton-and-trace method on `3dmap_metro`, emitting centrelines only.
-- **Buildings.** Take the 246,802 boxes from `buildings.py`, each an oriented rectangle with a height.
-- **Land and water.** Take the outer rings of the terrain and water masks, traced at 2 m/px. Islands are separate rings. Holes are dropped (constraint 2), so lakes are water drawn on top of land.
+All mask work is done **per cell**, on a window around the cell, at the level's raster resolution: 0.5/1/2/4 m per px for V0–V3. Contours come from `contourpy` (marching squares, already installed). Cell origins and window margins are whole multiples of the resolution, so neighbouring cells trace identical contours along their shared edge.
+
+- **Roads.** Rasterize the road surface (`3dmap_roads`) and trace the iso-0.5 contours of the mask. Those contours *are* the **road edge lines**, the approved look of cyan road outlines.
+  - On levels with a minimum road width, apply a morphological opening with a disk of that diameter first. That removes narrower roads without needing centrelines.
+  - Contours are clipped to the cell rectangle into open polylines (Liang–Barsky).
+- **Metro.** Use the same contour tracing on `3dmap_metro`. Its two edge lines are about 6 m apart and read as one solid pink line at most zooms.
+- **Land and water.** Fill-only polygons, traced on exactly the cell rectangle with holes filled, so the polygons are clipped at the cell edges. Fill has no border, so the seams are invisible.
+  - Land is the terrain mask minus the water mask.
+  - Water is drawn on top of land.
+- **Blocks.** Take the 246,802 boxes from `buildings.py` and rasterize them per cell, on a window grown by the level's block margin (300/300/600/1200/4000 m for V0–V4) so that whole blocks are seen; a block is kept only by the cell that contains its centroid. Then:
+  1. Close with a disk of the merge gap and fill holes.
+  2. Label the connected components.
+  3. Trace each component's outer ring.
+  4. Bucket each block by the maximum box height inside it: < 30 m, < 80 m, or above.
+
+  Closed rings repeat their first point at the end, because the Border variant does not close a path.
 
 ### 4.2 Generalisation (`vector_lod.py`)
 - **Per level:** Douglas–Peucker with the level's tolerance; drop roads below the level's width threshold; drop polylines shorter than 3 × tolerance.
-- **Blocks.** Rasterize the buildings at the level's resolution and dilate by the merge gap. Then trace the outer rings, erode them back by the same amount, and simplify. Each block keeps its maximum height for shading.
+- **Blocks.** Drop blocks smaller than the level's minimum area.
 
 ### 4.3 Cell clipping (`vector_cells.py`)
 - **Clipping.** Clip every feature to its level's grid cells; polylines are split at cell edges.
-- **Ownership.** A polygon belongs to the cell that contains its centroid. It is not clipped, so each outline stays one widget. The cell's draw bounds grow by that polygon's extent, which the runtime uses for culling.
+- **Ownership.** A block belongs to the cell that contains its centroid. It is not clipped, so each outline stays one widget. The cell's draw bounds grow by that block's extent, which the runtime uses for culling. Land and water are clipped per cell (§4.1).
 - **Ordering.** Within a cell, shapes are ordered by draw order (land, water, blocks/buildings, roads, metro) and then by priority (bigger first).
 
 ### 4.4 Output (`vector_write.py`, extended `manifest.py`)
 - **One `inkShapeCollectionResource` per non-empty cell**, at `nightmap\vec\V{l}\c_{ix}_{iy}.inkshapecollection`.
-  - Presets are named `s0`, `s1`, … in draw order.
-  - Points are in **level-local units**: world metres minus the cell origin, divided by the level's design unit (the min mpp of its range). Y points down.
+  - Presets are named `s0`, `s1`, … in draw order. The styles are land, water, block0, block1, block2, road and metro; within a style, the most important shape comes first (largest area or longest).
+  - Points are in **level-local units**: world metres minus the cell's draw-bounds corner (min X, max Y), divided by the level's design unit (the min mpp of its range). Y points down, so every point lies within [0, w] × [0, h] of the cell's draw bounds. The widget is placed at the draw bounds and sized to them.
   - The resources are written as WolvenKit JSON from the vanilla template, run through one batched `convert d`, and packed into `NightMap.archive` next to the raster tiles.
 - **Generated `Generated/VectorManifest.reds`** (`NMVectorManifest`):
   - `Available()`
   - level count, plus each level's min/max mpp, design unit, cell size, origin and grid dimensions
-  - for each cell: whether it exists, shape count, total points, and draw bounds
-  - for each shape: style id (land, water, block, building, road, metro) and point count
-  - for each building or block shape: a height bucket for shading
+  - for each non-empty cell: its key (`iy * nx + ix`), its draw bounds in level units, and **per style** the shape count and the point total. Per-shape data would make the generated script far too large.
   - **Large arrays are chunked to ≤ 128 elements per literal**, and callers bind them to locals. This follows the redscript gotcha from sub-project 1: `ArraySize` on a call temporary returns 0.
 
 ### 4.5 Budget check (`vector_budget.py`)
@@ -117,11 +126,13 @@ The pipeline writes one **SVG** per level of the whole map, plus downtown crops 
   - scale = design unit / camera mpp
   - translation places the cell origins relative to the camera centre
 - **Thickness.** Each style has a target width in screen units, defined in `NMTheme`. When the container scale changes by more than 5% since the last update, every attached shape is set to target ÷ scale.
+- **Pivot.** Each container's render-transform pivot is (0, 0).
 - **Cells and pool.**
   - Visible cells are those whose draw bounds intersect the view.
-  - Shapes come from a pool of 450 `inkShape` widgets. Reusing a widget means calling `SetResource(cell)` and `SetShape(sN)`, then applying the style (variant, colours, opacity, thickness).
+  - Shapes come from a pool of 800 `inkShape` widgets, enough for two levels during a transition. Reusing a widget means calling `SetResource(cell)` and `SetShape(sN)`, then applying the style (variant, colours, opacity, thickness).
+  - A cell whose resource does not exist in the depot (`ResourceExists`) attaches nothing.
   - When a cell leaves the view, its widgets return to the pool.
-- **Runtime budget guard.** The layer sums the manifest point counts of the attached shapes. When a view would exceed 30,000 points or 400 shapes, it skips the lowest-priority shapes: buildings and blocks first, then the narrowest roads. It logs a warning once per session.
+- **Runtime budget guard.** The layer attaches in two passes over the visible cells, centre outward. The first pass attaches land, water, roads and metro; the second attaches blocks. A style group is skipped once adding it would pass 30,000 points or 400 shapes; the group's points come from the manifest's per-style totals. The layer logs a warning once per session.
 - **Level transitions.** The old level stays attached until every visible cell of the new level has been assigned and one frame has passed. The old level is then released. Only one transition runs at a time, and further zoom input simply retargets it.
 - **Styles** come from the approved palette. The values below are starting values, tuned at checkpoint 3.
 
@@ -138,7 +149,7 @@ The pipeline writes one **SVG** per level of the whole map, plus downtown crops 
 | Situation | Behaviour |
 |---|---|
 | A cell's resource is missing or never draws | The cell stays empty and the layer logs once. |
-| A whole level draws nothing for 3 s (manifest says cells exist, but no attached shape reports loaded) | Automatic switch to Raster, with the panel warning "Vector map failed to load — showing raster tiles". |
+| No visible cell's resource exists for 3 s while the manifest lists cells there (the archive is stale or missing) | Automatic switch to Raster, with the panel warning "Vector map failed to load — showing raster tiles". |
 | The pool is exhausted | The farthest cells are dropped first; the layer logs once. |
 | The runtime budget guard trips | Low-priority shapes are skipped (§5); the layer logs once. |
 | Vector manifest is the stub | Raster is used with no warning. The existing "tiles not found" warning still covers a missing archive. |
@@ -180,7 +191,7 @@ The pipeline writes one **SVG** per level of the whole map, plus downtown crops 
 
 | Risk | Mitigation |
 |---|---|
-| Skeleton tracing on dense downtown interchanges gives spurs or broken chains | Prune spurs shorter than 2 × road width. The SVG previews show problems before any game run. |
+| Road-edge rings in dense downtown cells push the shape count toward the 400 limit | The build's budget check measures it per level and tightens automatically (§4.5). The SVG previews show the result. |
 | The budget fails at V1/V2 downtown | Automatic tightening (§4.5). If it still fails, the build stops early, at build time rather than in-game. |
 | Async resource loading causes pop-in when panning fast | Cells are attached when they are partially visible, and level transitions keep the old level. If pop-in is still visible, prefetch one ring at zero opacity, after measuring that hidden shapes are free (a spike-1 result suggests they are). |
 | Archive size from about 4 levels × hundreds of cells | Shape JSON is small (the spike's 7 presets packed to 24 KB). Estimate below 15 MB; the build reports the actual size. |
