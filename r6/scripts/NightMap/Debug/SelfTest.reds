@@ -19,6 +19,7 @@ public class NMSelfTest {
         this.TileCases();
         this.RendererCases();
         this.PickCases();
+        this.VersionCases();
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 
@@ -376,6 +377,15 @@ public class NMSelfTest {
         L.SetVisible(false);
         r.Update(cam, 1880.0, 1480.0);
         this.Check("renderer.hidden_layer_draws_nothing", r.chipsUsed == 0 && r.clustersUsed == 0, ToString(r.chipsUsed) + "/" + ToString(r.clustersUsed));
+    }
+
+    private func VersionCases() {
+        this.Check("version.normalise.plain", Equals(NightMapSystem.Normalise("2.31"), "2.31"), "");
+        this.Check("version.normalise.v_prefix", Equals(NightMapSystem.Normalise("v2.31"), "2.31"), "");
+        this.Check("version.normalise.dotted_patch", Equals(NightMapSystem.Normalise("2.3.1"), "2.31"), "");
+        this.Check("version.normalise.suffix", Equals(NightMapSystem.Normalise("2.31 (build 12345)"), "2.31"), "");
+        this.Check("version.normalise.leading_space", Equals(NightMapSystem.Normalise(" 2.31"), "2.31"), "");
+        this.Check("version.normalise.garbage_unknown", Equals(NightMapSystem.Normalise("unknown"), ""), "");
     }
 
     private func PickCases() {

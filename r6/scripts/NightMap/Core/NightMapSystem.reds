@@ -185,9 +185,14 @@ public class NightMapSystem extends ScriptableSystem {
         let handler = GameInstance.GetSystemRequestsHandler();
         if IsDefined(handler) && NotEquals(built, "") {
             let running = handler.GetGameVersion();
-            let a = NightMapSystem.MajorMinor(built);
-            let b = NightMapSystem.MajorMinor(running);
-            if NotEquals(b, "") && NotEquals(a, b) {
+            let a = NightMapSystem.Normalise(built);
+            let b = NightMapSystem.Normalise(running);
+            if Equals(a, "") || Equals(b, "") {
+                if !this.versionLogged {
+                    this.versionLogged = true;
+                    NMLog.Info("game version not comparable: tiles built for '" + built + "', game reports '" + running + "'");
+                }
+            } else if NotEquals(a, b) {
                 if !this.versionLogged {
                     this.versionLogged = true;
                     NMLog.Info("game version mismatch: tiles built for " + built + ", game is " + running);
@@ -204,19 +209,45 @@ public class NightMapSystem extends ScriptableSystem {
         }
     }
 
-    // Leading "major.minor" of a version string ("2.31", "v2.31.1" -> "2.31"; "2.3.1" -> "2.3").
-    public static func MajorMinor(v: String) -> String {
-        let s = StrReplaceAll(v, "v", "");
-        let first = StrFindFirst(s, ".");
-        if first < 0 {
-            return s;
+    // Canonical "major.minor" from the leading digits.digits token ("" = unknown, which never warns). A one-digit minor
+    // is joined with the patch number ("2.3.1" -> "2.31", as the game's 2.31 is spelled); a one-digit minor with no
+    // patch is ambiguous ("2.3") and unknown.
+    public static func Normalise(v: String) -> String {
+        let digits = "0123456789";
+        let n = StrLen(v);
+        let i = 0;
+        while i < n && StrFindFirst(digits, StrMid(v, i, 1)) < 0 {
+            i += 1;
         }
-        let rest = StrAfterFirst(s, ".");
-        let second = StrFindFirst(rest, ".");
-        if second < 0 {
-            return s;
+        let major = "";
+        while i < n && StrFindFirst(digits, StrMid(v, i, 1)) >= 0 {
+            major += StrMid(v, i, 1);
+            i += 1;
         }
-        return StrBeforeFirst(s, ".") + "." + StrLeft(rest, second);
+        if Equals(major, "") || i >= n || NotEquals(StrMid(v, i, 1), ".") {
+            return "";
+        }
+        i += 1;
+        let minor = "";
+        while i < n && StrFindFirst(digits, StrMid(v, i, 1)) >= 0 {
+            minor += StrMid(v, i, 1);
+            i += 1;
+        }
+        if Equals(minor, "") {
+            return "";
+        }
+        if StrLen(minor) == 1 {
+            if i + 1 < n && Equals(StrMid(v, i, 1), ".") && StrFindFirst(digits, StrMid(v, i + 1, 1)) >= 0 {
+                i += 1;
+                while i < n && StrFindFirst(digits, StrMid(v, i, 1)) >= 0 {
+                    minor += StrMid(v, i, 1);
+                    i += 1;
+                }
+            } else {
+                return "";
+            }
+        }
+        return major + "." + minor;
     }
 
     public func Close() {
