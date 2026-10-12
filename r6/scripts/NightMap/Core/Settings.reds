@@ -88,6 +88,9 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.description", "Enables the debug key chords and the clip probe.")
     public let debug: Bool = false;
 
+    // Not a setting: trace lines left this session (see NMTrace).
+    public let traceLeft: Int32;
+
     private func OnAttach() {
         NightMapRegisterSettings(this);
     }

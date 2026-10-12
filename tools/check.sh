@@ -8,12 +8,13 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 SANDBOX="${SANDBOX:-/tmp/nightmap-scc}"
 
 rm -rf "$SANDBOX"
-mkdir -p "$SANDBOX/engine/tools" "$SANDBOX/r6/cache" "$SANDBOX/r6/scripts"/{Codeware,RedIMGRetriever,ModSettings}
+mkdir -p "$SANDBOX/engine/tools" "$SANDBOX/r6/cache" "$SANDBOX/r6/scripts"/{Codeware,RedIMGRetriever,ModSettings,RedFileSystem}
 cp "$GAME/engine/tools/scc.exe" "$GAME/engine/tools/scc_lib.dll" "$SANDBOX/engine/tools/"
 cp "$GAME/r6/cache/final.redscripts" "$SANDBOX/r6/cache/"
 cp "$GAME"/red4ext/plugins/Codeware/Scripts/*.reds "$SANDBOX/r6/scripts/Codeware/"
 cp "$GAME"/r6/scripts/RedIMGRetriever/*.reds "$SANDBOX/r6/scripts/RedIMGRetriever/"
 cp "$GAME"/red4ext/plugins/mod_settings/*.reds "$SANDBOX/r6/scripts/ModSettings/"
+cp "$GAME"/r6/scripts/RedFileSystem/*.reds "$SANDBOX/r6/scripts/RedFileSystem/"
 cp -r "$HERE/r6/scripts/NightMap" "$SANDBOX/r6/scripts/NightMap"
 
 # scc only scans the scripts dir reliably when given a path relative to its own tree.

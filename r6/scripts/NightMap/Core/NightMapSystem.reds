@@ -390,13 +390,21 @@ public class NightMapSystem extends ScriptableSystem {
         this.imageRev = this.api.revision;
         this.layerEpoch = this.api.layerEpoch;
         let l = this.panel.layout;
+        let tr = this.Settings();
+        NMTrace.Reset("open", IsDefined(tr) && tr.debug);
         this.vector = null;
         this.tiles = null;
-        if this.UseVector() {
+        NMTrace.Line("UseVector");
+        let useVec = this.UseVector();
+        NMTrace.Line("UseVector=" + ToString(useVec));
+        if useVec {
+            NMTrace.Line("before NMVectorLayer.Create");
             this.vector = NMVectorLayer.Create(this.panel.tiles);
+            NMTrace.Line("after NMVectorLayer.Create");
         }
         if !IsDefined(this.vector) || !this.vector.available {
             this.vector = null;
+            NMTrace.Line("before NMTileLayer.Create");
             this.tiles = NMTileLayer.Create(this.panel.tiles);
         }
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, l.scale);

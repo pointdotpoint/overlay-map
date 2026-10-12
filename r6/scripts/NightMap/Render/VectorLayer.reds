@@ -27,6 +27,8 @@ public class NMVectorLayer {
     private let warnedBudget: Bool;
     private let warnedPool: Bool;
     private let warnedMissing: Bool;
+    private let traceUpdates: Int32;
+    private let traceShapes: Int32;
 
     public static func Create(parent: ref<inkCanvas>) -> ref<NMVectorLayer> {
         let v = new NMVectorLayer();
@@ -39,18 +41,27 @@ public class NMVectorLayer {
         }
         let i = 0;
         while i < NMVectorManifest.LevelCount() {
+            NMTrace.Line("level " + ToString(i) + " FromManifest");
             let l = NMVecLevel.FromManifest(i);
+            NMTrace.Line("level " + ToString(l.index) + " cells=" + ToString(ArraySize(l.keys)) + " nx=" + ToString(l.nx) + " ny=" + ToString(l.ny));
             ArrayPush(v.levels, l);
             ArrayPush(v.mins, l.minMpp);
             ArrayPush(v.maxs, l.maxMpp);
+            NMTrace.Line("canvas " + ToString(i) + " new");
             let c = new inkCanvas();
+            NMTrace.Line("canvas " + ToString(i) + " SetAnchor");
             c.SetAnchor(inkEAnchor.TopLeft);
+            NMTrace.Line("canvas " + ToString(i) + " SetRenderTransformPivot");
             c.SetRenderTransformPivot(new Vector2(0.0, 0.0));
+            NMTrace.Line("canvas " + ToString(i) + " SetInteractive");
             c.SetInteractive(false);
+            NMTrace.Line("canvas " + ToString(i) + " Reparent");
             c.Reparent(parent);
+            NMTrace.Line("canvas " + ToString(i) + " done");
             ArrayPush(v.canvases, c);
             i += 1;
         }
+        NMTrace.Line("pool start " + ToString(NMTheme.VecPoolSize()));
         let p = 0;
         while p < NMTheme.VecPoolSize() {
             let s = new inkShape();
@@ -61,6 +72,7 @@ public class NMVectorLayer {
             ArrayPush(v.pool, s);
             p += 1;
         }
+        NMTrace.Line("pool done");
         return v;
     }
 
@@ -81,7 +93,16 @@ public class NMVectorLayer {
             this.lastRev = -1;
             this.lastScale = 0.0;
         }
+        this.traceUpdates += 1;
+        let early = this.traceUpdates <= 3;
+        if early {
+            NMTrace.Line("update " + ToString(this.traceUpdates) + " level=" + ToString(this.current) + " mpp=" + ToString(cam.mpp));
+            NMTrace.Line("Place start");
+        }
         this.Place(this.current, cam);
+        if early {
+            NMTrace.Line("Place done");
+        }
         if this.previous >= 0 {
             this.Place(this.previous, cam);
         }
@@ -163,7 +184,9 @@ public class NMVectorLayer {
             this.warnedMissing = true;
             NMLog.Error("vector: " + ToString(this.missing) + " visible cells have no shape resource (archive stale or missing?)");
         }
+        NMTrace.Line("sync visible cells=" + ToString(ArraySize(cells)) + " missing=" + ToString(this.missing));
         let plan = NMVectorLayer.PlanGroups(lv, cells, NMTheme.VecPointBudget(), NMTheme.VecShapeBudget());
+        NMTrace.Line("sync plan=" + ToString(ArraySize(plan)));
         if !this.warnedBudget {
             let full = NMVectorLayer.PlanGroups(lv, cells, 2147483647, 2147483647);
             if ArraySize(plan) < ArraySize(full) {
@@ -202,6 +225,7 @@ public class NMVectorLayer {
         let color = NMTheme.VecColor(style);
         let pos = new Vector2(lv.bounds[4 * cell], lv.bounds[4 * cell + 1]);
         let size = new Vector2(MaxF(lv.bounds[4 * cell + 2], 0.01), MaxF(lv.bounds[4 * cell + 3], 0.01));
+        NMTrace.Line("group cell=" + ToString(cell) + " style=" + ToString(style) + " n=" + ToString(n) + " first=" + ToString(first) + " path=" + lv.Path(cell));
         let k = 0;
         while k < n {
             if ArraySize(this.pool) == 0 {
@@ -217,17 +241,25 @@ public class NMVectorLayer {
                 return false;
             }
             let s = ArrayPop(this.pool);
+            let tr = this.traceShapes < 50;
+            this.traceShapes += 1;
+            if tr { NMTrace.Line("shape SetResource"); }
             s.SetResource(path);
+            if tr { NMTrace.Line("shape SetShape s" + ToString(first + k)); }
             s.SetShape(StringToName("s" + ToString(first + k)));
+            if tr { NMTrace.Line("shape styling"); }
             s.SetVariant(NMTheme.VecVariant(style));
             s.SetTintColor(color);
             s.SetFillOpacity(NMTheme.VecFillOpacity(style));
             s.SetBorderColor(color);
             s.SetBorderOpacity(NMTheme.VecBorderOpacity(style));
             s.SetLineThickness(NMVectorLayer.LineWidthFor(style, lv.index, scale));
+            if tr { NMTrace.Line("shape SetTranslation/SetSize"); }
             s.SetTranslation(pos);
             s.SetSize(size);
+            if tr { NMTrace.Line("shape Reparent"); }
             s.Reparent(this.canvases[lv.index]);
+            if tr { NMTrace.Line("shape done"); }
             ArrayPush(this.used, s);
             ArrayPush(this.usedLevel, lv.index);
             ArrayPush(this.usedGroup, cell * 8 + style);
