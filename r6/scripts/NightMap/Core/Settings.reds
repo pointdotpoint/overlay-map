@@ -6,7 +6,7 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category.order", "0")
     @runtimeProperty("ModSettings.displayName", "Open / close map")
     @runtimeProperty("ModSettings.description", "Toggles the NightMap overlay. With Debug on: Ctrl = self-test, Shift = perf suite, Alt = calibration dump, Ctrl+Shift = debug layer.")
-    public let keyToggle: EInputKey = EInputKey.IK_Backslash;
+    public let keyToggle: EInputKey = EInputKey.IK_SingleQuote;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Keys")

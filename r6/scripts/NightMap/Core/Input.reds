@@ -119,6 +119,7 @@ public class NMInput {
         if Equals(s, "NumSlash") { return "NUM /"; }
         if Equals(s, "NumPeriod") { return "NUM ."; }
         if Equals(s, "Backslash") { return "\\"; }
+        if Equals(s, "SingleQuote") { return "'"; }
         return StrUpper(s);
     }
 

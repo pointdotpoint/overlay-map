@@ -292,7 +292,8 @@ public class NMSelfTest {
         inp.Handle(s, EInputKey.IK_NumPlus, press, false, false, false, true);
         this.Check("input.zoom_held", inp.zoomIn && !inp.zoomOut, "");
         this.Check("input.key_names", Equals(NMInput.KeyName(EInputKey.IK_NumPad8), "NUM 8") && Equals(NMInput.KeyName(EInputKey.IK_Backslash), "\\")
-            && Equals(NMInput.KeyName(EInputKey.IK_NumPlus), "NUM +"), NMInput.KeyName(EInputKey.IK_NumPad8));
+            && Equals(NMInput.KeyName(EInputKey.IK_NumPlus), "NUM +")
+            && Equals(NMInput.KeyName(EInputKey.IK_SingleQuote), "'"), NMInput.KeyName(EInputKey.IK_NumPad8));
     }
 
     private func LayoutCases() {
