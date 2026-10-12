@@ -67,7 +67,7 @@ Downtown density, measured on the real data, sets these ranges. With a 2 m gap t
 It reuses the existing mesh export, `glb` reader, building boxes and calibration transform. New modules each have one job.
 
 ### 4.1 Feature extraction (`vector_extract.py`)
-All mask work is done **per cell**, on a window around the cell, at the level's raster resolution: 0.5/1/2/4 m per px for V0–V3. Contours come from `contourpy` (marching squares, already installed). Cell origins and window margins are whole multiples of the resolution, so neighbouring cells trace identical contours along their shared edge.
+All mask work is done **per cell**, on a window around the cell, at the level's raster resolution (the Raster column of §3). Contours come from `contourpy` (marching squares, already installed). Cell origins and window margins are whole multiples of the resolution, so neighbouring cells trace identical contours along their shared edge.
 
 - **Roads.** Rasterize the road surface (`3dmap_roads`) and trace the iso-0.5 contours of the mask. Those contours *are* the **road edge lines**, the approved look of cyan road outlines.
   - On levels with a minimum road width, apply a morphological opening with a disk of that diameter first. That removes narrower roads without needing centrelines.
@@ -141,7 +141,7 @@ The pipeline writes one **SVG** per level of the whole map, plus downtown crops 
   | land | Fill | cyan 5% | — |
   | water | Fill | cyan 13% | — |
   | block / building | FillAndBorder | cyan fill 6% plus height × 6%; border 45% | 1.0 |
-  | road edge | Border | cyan 85% | 1.5 (V0/V1), 1.2 (V2/V3) |
+  | road edge | Border | cyan 85% | 1.5 (V0–V2), 1.2 (V3/V4) |
   | metro | Border | pink 80% | 2.0 |
 
 ## 6. Error handling
