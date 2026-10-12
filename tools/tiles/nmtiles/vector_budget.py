@@ -80,7 +80,7 @@ def _resimplify(cells: dict, tol: float) -> dict:
 
 def fit_level(level: VLevel, grid: VGrid, cells: dict, rebuild_roads: Callable[[VLevel], dict],
               log: Callable[[str], None] = print, point_budget: int = POINT_BUDGET,
-              shape_budget: int = SHAPE_BUDGET) -> tuple[VLevel, dict, dict]:
+              shape_budget: int = SHAPE_BUDGET, strict: bool = False) -> tuple[VLevel, dict, dict]:
     cur, steps = level, []
 
     def fits() -> tuple[bool, tuple]:
@@ -105,6 +105,10 @@ def fit_level(level: VLevel, grid: VGrid, cells: dict, rebuild_roads: Callable[[
         ok, view = fits()
         log(f"{level.name}: after {steps[-1]}: {view[0]} points / {view[1]} shapes")
     if not ok:
-        raise BudgetError(f"{level.name}: worst view {view[0]} points / {view[1]} shapes at {view[2]} "
-                          f"exceeds {point_budget}/{shape_budget} after {steps}")
-    return cur, cells, {"level": level.name, "steps": steps, "points": view[0], "shapes": view[1], "at": view[2]}
+        msg = (f"{level.name}: worst view {view[0]} points / {view[1]} shapes at {view[2]} "
+               f"exceeds {point_budget}/{shape_budget} after {steps}")
+        if strict:
+            raise BudgetError(msg)
+        log(f"WARNING {msg}")
+    return cur, cells, {"level": level.name, "steps": steps, "points": view[0], "shapes": view[1], "at": view[2],
+                        "over_budget": not ok}

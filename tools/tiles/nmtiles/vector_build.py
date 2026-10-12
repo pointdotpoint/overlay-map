@@ -18,16 +18,16 @@ CROP = (2000.0, 1500.0)
 
 
 def build_vector(styled: dict, boxes, tf, extent, ws: Path, out_dir: Path, template: dict, levels=LEVELS,
-                 log: Callable[[str], None] = print) -> list[dict]:
+                 log: Callable[[str], None] = print, strict: bool = False) -> list[dict]:
     src = Sources(roads=styled.get("road", []), metro=styled.get("metro", []), land=styled.get("land", []),
                   water=styled.get("water", []), boxes=boxes, tf=tf)
     rows, report = [], []
     for li, level in enumerate(levels):
         t0 = time.time()
         grid, cells = build_level(level, src, extent, log)
-        used, cells, rep = fit_level(level, grid, cells, lambda lv: road_shapes(lv, src, grid), log)
+        used, cells, rep = fit_level(level, grid, cells, lambda lv: road_shapes(lv, src, grid), log, strict=strict)
         rows.append(write_level(ws, li, used, grid, cells, template))
-        report.append({**rep, "cells": len(cells), "params": used.__dict__})
+        report.append({**rep, "cells": len(cells), "params": used.__dict__, "seconds": round(time.time() - t0)})
         cx, cy = DOWNTOWN
         write_svg(out_dir / f"vector_V{li}_downtown.svg", cells,
                   (cx - CROP[0] / 2, cy - CROP[1] / 2, cx + CROP[0] / 2, cy + CROP[1] / 2), used.min_mpp)
@@ -35,5 +35,9 @@ def build_vector(styled: dict, boxes, tf, extent, ws: Path, out_dir: Path, templ
             write_svg(out_dir / f"vector_V{li}_full.svg", cells, extent, used.min_mpp * 4)
         log(f"{level.name}: {len(cells)} cells, worst view {rep['points']} points / {rep['shapes']} shapes, "
             f"steps {rep['steps']}, {time.time() - t0:.0f}s")
+    log("vector summary:")
+    for r in report:
+        log(f"  {r['level']}: {r['points']} points / {r['shapes']} shapes, over_budget={r['over_budget']}, "
+            f"{r['cells']} cells, {r['seconds']}s")
     (out_dir / "vector_budget.json").write_text(json.dumps(report, indent=2))
     return rows

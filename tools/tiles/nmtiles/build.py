@@ -40,6 +40,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--levels", default="2,4,8,16")
     ap.add_argument("--skip-export", action="store_true", help="reuse build/meshes and build/bdata")
     ap.add_argument("--no-vector", action="store_true", help="skip the vector layer (writes the stub manifest)")
+    ap.add_argument("--vector-budget", choices=("warn", "strict"), default="warn",
+                    help="warn: log an over-budget worst view; strict: fail the build")
     ap.add_argument("--game-version", default="2.31")
     args = ap.parse_args(argv)
     game = args.game.resolve()
@@ -105,7 +107,8 @@ def main(argv: list[str] | None = None) -> int:
         vector_src = emit_vector_stub()
     else:
         shape_tpl = json.loads((TPL / "shapes.inkshapecollection.json").read_text())
-        vector_rows = build_vector(styled, boxes, tf, bounds, ws, out, shape_tpl)
+        vector_rows = build_vector(styled, boxes, tf, bounds, ws, out, shape_tpl,
+                                  strict=args.vector_budget == "strict")
         vector_src = emit_vector_manifest(vector_rows, args.game_version)
 
     deserialize_all(ws)

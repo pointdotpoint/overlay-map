@@ -96,7 +96,20 @@ def test_fit_level_raises_when_nothing_helps():
     cells = {(0, 0): Cell(0, 0, [road])}
     with pytest.raises(BudgetError):
         fit_level(LV, g, cells, rebuild_roads=lambda l: {(0, 0): [road]}, log=lambda *_: None,
-                  point_budget=3, shape_budget=100)
+                  point_budget=3, shape_budget=100, strict=True)
+
+
+def test_fit_level_non_strict_warns_and_flags():
+    g = VGrid(0.0, 100.0, 1, 1, 50.0)
+    road = Shape("road", np.column_stack((np.linspace(0, 40, 50), np.linspace(0, 40, 50) ** 1.5 / 10)), 40.0)
+    cells = {(0, 0): Cell(0, 0, [road])}
+    logs = []
+    lv, out, rep = fit_level(LV, g, cells, rebuild_roads=lambda l: {(0, 0): [road]}, log=logs.append,
+                             point_budget=3, shape_budget=100)
+    assert rep["over_budget"] is True and out and any("WARNING" in m for m in logs)
+    _, _, ok = fit_level(LV, g, cells, rebuild_roads=lambda l: {}, log=lambda *_: None,
+                         point_budget=10000, shape_budget=100)
+    assert ok["over_budget"] is False
 
 
 def _road_mesh():
@@ -177,7 +190,7 @@ def test_fit_level_road_step_and_new_cell():
     assert rep["steps"][-1] == "road 4" and seen == [4.0] and lv.road_min_width == 4.0
     assert set(out) == {(0, 0), (1, 0)} and [s.style for s in out[(0, 0)].shapes] == ["block0"]
     assert out[(1, 0)].shapes[0].style == "road"
-    assert set(rep) == {"level", "steps", "points", "shapes", "at"}
+    assert set(rep) == {"level", "steps", "points", "shapes", "at", "over_budget"}
 
 
 def test_replace_roads_keeps_style_order():
@@ -197,7 +210,7 @@ def test_fit_level_tol_steps_keep_rings_closed():
     cells = {(0, 0): Cell(0, 0, [Shape("block1", ring, 300.0), sliver])}
     lv, out, rep = fit_level(LV, g, cells, rebuild_roads=lambda l: {(0, 0): []}, log=lambda *_: None,
                              point_budget=150, shape_budget=100)
-    assert any(s.startswith("tol") for s in rep["steps"]) and set(rep) == {"level", "steps", "points", "shapes", "at"}
+    assert any(s.startswith("tol") for s in rep["steps"]) and set(rep) == {"level", "steps", "points", "shapes", "at", "over_budget"}
     shapes = out[(0, 0)].shapes
     assert all(np.array_equal(s.pts[0], s.pts[-1]) and len(s.pts) >= 4 for s in shapes)
     assert [s.style for s in shapes] == ["block1"]
