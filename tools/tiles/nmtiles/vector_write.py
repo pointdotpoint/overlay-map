@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from nmtiles.pack import write_resource
-from nmtiles.vector_cells import Cell, VGrid
+from nmtiles.vector_cells import Cell, VGrid, order
 from nmtiles.vector_config import VLevel
 
 MIN_EXTENT = 0.01      # widget size floor (units) for degenerate bounds
@@ -39,6 +39,7 @@ def write_level(ws: Path, level_idx: int, level: VLevel, grid: VGrid, cells: dic
     u = level.min_mpp
     rows = []
     for (ix, iy), cell in sorted(cells.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+        cell = Cell(cell.ix, cell.iy, order(cell.shapes))      # preset order must match the per-style counts (FirstPreset)
         write_resource(ws, depot_path(level_idx, ix, iy), collection_json(template, cell, u))
         minx, miny, maxx, maxy = cell.bounds()
         counts, points = cell.style_counts()

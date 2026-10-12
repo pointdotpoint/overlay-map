@@ -94,3 +94,14 @@ def test_wolvenkit_roundtrip(tmp_path):
     subprocess.run(["WolvenKit.CLI", "convert", "s", str(target), "-o", str(out)], check=True, stdout=subprocess.DEVNULL)
     back = json.loads(next(out.glob("*.json")).read_text())["Data"]["RootChunk"]["presets"]
     assert [p["name"]["$value"] for p in back] == ["s0", "s1"] and len(back[0]["points"]) == 5
+
+
+def test_write_level_orders_shapes_to_match_counts(tmp_path):
+    g = VGrid(0.0, 0.0, 4, 4, 250.0)
+    c = _cell()
+    unordered = Cell(1, 2, [c.shapes[1], c.shapes[0]])      # road before block
+    row = write_level(tmp_path, 0, LV, g, {(1, 2): unordered}, TPL)
+    doc = json.loads((tmp_path / "nightmap" / "vec" / "V0" / "c_1_2.inkshapecollection.json").read_text())
+    presets = doc["Data"]["RootChunk"]["presets"]
+    assert len(presets[0]["points"]) == 5 and len(presets[1]["points"]) == 2      # s0 = block, s1 = road
+    assert row["cells"][0]["counts"] == [0, 0, 0, 1, 0, 1, 0]

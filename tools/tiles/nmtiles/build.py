@@ -13,12 +13,13 @@ from nmtiles.buildings import Boxes, load_boxes
 from nmtiles.encode import encode_bc7
 from nmtiles.export import export_building_data, export_meshes, style_for
 from nmtiles.glb import keep_best_lod, read_glb
-from nmtiles.manifest import emit_manifest
+from nmtiles.manifest import emit_manifest, emit_vector_manifest, emit_vector_stub
 from nmtiles.pack import deserialize_all, pack_archive, write_resource
 from nmtiles.preview import write_previews
 from nmtiles.render import level_grid, render_level, slice_tiles
 from nmtiles.resources import make_inkatlas_json, make_xbm_json
 from nmtiles.ui_atlas import build_ui_atlas
+from nmtiles.vector_build import build_vector
 from nmtiles.world import Transform
 
 HERE = Path(__file__).resolve().parents[1]
@@ -38,6 +39,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=HERE / "build")
     ap.add_argument("--levels", default="2,4,8,16")
     ap.add_argument("--skip-export", action="store_true", help="reuse build/meshes and build/bdata")
+    ap.add_argument("--no-vector", action="store_true", help="skip the vector layer (writes the stub manifest)")
     ap.add_argument("--game-version", default="2.31")
     args = ap.parse_args(argv)
     game = args.game.resolve()
@@ -99,11 +101,21 @@ def main(argv: list[str] | None = None) -> int:
     write_resource(ws, "nightmap\\ui\\ui.inkatlas",
                    make_inkatlas_json(atl_t, "nightmap\\ui\\ui.xbm", ui_parts, 1024, 1024))
 
+    if args.no_vector:
+        vector_src = emit_vector_stub()
+    else:
+        shape_tpl = json.loads((TPL / "shapes.inkshapecollection.json").read_text())
+        vector_rows = build_vector(styled, boxes, tf, bounds, ws, out, shape_tpl)
+        vector_src = emit_vector_manifest(vector_rows, args.game_version)
+
     deserialize_all(ws)
     archive = pack_archive(ws, REPO / "archive" / "pc" / "mod" / "NightMap.archive")
     manifest = REPO / "r6" / "scripts" / "NightMap" / "Generated" / "TileManifest.reds"
     manifest.parent.mkdir(parents=True, exist_ok=True)
     manifest.write_text(emit_manifest(levels, bounds, args.game_version))
+    vmanifest = manifest.parent / "VectorManifest.reds"
+    vmanifest.write_text(vector_src)
+    print(f"vector manifest {vmanifest}")
     mb = archive.stat().st_size / 1e6
     print(f"archive {archive} {mb:.1f} MB; manifest {manifest}")
     if mb > 60:
