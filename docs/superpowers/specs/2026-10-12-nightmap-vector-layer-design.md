@@ -200,3 +200,67 @@ The pipeline writes a 2 km × 1.5 km downtown **SVG** crop for every level, plus
 ## 9. Dependencies
 
 These are unchanged from sub-project 1: Codeware (required), Mod Settings and RedIMG (optional), WolvenKit.CLI, Python 3 with numpy, Pillow and scipy. No new dependencies.
+
+## 10. Revision after checkpoint 3: exact geometry (2026-10-12)
+
+**Why.** In-game, the first vector build was rated "inaccurate / confusing". There were three causes:
+- roads drawn as two edge outlines;
+- jagged building blobs traced from a raster;
+- fills too faint to read.
+
+The user chose **exact geometry**, and of the prototype renders (`.scratch/proto_V0*.png`), the look **filled roads + soft
+filled buildings, no outlines**. This section supersedes §4.1 for roads, land/water and blocks, the road rules of §4.2, the
+styling in §5, and the no-new-dependency line in §9. Metro is unchanged.
+
+### 10.1 Extraction with polygon operations (shapely ≥ 2.1, system package `python-shapely`)
+- **Roads.** Union the road-mesh triangles that touch the cell window (`shapely.union_all`, `grid_size=0.01`), then clip to
+  the cell rectangle.
+  - On levels with a minimum road width, first apply an opening (`buffer(-w/2)` then `buffer(+w/2)`, mitre joins).
+  - The result is **filled road surfaces**, style `road`.
+- **Land and water.** Exact unions:
+  - water = water-mesh union minus land-mesh union (the water mesh is one sea plane under the city);
+  - land = land union minus water.
+  - Both are clipped to the cell.
+- **Blocks.** Union the footprint rectangles of the boxes (height ≥ `MIN_BOX_HEIGHT`) on the block window, then:
+  1. Close by the level's `merge_gap` (buffer out, then in).
+  2. Open by the level's new `open_width` (buffer in, then out). This removes the thin wall slabs that make the raw union noisy.
+  3. Keep exterior rings only.
+  4. Simplify, then drop blocks below `min_area` or touching the window border, as before.
+  5. Ownership stays with the cell containing the centroid.
+  6. Height bucket = the maximum `dz` of the boxes intersecting the block.
+- **Simplification.** shapely `simplify(tol)` on every polygon, then pieces below `(2·tol)²` m² are dropped.
+- **Hole-free pieces.** A shape preset is one path, so a filled polygon cannot carry holes. Any polygon with interiors is
+  split recursively: bisect its bounding box along the longer side, through a point of its first hole, until no piece has
+  holes. The pieces cover the polygon exactly. Blocks only keep exteriors, so this applies to roads, land and water.
+- Every shape is a closed ring (first point repeated) in world metres, as before. Priority stays area for fills.
+
+### 10.2 Levels
+`VLevel` gains `open_width` (m), defaulting to 0.
+
+| | merge_gap | open_width |
+|---|---|---|
+| V0 | 4 | 3 |
+| V1 | 6 | 3 |
+| V2 | 12 | 6 |
+| V3 | 30 | 12 |
+| V4 | 60 | 24 |
+
+All other values are unchanged. The raster resolution is now used by metro only.
+
+### 10.3 Styling (runtime theme and SVG preview, kept identical)
+
+| style | variant | fill opacity | border opacity |
+|---|---|---|---|
+| land | Fill | 0.05 | 0 |
+| water | Fill | 0.16 | 0 |
+| block0 | Fill | 0.14 | 0 |
+| block1 | Fill | 0.19 | 0 |
+| block2 | Fill | 0.24 | 0 |
+| road | Fill | 0.22 | 0 |
+| metro | Border | 0 | 0.80 (unchanged) |
+
+Colours are unchanged: cyan, metro pink.
+
+### 10.4 Acceptance
+The checkpoint-3 gates are unchanged (§7): the perf suite at +2 ms avg / +4 ms p95, plus visual review. One new visual
+check: no visible seams between adjacent road, land or water pieces (cell edges and hole-split cuts).
