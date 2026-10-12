@@ -65,28 +65,54 @@ def test_ring_road_is_split_into_hole_free_pieces():
             strip((c + h, c + h), (c - h, c + h), w), strip((c - h, c + h), (c - h, c - h), w)]
     cell = (0.0, 0.0, 100.0, 100.0)
     shapes = road_features(ring, TF, cell, LV)
-    assert len(shapes) >= 2
     polys = [_poly(s) for s in shapes]
     assert all(not p.interiors for p in polys)
     expect = shapely.union_all([Polygon(m.positions[:, [0, 2]] * [1, -1]) for m in ring]).area
-    assert sum(p.area for p in polys) == pytest.approx(expect, rel=1e-3)
+    assert len(shapes) == 1          # one hole: a single keyhole ring
+    assert expect - 0.5 <= sum(p.area for p in polys) <= expect + 1e-6
     for i in range(len(polys)):
         for j in range(i + 1, len(polys)):
             assert polys[i].intersection(polys[j]).area < 1e-3
 
 
-def test_split_holes_covers_polygon_exactly():
+def _check_cover(poly, pieces):
+    from nmtiles.vector_geom import SLIT
+    slit_area = SLIT * (poly.bounds[3] - poly.bounds[1] + 2) * len(poly.interiors)
+    assert all(not p.interiors for p in pieces)
+    assert poly.area - slit_area <= sum(p.area for p in pieces) <= poly.area + 1e-6
+    assert shapely.union_all(pieces).symmetric_difference(poly).area <= slit_area + 1e-6
+
+
+def test_split_holes_covers_polygon_minus_slits():
     poly = Polygon([(0, 0), (40, 0), (40, 30), (0, 30)], [[(10, 10), (30, 10), (30, 20), (10, 20)]])
     pieces = split_holes(poly)
-    assert len(pieces) >= 2 and all(not p.interiors for p in pieces)
-    assert sum(p.area for p in pieces) == pytest.approx(poly.area, rel=1e-6)
-    assert shapely.union_all(pieces).symmetric_difference(poly).area < 1e-6
-    assert split_holes(Polygon([(0, 0), (1, 0), (1, 1)])) [0].area == pytest.approx(0.5)
+    assert len(pieces) == 1
+    _check_cover(poly, pieces)
+    assert split_holes(Polygon([(0, 0), (1, 0), (1, 1)]))[0].area == pytest.approx(0.5)
 
 
-def test_split_holes_hole_at_extreme_first_coordinate():
+def test_split_holes_top_vertex_on_vertical_exterior_edge():
     poly = Polygon([(0, 0), (40, 0), (40, 30), (0, 30)], [[(10, 10), (10, 20), (30, 20), (30, 10)]])
+    _check_cover(poly, split_holes(poly))
+    poly = Polygon([(0, 0), (40, 0), (40, 30), (0, 30)], [[(10, 10), (10, 20), (30, 15)]])    # top vertex x == 10
+    _check_cover(poly, split_holes(poly))
+
+
+def test_split_holes_three_holes_at_most_two_pieces_and_deterministic():
+    holes = [[(5, 5), (15, 5), (15, 15), (5, 15)], [(20, 5), (30, 5), (30, 25), (20, 25)],
+             [(35, 5), (45, 5), (45, 15), (35, 15)]]
+    poly = Polygon([(0, 0), (50, 0), (50, 30), (0, 30)], holes)
     pieces = split_holes(poly)
+    assert len(pieces) <= 2
+    _check_cover(poly, pieces)
+    again = split_holes(poly)
+    assert [p.wkb for p in pieces] == [p.wkb for p in again]
+
+
+def test_split_holes_bisect_fallback_covers_exactly():
+    from nmtiles.vector_geom import _bisect_holes
+    poly = Polygon([(0, 0), (40, 0), (40, 30), (0, 30)], [[(10, 10), (10, 20), (30, 20), (30, 10)]])
+    pieces = _bisect_holes(poly)
     assert all(not p.interiors for p in pieces)
     assert sum(p.area for p in pieces) == pytest.approx(poly.area, rel=1e-6)
 

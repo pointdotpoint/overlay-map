@@ -8,6 +8,8 @@ from scipy import ndimage
 from shapely.geometry import Polygon
 
 SPLIT_DEPTH = 16
+SLIT_DEPTH = 64
+SLIT = 0.05   # keyhole cut so a filled polygon with holes becomes one simple ring; invisible below 0.1 map unit
 
 
 def douglas_peucker(pts: np.ndarray, tol: float) -> np.ndarray:
@@ -146,8 +148,8 @@ def explode_polygons(g) -> list[Polygon]:
     return _polys(g)
 
 
-def split_holes(poly: Polygon, depth: int = 0) -> list[Polygon]:
-    """Cover poly exactly with hole-free polygons: bisect the bounds along the longer side through the first hole."""
+def _bisect_holes(poly: Polygon, depth: int = 0) -> list[Polygon]:
+    """Fallback: cover poly exactly with hole-free polygons by bisecting the bounds through the first hole."""
     if not poly.interiors:
         return [poly]
     if depth >= SPLIT_DEPTH:
@@ -165,7 +167,26 @@ def split_holes(poly: Polygon, depth: int = 0) -> list[Polygon]:
     out: list[Polygon] = []
     for half in halves:
         for q in _polys(poly.intersection(half)):
-            out += split_holes(q, depth + 1)
+            out += _bisect_holes(q, depth + 1)
+    return out
+
+
+def split_holes(poly: Polygon, depth: int = 0) -> list[Polygon]:
+    """Hole-free polygons covering poly minus thin slits: a slit from each hole's top to the exterior joins it."""
+    if not poly.interiors:
+        return [poly]
+    if depth >= SLIT_DEPTH:
+        return _bisect_holes(poly)
+    hole = max(poly.interiors, key=lambda r: Polygon(r).area)
+    cs = np.asarray(hole.coords)
+    top = cs[int(np.argmax(cs[:, 1]))]
+    x = float(top[0])
+    if np.any(np.abs(np.asarray(poly.exterior.coords)[:, 0] - x) < 1e-9):     # avoid a sliver along a vertical edge
+        x += SLIT
+    cut = shapely.box(x - SLIT / 2, float(top[1]) - 1e-3, x + SLIT / 2, poly.bounds[3] + 1.0)
+    out: list[Polygon] = []
+    for q in _polys(poly.difference(cut)):
+        out += split_holes(q, depth + 1)
     return out
 
 
