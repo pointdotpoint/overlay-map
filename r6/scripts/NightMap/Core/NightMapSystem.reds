@@ -28,6 +28,11 @@ public class NightMapSystem extends ScriptableSystem {
     private let card: ref<NMInfoCard>;
     private let marker: ref<NMPlayerMarker>;
     private let cardApiRev: Int32;
+    private let scaleRev: Int32;
+    private let cacheTotal: Int32;
+    private let cacheN: Int32;
+    private let cacheCats: array<Int32>;
+    private let cacheCounts: array<Int32>;
 
     private func OnAttach() {
         this.api = NightMap.Create();
@@ -233,6 +238,8 @@ public class NightMapSystem extends ScriptableSystem {
 
     private func OnOpened() {
         this.cardApiRev = -1;
+        this.scaleRev = -1;
+        this.cacheTotal = -1;
         let l = this.panel.layout;
         this.tiles = NMTileLayer.Create(this.panel.tiles);
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, l.scale);
@@ -260,7 +267,7 @@ public class NightMapSystem extends ScriptableSystem {
         if relaid {
             let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale);
             // Re-query card content only when the selection or the data changed, not on every pan frame.
-            if changed || this.api.revision != this.cardApiRev {
+            if changed || this.api.revision != this.cardApiRev || this.ClusterStale() {
                 this.cardApiRev = this.api.revision;
                 this.RefreshCard(changed);
             }
@@ -270,9 +277,33 @@ public class NightMapSystem extends ScriptableSystem {
             this.Activate();
         }
         this.marker.Update(this.camera, GetPlayer(this.GetGameInstance()), l.mapW, l.mapH);
+        if this.camera.revision != this.scaleRev {
+            this.UpdateScale();
+        }
         if this.frameNo % 30 == 0 {
             this.UpdateHeader();
         }
+    }
+
+    // True when the selected cluster's displayed total or category counts differ from the cached ones.
+    private func ClusterStale() -> Bool {
+        let c = this.crosshair;
+        if c.selKind != 1 || c.sel < 0 {
+            return false;
+        }
+        let slot = this.renderer.candSlot[c.sel];
+        let n = this.renderer.clCatN[slot];
+        if this.renderer.clTotal[slot] != this.cacheTotal || n != this.cacheN {
+            return true;
+        }
+        let k = 0;
+        while k < n {
+            if this.renderer.clCats[slot * 6 + k] != this.cacheCats[k] || this.renderer.clCatCount[slot * 6 + k] != this.cacheCounts[k] {
+                return true;
+            }
+            k += 1;
+        }
+        return false;
     }
 
     private func RefreshCard(changed: Bool) {
@@ -285,10 +316,10 @@ public class NightMapSystem extends ScriptableSystem {
             }
             let d: ref<NightMapDetails>;
             if IsDefined(L.listener) {
-                d = L.listener.GetDetails(c.selItem);
                 if changed {
                     L.listener.OnSelected(c.selItem);
                 }
+                d = L.listener.GetDetails(c.selItem);
             }
             if !IsDefined(d) {
                 d = this.DefaultDetails(L, c.selItem);
@@ -304,6 +335,10 @@ public class NightMapSystem extends ScriptableSystem {
                 ArrayPush(counts, this.renderer.clCatCount[slot * 6 + k]);
                 k += 1;
             }
+            this.cacheTotal = this.renderer.clTotal[slot];
+            this.cacheN = this.renderer.clCatN[slot];
+            this.cacheCats = cats;
+            this.cacheCounts = counts;
             let s = this.Settings();
             this.card.ShowCluster(this.renderer.clTotal[slot], cats, counts, this.api, IsDefined(s) ? NMInput.KeyName(s.keyAct) : "ACT");
         } else {
@@ -341,14 +376,19 @@ public class NightMapSystem extends ScriptableSystem {
         }
     }
 
-    private func UpdateHeader() {
-        let s = this.Settings();
+    private func UpdateScale() {
         let l = this.panel.layout;
-        this.panel.subtitle.SetText(this.DistrictName());
+        this.scaleRev = this.camera.revision;
         let maxMeters = 336.0 * l.scale * this.camera.mpp;
         let len = NMMath.NiceLength(maxMeters);
         this.panel.scaleBar.SetSize(new Vector2(len / this.camera.mpp, 5.0 * l.scale));
         this.panel.scaleLabel.SetText(NMMath.FormatMeters(len));
+    }
+
+    private func UpdateHeader() {
+        let s = this.Settings();
+        this.panel.subtitle.SetText(this.DistrictName());
+        this.UpdateScale();
         if IsDefined(s) {
             let hint = NMInput.HintText(s);
             if this.input.arrowSeen {
