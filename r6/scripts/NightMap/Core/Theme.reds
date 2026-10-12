@@ -50,22 +50,20 @@ public abstract class NMTheme {
     public static func VecFailMs() -> Float { return 3000.0; }
     public static func VecIsBlock(style: Int32) -> Bool { return style >= 2 && style <= 4; }
     public static func VecVariant(style: Int32) -> inkEShapeVariant {
-        if style <= 1 { return inkEShapeVariant.Fill; }
-        if style <= 4 { return inkEShapeVariant.FillAndBorder; }
-        return inkEShapeVariant.Border;
+        if style == 6 { return inkEShapeVariant.Border; }
+        return inkEShapeVariant.Fill;
     }
     public static func VecColor(style: Int32) -> HDRColor { return style == 6 ? NMTheme.Pink() : NMTheme.Cyan(); }
     public static func VecFillOpacity(style: Int32) -> Float {
         if style == 0 { return 0.05; }
-        if style == 1 { return 0.13; }
-        if style == 2 { return 0.06; }
-        if style == 3 { return 0.09; }
-        if style == 4 { return 0.12; }
+        if style == 1 { return 0.16; }
+        if style == 2 { return 0.14; }
+        if style == 3 { return 0.19; }
+        if style == 4 { return 0.24; }
+        if style == 5 { return 0.22; }
         return 0.0;
     }
     public static func VecBorderOpacity(style: Int32) -> Float {
-        if NMTheme.VecIsBlock(style) { return 0.45; }
-        if style == 5 { return 0.85; }
         if style == 6 { return 0.80; }
         return 0.0;
     }

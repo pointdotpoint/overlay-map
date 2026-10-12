@@ -9,11 +9,11 @@ BG = "#08121a"
 # style -> (fill, fill opacity, stroke, stroke opacity, stroke width in screen units)
 STYLE_SVG = {
     "land": ("#28c8ff", 0.05, "none", 0.0, 0.0),
-    "water": ("#28c8ff", 0.13, "none", 0.0, 0.0),
-    "block0": ("#7af0ff", 0.06, "#7af0ff", 0.45, 1.0),
-    "block1": ("#7af0ff", 0.09, "#7af0ff", 0.45, 1.0),
-    "block2": ("#7af0ff", 0.12, "#7af0ff", 0.45, 1.0),
-    "road": ("none", 0.0, "#7af0ff", 0.85, 1.5),
+    "water": ("#28c8ff", 0.16, "none", 0.0, 0.0),
+    "block0": ("#7af0ff", 0.14, "none", 0.0, 0.0),
+    "block1": ("#7af0ff", 0.19, "none", 0.0, 0.0),
+    "block2": ("#7af0ff", 0.24, "none", 0.0, 0.0),
+    "road": ("#7af0ff", 0.22, "none", 0.0, 0.0),
     "metro": ("none", 0.0, "#ff4fd8", 0.80, 2.0),
 }
 

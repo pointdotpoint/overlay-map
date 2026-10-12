@@ -85,7 +85,7 @@ def _resimplify(cells: dict, tol: float) -> dict:
         shapes = []
         for s in c.shapes:
             pts = douglas_peucker(s.pts, tol)
-            if len(pts) >= (4 if s.style not in ("road", "metro") else 2):
+            if len(pts) >= (2 if s.style == "metro" else 4):
                 shapes.append(type(s)(s.style, pts, s.prio))
         if shapes:
             out[k] = Cell(c.ix, c.iy, shapes)

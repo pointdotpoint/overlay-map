@@ -245,11 +245,13 @@ def test_fit_level_uses_its_own_budgets_for_the_report():
 def test_resimplify_drops_slivers_keeps_lines_and_closed_rings():
     from nmtiles.vector_budget import _resimplify
     sliver = Shape("block0", np.array([[0, 0], [10, 0], [10, 0.05], [0, 0.05], [0, 0]], float), 0.5)
-    road = Shape("road", np.array([[0.0, 0.0], [10.0, 0.0]]), 10.0)
+    metro = Shape("metro", np.array([[0.0, 0.0], [10.0, 0.0]]), 10.0)
     square = Shape("block1", np.array([[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], float), 100.0)
-    out = _resimplify({(0, 0): Cell(0, 0, [sliver, road, square])}, 0.5)[(0, 0)].shapes
-    assert [s.style for s in out] == ["road", "block1"]
-    assert np.array_equal(out[1].pts[0], out[1].pts[-1]) and len(out[1].pts) >= 4
+    road = Shape("road", np.array([[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], float), 100.0)
+    road_sliver = Shape("road", np.array([[0, 0], [10, 0], [10, 0.05], [0, 0.05], [0, 0]], float), 0.5)
+    out = _resimplify({(0, 0): Cell(0, 0, [sliver, metro, square, road, road_sliver])}, 0.5)[(0, 0)].shapes
+    assert [s.style for s in out] == ["metro", "block1", "road"]
+    assert all(np.array_equal(s.pts[0], s.pts[-1]) and len(s.pts) >= 4 for s in out[1:])
 
 
 def test_build_level_ignores_boxes_below_min_height():

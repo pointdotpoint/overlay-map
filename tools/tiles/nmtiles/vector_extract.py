@@ -1,21 +1,23 @@
-"""Per-cell vector features (spec 2026-10-12 §4.1-4.2): road/metro edges, land/water fills, building blocks.
+"""Per-cell vector features (spec 2026-10-12 §4.1-4.2, §10): exact polygon roads, land/water and building blocks
+(shapely), plus raster-traced metro edge lines.
 
-Cell origins, window margins and raster resolution are whole multiples of each other, so neighbouring cells
-see identical pixel grids and trace identical contours along their shared edges.
+Metro: cell origins, window margins and raster resolution are whole multiples of each other, so neighbouring
+cells see identical pixel grids and trace identical contours along their shared edges.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 import numpy as np
-from PIL import Image, ImageDraw
+import shapely
 from scipy import ndimage
+from shapely.geometry import Polygon
 
 from nmtiles.buildings import Boxes
 from nmtiles.glb import Mesh
 from nmtiles.render import rasterize_mask
 from nmtiles.vector_config import HEIGHT_BUCKETS, VLevel
-from nmtiles.vector_geom import clip_polyline, disk, douglas_peucker, mask_rings, polygon_area
+from nmtiles.vector_geom import _polys, clip_polyline, disk, douglas_peucker, mask_rings, polygon_area, polygon_rings
 from nmtiles.world import Transform
 
 Rect = tuple[float, float, float, float]   # (min_x, min_y, max_x, max_y), world metres
@@ -26,7 +28,7 @@ BOX_PICK_MARGIN = 150.0                     # boxes whose centre is this far out
 class Shape:
     style: str
     pts: np.ndarray     # (N, 2) world metres; closed rings repeat their first point last
-    prio: float         # larger = more important within its style (length or area)
+    prio: float         # larger = more important within its style (length for metro, area for fills)
 
 
 @dataclass
@@ -81,19 +83,70 @@ def line_features(meshes: list[Mesh], tf: Transform, cell: Rect, level: VLevel, 
     return out
 
 
+_TRI_CACHE: dict = {}   # (id(mesh), id(tf)) -> (mesh, tf, tris (M,3,2), lo (M,2), hi (M,2)); warmed before forking
+
+
+def _tris(mesh: Mesh, tf: Transform):
+    key = (id(mesh), id(tf))
+    hit = _TRI_CACHE.get(key)
+    if hit is None:
+        xy = np.asarray(tf.apply(mesh.positions), float)[:, :2]
+        tri = xy[np.asarray(mesh.triangles)] if len(mesh.triangles) else np.zeros((0, 3, 2))
+        hit = (mesh, tf, tri, tri.min(axis=1), tri.max(axis=1))
+        _TRI_CACHE[key] = hit
+    return hit
+
+
+def warm_sources(src: "Sources") -> None:
+    """Pre-compute world-space triangles so forked workers share them."""
+    for meshes in (src.roads, src.land, src.water):
+        for m in meshes:
+            _tris(m, src.tf)
+
+
+def tri_union(meshes: list[Mesh], tf: Transform, rect: Rect):
+    """Exact union of the mesh triangles whose bounding box touches rect (world metres, xy)."""
+    polys = []
+    for m in meshes:
+        _, _, tri, lo, hi = _tris(m, tf)
+        sel = (hi[:, 0] >= rect[0]) & (lo[:, 0] <= rect[2]) & (hi[:, 1] >= rect[1]) & (lo[:, 1] <= rect[3])
+        if sel.any():
+            polys.append(shapely.polygons(tri[sel]))
+    if not polys:
+        return shapely.Polygon()
+    p = np.concatenate(polys)
+    p = p[shapely.area(p) > 1e-6]
+    return shapely.union_all(p, grid_size=0.01) if len(p) else shapely.Polygon()
+
+
+def _shapes(style: str, geom, cell: Rect, level: VLevel) -> list[Shape]:
+    rings = polygon_rings(geom, cell, level.tol, (2 * level.tol) ** 2)
+    return [Shape(style, r, polygon_area(r)) for r in rings]
+
+
+def road_features(meshes: list[Mesh], tf: Transform, cell: Rect, level: VLevel, min_width: float = 0.0) -> list[Shape]:
+    """Filled road surfaces clipped to the cell. min_width removes narrower parts (opening on the grown window)."""
+    u = tri_union(meshes, tf, grow(cell, min_width + 2 * level.tol))
+    if u.is_empty:
+        return []
+    if min_width > 0:
+        u = u.buffer(-min_width / 2, join_style="mitre").buffer(min_width / 2, join_style="mitre")
+    return _shapes("road", u, cell, level)
+
+
 def area_features(src: Sources, cell: Rect, level: VLevel) -> list[Shape]:
-    """Fill polygons for land (terrain minus water) and water, traced on exactly the cell (clipped there)."""
-    land = window_mask(src.land, src.tf, cell, level.res)
-    water = window_mask(src.water, src.tf, cell, level.res)
-    out = []
-    min_area = (2 * level.res) ** 2
-    for style, mask in (("land", land & ~water), ("water", water)):
-        for ring in mask_rings(mask, cell[0], cell[3], level.res, fill_holes=True):
-            s = douglas_peucker(ring, level.tol)
-            a = polygon_area(s) if len(s) >= 4 else 0.0
-            if a >= min_area:
-                out.append(Shape(style, s, a))
-    return out
+    """Exact fills: water = water - land, land = land, both clipped to the cell (see the task-9a report on land)."""
+    land = tri_union(src.land, src.tf, cell)
+    water = tri_union(src.water, src.tf, cell)
+    if not land.is_empty:
+        water = water.difference(land)
+    return _shapes("land", land, cell, level) + _shapes("water", water, cell, level)
+
+
+def owner_point(pts: np.ndarray) -> tuple[float, float]:
+    """The point deciding which cell owns a closed block ring."""
+    c = shapely.Polygon(pts).centroid
+    return float(c.x), float(c.y)
 
 
 def height_style(h: float) -> str:
@@ -104,9 +157,9 @@ def height_style(h: float) -> str:
 
 def block_features(corners: np.ndarray, centres: np.ndarray, heights: np.ndarray, cell: Rect,
                    level: VLevel, stats: dict | None = None) -> list[Shape]:
-    """Merged building blocks whose outline centroid lies in the cell.
+    """Merged building blocks whose centroid lies in the cell (exact polygon union, closing, opening).
 
-    Blocks whose traced outline touches the window border are truncated and dropped (counted in stats["dropped"]).
+    Blocks touching the window border are truncated and dropped (counted in stats["dropped"]).
 
     corners: (N,4,2) world box corners; centres: (N,2); heights: (N,) metres.
     """
@@ -117,46 +170,37 @@ def block_features(corners: np.ndarray, centres: np.ndarray, heights: np.ndarray
                       & (centres[:, 1] > y0 - m) & (centres[:, 1] < y1 + m))[0]
     if len(pick) == 0:
         return []
-    res = level.res
-    w = max(1, int(round((x1 - x0) / res)))
-    h = max(1, int(round((y1 - y0) / res)))
-    occ = Image.new("1", (w, h), 0)
-    top = Image.new("L", (w, h), 0)
-    d_occ, d_top = ImageDraw.Draw(occ), ImageDraw.Draw(top)
-    for k in pick[np.argsort(heights[pick], kind="stable")]:
-        poly = [((x - x0) / res, (y1 - y) / res) for x, y in corners[k]]
-        d_occ.polygon(poly, fill=1)
-        d_top.polygon(poly, fill=int(min(255, max(1, heights[k]))))
-    mask = np.asarray(occ, bool)
-    tops = np.asarray(top)
-    if level.merge_gap > 0:
-        mask = ndimage.binary_closing(mask, structure=disk(max(1, int(round(level.merge_gap / 2 / res))))) | mask
-    mask = ndimage.binary_fill_holes(mask)
-    lab, n = ndimage.label(mask)
-    if n == 0:
+    feet = shapely.polygons(corners[pick])
+    feet = feet[shapely.area(feet) > 1e-6]
+    if len(feet) == 0:
         return []
-    peak = ndimage.maximum(tops, lab, index=np.arange(1, n + 1))
+    h = np.asarray(heights, float)[pick][shapely.area(shapely.polygons(corners[pick])) > 1e-6]
+    g = shapely.union_all(feet, grid_size=0.01)
+    gap, ow = level.merge_gap, level.open_width
+    if gap > 0:
+        g = g.buffer(gap / 2, join_style="mitre").buffer(-gap / 2, join_style="mitre")
+    if ow > 0:
+        g = g.buffer(-ow / 2, join_style="mitre").buffer(ow / 2, join_style="mitre")
+    tree = shapely.STRtree(feet)
+    eps = 1e-6
     out = []
-    for i, sl in enumerate(ndimage.find_objects(lab)):
-        if sl is None:
+    for p in _polys(g):
+        ext = Polygon(p.exterior)
+        s = ext.simplify(level.tol)
+        if s.is_empty or s.geom_type != "Polygon":
             continue
-        sub = lab[sl] == i + 1
-        ox = x0 + sl[1].start * res
-        oy = y1 - sl[0].start * res
-        for ring in mask_rings(sub, ox, oy, res):
-            s = douglas_peucker(ring, level.tol)
-            if len(s) < 4:
-                continue
-            if (s[:, 0].min() <= x0 + res or s[:, 0].max() >= x1 - res
-                    or s[:, 1].min() <= y0 + res or s[:, 1].max() >= y1 - res):
-                if stats is not None:
-                    stats["dropped"] = stats.get("dropped", 0) + 1
-                continue
-            a = polygon_area(s)
-            c = s[:-1].mean(axis=0)
-            if a < max(level.min_area, (2 * res) ** 2):
-                continue
-            if not (cell[0] <= c[0] < cell[2] and cell[1] <= c[1] < cell[3]):
-                continue
-            out.append(Shape(height_style(float(peak[i])), s, a))
+        bx0, by0, bx1, by1 = s.bounds
+        if bx0 <= x0 + eps or bx1 >= x1 - eps or by0 <= y0 + eps or by1 >= y1 - eps:
+            if stats is not None:
+                stats["dropped"] = stats.get("dropped", 0) + 1
+            continue
+        if s.area < max(level.min_area, (2 * level.tol) ** 2):
+            continue
+        ring = np.asarray(s.exterior.coords, float)
+        cx, cy = owner_point(ring)
+        if not (cell[0] <= cx < cell[2] and cell[1] <= cy < cell[3]):
+            continue
+        hit = tree.query(ext, predicate="intersects")
+        top = float(h[hit].max()) if len(hit) else float(h.max())
+        out.append(Shape(height_style(top), ring, float(s.area)))
     return out

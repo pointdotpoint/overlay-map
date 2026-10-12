@@ -3,7 +3,11 @@ from __future__ import annotations
 
 import contourpy
 import numpy as np
+import shapely
 from scipy import ndimage
+from shapely.geometry import Polygon
+
+SPLIT_DEPTH = 16
 
 
 def douglas_peucker(pts: np.ndarray, tol: float) -> np.ndarray:
@@ -125,3 +129,59 @@ def polygon_area(ring: np.ndarray) -> float:
 def disk(r: int) -> np.ndarray:
     yy, xx = np.ogrid[-r:r + 1, -r:r + 1]
     return xx * xx + yy * yy <= r * r
+
+
+# ---- exact polygon geometry (spec 2026-10-12 §10.1) ----
+
+def _polys(g) -> list[Polygon]:
+    """Polygons of any geometry (multi, collection), in a deterministic order."""
+    if g is None or g.is_empty:
+        return []
+    out = [p for p in getattr(g, "geoms", [g]) if p.geom_type == "Polygon" and not p.is_empty]
+    out += [q for p in getattr(g, "geoms", []) if p.geom_type == "GeometryCollection" for q in _polys(p)]
+    return sorted(out, key=lambda p: (round(p.bounds[0], 3), round(p.bounds[1], 3), -p.area))
+
+
+def explode_polygons(g) -> list[Polygon]:
+    return _polys(g)
+
+
+def split_holes(poly: Polygon, depth: int = 0) -> list[Polygon]:
+    """Cover poly exactly with hole-free polygons: bisect the bounds along the longer side through the first hole."""
+    if not poly.interiors:
+        return [poly]
+    if depth >= SPLIT_DEPTH:
+        return [Polygon(poly.exterior)]
+    x0, y0, x1, y1 = poly.bounds
+    hole = poly.interiors[0]
+    hx0, hy0, hx1, hy1 = hole.bounds
+    vertical = (x1 - x0) >= (y1 - y0)
+    lo, hi = (hx0, hx1) if vertical else (hy0, hy1)
+    cut = hole.coords[0][0 if vertical else 1]
+    if cut - lo < 1e-9 or hi - cut < 1e-9:       # the first vertex is an extreme: cutting there would miss the hole
+        cut = (lo + hi) / 2.0
+    halves = ((shapely.box(x0, y0, cut, y1), shapely.box(cut, y0, x1, y1)) if vertical
+              else (shapely.box(x0, y0, x1, cut), shapely.box(x0, cut, x1, y1)))
+    out: list[Polygon] = []
+    for half in halves:
+        for q in _polys(poly.intersection(half)):
+            out += split_holes(q, depth + 1)
+    return out
+
+
+def polygon_rings(geom, clip, tol: float, min_area: float) -> list[np.ndarray]:
+    """geom clipped to a rectangle, simplified, split into hole-free pieces; closed (N,2) rings, small pieces dropped."""
+    if geom is None or geom.is_empty:
+        return []
+    if clip is not None:
+        geom = geom.intersection(shapely.box(*clip))
+    if geom.is_empty:
+        return []
+    if tol > 0:
+        geom = geom.simplify(tol)
+    rings = []
+    for p in _polys(geom):
+        for q in split_holes(p):
+            if q.area >= min_area and q.area > 0:
+                rings.append(np.asarray(q.exterior.coords, float))
+    return rings
