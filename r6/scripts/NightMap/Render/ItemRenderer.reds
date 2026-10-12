@@ -51,7 +51,11 @@ public class NMItemRenderer {
     private let bAnyLayer: array<Int32>;
     private let bAnyCell: array<Int32>;
     private let bCat: array<Int32>;
-    private let bTouched: array<Int32>;
+    private let tGi: array<Int32>;
+    private let tNext: array<Int32>;
+    private let bTHead: array<Int32>;
+    private let ordX: array<Int32>;
+    private let ordY: array<Int32>;
     private let icon: ref<NMIconRef>;
     private let lastCamRev: Int32;
     private let lastApiRev: Int32;
@@ -215,24 +219,69 @@ public class NMItemRenderer {
         return n;
     }
 
-    private func PlaceCellsOf(L: ref<NightMapLayer>, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
-        let rg = this.CellRange(0, cam, 60.0 * this.scale);
-        let side = NMGrid.Side(0);
-        let gy = rg[1];
-        while gy <= rg[3] {
-            let gx = rg[0];
-            while gx <= rg[2] {
-                let id = L.head[gy * side + gx];
-                while id >= 0 {
-                    this.PlaceChip(L, id, cam, viewW, viewH);
-                    id = L.nextIn[id * 3];
+    // Fills ordX/ordY with the cells of [x0..x1]x[y0..y1] ordered by ring distance from (cx, cy).
+    private func RingOrder(x0: Int32, y0: Int32, x1: Int32, y1: Int32, cx: Int32, cy: Int32) {
+        ArrayClear(this.ordX);
+        ArrayClear(this.ordY);
+        cx = Clamp(cx, x0, x1);
+        cy = Clamp(cy, y0, y1);
+        let maxR = Max(Max(cx - x0, x1 - cx), Max(cy - y0, y1 - cy));
+        let r = 0;
+        while r <= maxR {
+            let y = cy - r;
+            while y <= cy + r {
+                if y >= y0 && y <= y1 {
+                    if y == cy - r || y == cy + r {
+                        let x = cx - r;
+                        while x <= cx + r {
+                            if x >= x0 && x <= x1 {
+                                ArrayPush(this.ordX, x);
+                                ArrayPush(this.ordY, y);
+                            }
+                            x += 1;
+                        }
+                    } else {
+                        if cx - r >= x0 {
+                            ArrayPush(this.ordX, cx - r);
+                            ArrayPush(this.ordY, y);
+                        }
+                        if cx + r <= x1 {
+                            ArrayPush(this.ordX, cx + r);
+                            ArrayPush(this.ordY, y);
+                        }
+                    }
                 }
-                gx += 1;
+                y += 1;
             }
-            gy += 1;
+            r += 1;
         }
     }
 
+    private func CenterCell(level: Int32, cam: ref<NMCamera>, axisY: Bool) -> Int32 {
+        let cs = NMGrid.CellSize(level);
+        if axisY {
+            return FloorF((cam.cy - NMGrid.OriginY()) / cs);
+        }
+        return FloorF((cam.cx - NMGrid.OriginX()) / cs);
+    }
+
+    private func PlaceCellsOf(L: ref<NightMapLayer>, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
+        let rg = this.CellRange(0, cam, 60.0 * this.scale);
+        let side = NMGrid.Side(0);
+        this.RingOrder(rg[0], rg[1], rg[2], rg[3], this.CenterCell(0, cam, false), this.CenterCell(0, cam, true));
+        let n = ArraySize(this.ordX);
+        let i = 0;
+        while i < n {
+            let id = L.head[this.ordY[i] * side + this.ordX[i]];
+            while id >= 0 {
+                this.PlaceChip(L, id, cam, viewW, viewH);
+                id = L.nextIn[id * 3];
+            }
+            i += 1;
+        }
+    }
+
+    // Non-clustering layers scan every alive item per relayout: only for small item counts.
     private func PlaceAllOf(L: ref<NightMapLayer>, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
         let id = 0;
         while id < ArraySize(L.alive) {
@@ -353,6 +402,7 @@ public class NMItemRenderer {
             ArrayResize(this.bAnyLayer, nb);
             ArrayResize(this.bAnyCell, nb);
             ArrayResize(this.bCat, nb * maxCats);
+            ArrayResize(this.bTHead, nb);
         }
         let b = 0;
         while b < nb {
@@ -361,6 +411,7 @@ public class NMItemRenderer {
             this.bSy[b] = 0.0;
             this.bAnyLayer[b] = -1;
             this.bAnyCell[b] = -1;
+            this.bTHead[b] = -1;
             b += 1;
         }
         for li in layers {
@@ -385,7 +436,9 @@ public class NMItemRenderer {
                             if t > 0 {
                                 let gi = b * maxCats + L.catGlobal[lc];
                                 if this.bCat[gi] == 0 {
-                                    ArrayPush(this.bTouched, gi);
+                                    ArrayPush(this.tGi, gi);
+                                    ArrayPush(this.tNext, this.bTHead[b]);
+                                    this.bTHead[b] = ArraySize(this.tGi) - 1;
                                 }
                                 this.bCat[gi] += t;
                             }
@@ -398,8 +451,12 @@ public class NMItemRenderer {
             }
         }
         let worldSize = Cast<Float>(k) * NMGrid.CellSize(level);
-        b = 0;
-        while b < nb {
+        this.RingOrder(0, 0, bw - 1, bh - 1, this.CenterCell(level, cam, false) / k - bx0, this.CenterCell(level, cam, true) / k - by0);
+        let oi = 0;
+        let on = ArraySize(this.ordX);
+        while oi < on {
+            b = this.ordY[oi] * bw + this.ordX[oi];
+            oi += 1;
             let n = this.bCount[b];
             if n == 1 {
                 let L1 = this.api.layers[this.bAnyLayer[b]];
@@ -407,12 +464,12 @@ public class NMItemRenderer {
             } else if n > 1 {
                 this.PlaceCluster(b, n, worldSize, cam, viewW, viewH);
             }
-            b += 1;
         }
-        for gi in this.bTouched {
+        for gi in this.tGi {
             this.bCat[gi] = 0;
         }
-        ArrayClear(this.bTouched);
+        ArrayClear(this.tGi);
+        ArrayClear(this.tNext);
     }
 
     private func PlaceCluster(b: Int32, n: Int32, worldSize: Float, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
@@ -422,7 +479,7 @@ public class NMItemRenderer {
         let wx = this.bSx[b] / Cast<Float>(n);
         let wy = this.bSy[b] / Cast<Float>(n);
         let p = cam.WorldToMap(wx, wy);
-        let m = 100.0 * this.scale;
+        let m = MaxF(100.0 * this.scale, worldSize / cam.mpp);
         if p.X < -m || p.X > viewW + m || p.Y < -m || p.Y > viewH + m {
             return;
         }
@@ -432,32 +489,32 @@ public class NMItemRenderer {
         this.clWy[slot] = wy;
         this.clWorld[slot] = worldSize;
         this.clTotal[slot] = n;
-        // top 6 categories by count (repeated max over the 64 global slots)
+        // top 6 categories by count (ties: lower global index first), from this block's touched entries only
         let maxCats = NMTheme.MaxGlobalCategories();
         let found = 0;
-        let last = 2147483647;
-        let lastIdx = -1;
-        while found < 6 {
-            let best = -1;
-            let bestN = 0;
-            let g = 0;
-            while g < maxCats {
-                let v = this.bCat[b * maxCats + g];
-                let before = v < last || (v == last && g > lastIdx);
-                if v > bestN && before {
-                    best = g;
-                    bestN = v;
+        let ti = this.bTHead[b];
+        while ti >= 0 {
+            let gi = this.tGi[ti];
+            let g = gi - b * maxCats;
+            let v = this.bCat[gi];
+            let pos = found;
+            while pos > 0 && (this.clCatCount[slot * 6 + pos - 1] < v || (this.clCatCount[slot * 6 + pos - 1] == v && this.clCats[slot * 6 + pos - 1] > g)) {
+                pos -= 1;
+            }
+            if pos < 6 {
+                let q = Min(found, 5);
+                while q > pos {
+                    this.clCats[slot * 6 + q] = this.clCats[slot * 6 + q - 1];
+                    this.clCatCount[slot * 6 + q] = this.clCatCount[slot * 6 + q - 1];
+                    q -= 1;
                 }
-                g += 1;
+                this.clCats[slot * 6 + pos] = g;
+                this.clCatCount[slot * 6 + pos] = v;
+                if found < 6 {
+                    found += 1;
+                }
             }
-            if best < 0 {
-                break;
-            }
-            this.clCats[slot * 6 + found] = best;
-            this.clCatCount[slot * 6 + found] = bestN;
-            last = bestN;
-            lastIdx = best;
-            found += 1;
+            ti = this.tNext[ti];
         }
         this.clCatN[slot] = found;
         let c = found;

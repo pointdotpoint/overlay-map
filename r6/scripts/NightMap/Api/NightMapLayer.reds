@@ -175,6 +175,7 @@ public class NightMapLayer {
     }
 
     // Non-clustered layers always draw individual chips; keep them small (< 500 items).
+    // The renderer scans every alive item of such a layer on each relayout; it is not meant for large counts.
     public func SetClustering(enabled: Bool) {
         this.clustering = enabled;
         this.Touch();
