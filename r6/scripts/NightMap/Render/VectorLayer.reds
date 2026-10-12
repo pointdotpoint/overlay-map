@@ -56,6 +56,8 @@ public class NMVectorLayer {
             c.SetRenderTransformPivot(new Vector2(0.0, 0.0));
             NMTrace.Line("canvas " + ToString(i) + " SetInteractive");
             c.SetInteractive(false);
+            // A zero-size canvas parked off-screen culls all its children: span the whole level grid (level units).
+            c.SetSize(new Vector2(Cast<Float>(l.nx + 1) * l.cell / l.unit, Cast<Float>(l.ny + 1) * l.cell / l.unit));
             NMTrace.Line("canvas " + ToString(i) + " Reparent");
             c.Reparent(parent);
             NMTrace.Line("canvas " + ToString(i) + " done");
