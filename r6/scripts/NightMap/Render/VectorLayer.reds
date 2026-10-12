@@ -27,6 +27,7 @@ public class NMVectorLayer {
     private let warnedBudget: Bool;
     private let warnedPool: Bool;
     private let warnedMissing: Bool;
+    private let pending: Bool;
     private let traceUpdates: Int32;
     private let traceShapes: Int32;
 
@@ -106,7 +107,7 @@ public class NMVectorLayer {
         if this.previous >= 0 {
             this.Place(this.previous, cam);
         }
-        if cam.revision != this.lastRev {
+        if cam.revision != this.lastRev || this.pending {
             this.lastRev = cam.revision;
             this.Sync(cam);
         }
@@ -166,8 +167,14 @@ public class NMVectorLayer {
     private func Sync(cam: ref<NMCamera>) {
         let lv = this.levels[this.current];
         let cells = NMVectorLayer.VisibleCells(lv, cam.VisibleRect(0.0));
-        if this.SameCells(cells, this.lastCells) {
+        if this.SameCells(cells, this.lastCells) && !this.pending {
             return;
+        }
+        this.pending = false;
+        for old in this.lastCells {
+            if !ArrayContains(cells, old) {
+                lv.tokens[old] = null;
+            }
         }
         this.lastCells = cells;
         this.wanted = ArraySize(cells);
@@ -178,6 +185,9 @@ public class NMVectorLayer {
             }
             if lv.exists[c] == 0 {
                 this.missing += 1;
+            }
+            if lv.exists[c] == 1 && !IsDefined(lv.tokens[c]) {
+                lv.tokens[c] = GameInstance.GetResourceDepot().LoadResource(ResRef.FromString(lv.Path(c)));
             }
         }
         if this.missing > 0 && !this.warnedMissing {
@@ -211,11 +221,22 @@ public class NMVectorLayer {
         let scale = lv.unit / cam.mpp;
         for g in plan {
             if !ArrayContains(this.groups, g) && lv.exists[g / 8] == 1 {
-                if this.AttachGroup(lv, g / 8, g % 8, scale) {
-                    ArrayPush(this.groups, g);
+                let tok = lv.tokens[g / 8];
+                if IsDefined(tok) && tok.IsFailed() {
+                    lv.exists[g / 8] = 0;
+                    this.missing += 1;
+                } else {
+                    if IsDefined(tok) && tok.IsLoaded() {
+                        if this.AttachGroup(lv, g / 8, g % 8, scale) {
+                            ArrayPush(this.groups, g);
+                        }
+                    } else {
+                        this.pending = true;
+                    }
                 }
             }
         }
+        NMTrace.Line("sync pending=" + ToString(this.pending) + " used=" + ToString(ArraySize(this.used)));
     }
 
     private func AttachGroup(lv: ref<NMVecLevel>, cell: Int32, style: Int32, scale: Float) -> Bool {
@@ -233,31 +254,32 @@ public class NMVectorLayer {
                     this.warnedPool = true;
                     NMLog.Error("vector: widget pool exhausted (" + ToString(NMTheme.VecPoolSize()) + ")");
                 }
-                let r = 0;
-                while r < k {
-                    this.DetachAt(ArraySize(this.used) - 1);
-                    r += 1;
-                }
+                this.RollBack(k);
                 return false;
             }
             let s = ArrayPop(this.pool);
-            let tr = this.traceShapes < 50;
+            let tr = this.traceShapes < 3000;
             this.traceShapes += 1;
             if tr { NMTrace.Line("shape SetResource"); }
             s.SetResource(path);
-            if tr { NMTrace.Line("shape SetShape s" + ToString(first + k)); }
+            let loaded = s.NMShapeLoaded();
+            if tr { NMTrace.Line("shape SetShape s" + ToString(first + k) + " loaded=" + ToString(loaded)); }
+            if !loaded {
+                // SetShape on a resource that is still loading crashes the game: back out and retry next Sync.
+                ArrayPush(this.pool, s);
+                this.RollBack(k);
+                this.pending = true;
+                return false;
+            }
             s.SetShape(StringToName("s" + ToString(first + k)));
-            if tr { NMTrace.Line("shape styling"); }
             s.SetVariant(NMTheme.VecVariant(style));
             s.SetTintColor(color);
             s.SetFillOpacity(NMTheme.VecFillOpacity(style));
             s.SetBorderColor(color);
             s.SetBorderOpacity(NMTheme.VecBorderOpacity(style));
             s.SetLineThickness(NMVectorLayer.LineWidthFor(style, lv.index, scale));
-            if tr { NMTrace.Line("shape SetTranslation/SetSize"); }
             s.SetTranslation(pos);
             s.SetSize(size);
-            if tr { NMTrace.Line("shape Reparent"); }
             s.Reparent(this.canvases[lv.index]);
             if tr { NMTrace.Line("shape done"); }
             ArrayPush(this.used, s);
@@ -266,6 +288,15 @@ public class NMVectorLayer {
             k += 1;
         }
         return true;
+    }
+
+    // Detach the last n shapes attached (a partly built group).
+    private func RollBack(n: Int32) {
+        let r = 0;
+        while r < n {
+            this.DetachAt(ArraySize(this.used) - 1);
+            r += 1;
+        }
     }
 
     private func DetachAt(i: Int32) {
@@ -278,6 +309,7 @@ public class NMVectorLayer {
     }
 
     private func DetachLevel(l: Int32) {
+        this.levels[l].ReleaseTokens();
         let i = ArraySize(this.used) - 1;
         while i >= 0 {
             if this.usedLevel[i] == l {
@@ -405,4 +437,9 @@ public class NMVectorLayer {
         }
         return AbsF(now / last - 1.0) > step;
     }
+}
+
+@addMethod(inkShape)
+public func NMShapeLoaded() -> Bool {
+    return ResourceRef.IsLoaded(this.shapeResource);
 }

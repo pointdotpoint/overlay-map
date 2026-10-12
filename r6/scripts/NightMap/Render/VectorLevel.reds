@@ -19,6 +19,7 @@ public class NMVecLevel {
     public let lookup: array<Int32>;    // key -> cell index, -1 if empty
     public let reach: Int32;            // cells a draw bound can overhang its own cell
     public let exists: array<Int32>;    // per cell: -1 unknown, 0 resource missing, 1 present
+    public let tokens: array<ref<ResourceToken>>;   // per cell: load request, null until requested / after release
 
     public static func FromManifest(i: Int32) -> ref<NMVecLevel> {
         let l = new NMVecLevel();
@@ -46,6 +47,7 @@ public class NMVecLevel {
     public func BuildLookup() {
         ArrayClear(this.lookup);
         ArrayClear(this.exists);
+        ArrayClear(this.tokens);
         let n = this.nx * this.ny;
         let i = 0;
         while i < n {
@@ -59,12 +61,21 @@ public class NMVecLevel {
             let key = this.keys[c];
             this.lookup[key] = c;
             ArrayPush(this.exists, -1);
+            ArrayPush(this.tokens, null);
             let ix = Cast<Float>(key % this.nx);
             let iy = Cast<Float>(key / this.nx);
             let over = MaxF(MaxF(ix * cu - this.bounds[4 * c], this.bounds[4 * c] + this.bounds[4 * c + 2] - (ix + 1.0) * cu),
                 MaxF(iy * cu - this.bounds[4 * c + 1], this.bounds[4 * c + 1] + this.bounds[4 * c + 3] - (iy + 1.0) * cu));
             this.reach = Max(this.reach, CeilF(MaxF(over, 0.0) / cu));
             c += 1;
+        }
+    }
+
+    public func ReleaseTokens() {
+        let i = 0;
+        while i < ArraySize(this.tokens) {
+            this.tokens[i] = null;
+            i += 1;
         }
     }
 
