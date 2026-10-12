@@ -157,7 +157,8 @@ public class NMItemRenderer {
         let spacing = NMTheme.ClusterSpacing() * this.scale;
         let individual = NMGrid.CellSize(0) / cam.mpp >= spacing;
         let clusterLayers: array<Int32>;
-        for li in this.LayerOrder() {
+        let order: array<Int32> = this.LayerOrder();
+        for li in order {
             let L = api.layers[li];
             if L.VisibleAt(cam.mpp) && L.count > 0 {
                 if !L.clustering {

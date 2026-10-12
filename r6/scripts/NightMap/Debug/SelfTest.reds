@@ -347,7 +347,6 @@ public class NMSelfTest {
             NMLog.Info("TEST|INFO|tiles.level" + ToString(li) + "|count=" + ToString(cnt) + "|nx=" + ToString(NMTileManifest.LevelNx(li)) + "|ny=" + ToString(NMTileManifest.LevelNy(li)));
             li += 1;
         }
-        NMLog.Info("TEST|INFO|tiles.level0_temp_count=" + ToString(ArraySize(NMTileManifest.LevelTiles(0))));
         this.Check("tiles.level0_has_tiles", ArraySize(t0) > 0, "count=" + ToString(ArraySize(t0)));
         this.Check("tiles.all_levels_have_tiles", allNonEmpty, "counts=" + counts);
     }
