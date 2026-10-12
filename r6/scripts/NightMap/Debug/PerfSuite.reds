@@ -13,6 +13,11 @@ public class NMPerfSuite {
     private let setupMs: Float;
     private let samples: array<Float>;
     private let script: array<Float>;
+    private let savedFollow: Bool;
+    private let savedMpp: Float;
+    private let savedX: Float;
+    private let savedY: Float;
+    private let saved: Bool;
 
     private func Add(name: String, count: Int32, show: Bool) {
         ArrayPush(this.names, name);
@@ -32,11 +37,20 @@ public class NMPerfSuite {
         this.Add("closed_end", 0, false);
         this.idx = 0;
         this.phase = 0;
+        this.saved = false;
         this.running = true;
         NMLog.Info("PERF|SUITE|start");
     }
 
     public func Step(sys: ref<NightMapSystem>, dt: Float, scriptMs: Float) {
+        if !this.saved {
+            let c0 = sys.Camera();
+            this.savedFollow = c0.follow;
+            this.savedMpp = c0.mpp;
+            this.savedX = c0.cx;
+            this.savedY = c0.cy;
+            this.saved = true;
+        }
         if this.phase == 0 {
             let t0 = NMClock.NowMs();
             if this.counts[this.idx] > 0 {
@@ -75,6 +89,9 @@ public class NMPerfSuite {
                 this.running = false;
                 NMDebugLayer.Remove(sys.Api());
                 sys.SetPerfHidden(false);
+                cam.SetMpp(this.savedMpp);
+                cam.SetCenter(this.savedX, this.savedY);
+                cam.follow = this.savedFollow;
                 NMLog.Info("PERF|SUITE|done");
             }
         }

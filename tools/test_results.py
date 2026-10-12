@@ -30,3 +30,52 @@ def test_verdict_pass_and_fail():
 def test_verdict_requires_both_rows():
     ok, msg = results.verdict([])
     assert not ok
+
+
+def _suite(extra=""):
+    return LOG + extra
+
+
+def test_parse_requires_done_after_last_start():
+    partial = LOG + "[t] [1] [NightMap] PERF|SUITE|start\n[t] [1] [NightMap] RESULT|closed_baseline|items=0|frames=300|setup_ms=0.1|frame_avg=1.0|frame_p95=1.0|frame_p99=1.0|frame_max=1.0|script_avg=0|script_p95=0\n"
+    try:
+        results.parse(partial)
+        assert False, "should raise"
+    except results.SuiteError as e:
+        assert "incomplete suite" in str(e)
+
+
+def test_parse_no_start_fails():
+    try:
+        results.parse("[t] [1] [NightMap] RESULT|x|items=1\n")
+        assert False
+    except results.SuiteError as e:
+        assert "no PERF|SUITE|start" in str(e)
+
+
+def test_missing_baseline():
+    ok, msg = results.verdict([r for r in results.parse(LOG) if r["name"] != "closed_baseline"])
+    assert not ok and "missing" in msg
+
+
+def test_malformed_line_skipped(capsys):
+    bad = LOG.replace("PERF|SUITE|done", "PERF|SUITE|done\n[t] [1] [NightMap] RESULT|junk|items=abc|frames")
+    rows = results.parse(bad)
+    assert [r["name"] for r in rows] == ["closed_baseline", "items_50000"]
+    assert "malformed" in capsys.readouterr().err
+
+
+def test_cli_exit_codes(tmp_path):
+    import subprocess, sys
+    script = Path(results.__file__ if hasattr(results, "__file__") else Path(__file__).with_name("results.py"))
+    good = tmp_path / "good.log"
+    good.write_text(LOG)
+    bad = tmp_path / "bad.log"
+    bad.write_text(LOG.replace("frame_avg=22.5", "frame_avg=24.0"))
+    part = tmp_path / "part.log"
+    part.write_text(LOG.replace("PERF|SUITE|done", ""))
+    run = lambda p: subprocess.run([sys.executable, str(script), str(p)], capture_output=True, text=True)
+    assert run(good).returncode == 0
+    assert run(bad).returncode == 1
+    r = run(part)
+    assert r.returncode == 1 and "incomplete suite" in r.stdout

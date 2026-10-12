@@ -9,19 +9,34 @@ AVG_BUDGET_MS = 3.0
 P95_BUDGET_MS = 6.0
 
 
+class SuiteError(Exception):
+    pass
+
+
 def parse(text: str) -> list[dict]:
+    """Rows of the latest suite run; raises SuiteError unless it has a start and a following done."""
     lines = [l for l in text.splitlines() if "[NightMap]" in l]
     starts = [i for i, l in enumerate(lines) if "PERF|SUITE|start" in l]
-    run = lines[starts[-1]:] if starts else lines
+    if not starts:
+        raise SuiteError("no PERF|SUITE|start found")
+    run = lines[starts[-1]:]
+    if not any("PERF|SUITE|done" in l for l in run):
+        raise SuiteError("incomplete suite (no PERF|SUITE|done after the last start)")
     rows = []
     for l in run:
         m = re.search(r"RESULT\|([^|]+)\|(.*)$", l)
         if not m:
             continue
         row = {"name": m.group(1)}
-        for part in m.group(2).split("|"):
-            k, _, v = part.partition("=")
-            row[k] = float(v)
+        try:
+            for part in m.group(2).split("|"):
+                k, sep, v = part.partition("=")
+                if not sep:
+                    raise ValueError(part)
+                row[k] = float(v)
+        except ValueError:
+            print(f"warning: skipping malformed RESULT line: {l.strip()}", file=sys.stderr)
+            continue
         rows.append(row)
     return rows
 
@@ -31,6 +46,9 @@ def verdict(rows: list[dict]) -> tuple[bool, str]:
     if "closed_baseline" not in by or "items_50000" not in by:
         return False, "missing closed_baseline or items_50000 row"
     base, test = by["closed_baseline"], by["items_50000"]
+    for r in (base, test):
+        if "frame_avg" not in r or "frame_p95" not in r:
+            return False, f"row {r['name']} lacks frame_avg/frame_p95"
     d_avg = test["frame_avg"] - base["frame_avg"]
     d_p95 = test["frame_p95"] - base["frame_p95"]
     ok = d_avg <= AVG_BUDGET_MS and d_p95 <= P95_BUDGET_MS
@@ -39,12 +57,17 @@ def verdict(rows: list[dict]) -> tuple[bool, str]:
 
 def main() -> int:
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else GAMELOG
-    rows = parse(path.read_text(errors="replace"))
+    try:
+        rows = parse(path.read_text(errors="replace"))
+    except SuiteError as e:
+        print(f"FAIL: {e}")
+        return 1
     if not rows:
         print(f"no RESULT lines in {path}")
         return 1
     base = next((r["frame_avg"] for r in rows if r["name"] == "closed_baseline"), None)
     print(f"{'scenario':18} {'items':>7} {'setup ms':>9} {'avg':>7} {'+base':>7} {'p95':>7} {'p99':>7} {'max':>7} {'script':>7}")
+    rows = [r for r in rows if all(k in r for k in ("items", "setup_ms", "frame_avg", "frame_p95", "frame_p99", "frame_max", "script_avg"))]
     for r in rows:
         delta = f"{r['frame_avg'] - base:+.2f}" if base is not None else "?"
         print(f"{r['name']:18} {int(r['items']):>7} {r['setup_ms']:>9.1f} {r['frame_avg']:>7.2f} {delta:>7} "

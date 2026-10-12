@@ -116,8 +116,13 @@ public class NightMapSystem extends ScriptableSystem {
                     if !this.isOpen {
                         this.Open();
                     }
-                    this.perf = new NMPerfSuite();
-                    this.perf.Start();
+                    if this.isOpen {
+                        this.perf = new NMPerfSuite();
+                        this.perf.Start();
+                    } else {
+                        this.perf = null;
+                        NMLog.Error("perf suite not started: panel failed to open");
+                    }
                 }
             }
         }
@@ -285,6 +290,9 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private func OnClosing() {
+        if IsDefined(this.perf) && this.perf.running {
+            NMDebugLayer.Remove(this.api);
+        }
         this.perf = null;
         this.perfHidden = false;
         this.tiles = null;
