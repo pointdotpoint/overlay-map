@@ -79,3 +79,11 @@ def test_render_box_respects_yaw_and_height_scaling():
     top = grid.origin_top
     assert tall[int(top - 120), 100] > 0 and tall[int(top - 100), 130] == 0   # yawed: long axis is N-S
     assert short[int(top - 100) + 3, 100] < tall[int(top - 100) + 3, 100]
+
+
+def test_render_box_yaw_45_leans_north_east_on_north_up_image():
+    grid = level_grid((0.0, 0.0, 200.0, 200.0), mpp=1.0)
+    alpha = np.asarray(render_level({}, Transform(), grid, boxes=_boxes(100, 100, 60, 6, 150, math.pi / 4)))[:, :, 3]
+    row = lambda y: int(grid.origin_top - y)
+    assert alpha[row(120), 120] > 0 and alpha[row(80), 80] > 0     # along the NE-SW diagonal
+    assert alpha[row(80), 120] == 0 and alpha[row(120), 80] == 0   # off it: not a SE-NW lean

@@ -21,6 +21,10 @@ _FIXED_POINT_ONE = 131072.0       # WorldPosition FixedPoint: Bits / 2**17 metre
 _DATA_COMPONENT = re.compile(r"^(?P<district>.+?)_data\d*$")
 
 
+class BuildingDataError(RuntimeError):
+    """The building point-cloud data is incomplete."""
+
+
 @dataclass(frozen=True)
 class DistrictMaterial:
     texture: str        # data texture stem, e.g. "city_center_data"
@@ -133,6 +137,7 @@ def load_boxes(data_dir: Path, log: Callable[[str], None] = print) -> Boxes:
             log(f"buildings: skipping material {entry['name']['$value']}: no data texture or bounds")
     offsets = parse_offsets(json.loads((data_dir / "3dmap_view.ent.json").read_text()))
     parts: list[Boxes] = []
+    loaded: set[str] = set()
     for name in sorted(set(mats) | set(offsets)):  # offsets-only names are logged below
         if name not in DRAW_DISTRICTS:
             log(f"buildings: skipping district {name} (not in the drawn set)")
@@ -147,6 +152,11 @@ def load_boxes(data_dir: Path, log: Callable[[str], None] = print) -> Boxes:
         b = decode_boxes(json.loads(tex_path.read_text()), mats[name], offsets[name])
         log(f"buildings: {name}: {len(b)} boxes (offset {offsets[name]})")
         parts.append(b)
+        loaded.add(name)
     for name in sorted(set(DRAW_DISTRICTS) - set(mats) - set(offsets)):
         log(f"buildings: district {name} not found in the game data")
+    missing = sorted(set(DRAW_DISTRICTS) - loaded)
+    if missing:
+        raise BuildingDataError(f"no building boxes for district(s) {', '.join(missing)}; "
+                                f"re-run the build without --skip-export")
     return Boxes.concat(parts)

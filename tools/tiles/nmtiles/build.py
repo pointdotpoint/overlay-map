@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from nmtiles.buildings import load_boxes
+from nmtiles.buildings import Boxes, load_boxes
 from nmtiles.encode import encode_bc7
 from nmtiles.export import export_building_data, export_meshes, style_for
 from nmtiles.glb import keep_best_lod, read_glb
@@ -24,6 +24,12 @@ from nmtiles.world import Transform
 HERE = Path(__file__).resolve().parents[1]
 REPO = HERE.parents[1]
 TPL = HERE / "templates"
+
+
+def require_boxes(boxes: Boxes) -> Boxes:
+    if len(boxes) == 0:
+        raise SystemExit("error: no building boxes were loaded; the tiles would have no buildings")
+    return boxes
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -43,12 +49,15 @@ def main(argv: list[str] | None = None) -> int:
         export_meshes(game, mesh_dir)
         export_building_data(game, bdata_dir)
 
+    if args.skip_export and not (bdata_dir / "3dmap_view.ent.json").exists():
+        raise SystemExit(f"error: --skip-export but {bdata_dir} has no building data; "
+                         f"run once without --skip-export (export_building_data fills it)")
     styled: dict[str, list] = {}
     for p in sorted(mesh_dir.rglob("*.glb")):
         style = style_for(p.stem)
         if style:
             styled.setdefault(style, []).extend(keep_best_lod(read_glb(p)))
-    boxes = load_boxes(bdata_dir)     # world-space already: never goes through the mesh Transform
+    boxes = require_boxes(load_boxes(bdata_dir))     # world-space already: never goes through the mesh Transform
     tf = Transform.load(HERE / "calibration.json")
     world = np.vstack([tf.apply(m.positions) for s in ("land", "road") for m in styled.get(s, [])])
     bounds = (float(world[:, 0].min()), float(world[:, 1].min()), float(world[:, 0].max()), float(world[:, 1].max()))

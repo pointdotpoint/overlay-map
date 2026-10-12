@@ -32,3 +32,13 @@ def test_encode_cache_skips_texconv_when_png_unchanged(tmp_path, monkeypatch):
     b.write_bytes(b"changed")
     encode.encode_bc7([a, b], out)
     assert len(calls) == 2 and sum(".png" in x for x in calls[1]) == 1   # only b re-encoded
+
+
+def test_no_sidecar_when_texconv_wrote_no_dds(tmp_path, monkeypatch):
+    monkeypatch.setattr(encode.subprocess, "run", lambda cmd, **kw: subprocess.CompletedProcess(cmd, 0))
+    a = tmp_path / "a.png"
+    a.write_bytes(b"one")
+    import pytest
+    with pytest.raises(FileNotFoundError):
+        encode.encode_bc7([a], tmp_path / "dds")
+    assert not (tmp_path / "dds" / "a.sha1").exists()

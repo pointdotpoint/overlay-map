@@ -82,3 +82,21 @@ def test_box_corners_yaw_90_swaps_axes():
     assert np.ptp(c0[:, 0]) == 8.0 and np.ptp(c0[:, 1]) == 2.0
     assert np.isclose(np.ptp(c1[:, 0]), 2.0) and np.isclose(np.ptp(c1[:, 1]), 8.0)
     assert np.allclose(c1.mean(axis=0), (10.0, 20.0))
+
+
+def test_box_corners_yaw_45_rotates_counter_clockwise():
+    b = Boxes(*(np.array([v]) for v in (0.0, 0.0, 10.0, 2.0, 5.0, math.pi / 4)))
+    c = box_corners(b)[0]
+    # corner order is (-,-), (+,-), (+,+), (-,+); (+,-) starts at (+5,-1) on the +X side
+    cs = math.cos(math.pi / 4)
+    assert np.allclose(c[1], (5 * cs + 1 * cs, 5 * cs - 1 * cs))
+    assert c[1][1] > 0 and c[1][0] > 0      # +X end swings towards +Y (north)
+
+
+def test_load_boxes_raises_when_a_drawn_district_is_missing(tmp_path):
+    import pytest
+    from nmtiles.buildings import BuildingDataError, load_boxes
+    (tmp_path / "3dmap_triangle_soup.mesh.json").write_text((FIX / "triangle_soup_trim.mesh.json").read_text())
+    (tmp_path / "3dmap_view.ent.json").write_text((FIX / "3dmap_view_trim.ent.json").read_text())
+    with pytest.raises(BuildingDataError, match="city_center"):     # no data textures exported
+        load_boxes(tmp_path, log=lambda _m: None)

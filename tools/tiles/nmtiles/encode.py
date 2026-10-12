@@ -35,7 +35,9 @@ def encode_bc7(pngs: list[Path], out_dir: Path) -> dict[Path, bytes]:
         subprocess.run(["wine", str(TEXCONV), "-nogpu", "-f", "BC7_UNORM", "-m", "1", "-y", "-o", _win(out_dir),
                         *map(_win, chunk)], check=True, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for png in chunk:
-            (out_dir / png.with_suffix(".sha1").name).write_text(_sha1(png) + "\n")
+            dds = out_dir / png.with_suffix(".dds").name
+            if dds.exists() and dds.stat().st_mtime_ns >= png.stat().st_mtime_ns:   # texconv really wrote it
+                (out_dir / png.with_suffix(".sha1").name).write_text(_sha1(png) + "\n")
     result: dict[Path, bytes] = {}
     for png in pngs:
         dds = (out_dir / png.with_suffix(".dds").name).read_bytes()
