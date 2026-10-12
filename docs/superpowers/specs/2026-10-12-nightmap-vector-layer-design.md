@@ -116,7 +116,7 @@ For each level, the check computes the **worst view**. That is the worst-case ma
 - **Report:** the final per-level worst-case counts are printed and written to `build/vector_budget.json`.
 
 ### 4.6 Previews (`vector_preview.py`)
-The pipeline writes one **SVG** per level of the whole map, plus downtown crops at the V0 and V1 extremes. The SVGs are built from exactly the same per-cell geometry that is packed, using theme colours. They are used to review the look against the mockups before any in-game run.
+The pipeline writes a 2 km × 1.5 km downtown **SVG** crop for every level, plus whole-map SVGs for V2–V4. At V0/V1 a whole-map SVG would run to hundreds of MB. The SVGs are built from exactly the same per-cell geometry that is packed, using theme colours. They are used to review the look against the mockups before any in-game run.
 
 ## 5. Runtime (redscript, `r6/scripts/NightMap/Render/VectorLayer.reds`)
 
