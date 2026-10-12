@@ -105,3 +105,30 @@ def test_write_level_orders_shapes_to_match_counts(tmp_path):
     presets = doc["Data"]["RootChunk"]["presets"]
     assert len(presets[0]["points"]) == 5 and len(presets[1]["points"]) == 2      # s0 = block, s1 = road
     assert row["cells"][0]["counts"] == [0, 0, 0, 1, 0, 1, 0]
+
+
+def _funcs(src):
+    parts = re.split(r"(?m)^    (?:public|private) static func ", src)[1:]
+    return {p.split("(")[0]: p for p in parts}
+
+
+def test_vector_manifest_small_functions_and_order():
+    row = _level_row(300)
+    src = emit_vector_manifest([row, _level_row(2)], "2.31")
+    fs = _funcs(src)
+    for n, body in fs.items():
+        assert len(re.findall(r"-?\d+\.\d+|\b\d+\b", body.split("{", 1)[1])) <= 128 + 4 or n.startswith("Level") and "_" not in n, n
+    for n in ("LevelCells", "LevelBounds", "LevelCounts", "LevelPoints"):
+        assert "[" not in fs[n].split("{", 1)[1].replace("array<", "")
+    for n, body in fs.items():
+        lits = re.findall(r"return \[([^\]]*)\]", body)
+        for l in lits:
+            assert l.count(",") + 1 <= 128
+    # chunk order reconstructs values
+    vals = []
+    k = 0
+    while f"LevelCells_0_{k}" in fs:
+        vals += [int(x) for x in re.search(r"return \[([^\]]*)\]", fs[f"LevelCells_0_{k}"]).group(1).split(",")]
+        k += 1
+    assert vals == list(range(300))
+    assert "LevelBounds_L0()" in fs["LevelBounds"]

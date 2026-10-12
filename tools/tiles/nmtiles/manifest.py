@@ -37,8 +37,24 @@ def _array_case(i: int, idx: list, typ: str = "Int32", fmt=str) -> str:
 
 
 def _array_func(name: str, typ: str, per_level: list[list], fmt=str) -> str:
-    cases = "".join(_array_case(i, vals, typ, fmt) for i, vals in enumerate(per_level) if vals)
-    return (f"    public static func {name}(i: Int32) -> array<{typ}> {{\n        switch i {{\n{cases}"
+    """Public dispatcher + per-level concat functions + <=MAX_LITERAL chunk functions (small bytecode per function)."""
+    helpers, cases = "", ""
+    for i, vals in enumerate(per_level):
+        if not vals:
+            continue
+        ch = _chunks(vals)
+        cases += f"            case {i}: return NMVectorManifest.{name}_L{i}();\n"
+        if len(ch) == 1:
+            helpers += (f"    private static func {name}_L{i}() -> array<{typ}> {{\n"
+                        f"        return [{', '.join(map(fmt, ch[0]))}];\n    }}\n\n")
+            continue
+        body = f"        let a: array<{typ}>;\n"
+        for n, c in enumerate(ch):
+            helpers += (f"    private static func {name}_{i}_{n}() -> array<{typ}> {{\n"
+                        f"        return [{', '.join(map(fmt, c))}];\n    }}\n\n")
+            body += f"        let c{n}: array<{typ}> = NMVectorManifest.{name}_{i}_{n}();\n        for x in c{n} {{ ArrayPush(a, x); }}\n"
+        helpers += f"    private static func {name}_L{i}() -> array<{typ}> {{\n{body}        return a;\n    }}\n\n"
+    return (helpers + f"    public static func {name}(i: Int32) -> array<{typ}> {{\n        switch i {{\n{cases}"
             f"            default: break;\n        }}\n        let empty: array<{typ}>;\n        return empty;\n    }}\n\n")
 
 
