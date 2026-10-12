@@ -1,0 +1,19 @@
+{
+ "Header": {
+  "WolvenKitVersion": "8.19.0",
+  "WKitJsonVersion": "0.0.9",
+  "GameVersion": 2310,
+  "ExportedDateTime": "2026-10-12T17:34:23.1685646Z",
+  "DataType": "CR2W"
+ },
+ "Data": {
+  "Version": 195,
+  "BuildVersion": 0,
+  "RootChunk": {
+   "$type": "inkShapeCollectionResource",
+   "cookingPlatform": "PLATFORM_PC",
+   "presets": []
+  },
+  "EmbeddedFiles": []
+ }
+}
