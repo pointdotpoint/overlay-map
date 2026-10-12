@@ -83,8 +83,8 @@ def main() -> int:
         return 1
     base = next((r["frame_avg"] for r in rows if r["name"] == "closed_baseline"), None)
     print(f"{'scenario':22} {'items':>7} {'setup ms':>9} {'avg':>7} {'+base':>7} {'p95':>7} {'p99':>7} {'max':>7} {'script':>7}")
-    rows = [r for r in rows if all(k in r for k in ("items", "setup_ms", "frame_avg", "frame_p95", "frame_p99", "frame_max", "script_avg"))]
-    for r in rows:
+    full = [r for r in rows if all(k in r for k in ("items", "setup_ms", "frame_avg", "frame_p95", "frame_p99", "frame_max", "script_avg"))]
+    for r in full:
         delta = f"{r['frame_avg'] - base:+.2f}" if base is not None else "?"
         print(f"{r['name']:22} {int(r['items']):>7} {r['setup_ms']:>9.1f} {r['frame_avg']:>7.2f} {delta:>7} "
               f"{r['frame_p95']:>7.2f} {r['frame_p99']:>7.2f} {r['frame_max']:>7.2f} {r['script_avg']:>7.2f}")

@@ -105,3 +105,20 @@ def test_vector_row_over_budget_fails():
 def test_vector_p95_over_budget_fails():
     ok, msg = results.verdict(results.parse(VEC.replace("frame_p95=31.0", "frame_p95=33.5")))
     assert not ok and "vector_panzoom" in msg
+
+
+def test_cli_truncated_vector_row_fails(tmp_path):
+    import subprocess, sys
+    script = Path(__file__).with_name("results.py")
+    log = tmp_path / "trunc.log"
+    log.write_text(VEC.replace("|frame_p95=32.0", ""))
+    r = subprocess.run([sys.executable, str(script), str(log)], capture_output=True, text=True)
+    assert r.returncode == 1 and "vector_V0_idle" in r.stdout
+
+
+def test_vector_budget_boundaries():
+    # base avg 20.0 / p95 29.0 -> +2.00 / +4.00 is exactly on budget
+    ok, msg = results.verdict(results.parse(VEC.replace("frame_avg=21.5", "frame_avg=22.0").replace("frame_p95=32.0", "frame_p95=33.0")))
+    assert ok, msg
+    ok, msg = results.verdict(results.parse(VEC.replace("frame_avg=21.5", "frame_avg=22.01")))
+    assert not ok and "vector_V0_idle" in msg
