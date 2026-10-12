@@ -4,14 +4,30 @@ NightMap draws everything through layers. Any redscript mod can add its own; Nig
 (vanilla pins, user markers, photos) uses the same API.
 
 ## Lifecycle
-Layers and categories live for one game session. Create them after the session is ready:
+Layers and categories live for one game session. Create them after the session is ready.
+
+Every script that names a NightMap type must be guarded with `@if(ModuleExists("NightMap"))` (NightMap declares
+`module NightMap`). Unguarded references fail to compile when NightMap is not installed, which breaks all redscript
+mods. Provide an `@if(!ModuleExists("NightMap"))` twin of each function so callers compile either way:
 
 ```swift
+module MyMod
+@if(ModuleExists("NightMap"))
+import NightMap.*
+
+@if(ModuleExists("NightMap"))
+public func MyModFillNightMap() {
+    let map = NightMap.Get();          // null if NightMap is not ready yet
+    if IsDefined(map) { MyMod.FillLayer(map); }   // FillLayer must be guarded the same way
+}
+
+@if(!ModuleExists("NightMap"))
+public func MyModFillNightMap() {}
+
 @wrapMethod(PlayerPuppet)
 protected cb func OnGameAttached() -> Bool {
     let r = wrappedMethod();
-    let map = NightMap.Get();          // null if NightMap is not installed or not ready
-    if IsDefined(map) { MyMod.FillLayer(map); }
+    MyModFillNightMap();
     return r;
 }
 ```

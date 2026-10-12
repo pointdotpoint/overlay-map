@@ -29,9 +29,9 @@ public class NMCrosshair {
     }
 
     // Nearest candidate within radius; the previous selection is kept while it is within 4 units of the
-    // nearest one (prevents flicker). Chips are identified by layer+item, clusters by screen position.
+    // nearest one (prevents flicker). Chips are identified by layer+item, clusters by their pyramid level + block (key in the item slot).
     public static func Pick(xs: array<Float>, ys: array<Float>, kinds: array<Int32>, layers: array<Int32>, items: array<Int32>,
-                            cx: Float, cy: Float, radius: Float, prevKind: Int32, prevLayer: Int32, prevItem: Int32, prevX: Float, prevY: Float) -> Int32 {
+                            cx: Float, cy: Float, radius: Float, prevKind: Int32, prevLayer: Int32, prevItem: Int32) -> Int32 {
         let r2 = radius * radius;
         let best = -1;
         let bestD = 0.0;
@@ -49,11 +49,7 @@ public class NMCrosshair {
                 }
                 let same = false;
                 if kinds[i] == prevKind {
-                    if prevKind == 0 {
-                        same = layers[i] == prevLayer && items[i] == prevItem;
-                    } else {
-                        same = AbsF(xs[i] - prevX) < 4.0 && AbsF(ys[i] - prevY) < 4.0;
-                    }
+                    same = layers[i] == prevLayer && items[i] == prevItem;
                 }
                 if same {
                     prev = i;
@@ -68,16 +64,23 @@ public class NMCrosshair {
         return best;
     }
 
+    // Forget the selection (layer indices changed) so the next Update re-picks and reports a change.
+    public func Reset() {
+        this.sel = -1;
+        this.selKind = -1;
+        this.selLayer = -1;
+        this.selItem = -1;
+    }
+
     public func Update(r: ref<NMItemRenderer>, viewW: Float, viewH: Float, scale: Float) -> Bool {
         let idx = NMCrosshair.Pick(r.candX, r.candY, r.candKind, r.candLayer, r.candItem, viewW * 0.5, viewH * 0.5,
-            NMTheme.SelectRadius() * scale, this.selKind, this.selLayer, this.selItem, this.selX, this.selY);
+            NMTheme.SelectRadius() * scale, this.selKind, this.selLayer, this.selItem);
         let kind = idx >= 0 ? r.candKind[idx] : -1;
         let layer = idx >= 0 ? r.candLayer[idx] : -1;
         let item = idx >= 0 ? r.candItem[idx] : -1;
         let x = idx >= 0 ? r.candX[idx] : 0.0;
         let y = idx >= 0 ? r.candY[idx] : 0.0;
-        let changed = kind != this.selKind || layer != this.selLayer || item != this.selItem
-            || (kind == 1 && (AbsF(x - this.selX) >= 4.0 || AbsF(y - this.selY) >= 4.0));
+        let changed = kind != this.selKind || layer != this.selLayer || item != this.selItem;
         this.sel = idx;
         this.selKind = kind;
         this.selLayer = layer;

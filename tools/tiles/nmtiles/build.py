@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         style = style_for(p.stem)
         if style:
             styled.setdefault(style, []).extend(keep_best_lod(read_glb(p)))
-    boxes = require_boxes(load_boxes(bdata_dir))     # world-space already: never goes through the mesh Transform
+    boxes = require_boxes(load_boxes(bdata_dir))     # already in the rotated map frame: only the calibrated (dx, dy) translation applies, see render._draw_boxes
     tf = Transform.load(HERE / "calibration.json")
     world = np.vstack([tf.apply(m.positions) for s in ("land", "road") for m in styled.get(s, [])])
     bounds = (float(world[:, 0].min()), float(world[:, 1].min()), float(world[:, 0].max()), float(world[:, 1].max()))

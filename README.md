@@ -5,6 +5,14 @@ Hologram-style 2D world map overlay for Cyberpunk 2077 (redscript + Codeware). O
 - Spec: docs/superpowers/specs/2026-10-11-nightmap-core-design.md
 - Plan: docs/superpowers/plans/2026-10-11-nightmap-core.md
 
+## Requirements
+- Cyberpunk 2077 2.31 (tiles are built for it; a different major.minor shows a warning in the panel)
+- redscript and Codeware (required)
+- Mod Settings (optional): keybinds and settings
+- RedIMGRetriever (optional): image items
+
+To build tiles: WolvenKit.CLI, Wine + `texconv.exe`, Python 3 with numpy, Pillow and scipy.
+
 ## Build & install
     cd tools/tiles && python3 -m nmtiles.build --game ~/cyberpunk_symlink   # tiles + UI atlas -> archive + manifest
     tools/check.sh                                                          # offline redscript compile

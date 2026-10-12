@@ -35,6 +35,10 @@ public class NightMapSystem extends ScriptableSystem {
     private let cacheN: Int32;
     private let cacheCats: array<Int32>;
     private let cacheCounts: array<Int32>;
+    private let versionLogged: Bool;
+    private let layerEpoch: Int32;
+    private let imageRetries: Int32;
+    private let imageRev: Int32;
 
     private func OnAttach() {
         this.api = NightMap.Create();
@@ -161,15 +165,58 @@ public class NightMapSystem extends ScriptableSystem {
                 this.panel.AddClipProbe();
             }
         }
-        if !NMTileManifest.Available() {
-            this.panel.warning.SetText("TILE ARCHIVE MISSING - run tools/tiles build");
-            this.panel.warning.SetVisible(true);
-        }
         this.isOpen = true;
         this.input.ResetHeld();
         this.OnOpened();
+        this.UpdateWarning();
         this.EnsureLoop();
         NMLog.Info("open " + FloatToStringPrec(size.X, 0) + "x" + FloatToStringPrec(size.Y, 0));
+    }
+
+    // Tile problems (non-blocking): missing manifest, manifest present but archive not loaded, tiles built for another game version.
+    private func UpdateWarning() {
+        let text = "";
+        if !NMTileManifest.Available() {
+            text = "TILE ARCHIVE MISSING - run tools/tiles build";
+        } else if IsDefined(this.tiles) && !this.tiles.available {
+            text = "Map tiles not found: install NightMap.archive";
+        }
+        let built = NMTileManifest.SourceGameVersion();
+        let handler = GameInstance.GetSystemRequestsHandler();
+        if IsDefined(handler) && NotEquals(built, "") {
+            let running = handler.GetGameVersion();
+            let a = NightMapSystem.MajorMinor(built);
+            let b = NightMapSystem.MajorMinor(running);
+            if NotEquals(b, "") && NotEquals(a, b) {
+                if !this.versionLogged {
+                    this.versionLogged = true;
+                    NMLog.Info("game version mismatch: tiles built for " + built + ", game is " + running);
+                }
+                if NotEquals(text, "") {
+                    text += "  |  ";
+                }
+                text += "Tiles built for " + a + ", game is " + b + " - rebuild tiles";
+            }
+        }
+        if NotEquals(text, "") {
+            this.panel.warning.SetText(text);
+            this.panel.warning.SetVisible(true);
+        }
+    }
+
+    // Leading "major.minor" of a version string ("2.31", "v2.31.1" -> "2.31"; "2.3.1" -> "2.3").
+    public static func MajorMinor(v: String) -> String {
+        let s = StrReplaceAll(v, "v", "");
+        let first = StrFindFirst(s, ".");
+        if first < 0 {
+            return s;
+        }
+        let rest = StrAfterFirst(s, ".");
+        let second = StrFindFirst(rest, ".");
+        if second < 0 {
+            return s;
+        }
+        return StrBeforeFirst(s, ".") + "." + StrLeft(rest, second);
     }
 
     public func Close() {
@@ -280,6 +327,9 @@ public class NightMapSystem extends ScriptableSystem {
         this.cardApiRev = -1;
         this.scaleRev = -1;
         this.cacheTotal = -1;
+        this.imageRetries = 0;
+        this.imageRev = this.api.revision;
+        this.layerEpoch = this.api.layerEpoch;
         let l = this.panel.layout;
         this.tiles = NMTileLayer.Create(this.panel.tiles);
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, l.scale);
@@ -305,8 +355,20 @@ public class NightMapSystem extends ScriptableSystem {
     private func UpdateModules(dt: Float) {
         let l = this.panel.layout;
         this.tiles.Update(this.camera);
-        if this.renderer.pendingImages > 0 && this.frameNo % 15 == 0 {
+        if this.api.revision != this.imageRev {
+            this.imageRev = this.api.revision;
+            this.imageRetries = 0;
+        }
+        // Retry unresolved images every 15 frames, at most 20 times (about 5 s) per data revision.
+        if this.renderer.pendingImages > 0 && this.frameNo % 15 == 0 && this.imageRetries < 20 {
+            this.imageRetries += 1;
             this.renderer.Invalidate();
+        }
+        // RemoveLayer renumbers layer indices: drop the stale selection so the crosshair re-picks.
+        if this.api.layerEpoch != this.layerEpoch {
+            this.layerEpoch = this.api.layerEpoch;
+            this.crosshair.Reset();
+            this.cardApiRev = -1;
         }
         let relaid = this.renderer.Update(this.camera, l.mapW, l.mapH);
         if relaid {

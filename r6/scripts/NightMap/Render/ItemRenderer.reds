@@ -42,6 +42,8 @@ public class NMItemRenderer {
     public let clWy: array<Float>;
     public let clWorld: array<Float>;
     public let clTotal: array<Int32>;
+    // Stable identity of the cluster block: level * 100000000 + blockY * 10000 + blockX (absolute block coordinates).
+    public let clKey: array<Int32>;
     public let clCats: array<Int32>;
     public let clCatCount: array<Int32>;
     public let clCatN: array<Int32>;
@@ -102,6 +104,7 @@ public class NMItemRenderer {
             ArrayPush(r.clWy, 0.0);
             ArrayPush(r.clWorld, 0.0);
             ArrayPush(r.clTotal, 0);
+            ArrayPush(r.clKey, 0);
             ArrayPush(r.clCatN, 0);
             let c = 0;
             while c < 6 {
@@ -305,7 +308,7 @@ public class NMItemRenderer {
                 ic.key = L.imageResolved[id];
                 return;
             }
-            ic.pending = true;
+            ic.pending = NMImagesAvailable();
         }
         if L.hasAtlas[id] {
             ic.atlas = L.atlas[id];
@@ -455,14 +458,16 @@ public class NMItemRenderer {
         let oi = 0;
         let on = ArraySize(this.ordX);
         while oi < on {
-            b = this.ordY[oi] * bw + this.ordX[oi];
+            let obx = this.ordX[oi];
+            let oby = this.ordY[oi];
+            b = oby * bw + obx;
             oi += 1;
             let n = this.bCount[b];
             if n == 1 {
                 let L1 = this.api.layers[this.bAnyLayer[b]];
                 this.PlaceChip(L1, L1.head[this.bAnyCell[b]], cam, viewW, viewH);
             } else if n > 1 {
-                this.PlaceCluster(b, n, worldSize, cam, viewW, viewH);
+                this.PlaceCluster(b, level * 100000000 + (by0 + oby) * 10000 + bx0 + obx, n, worldSize, cam, viewW, viewH);
             }
         }
         for gi in this.tGi {
@@ -472,7 +477,7 @@ public class NMItemRenderer {
         ArrayClear(this.tNext);
     }
 
-    private func PlaceCluster(b: Int32, n: Int32, worldSize: Float, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
+    private func PlaceCluster(b: Int32, key: Int32, n: Int32, worldSize: Float, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
         if this.clustersUsed >= NMTheme.ClusterBudget() {
             return;
         }
@@ -489,6 +494,7 @@ public class NMItemRenderer {
         this.clWy[slot] = wy;
         this.clWorld[slot] = worldSize;
         this.clTotal[slot] = n;
+        this.clKey[slot] = key;
         // top 6 categories by count (ties: lower global index first), from this block's touched entries only
         let maxCats = NMTheme.MaxGlobalCategories();
         let found = 0;
@@ -576,7 +582,7 @@ public class NMItemRenderer {
         ArrayPush(this.candY, p.Y);
         ArrayPush(this.candKind, 1);
         ArrayPush(this.candLayer, -1);
-        ArrayPush(this.candItem, -1);
+        ArrayPush(this.candItem, this.clKey[slot]);
         ArrayPush(this.candSlot, slot);
     }
 

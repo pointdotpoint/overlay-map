@@ -11,6 +11,8 @@ public class NightMap {
     public let catAtlas: array<ResRef>;
     public let catPart: array<CName>;
     public let revision: Int32;
+    // Bumped when layers are removed or reordered (indices change).
+    public let layerEpoch: Int32;
     public let world: ref<NMRect>;
 
     public static func Create() -> ref<NightMap> {
@@ -67,6 +69,7 @@ public class NightMap {
                     this.layers[k].index = k;
                     k += 1;
                 }
+                this.layerEpoch += 1;
                 this.Touch();
                 return;
             }

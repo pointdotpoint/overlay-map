@@ -87,3 +87,28 @@ def test_render_box_yaw_45_leans_north_east_on_north_up_image():
     row = lambda y: int(grid.origin_top - y)
     assert alpha[row(120), 120] > 0 and alpha[row(80), 80] > 0     # along the NE-SW diagonal
     assert alpha[row(80), 120] == 0 and alpha[row(120), 80] == 0   # off it: not a SE-NW lean
+
+
+def test_box_centres_follow_calibrated_translation_only():
+    grid = level_grid((0.0, -100.0, 300.0, 200.0), mpp=1.0)
+    def centre(tf):
+        a = np.asarray(render_level({}, tf, grid, boxes=_boxes(100, 50, 20, 20, 150)))[:, :, 3]
+        ys, xs = np.nonzero(a)
+        return grid.origin_x + (xs.min() + xs.max() + 1) / 2, grid.origin_top - (ys.min() + ys.max() + 1) / 2
+    x0, y0 = centre(Transform())
+    x1, y1 = centre(Transform(dx=10.0, dy=-5.0))
+    assert abs((x1 - x0) - 10.0) <= 1 and abs((y1 - y0) + 5.0) <= 1
+    xs_, ys_ = centre(Transform(sx=-1.0, sy=-1.0))            # axis signs must not move or mirror the boxes
+    assert abs(xs_ - x0) <= 1 and abs(ys_ - y0) <= 1
+
+
+def test_metro_is_dashed_along_its_length():
+    grid = level_grid((0.0, 0.0, 1000.0, 200.0), mpp=2.0)
+    horiz = np.asarray(render_level({"metro": [_mesh(0, 90, 1000, 102)]}, Transform(), grid))[:, :, 3]
+    row = horiz[int((grid.origin_top - 96) / 2.0)]
+    covered = row[:500] > 0
+    assert covered.any() and (~covered[: 480]).any()             # coloured and transparent pixels along the strip
+    assert 0.5 < covered[:480].mean() < 0.7                      # about 24 of every 40 m
+    vert = np.asarray(render_level({"metro": [_mesh(90, 0, 102, 200)]}, Transform(), grid))[:, :, 3]
+    col = vert[:, int(96 / 2.0)]
+    assert (col > 0).any() and ((col == 0)[int((grid.origin_top - 200) / 2.0):int((grid.origin_top - 0) / 2.0)]).any()

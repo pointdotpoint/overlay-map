@@ -43,3 +43,14 @@ public func NMResolveImage(key: String) -> String {
 public func NMResolveImage(key: String) -> String {
     return "";
 }
+
+// True when image items can ever resolve (RedIMG installed); otherwise they stay on the fallback icon without retrying.
+@if(ModuleExists("RedIMGRetriever"))
+public func NMImagesAvailable() -> Bool {
+    return true;
+}
+
+@if(!ModuleExists("RedIMGRetriever"))
+public func NMImagesAvailable() -> Bool {
+    return false;
+}
