@@ -17,6 +17,7 @@ public class NMSelfTest {
         this.InputCases();
         this.LayoutCases();
         this.TileCases();
+        this.RendererCases();
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 
@@ -332,5 +333,47 @@ public class NMSelfTest {
             && (n < 2 || NMTileLayer.PickLevel(first * 1.01) == 1) && NMTileLayer.PickLevel(last * 10.0) == n - 1, "");
         this.Check("tiles.ui_atlas_in_depot", GameInstance.GetResourceDepot().ResourceExists(NMTheme.UiAtlas()), "nightmap\\ui\\ui.inkatlas not found: archive not installed?");
         this.Check("tiles.level0_has_tiles", ArraySize(NMTileManifest.LevelTiles(0)) > 0, "");
+    }
+
+    private func RendererCases() {
+        let api = NightMap.Create();
+        api.SetWorld(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
+        NMDebugLayer.Fill(api, 3000);
+        let canvas = new inkCanvas();   // detached: widgets exist but are never drawn
+        let r = NMItemRenderer.Create(api, canvas, 1.0);
+        let bounds = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
+        let cam = NMCamera.Create(1880.0, 1480.0, bounds, 0.5, 16.0);
+        let ok = true;
+        let detail = "";
+        let mpps: array<Float> = [0.6, 2.0, 6.0, 16.0];
+        for m in mpps {
+            cam.SetMpp(m);
+            r.Update(cam, 1880.0, 1480.0);
+            if r.chipsUsed > NMTheme.ChipBudget() || r.clustersUsed > NMTheme.ClusterBudget() {
+                ok = false;
+                detail += "mpp " + this.F(m) + ": chips " + ToString(r.chipsUsed) + " clusters " + ToString(r.clustersUsed) + "; ";
+            }
+            if ArraySize(r.candX) != r.chipsUsed + r.clustersUsed {
+                ok = false;
+                detail += "candidates mismatch at mpp " + this.F(m) + "; ";
+            }
+        }
+        this.Check("renderer.budgets", ok, detail);
+        // Whole city in view at 16 m/unit: every item is drawn exactly once, as a chip or inside a cluster.
+        cam.SetCenter((bounds.minX + bounds.maxX) * 0.5, (bounds.minY + bounds.maxY) * 0.5);
+        cam.SetMpp(16.0);
+        r.Update(cam, 1880.0, 1480.0);
+        let total = r.chipsUsed;
+        let k = 0;
+        while k < r.clustersUsed {
+            total += r.clTotal[k];
+            k += 1;
+        }
+        this.Check("renderer.conservation_overview", total == 3000, ToString(total) + " of 3000 (chips " + ToString(r.chipsUsed) + ")");
+        this.Check("renderer.idle_skips_relayout", !r.Update(cam, 1880.0, 1480.0), "");
+        let L = api.GetLayer(NMDebugLayer.Id());
+        L.SetVisible(false);
+        r.Update(cam, 1880.0, 1480.0);
+        this.Check("renderer.hidden_layer_draws_nothing", r.chipsUsed == 0 && r.clustersUsed == 0, ToString(r.chipsUsed) + "/" + ToString(r.clustersUsed));
     }
 }

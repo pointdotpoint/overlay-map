@@ -23,6 +23,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let savedMpp: Float = 4.0;
     private let frameNo: Int32;
     private let tiles: ref<NMTileLayer>;
+    private let renderer: ref<NMItemRenderer>;
 
     private func OnAttach() {
         this.api = NightMap.Create();
@@ -83,9 +84,20 @@ public class NightMapSystem extends ScriptableSystem {
                 t.Run();
             }
         }
+        if this.input.debugLayer {
+            this.input.debugLayer = false;
+            if s.debug {
+                if IsDefined(this.api.GetLayer(NMDebugLayer.Id())) {
+                    NMDebugLayer.Remove(this.api);
+                    NMLog.Info("debug layer off");
+                } else {
+                    NMDebugLayer.Fill(this.api, 5000);
+                    NMLog.Info("debug layer on (5000 items)");
+                }
+            }
+        }
         this.input.debugPerf = false;
         this.input.debugCalib = false;
-        this.input.debugLayer = false;
     }
 
     public func Open() {
@@ -218,13 +230,19 @@ public class NightMapSystem extends ScriptableSystem {
     // Module hooks; Tasks 12-14 fill these in.
     private func OnOpened() {
         this.tiles = NMTileLayer.Create(this.panel.tiles);
+        this.renderer = NMItemRenderer.Create(this.api, this.panel.items, this.panel.layout.scale);
     }
 
     private func OnClosing() {
         this.tiles = null;
+        this.renderer = null;
     }
 
     private func UpdateModules(dt: Float) {
         this.tiles.Update(this.camera);
+        if this.renderer.pendingImages > 0 && this.frameNo % 15 == 0 {
+            this.renderer.Invalidate();   // poll RedIMG images that were still loading
+        }
+        this.renderer.Update(this.camera, this.panel.layout.mapW, this.panel.layout.mapH);
     }
 }
