@@ -112,12 +112,6 @@ public class NMPanel {
         return p;
     }
 
-    // Debug: a rectangle twice the map area; if clipping works only the part inside the map area shows.
-    public func AddClipProbe() {
-        let l = this.layout;
-        NMUi.Rect(this.overlay, -0.5 * l.mapW, -0.5 * l.mapH, 2.0 * l.mapW, 2.0 * l.mapH, NMTheme.Pink(), 0.12);
-    }
-
     public func Destroy() {
         if IsDefined(this.root) {
             let parent = this.root.GetParentWidget() as inkCompoundWidget;

@@ -9,6 +9,7 @@ public abstract class NMTheme {
     public static func Muted() -> HDRColor { return new HDRColor(0.667, 0.863, 0.922, 1.0); }
     public static func PanelBg() -> HDRColor { return new HDRColor(0.024, 0.078, 0.118, 1.0); }
     public static func CardBg() -> HDRColor { return new HDRColor(0.039, 0.157, 0.216, 1.0); }
+    public static func ZoomRatePerSecond() -> Float { return 4.0; }
     public static func CardOpacity() -> Float { return 0.5; }
 
     public static func HeadingFont() -> String { return "base\\gameplay\\gui\\fonts\\orbitron\\orbitron.inkfontfamily"; }

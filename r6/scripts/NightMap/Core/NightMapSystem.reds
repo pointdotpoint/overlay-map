@@ -161,9 +161,6 @@ public class NightMapSystem extends ScriptableSystem {
         this.CenterOnPlayer(true);
         if IsDefined(s) {
             this.panel.hints.SetText(NMInput.HintText(s));
-            if s.debug {
-                this.panel.AddClipProbe();
-            }
         }
         this.isOpen = true;
         this.input.ResetHeld();
@@ -339,10 +336,10 @@ public class NightMapSystem extends ScriptableSystem {
             this.holdMs = 0.0;
         }
         if this.input.zoomIn {
-            this.camera.ZoomBy(PowF(1.5, dt / 1000.0));
+            this.camera.ZoomBy(PowF(NMTheme.ZoomRatePerSecond(), dt / 1000.0));
         }
         if this.input.zoomOut {
-            this.camera.ZoomBy(1.0 / PowF(1.5, dt / 1000.0));
+            this.camera.ZoomBy(1.0 / PowF(NMTheme.ZoomRatePerSecond(), dt / 1000.0));
         }
         if this.input.recenter {
             this.input.recenter = false;
