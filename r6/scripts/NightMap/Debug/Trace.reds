@@ -29,11 +29,11 @@ public class NMTrace {
 
     @if(ModuleExists("RedFileSystem"))
     private static func Write(msg: String, truncate: Bool) {
-        let storage = FileSystem.GetStorage("NightMap");
-        if !IsDefined(storage) {
+        let owner = GameInstance.GetScriptableServiceContainer().GetService(n"NightMap.NMTraceStorage") as NMTraceStorage;
+        if !IsDefined(owner) {
             return;
         }
-        let file = storage.GetFile("trace.txt");
+        let file = owner.File();
         if IsDefined(file) {
             file.WriteText(msg + "\n", truncate ? FileSystemWriteMode.Truncate : FileSystemWriteMode.Append);
         }
@@ -41,4 +41,24 @@ public class NMTrace {
 
     @if(!ModuleExists("RedFileSystem"))
     private static func Write(msg: String, truncate: Bool) {}
+}
+
+// GetStorage grants exclusive ownership once per process; a second call revokes the handle. This service
+// calls it once, lazily, and caches the storage and the trace file.
+@if(ModuleExists("RedFileSystem"))
+public class NMTraceStorage extends ScriptableService {
+    private let attempted: Bool;
+    private let storage: ref<FileSystemStorage>;
+    private let file: ref<File>;
+
+    public func File() -> ref<File> {
+        if !this.attempted {
+            this.attempted = true;
+            this.storage = FileSystem.GetStorage("NightMap");
+            if IsDefined(this.storage) {
+                this.file = this.storage.GetFile("trace.txt");
+            }
+        }
+        return this.file;
+    }
 }
