@@ -42,3 +42,26 @@ def test_no_sidecar_when_texconv_wrote_no_dds(tmp_path, monkeypatch):
     with pytest.raises(FileNotFoundError):
         encode.encode_bc7([a], tmp_path / "dds")
     assert not (tmp_path / "dds" / "a.sha1").exists()
+
+
+def test_texconv_gets_premultiply_and_flip_flags(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(encode.subprocess, "run", _fake_texconv(calls))
+    a = tmp_path / "a.png"
+    a.write_bytes(b"one")
+    encode.encode_bc7([a], tmp_path / "dds")
+    assert "-pmalpha" in calls[0] and "-vflip" in calls[0]
+
+
+def test_changed_options_invalidate_cache(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(encode.subprocess, "run", _fake_texconv(calls))
+    a = tmp_path / "a.png"
+    a.write_bytes(b"one")
+    out = tmp_path / "dds"
+    encode.encode_bc7([a], out)
+    encode.encode_bc7([a], out)
+    assert len(calls) == 1
+    monkeypatch.setattr(encode, "TEXCONV_OPTS", ["-pmalpha"])
+    encode.encode_bc7([a], out)
+    assert len(calls) == 2

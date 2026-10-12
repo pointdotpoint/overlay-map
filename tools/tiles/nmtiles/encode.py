@@ -9,6 +9,12 @@ from pathlib import Path
 TEXCONV = Path.home() / ".local/bin/texconv.exe"
 DDS_DX10_HEADER = 148
 BATCH = 48
+# Ink blends premultiplied alpha and samples textures with V flipped relative to PNG row order.
+TEXCONV_OPTS = ["-pmalpha", "-vflip"]
+
+
+def options_string() -> str:
+    return "bc7|" + " ".join(TEXCONV_OPTS)
 
 
 def _win(p: Path) -> str:
@@ -17,7 +23,8 @@ def _win(p: Path) -> str:
 
 
 def _sha1(p: Path) -> str:
-    return hashlib.sha1(p.read_bytes()).hexdigest()
+    """Cache key: hash of the PNG bytes plus the encode options, so option changes re-encode."""
+    return hashlib.sha1(p.read_bytes() + b"\0" + options_string().encode()).hexdigest()
 
 
 def _cached(png: Path, out_dir: Path) -> bool:
@@ -32,7 +39,7 @@ def encode_bc7(pngs: list[Path], out_dir: Path) -> dict[Path, bytes]:
     todo = [p for p in pngs if not _cached(p, out_dir)]
     for i in range(0, len(todo), BATCH):
         chunk = todo[i:i + BATCH]
-        subprocess.run(["wine", str(TEXCONV), "-nogpu", "-f", "BC7_UNORM", "-m", "1", "-y", "-o", _win(out_dir),
+        subprocess.run(["wine", str(TEXCONV), "-nogpu", "-f", "BC7_UNORM", "-m", "1", "-y", *TEXCONV_OPTS, "-o", _win(out_dir),
                         *map(_win, chunk)], check=True, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for png in chunk:
             dds = out_dir / png.with_suffix(".dds").name
