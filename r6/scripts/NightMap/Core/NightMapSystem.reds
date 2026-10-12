@@ -29,6 +29,8 @@ public class NightMapSystem extends ScriptableSystem {
     private let marker: ref<NMPlayerMarker>;
     private let cardApiRev: Int32;
     private let scaleRev: Int32;
+    private let perf: ref<NMPerfSuite>;
+    private let perfHidden: Bool;
     private let cacheTotal: Int32;
     private let cacheN: Int32;
     private let cacheCats: array<Int32>;
@@ -84,7 +86,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.HandleDebug(s);
     }
 
-    // Debug chords. Tasks 13 and 15 add the debug layer, perf suite and calibration dump.
+    // Debug chords: self-test, debug layer, perf suite, calibration dump.
     private func HandleDebug(s: ref<NightMapSettings>) {
         if this.input.debugSelfTest {
             this.input.debugSelfTest = false;
@@ -105,8 +107,26 @@ public class NightMapSystem extends ScriptableSystem {
                 }
             }
         }
-        this.input.debugPerf = false;
-        this.input.debugCalib = false;
+        if this.input.debugPerf {
+            this.input.debugPerf = false;
+            if s.debug {
+                if !NMClock.Precise() {
+                    NMLog.Error("perf suite needs RedIMGRetriever (precise clock)");
+                } else {
+                    if !this.isOpen {
+                        this.Open();
+                    }
+                    this.perf = new NMPerfSuite();
+                    this.perf.Start();
+                }
+            }
+        }
+        if this.input.debugCalib {
+            this.input.debugCalib = false;
+            if s.debug {
+                NMLog.Info("calibration points: " + ToString(NMCalibration.Dump(this.GetGameInstance())));
+            }
+        }
     }
 
     public func Open() {
@@ -196,17 +216,32 @@ public class NightMapSystem extends ScriptableSystem {
         GameInstance.GetDelaySystem(this.GetGameInstance()).DelayCallback(cb, 0.0, false);
     }
 
+    public func SetPerfHidden(hidden: Bool) {
+        this.perfHidden = hidden;
+        if IsDefined(this.panel) {
+            this.panel.root.SetVisible(!hidden);
+        }
+    }
+
     public func Tick() {
         if !this.isOpen {
             this.loopAlive = false;
             return;
         }
         let now = NMClock.NowMs();
-        let dt = ClampF(now - this.lastMs, 0.0, 100.0);
+        let raw = now - this.lastMs;              // true frame time, recorded by the perf suite
+        let dt = ClampF(raw, 0.0, 100.0);         // clamped step for camera motion
         this.lastMs = now;
         this.frameNo += 1;
         this.DriveCamera(dt);
-        this.UpdateModules(dt);
+        let t0 = NMClock.NowMs();
+        if !this.perfHidden {
+            this.UpdateModules(dt);
+        }
+        let scriptMs = NMClock.NowMs() - t0;
+        if IsDefined(this.perf) && this.perf.running {
+            this.perf.Step(this, raw, scriptMs);
+        }
         this.Schedule();
     }
 
@@ -250,6 +285,8 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private func OnClosing() {
+        this.perf = null;
+        this.perfHidden = false;
         this.tiles = null;
         this.renderer = null;
         this.marker = null;

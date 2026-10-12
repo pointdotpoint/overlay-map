@@ -1,0 +1,112 @@
+module NightMap
+
+// Same camera path for every scenario: a 2.5 km circle with a zoom sweep across 1..16 m/unit.
+// "closed" scenarios keep the frame loop running but hide the panel and skip all module work.
+public class NMPerfSuite {
+    public let running: Bool;
+    private let names: array<String>;
+    private let counts: array<Int32>;
+    private let shows: array<Bool>;
+    private let idx: Int32;
+    private let phase: Int32;
+    private let frames: Int32;
+    private let setupMs: Float;
+    private let samples: array<Float>;
+    private let script: array<Float>;
+
+    private func Add(name: String, count: Int32, show: Bool) {
+        ArrayPush(this.names, name);
+        ArrayPush(this.counts, count);
+        ArrayPush(this.shows, show);
+    }
+
+    public func Start() {
+        ArrayClear(this.names);
+        ArrayClear(this.counts);
+        ArrayClear(this.shows);
+        this.Add("closed_baseline", 0, false);
+        this.Add("open_empty", 0, true);
+        this.Add("items_5000", 5000, true);
+        this.Add("items_20000", 20000, true);
+        this.Add("items_50000", 50000, true);
+        this.Add("closed_end", 0, false);
+        this.idx = 0;
+        this.phase = 0;
+        this.running = true;
+        NMLog.Info("PERF|SUITE|start");
+    }
+
+    public func Step(sys: ref<NightMapSystem>, dt: Float, scriptMs: Float) {
+        if this.phase == 0 {
+            let t0 = NMClock.NowMs();
+            if this.counts[this.idx] > 0 {
+                NMDebugLayer.Fill(sys.Api(), this.counts[this.idx]);
+            } else {
+                NMDebugLayer.Remove(sys.Api());
+            }
+            this.setupMs = NMClock.NowMs() - t0;
+            sys.SetPerfHidden(!this.shows[this.idx]);
+            this.phase = 1;
+            this.frames = 0;
+            return;
+        }
+        this.frames += 1;
+        if this.phase == 1 {
+            if this.frames >= 30 {
+                this.phase = 2;
+                this.frames = 0;
+                ArrayClear(this.samples);
+                ArrayClear(this.script);
+            }
+            return;
+        }
+        let a = 6.2831853 * Cast<Float>(this.frames) / 300.0;
+        let cam = sys.Camera();
+        cam.follow = false;
+        cam.SetCenter(-700.0 + 2500.0 * CosF(a), 1500.0 + 2500.0 * SinF(a));
+        cam.SetMpp(PowF(16.0, 0.5 - 0.5 * CosF(2.0 * a)));
+        ArrayPush(this.samples, dt);
+        ArrayPush(this.script, scriptMs);
+        if this.frames >= 300 {
+            this.Report();
+            this.idx += 1;
+            this.phase = 0;
+            if this.idx >= ArraySize(this.names) {
+                this.running = false;
+                NMDebugLayer.Remove(sys.Api());
+                sys.SetPerfHidden(false);
+                NMLog.Info("PERF|SUITE|done");
+            }
+        }
+    }
+
+    private func Report() {
+        NMLog.Info("RESULT|" + this.names[this.idx] + "|items=" + ToString(this.counts[this.idx]) + "|frames=" + ToString(ArraySize(this.samples))
+            + "|setup_ms=" + FloatToStringPrec(this.setupMs, 1) + "|" + NMPerfSuite.Stats("frame", this.samples, true) + "|" + NMPerfSuite.Stats("script", this.script, false));
+    }
+
+    // frame_avg|frame_p95|frame_p99|frame_max  (or script_avg|script_p95)
+    public static func Stats(label: String, values: array<Float>, full: Bool) -> String {
+        let n = ArraySize(values);
+        if n == 0 {
+            return label + "_avg=0|" + label + "_p95=0" + (full ? "|" + label + "_p99=0|" + label + "_max=0" : "");
+        }
+        let sorted: array<Float>;
+        let sum = 0.0;
+        for v in values {
+            sum += v;
+            let j = ArraySize(sorted);
+            ArrayPush(sorted, v);
+            while j > 0 && sorted[j - 1] > v {
+                sorted[j] = sorted[j - 1];
+                j -= 1;
+            }
+            sorted[j] = v;
+        }
+        let out = label + "_avg=" + FloatToStringPrec(sum / Cast<Float>(n), 3) + "|" + label + "_p95=" + FloatToStringPrec(sorted[(n * 95) / 100], 3);
+        if full {
+            out += "|" + label + "_p99=" + FloatToStringPrec(sorted[(n * 99) / 100], 3) + "|" + label + "_max=" + FloatToStringPrec(sorted[n - 1], 3);
+        }
+        return out;
+    }
+}
