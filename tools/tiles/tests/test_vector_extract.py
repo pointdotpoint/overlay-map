@@ -200,3 +200,38 @@ def test_block_touching_window_border_is_dropped():
 def test_metro_line_features_still_trace_edges():
     shapes = line_features([strip((-20, 25), (70, 25), 10)], TF, CELL, LV, "metro")
     assert len(shapes) == 2 and all(s.style == "metro" for s in shapes)
+
+
+def test_polygons_of_flattens_nested_collections_and_sorts_deterministically():
+    from shapely.geometry import GeometryCollection, LineString, MultiPolygon
+    from nmtiles.vector_geom import polygons_of
+    a = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+    b = Polygon([(5, 0), (6, 0), (6, 1), (5, 1)])
+    c = Polygon([(2, 3), (4, 3), (4, 5), (2, 5)])
+    gc = GeometryCollection([c, MultiPolygon([b, a]), LineString([(0, 0), (1, 1)])])
+    assert len(polygons_of(gc)) == 3
+    want = [p.wkb for p in polygons_of(gc)]
+    assert want == [a.wkb, c.wkb, b.wkb]                                  # by (minx, miny)
+    assert [p.wkb for p in polygons_of(MultiPolygon([b, c, a]))] == want   # input order does not matter
+    assert [p.wkb for p in polygons_of(MultiPolygon([c, a, b]))] == want
+    assert polygons_of(None) == [] and polygons_of(Polygon()) == []
+
+
+def test_l_shaped_block_is_owned_by_true_centroid_not_vertex_mean():
+    lv = replace(LV, block_margin=60.0)
+    rows = [[20, 7, 40, 6, 10, 0], [3, 27, 6, 34, 10, 0]]          # L: bar x 0..40 y 4..10, bar x 0..6 y 10..44
+    left, right = (-30.0, -20.0, 14.0, 60.0), (14.0, -20.0, 60.0, 60.0)
+    got_left = _blocks(rows, left, lv)
+    assert len(got_left) == 1 and _blocks(rows, right, lv) == []
+    assert Polygon(got_left[0].pts).centroid.x < 14 < got_left[0].pts[:-1, 0].mean()     # the two rules disagree
+
+
+def test_block_heights_are_per_cluster():
+    out = _blocks([[10, 25, 8, 8, 20, 0], [40, 25, 8, 8, 90, 0]])
+    assert sorted(s.style for s in out) == ["block0", "block2"]
+
+
+def test_dropped_counts_only_blocks_touching_the_window():
+    stats = {}
+    _blocks([[100, 25, 8, 8, 10, 0]], stats=stats)         # picked (inside the 150 m ring) but entirely outside the window
+    assert stats.get("dropped", 0) == 0

@@ -264,3 +264,9 @@ Colours are unchanged: cyan, metro pink.
 ### 10.4 Acceptance
 The checkpoint-3 gates are unchanged (§7): the perf suite at +2 ms avg / +4 ms p95, plus visual review. One new visual
 check: no visible seams between adjacent road, land or water pieces (cell edges and hole-split cuts).
+
+### 10.5 Rulings after implementation
+- **Land is not drawn.** `area_features` emits water only (water mesh minus land mesh). The `land` style id stays in `STYLES` with zero shapes, so the manifest layout is unchanged.
+- **Budgets.** Shape budget 810 in the build (`SHAPE_BUDGET`), 900 at runtime (`VecShapeBudget`). Widget pool 1800 (`VecPoolSize`), enough to hold two levels during a transition.
+- **Holes are cut with slits.** A polygon with holes becomes one ring by a 0.05 m wide keyhole cut from each hole's top vertex to the exterior (largest hole first). The bisect split of §10.1 is kept only as the fallback past recursion depth 64. Budget-ladder re-simplification of fill rings uses shapely, so a slit cannot collapse.
+- **Ladder order.** area (2, 4, 8, 16, 32) then tol (1.25, 1.5625, 2) then road width (4, 8, 12): streets are sacrificed last.

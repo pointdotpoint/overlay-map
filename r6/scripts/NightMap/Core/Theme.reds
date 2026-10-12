@@ -42,7 +42,7 @@ public abstract class NMTheme {
     // Vector layer (sub-project 1b). Style ids match tools/tiles nmtiles.vector_config.STYLES:
     // 0 land, 1 water, 2 block0, 3 block1, 4 block2, 5 road, 6 metro.
     public static func VecStyleCount() -> Int32 { return 7; }
-    public static func VecPoolSize() -> Int32 { return 1000; }
+    public static func VecPoolSize() -> Int32 { return 1800; }
     public static func VecPointBudget() -> Int32 { return 30000; }
     public static func VecShapeBudget() -> Int32 { return 900; }
     public static func VecHysteresis() -> Float { return 0.08; }

@@ -17,7 +17,8 @@ from nmtiles.buildings import Boxes
 from nmtiles.glb import Mesh
 from nmtiles.render import rasterize_mask
 from nmtiles.vector_config import HEIGHT_BUCKETS, VLevel
-from nmtiles.vector_geom import _polys, clip_polyline, disk, douglas_peucker, mask_rings, polygon_area, polygon_rings
+from nmtiles.vector_geom import (clip_polyline, disk, douglas_peucker, mask_rings, polygon_area, polygon_rings,
+                                  polygons_of)
 from nmtiles.world import Transform
 
 Rect = tuple[float, float, float, float]   # (min_x, min_y, max_x, max_y), world metres
@@ -97,8 +98,10 @@ def _tris(mesh: Mesh, tf: Transform):
     return hit
 
 
-def warm_sources(src: "Sources") -> None:
-    """Pre-compute world-space triangles so forked workers share them."""
+def warm_sources(src: "Sources", clear: bool = False) -> None:
+    """Pre-compute world-space triangles so forked workers share them. clear=True first drops the cache (per level)."""
+    if clear:
+        _TRI_CACHE.clear()
     for meshes in (src.roads, src.land, src.water):
         for m in meshes:
             _tris(m, src.tf)
@@ -186,14 +189,14 @@ def block_features(corners: np.ndarray, centres: np.ndarray, heights: np.ndarray
     tree = shapely.STRtree(feet)
     eps = 1e-6
     out = []
-    for p in _polys(g):
+    for p in polygons_of(g):
         ext = Polygon(p.exterior)
         s = ext.simplify(level.tol)
         if s.is_empty or s.geom_type != "Polygon":
             continue
         bx0, by0, bx1, by1 = s.bounds
         if bx0 <= x0 + eps or bx1 >= x1 - eps or by0 <= y0 + eps or by1 >= y1 - eps:
-            if stats is not None:
+            if stats is not None and bx1 >= x0 and bx0 <= x1 and by1 >= y0 and by0 <= y1:   # truncated, not merely outside
                 stats["dropped"] = stats.get("dropped", 0) + 1
             continue
         if s.area < max(level.min_area, (2 * level.tol) ** 2):

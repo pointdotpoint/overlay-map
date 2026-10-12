@@ -206,7 +206,7 @@ def test_fit_level_tol_steps_keep_rings_closed():
     t = np.linspace(0, 2 * np.pi, 400)
     ring = np.column_stack((25 + 20 * np.cos(t), 25 + 20 * np.sin(t)))
     ring[-1] = ring[0]
-    sliver = Shape("block0", np.array([[0, 0], [0.01, 0], [0, 0.0]]), 1e6)
+    sliver = Shape("block0", np.array([[0, 0], [0.01, 0], [0, 0.0]]), 1e6)     # degenerate: dropped by the tol step
     cells = {(0, 0): Cell(0, 0, [Shape("block1", ring, 1250.0), sliver])}
     lv, out, rep = fit_level(LV, g, cells, rebuild_roads=lambda l: {(0, 0): []}, log=lambda *_: None,
                              point_budget=150, shape_budget=100)
@@ -250,8 +250,26 @@ def test_resimplify_drops_slivers_keeps_lines_and_closed_rings():
     road = Shape("road", np.array([[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], float), 100.0)
     road_sliver = Shape("road", np.array([[0, 0], [10, 0], [10, 0.05], [0, 0.05], [0, 0]], float), 0.5)
     out = _resimplify({(0, 0): Cell(0, 0, [sliver, metro, square, road, road_sliver])}, 0.5)[(0, 0)].shapes
-    assert [s.style for s in out] == ["metro", "block1", "road"]
-    assert all(np.array_equal(s.pts[0], s.pts[-1]) and len(s.pts) >= 4 for s in out[1:])
+    # shapely keeps thin but valid fill rings (the area step removes small blocks); only degenerate rings go
+    assert [s.style for s in out] == ["block0", "metro", "block1", "road", "road"]
+    assert all(np.array_equal(s.pts[0], s.pts[-1]) and len(s.pts) >= 4 for s in out if s.style != "metro")
+    flat = Shape("block0", np.array([[0, 0], [10, 0], [0, 0]], float), 0.0)
+    assert _resimplify({(0, 0): Cell(0, 0, [flat])}, 0.5) == {}
+
+
+def test_resimplify_slit_ring_stays_valid():
+    from shapely.geometry import Polygon
+    from nmtiles.vector_budget import _resimplify
+    from nmtiles.vector_geom import split_holes
+    ring_poly = Polygon([(0, 0), (100, 0), (100, 100), (0, 100)], [[(30, 30), (70, 30), (70, 70), (30, 70)]])
+    (piece,) = split_holes(ring_poly)                 # one keyhole ring carrying a 0.05 m slit
+    s = Shape("road", np.asarray(piece.exterior.coords, float), piece.area)
+    for tol in (0.5, 2.0, 20.0, 60.0):
+        out = _resimplify({(0, 0): Cell(0, 0, [s])}, tol)
+        for c in out.values():
+            for r in c.shapes:
+                p = Polygon(r.pts)
+                assert p.is_valid and p.area > 0 and np.array_equal(r.pts[0], r.pts[-1])
 
 
 def test_build_level_ignores_boxes_below_min_height():

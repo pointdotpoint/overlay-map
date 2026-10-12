@@ -5,6 +5,7 @@ from dataclasses import replace
 from typing import Callable
 
 import numpy as np
+from shapely.geometry import Polygon
 
 from nmtiles.vector_cells import Cell, VGrid, order
 from nmtiles.vector_config import BLOCK_STYLES, STYLES, POINT_BUDGET, SHAPE_BUDGET, VIEW_UNITS, VLevel
@@ -84,8 +85,14 @@ def _resimplify(cells: dict, tol: float) -> dict:
     for k, c in cells.items():
         shapes = []
         for s in c.shapes:
-            pts = douglas_peucker(s.pts, tol)
-            if len(pts) >= (2 if s.style == "metro" else 4):
+            if s.style == "metro":
+                pts = douglas_peucker(s.pts, tol)
+                ok = len(pts) >= 2
+            else:       # closed fill ring: shapely keeps it simple (no self-intersection, no collapsed slit)
+                g = Polygon(s.pts).simplify(tol, preserve_topology=True)
+                pts = np.asarray(g.exterior.coords, float) if g.geom_type == "Polygon" and not g.is_empty and g.area > 0 else None
+                ok = pts is not None and len(pts) >= 4
+            if ok:
                 shapes.append(type(s)(s.style, pts, s.prio))
         if shapes:
             out[k] = Cell(c.ix, c.iy, shapes)

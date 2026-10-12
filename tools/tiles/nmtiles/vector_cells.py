@@ -127,7 +127,7 @@ def road_shapes(level: VLevel, src: Sources, grid: VGrid,
 def build_level(level: VLevel, src: Sources, extent: Rect, log: Callable[[str], None] = print,
                 workers: int | None = None) -> tuple[VGrid, dict[tuple[int, int], Cell]]:
     g = grid_for(level, extent)
-    warm_sources(src)
+    warm_sources(src, clear=True)
     keep = np.asarray(src.boxes.dz, float) >= MIN_BOX_HEIGHT       # the single place low boxes are ignored
     corners = (box_corners(src.boxes) + np.array([src.tf.dx, src.tf.dy]))[keep]
     _JOB.clear()
