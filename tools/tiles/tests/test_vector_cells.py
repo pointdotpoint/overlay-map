@@ -193,7 +193,7 @@ def test_fit_level_tol_steps_keep_rings_closed():
     t = np.linspace(0, 2 * np.pi, 400)
     ring = np.column_stack((20 + 10 * np.cos(t), 20 + 10 * np.sin(t)))
     ring[-1] = ring[0]
-    sliver = Shape("block0", np.array([[0, 0], [0.01, 0], [0, 0.0]]), 4.0)
+    sliver = Shape("block0", np.array([[0, 0], [0.01, 0], [0, 0.0]]), 1e6)
     cells = {(0, 0): Cell(0, 0, [Shape("block1", ring, 300.0), sliver])}
     lv, out, rep = fit_level(LV, g, cells, rebuild_roads=lambda l: {(0, 0): []}, log=lambda *_: None,
                              point_budget=150, shape_budget=100)
@@ -203,6 +203,37 @@ def test_fit_level_tol_steps_keep_rings_closed():
     assert [s.style for s in shapes] == ["block1"]
 
 
-def test_worst_view_custom_budget_picks_by_that_budget():
-    g, cells = _grid_cells(10)
-    assert worst_view(LV, g, cells, point_budget=10, shape_budget=10)[1] == 40
+def _split_world():
+    """Points-heavy corner A (3 roads x 100 pts) and shapes-heavy corner B (30 blocks x 5 pts), far apart."""
+    g = VGrid(0.0, 100.0, 4, 2, 50.0)
+    lv = VLevel("S", 0.005, 0.01, 0.25, 50.0, 0.5, 0.0, 2.0, 0.0, 20.0)     # worst view is only ~19 x 15 m
+    roads = [Shape("road", np.column_stack((np.linspace(1, 10, 100), np.full(100, 85.0 + k * 0.5))), 9.0) for k in range(3)]
+    blocks = [sq(160 + k % 10, 10 + k // 10 * 2, 1.0, prio=float(k + 1)) for k in range(30)]
+    cells = {(0, 0): Cell(0, 0, roads), (3, 1): Cell(3, 1, blocks)}
+    return g, lv, cells
+
+
+def test_worst_view_custom_budgets_pick_the_matching_location():
+    g, lv, cells = _split_world()
+    p_at = worst_view(lv, g, cells, point_budget=300, shape_budget=10**9)
+    s_at = worst_view(lv, g, cells, point_budget=10**9, shape_budget=30)
+    assert p_at[:2] == (300, 3) and p_at[2][0] < 50
+    assert s_at[:2] == (150, 30) and s_at[2][0] > 100
+
+
+def test_fit_level_uses_its_own_budgets_for_the_report():
+    g, lv, cells = _split_world()
+    ref = worst_view(lv, g, cells, point_budget=300, shape_budget=1000)
+    _, _, rep = fit_level(lv, g, cells, rebuild_roads=lambda l: {}, log=lambda *_: None,
+                          point_budget=300, shape_budget=1000)
+    assert rep["steps"] == [] and (rep["points"], rep["shapes"]) == (300, 3) and rep["at"] == ref[2]
+
+
+def test_resimplify_drops_slivers_keeps_lines_and_closed_rings():
+    from nmtiles.vector_budget import _resimplify
+    sliver = Shape("block0", np.array([[0, 0], [10, 0], [10, 0.05], [0, 0.05], [0, 0]], float), 0.5)
+    road = Shape("road", np.array([[0.0, 0.0], [10.0, 0.0]]), 10.0)
+    square = Shape("block1", np.array([[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], float), 100.0)
+    out = _resimplify({(0, 0): Cell(0, 0, [sliver, road, square])}, 0.5)[(0, 0)].shapes
+    assert [s.style for s in out] == ["road", "block1"]
+    assert np.array_equal(out[1].pts[0], out[1].pts[-1]) and len(out[1].pts) >= 4
