@@ -18,6 +18,7 @@ public class NMSelfTest {
         this.LayoutCases();
         this.TileCases();
         this.RendererCases();
+        this.PickCases();
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 
@@ -375,5 +376,22 @@ public class NMSelfTest {
         L.SetVisible(false);
         r.Update(cam, 1880.0, 1480.0);
         this.Check("renderer.hidden_layer_draws_nothing", r.chipsUsed == 0 && r.clustersUsed == 0, ToString(r.chipsUsed) + "/" + ToString(r.clustersUsed));
+    }
+
+    private func PickCases() {
+        let xs: array<Float> = [100.0, 130.0, 300.0];
+        let ys: array<Float> = [100.0, 100.0, 100.0];
+        let kinds: array<Int32> = [0, 0, 1];
+        let layers: array<Int32> = [0, 0, -1];
+        let items: array<Int32> = [5, 6, -1];
+        this.Check("pick.nearest", NMCrosshair.Pick(xs, ys, kinds, layers, items, 114.0, 100.0, 50.0, -1, -1, -1, 0.0, 0.0) == 0, "");
+        this.Check("pick.sticky_within_4px", NMCrosshair.Pick(xs, ys, kinds, layers, items, 116.0, 100.0, 50.0, 0, 0, 5, 100.0, 100.0) == 0, "");
+        this.Check("pick.switches_beyond_4px", NMCrosshair.Pick(xs, ys, kinds, layers, items, 124.0, 100.0, 50.0, 0, 0, 5, 100.0, 100.0) == 1, "");
+        this.Check("pick.removed_selection_falls_back", NMCrosshair.Pick(xs, ys, kinds, layers, items, 116.0, 100.0, 50.0, 0, 0, 7, 100.0, 100.0) == 1, "");
+        this.Check("pick.none_in_radius", NMCrosshair.Pick(xs, ys, kinds, layers, items, 1000.0, 1000.0, 50.0, -1, -1, -1, 0.0, 0.0) == -1, "");
+        this.Check("pick.cluster", NMCrosshair.Pick(xs, ys, kinds, layers, items, 290.0, 100.0, 50.0, 1, -1, -1, 300.0, 100.0) == 2, "");
+        let empty: array<Float>;
+        let emptyI: array<Int32>;
+        this.Check("pick.empty_candidates", NMCrosshair.Pick(empty, empty, emptyI, emptyI, emptyI, 0.0, 0.0, 50.0, 0, 0, 5, 0.0, 0.0) == -1, "");
     }
 }

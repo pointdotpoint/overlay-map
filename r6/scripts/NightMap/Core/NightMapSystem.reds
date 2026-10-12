@@ -24,6 +24,10 @@ public class NightMapSystem extends ScriptableSystem {
     private let frameNo: Int32;
     private let tiles: ref<NMTileLayer>;
     private let renderer: ref<NMItemRenderer>;
+    private let crosshair: ref<NMCrosshair>;
+    private let card: ref<NMInfoCard>;
+    private let marker: ref<NMPlayerMarker>;
+    private let cardApiRev: Int32;
 
     private func OnAttach() {
         this.api = NightMap.Create();
@@ -227,22 +231,143 @@ public class NightMapSystem extends ScriptableSystem {
         this.camera.Tick(dt);
     }
 
-    // Module hooks; Tasks 12-14 fill these in.
     private func OnOpened() {
+        this.cardApiRev = -1;
+        let l = this.panel.layout;
         this.tiles = NMTileLayer.Create(this.panel.tiles);
-        this.renderer = NMItemRenderer.Create(this.api, this.panel.items, this.panel.layout.scale);
+        this.renderer = NMItemRenderer.Create(this.api, this.panel.items, l.scale);
+        this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
+        this.crosshair = NMCrosshair.Create(this.panel.overlay, l.mapW, l.mapH, l.scale);
+        this.card = NMInfoCard.Create(this.panel.card, l.cardW, l.scale);
+        this.UpdateHeader();
     }
 
     private func OnClosing() {
         this.tiles = null;
         this.renderer = null;
+        this.marker = null;
+        this.crosshair = null;
+        this.card = null;
     }
 
     private func UpdateModules(dt: Float) {
+        let l = this.panel.layout;
         this.tiles.Update(this.camera);
         if this.renderer.pendingImages > 0 && this.frameNo % 15 == 0 {
-            this.renderer.Invalidate();   // poll RedIMG images that were still loading
+            this.renderer.Invalidate();
         }
-        this.renderer.Update(this.camera, this.panel.layout.mapW, this.panel.layout.mapH);
+        let relaid = this.renderer.Update(this.camera, l.mapW, l.mapH);
+        if relaid {
+            let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale);
+            // Re-query card content only when the selection or the data changed, not on every pan frame.
+            if changed || this.api.revision != this.cardApiRev {
+                this.cardApiRev = this.api.revision;
+                this.RefreshCard(changed);
+            }
+        }
+        if this.input.act {
+            this.input.act = false;
+            this.Activate();
+        }
+        this.marker.Update(this.camera, GetPlayer(this.GetGameInstance()), l.mapW, l.mapH);
+        if this.frameNo % 30 == 0 {
+            this.UpdateHeader();
+        }
+    }
+
+    private func RefreshCard(changed: Bool) {
+        let c = this.crosshair;
+        if c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers) {
+            let L = this.api.layers[c.selLayer];
+            if !L.IsAlive(c.selItem) {
+                this.card.ShowEmpty();
+                return;
+            }
+            let d: ref<NightMapDetails>;
+            if IsDefined(L.listener) {
+                d = L.listener.GetDetails(c.selItem);
+                if changed {
+                    L.listener.OnSelected(c.selItem);
+                }
+            }
+            if !IsDefined(d) {
+                d = this.DefaultDetails(L, c.selItem);
+            }
+            this.card.ShowDetails(d, this.api.catColor[L.catGlobal[L.cat[c.selItem]]]);
+        } else if c.selKind == 1 && c.sel >= 0 {
+            let slot = this.renderer.candSlot[c.sel];
+            let cats: array<Int32>;
+            let counts: array<Int32>;
+            let k = 0;
+            while k < this.renderer.clCatN[slot] {
+                ArrayPush(cats, this.renderer.clCats[slot * 6 + k]);
+                ArrayPush(counts, this.renderer.clCatCount[slot * 6 + k]);
+                k += 1;
+            }
+            let s = this.Settings();
+            this.card.ShowCluster(this.renderer.clTotal[slot], cats, counts, this.api, IsDefined(s) ? NMInput.KeyName(s.keyAct) : "ACT");
+        } else {
+            this.card.ShowEmpty();
+        }
+    }
+
+    private func DefaultDetails(L: ref<NightMapLayer>, id: Int32) -> ref<NightMapDetails> {
+        let g = L.catGlobal[L.cat[id]];
+        let title = NotEquals(L.label[id], "") ? L.label[id] : this.api.catDisplay[g];
+        let d = NightMapDetails.Create(this.api.catDisplay[g], title);
+        let player = GetPlayer(this.GetGameInstance());
+        if IsDefined(player) {
+            let p = player.GetWorldPosition();
+            let dx = L.px[id] - p.X;
+            let dy = L.py[id] - p.Y;
+            d.AddRow("Distance", NMMath.FormatMeters(SqrtF(dx * dx + dy * dy)));
+        }
+        return d;
+    }
+
+    private func Activate() {
+        let c = this.crosshair;
+        if c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers) {
+            let L = this.api.layers[c.selLayer];
+            if IsDefined(L.listener) && L.IsAlive(c.selItem) {
+                L.listener.OnActivated(c.selItem);
+            }
+        } else if c.selKind == 1 && c.sel >= 0 {
+            let slot = this.renderer.candSlot[c.sel];
+            let l = this.panel.layout;
+            let target = this.renderer.clWorld[slot] / (0.6 * MinF(l.mapW, l.mapH));
+            this.camera.follow = false;
+            this.camera.EaseTo(this.renderer.clWx[slot], this.renderer.clWy[slot], target, 300.0);
+        }
+    }
+
+    private func UpdateHeader() {
+        let s = this.Settings();
+        let l = this.panel.layout;
+        this.panel.subtitle.SetText(this.DistrictName());
+        let maxMeters = 336.0 * l.scale * this.camera.mpp;
+        let len = NMMath.NiceLength(maxMeters);
+        this.panel.scaleBar.SetSize(new Vector2(len / this.camera.mpp, 5.0 * l.scale));
+        this.panel.scaleLabel.SetText(NMMath.FormatMeters(len));
+        if IsDefined(s) {
+            let hint = NMInput.HintText(s);
+            if this.input.arrowSeen {
+                hint += "   ·   ARROW KEYS IGNORED - TURN NUMLOCK ON";
+            }
+            this.panel.hints.SetText(hint);
+        }
+    }
+
+    private func DistrictName() -> String {
+        let ps = GameInstance.GetScriptableSystemsContainer(this.GetGameInstance()).Get(n"PreventionSystem") as PreventionSystem;
+        if !IsDefined(ps) {
+            return "";
+        }
+        let d = ps.GetCurrentDistrict();
+        if !IsDefined(d) {
+            return "";
+        }
+        let rec = d.GetDistrictRecord();
+        return IsDefined(rec) ? StrUpper(GetLocalizedText(rec.LocalizedName())) : "";
     }
 }
