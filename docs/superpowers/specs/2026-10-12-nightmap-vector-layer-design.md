@@ -368,3 +368,8 @@ the live vector layer**. This section supersedes §3–§6 and §10 for what shi
      2. the finest level at 0.75 m/px.
 
      Each fallback is recorded as a ruling.
+4. **Planned point-of-interest data** (user, 2026-10-13): the locations of hidden items, secret easter eggs and
+   collectibles. These ride on the existing item/marker layer (sub-project 1's spatial index; perf-tested at 50k items),
+   as a static offline dataset with per-category toggles and icons, plus clustering at far zoom.
+   - The layer stack (point 3) keeps the markers layer above all map tiles and below the overlay/widgets.
+   - Nothing in §11 may assume the markers layer holds only live game pins.
