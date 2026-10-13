@@ -56,6 +56,7 @@ public class NMPanel {
         p.root = NMUi.Canvas(window, layout.x, layout.y, layout.w, layout.h);
         p.root.SetName(n"NightMapPanel");
         NMUi.Rect(p.root, 0.0, 0.0, layout.w, layout.h, NMTheme.PanelBg(), opacity);
+        NMUi.Rect(p.root, 0.0, 0.0, layout.mapW, layout.mapH, NMTheme.MapBackground(), opacity);
 
         // Clipped viewport (inkScrollArea's internal mask), same pattern as Codeware's text input viewport.
         let area = new inkScrollArea();

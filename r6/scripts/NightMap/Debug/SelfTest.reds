@@ -388,6 +388,26 @@ public class NMSelfTest {
             }
             s += 1;
         }
+        // Update state machine on a detached layer: fade start, swap-back, third level, release after the fade.
+        let cb = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
+        let cam = NMCamera.Create(1880.0, 1480.0, cb, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
+        cam.SetCenter(-1800.0, 150.0);
+        let sl = NMTileLayer.Create(canvas, 0);
+        cam.SetMpp(1.0);
+        sl.Update(cam, 16.0);
+        let st1 = sl.CurrentLevel() == 1 && sl.PreviousLevel() == -1;
+        cam.SetMpp(2.0);
+        sl.Update(cam, 16.0);
+        let st2 = sl.CurrentLevel() == 2 && sl.PreviousLevel() == 1;
+        cam.SetMpp(1.0);
+        sl.Update(cam, 16.0);
+        let st3 = sl.CurrentLevel() == 1 && sl.PreviousLevel() == 2;
+        cam.SetMpp(8.0);
+        sl.Update(cam, 16.0);
+        let st4 = sl.CurrentLevel() == 4 && sl.PreviousLevel() == 1;
+        sl.Update(cam, NMTileLayer.FadeMs() * 2.0);
+        let st5 = sl.CurrentLevel() == 4 && sl.PreviousLevel() == -1;
+        this.Check("tiles.layer_state_machine", st1 && st2 && st3 && st4 && st5, ToString(st1) + ToString(st2) + ToString(st3) + ToString(st4) + ToString(st5));
         this.Check("tiles.settiles_lookup_hits", hitsOk, "");
         this.Check("tiles.settiles_lookup_misses", missOk, "");
         NMLog.Info("TEST|INFO|tiles.set_level_counts|" + counts);

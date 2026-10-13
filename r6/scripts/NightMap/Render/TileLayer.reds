@@ -1,21 +1,31 @@
 module NightMap
 
 // One baked tile set (road, bfill, glow, outline) as a map layer. Tiles are colourless masks: the colour comes from
-// SetTint. Widgets are pooled and created lazily; a slot keeps its tile while it stays visible, so panning never
-// re-assigns textures. Textures load asynchronously and the layer never waits for them.
+// SetTint. Textures load asynchronously and the layer never waits for them.
+//
+// Each resident level has ONE container canvas sized to the level's whole grid (a 0x0 canvas would cull its children).
+// Tiles sit in it at fixed level-local coordinates (ix * 512, iy * 512, 512 x 512 units of the level's texel grid), so
+// panning and zooming is a single translation + scale on the container; the tiles never move. Tile widgets are only
+// added or removed when the visible index range of a level changes. The fade opacity is on the container.
 //
 // Level choice is downscale-only (PickLevel). When the level changes the previous level stays resident and fades out
-// over FadeMs while the new one fades in; at most two levels are resident, so the pool is bounded by
-// visible tiles x 2 (see MaxSlots).
+// over FadeMs while the new one fades in; at most two levels are resident.
 public class NMTileLayer extends NMMapLayer {
     private let box: ref<inkCanvas>;
     private let setIdx: Int32;
     private let setName: String;
     // SetTiles of every level, concatenated; level l is keys[lvStart[l] .. lvEnd[l]) and sorted (iy * nx + ix).
     private let keys: array<Int32>;
+    private let cont: array<ref<inkCanvas>>;
+    private let rSet: array<Bool>;
+    private let rIx0: array<Int32>;
+    private let rIx1: array<Int32>;
+    private let rIy0: array<Int32>;
+    private let rIy1: array<Int32>;
+    private let capLogged: Bool;
     private let lvStart: array<Int32>;
     private let lvEnd: array<Int32>;
-    // Global tile id = levelBase[l] + iy * nx + ix. slotOf maps a global id to its pool slot (-1 = none).
+    // Global tile id = levelBase[l] + iy * nx + ix. slotOf maps a global id to its pool slot + 1 (0 = none).
     private let levelBase: array<Int32>;
     private let slotOf: array<Int32>;
     private let pool: array<ref<inkImage>>;
@@ -34,7 +44,8 @@ public class NMTileLayer extends NMMapLayer {
     private let lastRev: Int32;
 
     public static func FadeMs() -> Float { return 150.0; }
-    public static func MaxSlots() -> Int32 { return 192; }
+    // Two resident levels at 4K (up to ~120 tiles each near a 2x ratio) with margin.
+    public static func MaxSlots() -> Int32 { return 320; }
 
     public static func ArchiveAvailable() -> Bool {
         return NMTileManifest.Available() && GameInstance.GetResourceDepot().ResourceExists(NMTheme.UiAtlas());
@@ -63,11 +74,13 @@ public class NMTileLayer extends NMMapLayer {
         while l < NMTileManifest.LevelCount() {
             ArrayPush(t.levelBase, base);
             let n = NMTileManifest.LevelNx(l) * NMTileManifest.LevelNy(l);
-            let k = 0;
-            while k < n {
-                ArrayPush(t.slotOf, -1);
-                k += 1;
-            }
+            ArrayResize(t.slotOf, base + n);
+            ArrayPush(t.cont, null);
+            ArrayPush(t.rSet, false);
+            ArrayPush(t.rIx0, 0);
+            ArrayPush(t.rIx1, 0);
+            ArrayPush(t.rIy0, 0);
+            ArrayPush(t.rIy1, 0);
             base += n;
             // Bind to a local: ArraySize/iteration of a call temporary reads 0 in-game.
             let tiles: array<Int32> = NMTileManifest.SetTiles(setIdx, l);
@@ -191,13 +204,35 @@ public class NMTileLayer extends NMMapLayer {
                 this.prev = -1;
             }
         }
+        if this.tintDirty {
+            let s = 0;
+            while s < ArraySize(this.pool) {
+                this.pool[s].SetTintColor(this.tint);
+                s += 1;
+            }
+        }
+        // The current level is placed first, so a full pool never starves the incoming level.
+        this.PlaceLevel(cam, this.cur, this.aCur, touch);
         if this.prev >= 0 {
             this.PlaceLevel(cam, this.prev, this.aPrev, touch);
         }
-        this.PlaceLevel(cam, this.cur, this.aCur, touch);
         this.tintDirty = false;
     }
 
+    private func Container(lv: Int32) -> ref<inkCanvas> {
+        if !IsDefined(this.cont[lv]) {
+            let c = new inkCanvas();
+            c.SetAnchor(inkEAnchor.TopLeft);
+            c.SetInteractive(false);
+            c.SetSize(new Vector2(Cast<Float>(NMTileManifest.LevelNx(lv)) * 512.0, Cast<Float>(NMTileManifest.LevelNy(lv)) * 512.0));
+            c.SetRenderTransformPivot(new Vector2(0.0, 0.0));
+            c.Reparent(this.box);
+            this.cont[lv] = c;
+        }
+        return this.cont[lv];
+    }
+
+    // One transform per frame for the whole level; tile widgets change only when the visible index range changes.
     private func PlaceLevel(cam: ref<NMCamera>, lv: Int32, alpha: Float, touch: Bool) {
         let mpp = NMTileManifest.LevelMpp(lv);
         let tw = 512.0 * mpp;
@@ -205,11 +240,30 @@ public class NMTileLayer extends NMMapLayer {
         let otop = NMTileManifest.LevelOriginTop(lv);
         let nx = NMTileManifest.LevelNx(lv);
         let ny = NMTileManifest.LevelNy(lv);
+        let c = this.Container(lv);
+        let shown = this.rSet[lv];
+        if !shown {
+            c.SetVisible(true);
+        }
+        let k = mpp / cam.mpp;
+        c.SetScale(new Vector2(k, k));
+        c.SetTranslation(cam.WorldToMap(ox, otop));
+        if touch || !shown {
+            c.SetOpacity(this.opacity * alpha);
+        }
         let vis = cam.VisibleRect(0.0);
         let ix0 = Max(FloorF((vis.minX - ox) / tw), 0);
         let ix1 = Min(FloorF((vis.maxX - ox) / tw), nx - 1);
         let iy0 = Max(FloorF((otop - vis.maxY) / tw), 0);
         let iy1 = Min(FloorF((otop - vis.minY) / tw), ny - 1);
+        if shown && this.rIx0[lv] == ix0 && this.rIx1[lv] == ix1 && this.rIy0[lv] == iy0 && this.rIy1[lv] == iy1 {
+            return;
+        }
+        this.rSet[lv] = true;
+        this.rIx0[lv] = ix0;
+        this.rIx1[lv] = ix1;
+        this.rIy0[lv] = iy0;
+        this.rIy1[lv] = iy1;
         // Free the slots of this level that scrolled out of view.
         let s = 0;
         while s < ArraySize(this.pool) {
@@ -219,42 +273,31 @@ public class NMTileLayer extends NMMapLayer {
             }
             s += 1;
         }
-        let op = this.opacity * alpha;
         let iy = iy0;
         while iy <= iy1 {
             let ix = ix0;
             while ix <= ix1 {
-                if this.Has(lv, ix, iy) {
-                    let gk = this.levelBase[lv] + iy * nx + ix;
-                    let slot = this.slotOf[gk];
-                    let fresh = false;
-                    if slot < 0 {
-                        slot = this.AllocSlot();
-                        if slot >= 0 {
-                            this.pool[slot].SetAtlasResource(ResRef.FromString("nightmap\\tiles\\" + this.setName + "\\L" + ToString(lv)
-                                + "\\t_" + ToString(ix) + "_" + ToString(iy) + ".inkatlas"));
-                            this.pool[slot].SetTexturePart(n"full");
-                            this.pool[slot].SetVisible(true);
-                            this.slotKey[slot] = gk;
-                            this.slotLv[slot] = lv;
-                            this.slotIx[slot] = ix;
-                            this.slotIy[slot] = iy;
-                            this.slotOf[gk] = slot;
-                            fresh = true;
-                        }
-                    }
+                let gk = this.levelBase[lv] + iy * nx + ix;
+                if this.slotOf[gk] == 0 && this.Has(lv, ix, iy) {
+                    let slot = this.AllocSlot();
                     if slot >= 0 {
                         let img = this.pool[slot];
-                        // Neighbouring tiles share an edge value, so there is neither a gap nor an overlap
-                        // (an overlap would double the alpha of a translucent mask along the seam).
-                        let p0 = cam.WorldToMap(ox + Cast<Float>(ix) * tw, otop - Cast<Float>(iy) * tw);
-                        let p1 = cam.WorldToMap(ox + Cast<Float>(ix + 1) * tw, otop - Cast<Float>(iy + 1) * tw);
-                        img.SetTranslation(p0);
-                        img.SetSize(new Vector2(p1.X - p0.X, p1.Y - p0.Y));
-                        if fresh || touch {
-                            img.SetTintColor(this.tint);
-                            img.SetOpacity(op);
-                        }
+                        img.Reparent(c);
+                        img.SetAtlasResource(ResRef.FromString("nightmap\\tiles\\" + this.setName + "\\L" + ToString(lv)
+                            + "\\t_" + ToString(ix) + "_" + ToString(iy) + ".inkatlas"));
+                        img.SetTexturePart(n"full");
+                        img.SetTintColor(this.tint);
+                        img.SetTranslation(new Vector2(Cast<Float>(ix) * 512.0, Cast<Float>(iy) * 512.0));
+                        img.SetSize(new Vector2(512.0, 512.0));
+                        img.SetVisible(true);
+                        this.slotKey[slot] = gk;
+                        this.slotLv[slot] = lv;
+                        this.slotIx[slot] = ix;
+                        this.slotIy[slot] = iy;
+                        this.slotOf[gk] = slot + 1;
+                    } else if !this.capLogged {
+                        this.capLogged = true;
+                        NMLog.Error("tile pool exhausted in set " + this.setName + " (cap " + ToString(NMTileLayer.MaxSlots()) + "): some tiles will be missing");
                     }
                 }
                 ix += 1;
@@ -285,7 +328,7 @@ public class NMTileLayer extends NMMapLayer {
 
     private func ReleaseSlot(s: Int32) {
         this.pool[s].SetVisible(false);
-        this.slotOf[this.slotKey[s]] = -1;
+        this.slotOf[this.slotKey[s]] = 0;
         this.slotKey[s] = -1;
         this.slotLv[s] = -1;
         ArrayPush(this.freeSlots, s);
@@ -298,6 +341,10 @@ public class NMTileLayer extends NMMapLayer {
                 this.ReleaseSlot(s);
             }
             s += 1;
+        }
+        this.rSet[lv] = false;
+        if IsDefined(this.cont[lv]) {
+            this.cont[lv].SetVisible(false);
         }
     }
 }

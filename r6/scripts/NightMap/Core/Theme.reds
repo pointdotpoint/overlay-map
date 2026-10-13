@@ -3,6 +3,7 @@ module NightMap
 // Visual tokens. Sizes are 3840x2160 HUD units and MUST match tools/tiles/nmtiles/ui_atlas.py SIZES.
 public abstract class NMTheme {
     public static func Cyan() -> HDRColor { return new HDRColor(0.478, 0.941, 1.0, 1.0); }
+    public static func MapBackground() -> HDRColor { return new HDRColor(0.031, 0.071, 0.102, 1.0); }   // #08121a
     public static func Text() -> HDRColor { return new HDRColor(0.784, 0.965, 1.0, 1.0); }
     public static func Pink() -> HDRColor { return new HDRColor(1.0, 0.310, 0.847, 1.0); }
     public static func Yellow() -> HDRColor { return new HDRColor(1.0, 0.878, 0.400, 1.0); }

@@ -5,7 +5,7 @@ set -euo pipefail
 
 GAME="${GAME:-$HOME/cyberpunk_symlink}"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-SANDBOX="${SANDBOX:-/tmp/nightmap-scc}"
+SANDBOX="${SANDBOX:-$HERE/.scratch/nightmap-scc}"
 
 rm -rf "$SANDBOX"
 mkdir -p "$SANDBOX/engine/tools" "$SANDBOX/r6/cache" "$SANDBOX/r6/scripts"/{Codeware,RedIMGRetriever,ModSettings}

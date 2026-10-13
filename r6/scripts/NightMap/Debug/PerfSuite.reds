@@ -77,6 +77,13 @@ public class NMPerfSuite {
         }
         this.frames += 1;
         if this.phase == 1 {
+            // Idle scenarios move to their fixed view during warm-up, so load and fade stay out of the measurement.
+            if this.modes[this.idx] == 1 {
+                let wc = sys.Camera();
+                wc.follow = false;
+                wc.SetCenter(-1800.0, 150.0);
+                wc.SetMpp(this.mpps[this.idx]);
+            }
             if this.frames >= 30 {
                 this.phase = 2;
                 this.frames = 0;
