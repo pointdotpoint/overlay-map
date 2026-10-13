@@ -26,7 +26,10 @@ from typing import Callable
 import numpy as np
 
 ROAD_THICKNESS = 3.0        # metres: area / max bbox extent at or above this is a road, below it a stroke
+DECODE_VERSION = 1           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
 LODS = (3, 4)               # sector LODs that carry the minimap geometry we use (spike 2: both, disjoint paths)
+# SECTOR_RE also matches z = -1 sectors (exterior_x_y_-1_*, about 1.3% of the triangles). They are included on
+# purpose (not verified to be surface-only; Task 12 should check for stray geometry).
 SECTOR_DIR = "base/worlds/03_night_city/_compiled/default"
 SECTOR_RE = r"exterior_-?\d+_-?\d+_-?\d+_[34]\.streamingsector$"
 BASE_ARCHIVE = "content/basegame_3_nightcity.archive"
@@ -118,7 +121,9 @@ def decode_shapes(root: dict) -> list[DecodedShape]:
     u = _unpack(root)
     out = []
     for i in range(len(u["C"])):
-        s, n = int(u["start"][i]), int(u["count"][i]) // 3 * 3
+        s, n = int(u["start"][i]), int(u["count"][i])
+        if n % 3 or s + n > len(u["F"]):
+            raise ValueError(f"corrupt minimap fill range: shape {i} start {s} count {n} of {len(u['F'])} indices")
         idx = u["F"][s:s + n].reshape(-1, 3)
         tris = (u["P"][idx] + u["C"][i, :2]).astype(np.float32)
         out.append(DecodedShape(tris, float(u["C"][i, 2]), int(u["B"]["t"][i]), int(u["B"]["f"][i])))
@@ -136,6 +141,16 @@ def classify(tris: np.ndarray, thickness: float = ROAD_THICKNESS) -> str:
     return "road" if ext > 0 and area / ext >= thickness else "stroke"
 
 
+def _check_identity(nd: dict) -> None:
+    """Node rotation must be identity and scale 1 (true for all 12.4k nodes): world xy = node xy + local xy."""
+    o, sc = nd.get("Orientation") or {}, nd.get("Scale") or {}
+    q = [float(o.get(k, d)) for k, d in (("i", 0), ("j", 0), ("k", 0), ("r", 1))]
+    v = [float(sc.get(k, 1)) for k in "XYZ"]
+    if not (np.allclose(q, [0, 0, 0, 1], atol=1e-4) and np.allclose(v, 1, atol=1e-4)):
+        raise ValueError(f"minimap node {nd.get('NodeIndex')} has non-identity transform (orientation {q}, scale {v}); "
+                         "the decoder assumes identity rotation and unit scale")
+
+
 def sector_nodes(sector_json: dict) -> list[tuple[tuple[float, float], dict]]:
     """``(position_xy, encoded_root)`` for every exterior MinimapDataNode with embedded data.
 
@@ -150,6 +165,7 @@ def sector_nodes(sector_json: dict) -> list[tuple[tuple[float, float], dict]]:
         node = nodes.get(nd["NodeIndex"])
         if node is None or node.get("allInteriorShapes"):
             continue
+        _check_identity(nd)
         content = embedded.get(node["encodedShapesRef"]["DepotPath"]["$value"])
         if content is None or _is_empty(content):
             continue
@@ -186,8 +202,11 @@ def resolve_sectors(base: list[str], ep1: list[str]) -> dict[str, tuple[str, str
     return out
 
 
-def _wk(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["WolvenKit.CLI", *args], capture_output=True, text=True)
+def _wk(*args: str, check: bool = True) -> subprocess.CompletedProcess:
+    r = subprocess.run(["WolvenKit.CLI", *args], capture_output=True, text=True)
+    if check and r.returncode != 0:
+        raise RuntimeError(f"WolvenKit.CLI {' '.join(args[:2])} failed (rc {r.returncode}): {r.stderr[-500:] or r.stdout[-500:]}")
+    return r
 
 
 def list_archive(archive: Path) -> list[str]:
@@ -196,6 +215,7 @@ def list_archive(archive: Path) -> list[str]:
 
 
 def archive_key(archives: list[Path]) -> str:
+    """Key of the JSON cache: the source archives' name, size and mtime."""
     h = hashlib.sha256()
     for a in sorted(archives):
         st = a.stat()
@@ -203,15 +223,47 @@ def archive_key(archives: list[Path]) -> str:
     return h.hexdigest()[:16]
 
 
+def npz_key(arc_key: str) -> str:
+    """Key of the final npz: archives plus everything that changes the decoded result."""
+    return hashlib.sha256(f"{arc_key}|v{DECODE_VERSION}|road{ROAD_THICKNESS}|lods{LODS}".encode()).hexdigest()[:16]
+
+
+def json_ok(path: Path) -> bool:
+    """A converted sector counts as done only if non-empty and complete (ends with the closing brace)."""
+    try:
+        size = path.stat().st_size
+        if size == 0:
+            return False
+        with open(path, "rb") as fh:
+            fh.seek(max(0, size - 64))
+            return fh.read().rstrip().endswith(b"}")
+    except OSError:
+        return False
+
+
+def _convert_once(src: str, out: Path) -> bool:
+    name = Path(src).name + ".json"
+    tmp = out / f".tmp_{name}"
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir()                                       # `convert s` needs an existing output dir
+    try:
+        r = _wk("convert", "s", src, "-o", str(tmp), check=False)
+        produced = tmp / name
+        if r.returncode != 0 or not json_ok(produced):
+            return False
+        os.replace(produced, out / name)              # atomic: the final name only ever holds a complete file
+        return True
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def _convert_one(args: tuple[str, str]) -> bool:
     src, out_dir = args
     out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)           # `convert s` needs an existing output dir
-    name = Path(src).name + ".json"
-    if (out / name).exists():
+    out.mkdir(parents=True, exist_ok=True)
+    if json_ok(out / (Path(src).name + ".json")):
         return True
-    _wk("convert", "s", src, "-o", str(out))
-    return (out / name).exists()
+    return _convert_once(src, out) or _convert_once(src, out)      # one retry
 
 
 def _decode_file(path: str) -> tuple[np.ndarray, np.ndarray, int]:
@@ -232,7 +284,12 @@ def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = prin
     game_dir, cache_dir = Path(game_dir), Path(cache_dir)
     workers = workers or os.cpu_count() or 4
     base_arc = game_dir / "archive/pc" / BASE_ARCHIVE
-    ep1_arcs = sorted((game_dir / "archive/pc/ep1").glob(EP1_ARCHIVE_GLOB))
+    ep1_arcs = sorted((game_dir / "archive/pc/ep1").glob(EP1_ARCHIVE_GLOB))   # sorted: extraction order is deterministic
+    if not base_arc.exists():
+        raise FileNotFoundError(f"base archive not found: {base_arc}")
+    if not ep1_arcs:
+        raise FileNotFoundError(f"no EP1 archives ({EP1_ARCHIVE_GLOB}) under {game_dir / 'archive/pc/ep1'}; "
+                                "refusing to build a base-only city")
     key = archive_key([base_arc, *ep1_arcs])
 
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -242,6 +299,11 @@ def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = prin
         for child in cache_dir.iterdir():
             shutil.rmtree(child) if child.is_dir() else child.unlink()
         key_file.write_text(key + "\n")
+    nkey_file = cache_dir / "npz_key.txt"
+    nkey = npz_key(key)
+    if npz.exists() and (not nkey_file.exists() or nkey_file.read_text().strip() != nkey):
+        log("decode parameters changed; rebuilding npz from the JSON cache")
+        npz.unlink()
     if npz.exists():
         z = np.load(npz)
         log(f"cached {npz.name}: road {len(z['road'])} stroke {len(z['stroke'])}")
@@ -249,6 +311,8 @@ def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = prin
 
     base_list = list_archive(base_arc)
     ep1_list = [p for a in ep1_arcs for p in list_archive(a)]
+    if not base_list or not ep1_list:
+        raise RuntimeError(f"sector listing failed: base {len(base_list)}, ep1 {len(ep1_list)} sectors")
     sectors = resolve_sectors(base_list, ep1_list)
     log(f"sectors: base {len(base_list)}, ep1 {len(ep1_list)} -> {len(sectors)} unique "
         f"({sum(v[0] == 'ep1' for v in sectors.values())} from ep1)")
@@ -256,11 +320,11 @@ def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = prin
     json_dirs = {s: cache_dir / f"json_{s}" for s in ("base", "ep1")}
     for d in json_dirs.values():
         d.mkdir(exist_ok=True)
-    todo = {s: [n for n, (src, _) in sectors.items() if src == s and not (json_dirs[s] / f"{n}.json").exists()]
+    todo = {s: [n for n, (src, _) in sectors.items() if src == s and not json_ok(json_dirs[s] / f"{n}.json")]
             for s in ("base", "ep1")}
 
     # extract the needed CR2W sectors (one WolvenKit call per archive), then convert them in parallel
-    jobs = []
+    jobs, failed = [], []
     for s, archives in (("base", [base_arc]), ("ep1", ep1_arcs)):
         if not todo[s]:
             continue
@@ -270,23 +334,26 @@ def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = prin
         for a in archives:
             log(f"extracting {len(todo[s])} {s} sectors from {a.name}")
             _wk("extract", str(a), "-r", rf"default[/\\]({need})\.streamingsector$", "-o", str(sec_dir))
-        jobs += [(str(sec_dir / SECTOR_DIR / n), str((json_dirs[s] / n).parent)) for n in todo[s]
-                 if (sec_dir / SECTOR_DIR / n).exists()]
+        for n in todo[s]:
+            if (sec_dir / SECTOR_DIR / n).exists():
+                jobs.append((n, str(sec_dir / SECTOR_DIR / n), str((json_dirs[s] / n).parent)))
+            else:
+                failed.append(f"{s}:{n} (not extracted)")
     if jobs:
         log(f"converting {len(jobs)} sectors with {workers} workers")
         done = 0
         with ThreadPoolExecutor(workers) as ex:
-            for ok in ex.map(_convert_one, jobs):
+            for (n, _, _), ok in zip(jobs, ex.map(_convert_one, [(j[1], j[2]) for j in jobs])):
                 done += 1
                 if not ok:
-                    log("convert failed for one sector")
+                    failed.append(f"{n} (convert failed twice)")
                 if done % 50 == 0:
                     log(f"  converted {done}/{len(jobs)}  ({time.time() - t0:.0f}s)")
 
     files = [str(json_dirs[src] / f"{n}.json") for n, (src, _) in sorted(sectors.items())]
-    files = [f for f in files if os.path.exists(f)]
-    if len(files) != len(sectors):
-        log(f"WARNING: {len(sectors) - len(files)} sectors missing after conversion")
+    failed += [f"{f} (missing)" for f in files if not json_ok(Path(f))]
+    if failed:
+        raise RuntimeError(f"{len(failed)} sectors failed; not writing the npz:\n  " + "\n  ".join(sorted(set(failed))))
     road, stroke, nodes = [], [], 0
     with ProcessPoolExecutor(workers) as ex:
         for r, s, n in ex.map(_decode_file, files, chunksize=4):
@@ -294,7 +361,10 @@ def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = prin
             stroke.append(s)
             nodes += n
     out = {"road": np.concatenate(road).astype(np.float32), "stroke": np.concatenate(stroke).astype(np.float32)}
-    np.savez_compressed(npz, **out)
+    tmp = cache_dir / "minimap_city.tmp.npz"
+    np.savez_compressed(tmp, **out)
+    os.replace(tmp, npz)
+    nkey_file.write_text(nkey + "\n")
     log(f"sectors {len(files)}, nodes {nodes}, road tris {len(out['road'])}, stroke tris {len(out['stroke'])}, "
         f"npz {npz.stat().st_size / 1e6:.1f} MB, {time.time() - t0:.0f}s")
     return out
