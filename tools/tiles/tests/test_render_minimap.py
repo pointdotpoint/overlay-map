@@ -25,7 +25,7 @@ def alpha(img):
 
 
 def test_sets_are_in_draw_order():
-    assert SETS == ("road", "bfill", "glow", "outline")
+    assert SETS == ("road", "bfill", "outline")
 
 
 def test_tri_index_returns_overlapping_bboxes_and_nothing_far():
@@ -51,14 +51,13 @@ def test_road_triangle_paints_centroid_and_leaves_far_pixels_clear():
     assert a[300:, 300:].max() == 0 and a[:, 400:].max() == 0
 
 
-def test_footprint_gives_fill_glow_outline_and_empty_tiles_are_none():
+def test_footprint_gives_fill_and_outline_and_empty_tiles_are_none():
     s = src(polys=[box(100, 800, 200, 900)])
     out = render_tile(s, GRID, 0, 0)
-    assert set(out) == {"bfill", "glow", "outline"}
-    fill, line, glow = (alpha(out[k]) for k in ("bfill", "outline", "glow"))
-    assert fill[1024 - 850, 150] == 255 and line[1024 - 850, 150] == 0 and glow[1024 - 850, 150] == 0   # interior
+    assert set(out) == {"bfill", "outline"}
+    fill, line = (alpha(out[k]) for k in ("bfill", "outline"))
+    assert fill[1024 - 850, 150] == 255 and line[1024 - 850, 150] == 0     # interior
     assert line[1024 - 850, 100] > 100                                         # outline on the edge
-    assert (glow > 0).sum() > (line > 0).sum()
     assert render_tile(s, GRID, 1, 1) == {} and render_tile(src(), GRID, 0, 0) == {}
 
 

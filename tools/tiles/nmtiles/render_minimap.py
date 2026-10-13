@@ -3,7 +3,6 @@
 One tile set per class, in draw order; the runtime tints them with SetTintColor from NMTheme:
   road     minimap road triangles
   bfill    building footprint fill
-  glow     footprint outline, Gaussian blurred (GLOW_RADIUS px at every level)
   outline  footprint exterior as a 1 px line at the level's resolution (drawn at 2x, width 2, downsampled)
 Every tile is rendered independently at SS x and downsampled (LANCZOS), with a margin that is cropped away afterwards,
 so neighbouring tiles agree along their shared edge and no whole-level image ever exists.
@@ -18,18 +17,15 @@ from pathlib import Path
 from typing import Callable
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 from nmtiles.render import LevelGrid
 
-SETS = ("road", "bfill", "glow", "outline")      # draw order, back to front
+SETS = ("road", "bfill", "outline")      # draw order, back to front
 SS = 2
 DEFAULT_JOBS = 4
-GLOW_RADIUS = 3.0                                        # px at every level
-GLOW_GAIN = 1.0
 EDGE_MARGIN = 3                                          # px: >= the LANCZOS support, so the kernel sees the neighbouring tile
 BATCH = 100_000                                          # primitives drawn per Python list conversion (bounded memory)
-GLOW_MARGIN = math.ceil(3 * GLOW_RADIUS) + 3             # >= 3 sigma
 
 
 class TriIndex:
@@ -159,13 +155,11 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
 
     m = _fill_mask(src.road, grid, ix, iy, EDGE_MARGIN)
     put("road", None if m is None else _crop(m, EDGE_MARGIN))
-    masks = _foot_masks(src, grid, ix, iy, GLOW_MARGIN)
+    masks = _foot_masks(src, grid, ix, iy, EDGE_MARGIN)
     if masks is not None:
         fill, line = masks
-        put("bfill", _crop(fill, GLOW_MARGIN))
-        blurred = np.asarray(Image.fromarray(line).filter(ImageFilter.GaussianBlur(GLOW_RADIUS)))
-        put("glow", _crop(np.minimum(blurred.astype(np.float32) * GLOW_GAIN, 255).astype(np.uint8), GLOW_MARGIN))
-        put("outline", _crop(line, GLOW_MARGIN))
+        put("bfill", _crop(fill, EDGE_MARGIN))
+        put("outline", _crop(line, EDGE_MARGIN))
     return out
 
 

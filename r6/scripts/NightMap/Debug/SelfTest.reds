@@ -324,7 +324,7 @@ public class NMSelfTest {
             return;
         }
         let n = NMTileManifest.LevelCount();
-        this.Check("tiles.six_levels_four_sets", n == 6 && NMTileManifest.SetCount() == 4, ToString(n) + "/" + ToString(NMTileManifest.SetCount()));
+        this.Check("tiles.six_levels_three_sets", n == 6 && NMTileManifest.SetCount() == 3, ToString(n) + "/" + ToString(NMTileManifest.SetCount()));
         let ascending = true;
         let i = 1;
         while i < n {

@@ -1,6 +1,6 @@
 module NightMap
 
-// One baked tile set (road, bfill, glow, outline) as a map layer. Tiles are colourless masks: the colour comes from
+// One baked tile set (road, bfill, outline) as a map layer. Tiles are colourless masks: the colour comes from
 // SetTint. Textures load asynchronously and the layer never waits for them.
 //
 // Each resident level has ONE container canvas sized to the level's whole grid (a 0x0 canvas would cull its children).

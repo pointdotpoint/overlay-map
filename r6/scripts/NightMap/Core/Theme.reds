@@ -49,7 +49,6 @@ public abstract class NMTheme {
     public static func TileOpacity(set: String) -> Float {
         if Equals(set, "road") { return 0.55; }
         if Equals(set, "bfill") { return 0.12; }
-        if Equals(set, "glow") { return 0.35; }
         if Equals(set, "outline") { return 0.9; }
         return 1.0;
     }

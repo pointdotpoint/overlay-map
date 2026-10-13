@@ -7,6 +7,5 @@ PREVIEW_BG = (8, 18, 26)                     # #08121a
 PREVIEW_SETS = {
     "road":    ((0x1e, 0x8c, 0x96), 0.55),
     "bfill":   ((0x9f, 0xf3, 0xff), 0.12),
-    "glow":    ((0x9f, 0xf3, 0xff), 0.35),
     "outline": ((0x9f, 0xf3, 0xff), 0.9),
 }

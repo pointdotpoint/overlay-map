@@ -401,3 +401,9 @@ supersede §11.2 and §11.5's tile-set list:
   - glow `#9ff3ff` α0.35;
   - outline `#9ff3ff` α0.9;
   - background `#08121a`.
+
+### 11.7 Glow removed (user, 2026-10-13, after the final review)
+The final review measured the baked glow at under 7% visible alpha. It was a quarter of the tiles and runtime widgets
+for an effect the user barely saw. The user decided: "you can remove the glow". There are now three sets: `road`,
+`bfill` and `outline`. The glow defaults above no longer apply. A glow can come back later as a themed effect if a
+cheap way to draw it is found.

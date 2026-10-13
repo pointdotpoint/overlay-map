@@ -10,7 +10,7 @@ public class NMMapLayer {
 }
 
 // Draw order, bottom to top. Only the first group lives in NMLayerStack; the rest are separate canvases in NMPanel.
-//   1. Tile sets, in NMTileManifest.SetName order: road, bfill, glow, outline.   (NMTileLayer, one per set)
+//   1. Tile sets, in NMTileManifest.SetName order: road, bfill, outline.   (NMTileLayer, one per set)
 //   2. [future] photos: the user's photo pins / imagery. Add one more NMMapLayer after the last tile set in
 //      NMLayerStack.Create; a generic NMTileLayer bound to a new manifest set already does it.
 //   3. Items and markers (NMPanel.items, drawn by NMItemRenderer). Never assumes live game pins only.
