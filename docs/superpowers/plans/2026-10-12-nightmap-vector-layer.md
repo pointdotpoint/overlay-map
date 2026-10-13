@@ -2585,3 +2585,132 @@ git commit -m "Docs: vector map setting and build notes
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
+
+---
+
+## Revision 2 (2026-10-13): baked minimap tiles (spec §11)
+
+Tasks 11–13 replace the remaining live-vector work. Task 9 (checkpoint 3) resumes as Task 14 after them, and Task 10 (docs)
+runs last. The spike code in `.scratch/minimap_spike/` (`fastdec.py`, `extract.py`, `build_all.py`, `w/lib.py`) is a
+**reference only**: port its logic, don't import it. `FINDINGS.md` there is the format spec.
+
+### Task 11: Minimap extraction and decode (`nmtiles/minimap.py`)
+
+**Files:** create `tools/tiles/nmtiles/minimap.py` and `tools/tiles/tests/test_minimap.py`, plus a tiny fixture
+`tools/tiles/tests/data/minimap_sample.json`: one real small `minimapEncodedShapes` RootChunk, e.g. the
+`a0_0_0_c111_80_222` one from `.scratch/cmm/json/`.
+
+**Interfaces (produced):**
+- `decode_shapes(root: dict) -> list[DecodedShape]`. `DecodedShape(tris: np.ndarray (M,3,2) local xy, z: float,
+  type: int, flag: int)`.
+- `sector_nodes(sector_json: dict) -> list[(position_xy, encoded_root_dict)]`. Skips interiors, soft refs with no
+  embedded data, and scale = -inf.
+- `classify(tris) -> "road" | "stroke"`: thickness = area / max bbox extent; road if ≥ 3.0 m.
+- `load_city(game_dir: Path, cache_dir: Path, log, workers=None) -> dict[str, np.ndarray]`. Returns `{"road": (N,3,2)
+  float32, "stroke": (K,3,2) float32}` in world xy. It:
+  1. lists the sectors (base `basegame_3_nightcity.archive` plus the EP1 archives; an EP1 copy of a path replaces the
+     base one);
+  2. extracts and converts them in parallel with WolvenKit (`extract -w/-r`, then `convert s`, whose output dir must
+     exist);
+  3. caches the JSON and a final `minimap_city.npz` in `cache_dir`, keyed by the source archives' size + mtime.
+
+**Tests (write first):**
+1. Decoding the fixture gives `NumShapes` shapes. Every fill index is in range, the fill ranges tile the fill buffer exactly
+   once, and the triangle count equals `NumFillPoints / 3`.
+2. Both D-record packings (normal and compact): synthetic buffers built in the test decode to the expected start/count.
+3. The quantization maps qx = 0 → bias and qx = 65535 → bias + scale.
+4. `classify`: a 10×40 m rectangle → road; a 0.8×12 m rectangle → stroke.
+5. `sector_nodes` on a synthetic sector JSON:
+   - adds the node position;
+   - skips an `allInteriorShapes` node;
+   - skips a soft ref with no embedded file.
+6. EP1 precedence: given base and EP1 path lists, the resolver picks the EP1 copy for a duplicated path.
+
+**Verify:**
+- `pytest` green.
+- Run `load_city` for real once and log the totals (sectors, nodes, road and stroke triangles). The cold run is
+  long (about 772 sectors × 15 s ÷ workers). Report the wall time and the npz size.
+
+### Task 12: Styled minimap tiles in the build (`nmtiles/render_minimap.py`, `build.py`)
+
+**Files:**
+- create `tools/tiles/nmtiles/render_minimap.py` and `tools/tiles/tests/test_render_minimap.py`;
+- modify `tools/tiles/nmtiles/build.py`;
+- modify `tools/tiles/nmtiles/style.py` (the base style: buildings off).
+
+**Behaviour (spec §11.2):**
+- **Levels.** `--levels` defaults to `0.5,1,2,4,8,16`.
+- **Per-tile rendering.** For each level and tile, render at 2× and downsample (LANCZOS). Layers:
+  1. the base 3D-map layer: land, water, coast, roads off, buildings off. Reuse `render.py`'s drawing on a tile-sized
+     grid; refactor `render_level` so it can render a sub-rectangle;
+  2. minimap road triangles, fill `#1e8c96` at alpha 0.55;
+  3. minimap stroke triangles, `#9ff3ff` at alpha 0.9;
+  4. metro, as the current style draws it.
+- **Triangle lookup.** Use a per-level spatial grid (numpy binning by triangle bbox) so a tile only touches nearby
+  triangles.
+- **Skipping.** Fully transparent tiles are skipped.
+- **Parallelism.** A fork pool over tiles. Memory must stay bounded: no whole-level images.
+- **Removals.** Remove the vector build from `build.py`: no `build_vector`, no `VectorManifest` emission, and drop the
+  `--no-vector` and `--vector-budget` flags. Delete the `nmtiles/vector_*.py` modules and their tests, and
+  `templates/shapes.inkshapecollection.json`.
+- **Previews.** Write `build/preview_minimap_{close,mid,far}.png`: crops of downtown, centre game xy (-1800, 150), at
+  0.5, 2 and 8 m/px, each 1882×1480. Write them from the actual tiles (stitched), so they show exactly what ships.
+- **Reporting.** The build logs per-level tile counts, the archive size, and the total wall time.
+
+**Tests (write first):**
+- A tile containing one road triangle has teal pixels at its centroid and transparent pixels far away.
+- Stroke pixels draw over road pixels.
+- An empty tile returns None and is skipped.
+- Adjacent tiles agree along the shared edge (no seams): a triangle across the border paints both edge columns.
+- The spatial grid returns every triangle whose bbox overlaps the tile, and none far away.
+
+**Verify:**
+- `pytest` green.
+- Run the real build (`python3 -m nmtiles.build --skip-export`) and report:
+  - wall time;
+  - tile counts per level;
+  - archive MB.
+- **Size rule.** If the archive exceeds 250 MB, rebuild with the finest level at 0.75 m/px and report both sizes. That is
+  a pre-authorised ruling.
+
+### Task 13: Runtime: six tile levels, retire the vector layer
+
+**Files:**
+- `r6/scripts/NightMap/Core/NightMapSystem.reds`;
+- `Core/Settings.reds`;
+- `Core/Theme.reds`;
+- `Render/TileLayer.reds`, if its level count or pool assumes 4 levels;
+- `Debug/PerfSuite.reds`;
+- `Debug/SelfTest.reds`;
+- `tools/results.py`;
+- delete `Render/VectorLayer.reds`, `Render/VectorLevel.reds`, `Generated/VectorManifest.reds`, and `Debug/Trace.reds`
+  (along with its NMTrace call sites).
+
+**Behaviour (spec §11.3):**
+- The tile layer is always used.
+- The camera's min m/px is the finest `NMTileManifest` level (0.5), and its max is the coarsest level's limit as today.
+- `PickLevel` works for six levels.
+- Remove the `vectorMap` setting and every Vec* constant.
+- Perf scenarios:
+  - drop the vector scenarios;
+  - extend the raster pan/zoom sweep to reach 0.5 m/px;
+  - add an idle scenario at 0.5 m/px over downtown.
+- `results.py`: drop the vector thresholds. The verdict uses the sub-project 1 thresholds.
+- `tools/check.sh` must not need RedFileSystem any more, if Trace was its only user. Keep check.sh working either way.
+- Self-test: update the level-count and zoom-limit assertions.
+
+**Verify:**
+- `tools/check.sh` prints COMPILE OK.
+- `pytest` green.
+- `grep -ri "vector\|NMVec\|NMTrace" r6/scripts/NightMap` finds nothing except comments that explain history (prefer
+  none).
+
+### Task 14: Checkpoint 3, final (human, in-game)
+
+The procedure is Task 9's, with spec §11.4 as acceptance:
+1. Install with `tools/install.sh` **while the game is closed**. Check that the archive's mtime is before the game's start.
+2. Self-test.
+3. Visual review at fully in, mid and far zoom, plus alignment with the world.
+4. Perf suite: `python3 tools/results.py` must PASS.
+5. Record the archive size.
+6. Write the checkpoint section in `notes/CHECKPOINTS.md` and commit.
