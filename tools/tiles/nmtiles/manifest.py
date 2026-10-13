@@ -3,7 +3,11 @@ from __future__ import annotations
 
 
 def _f(v: float) -> str:
-    return f"{float(v):.1f}"
+    """Shortest of up to 6 significant digits, never exponent form, always with a decimal point (0.75 stays 0.75)."""
+    s = f"{float(v):.6g}"
+    if "e" in s:
+        s = f"{float(v):.6f}".rstrip("0")
+    return s + "0" if s.endswith(".") else (s if "." in s else s + ".0")
 
 
 def _switch(name: str, ret: str, values: list[str], default: str) -> str:

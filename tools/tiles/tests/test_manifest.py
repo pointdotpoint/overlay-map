@@ -89,3 +89,10 @@ def test_every_set_level_pair_round_trips_through_the_switch():
             if l["tiles"].get(n):
                 want[s * 100 + li] = sorted(iy * l["nx"] + ix for ix, iy in l["tiles"][n])
     assert got == want
+
+
+def test_fractional_mpp_keeps_precision_and_decimal_point():
+    from nmtiles.manifest import _f
+    src = emit_manifest([lv(0.75, 4, 4, road=[(0, 0)]), lv(1.5, 2, 2)], (-6012.0, -4608.0, 4589.0, 7381.0), "2.31", SETS)
+    assert "case 0: return 0.75;" in src and "case 1: return 1.5;" in src
+    assert (_f(0.75), _f(3), _f(0.0625), _f(1e-7), _f(1234567.0)) == ("0.75", "3.0", "0.0625", "0.0", "1234567.0")

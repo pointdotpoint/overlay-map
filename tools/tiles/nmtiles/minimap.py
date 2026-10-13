@@ -26,7 +26,7 @@ from typing import Callable
 import numpy as np
 
 ROAD_THICKNESS = 3.0        # metres: area / max bbox extent at or above this is a road, below it a stroke
-DECODE_VERSION = 2           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
+DECODE_VERSION = 3           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
 GROUND_Z, ELEVATED_Z, ELEVATED_MAX_THICK = 15.0, 80.0, 25.0   # spec 11.6 road rule
 LODS = (3, 4)               # sector LODs that carry the minimap geometry we use (spike 2: both, disjoint paths)
 # SECTOR_RE also matches z = -1 sectors (exterior_x_y_-1_*, about 1.3% of the triangles). They are included on
@@ -44,7 +44,7 @@ _DT_D = np.dtype([("d0", "<u2"), ("d1", "<u2"), ("d2", "<u2"), ("d3", "<u2")])
 @dataclass
 class DecodedShape:
     tris: np.ndarray    # (M, 3, 2) float32: file-local xy, instance offset already added; add the node position
-    z: float            # instance elevation (file-local; add the node z)
+    z: float            # instance elevation (file-local; decode_sector adds the node Position.Z before classifying)
     type: int           # B.type: a height stratum, not a class
     flag: int           # B.flag
 
@@ -157,7 +157,7 @@ def _check_identity(nd: dict) -> None:
                          "the decoder assumes identity rotation and unit scale")
 
 
-def sector_nodes(sector_json: dict) -> list[tuple[tuple[float, float], dict]]:
+def sector_nodes(sector_json: dict) -> list[tuple[tuple[float, float, float], dict]]:
     """``(position_xy, encoded_root)`` for every exterior MinimapDataNode with embedded data.
 
     Skips interiors (``allInteriorShapes``), soft refs with no embedded file and empty (scale = -inf) resources.
@@ -175,20 +175,21 @@ def sector_nodes(sector_json: dict) -> list[tuple[tuple[float, float], dict]]:
         content = embedded.get(node["encodedShapesRef"]["DepotPath"]["$value"])
         if content is None or _is_empty(content):
             continue
-        out.append(((float(nd["Position"]["X"]), float(nd["Position"]["Y"])), content))
+        pos = nd["Position"]
+        out.append(((float(pos["X"]), float(pos["Y"]), float(pos.get("Z", 0.0))), content))
     return out
 
 
 def decode_sector(sector_json: dict) -> tuple[np.ndarray, np.ndarray, int]:
     """World-space (road, stroke, n_nodes) for one sector. Rotation is identity and scale 1 for all nodes."""
     road, stroke, nodes = [], [], 0
-    for (px, py), enc in sector_nodes(sector_json):
+    for (px, py, pz), enc in sector_nodes(sector_json):
         nodes += 1
         off = np.array([px, py], np.float32)
         for sh in decode_shapes(enc):
             if len(sh.tris) == 0:
                 continue
-            (road if classify(sh.tris, sh.z) == "road" else stroke).append(sh.tris + off)
+            (road if classify(sh.tris, sh.z + pz) == "road" else stroke).append(sh.tris + off)
     cat = lambda xs: np.concatenate(xs).astype(np.float32) if xs else np.zeros((0, 3, 2), np.float32)
     return cat(road), cat(stroke), nodes
 

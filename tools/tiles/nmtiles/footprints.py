@@ -44,7 +44,7 @@ class Footprints:
 
 
 def footprint_key(road: np.ndarray, building: np.ndarray) -> str:
-    h = hashlib.sha256(f"v{VERSION}|{PARAMS}|{TILE}|{MARGIN}|{shapely.__version__}".encode())
+    h = hashlib.sha256(f"v{VERSION}|{PARAMS}|{TILE}|{MARGIN}|{MAX_MARGIN}|{EDGE_TOUCH}|{shapely.__version__}".encode())
     for a in (road, building):
         h.update(str(a.shape).encode())
         h.update(np.ascontiguousarray(a).tobytes())

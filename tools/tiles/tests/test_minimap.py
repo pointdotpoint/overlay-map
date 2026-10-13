@@ -101,7 +101,7 @@ def test_sector_nodes_filters():
                           {"FileName": {"$value": "b"}, "Content": _enc()},
                           {"FileName": {"$value": "c"}, "Content": {**_enc(), "QuantizationScale": {"X": "-inf", "Y": "-inf"}}}]}}
     out = sector_nodes(sector)
-    assert [p for p, _ in out] == [(128.0, 2.0)]    # interior, soft ref, non-minimap node and -inf scale skipped
+    assert [p for p, _ in out] == [(128.0, 2.0, 0.0)]    # interior, soft ref, non-minimap node and -inf scale skipped
 
 
 def test_ep1_precedence():
@@ -174,3 +174,20 @@ def test_compact_d_record_decodes_through_buffer():
 def test_corrupt_fill_range_raises():
     with pytest.raises(ValueError, match="fill range"):
         decode_shapes(synth_root([(0, 0), (10, 0), (0, 10)], (0.0, 0.0, 0.0), d=(0, 0, 9 << 6, 0)))
+
+
+def test_node_z_is_added_before_classifying():
+    # thick plate (area 1800 / extent 60 = 30 m, >= 25) at local z 5: a ground road at node Z 0, a rooftop plate at Z 64
+    root = synth_root([(0, 0), (60, 0), (0, 60)], (0.0, 0.0, 5.0))
+
+    def sector(node_z):
+        return {"Data": {"RootChunk": {
+            "nodes": [{"Data": {"$type": "MinimapDataNode", "allInteriorShapes": False,
+                                "encodedShapesRef": {"DepotPath": {"$value": "a"}}}}],
+            "nodeData": {"Data": [{"NodeIndex": 0, "Position": {"X": 0.0, "Y": 0.0, "Z": node_z}}]}},
+            "EmbeddedFiles": [{"FileName": {"$value": "a"}, "Content": root}]}}
+
+    road, stroke, _ = decode_sector(sector(0.0))
+    assert len(road) == 1 and len(stroke) == 0
+    road, stroke, _ = decode_sector(sector(64.0))
+    assert len(road) == 0 and len(stroke) == 1
