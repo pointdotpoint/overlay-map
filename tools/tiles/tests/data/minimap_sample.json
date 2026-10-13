@@ -1,0 +1,54 @@
+{
+  "Header": {
+    "WolvenKitVersion": "8.19.0",
+    "WKitJsonVersion": "0.0.9",
+    "GameVersion": 2310,
+    "ExportedDateTime": "2026-10-13T01:13:30.8310043Z",
+    "DataType": "CR2W",
+    "ArchiveFileName": "/home/pdp/nightmap/.scratch/cmm/base/worlds/03_night_city/sectors/_generated/minimap/special/resources/a0_0_0_c111_80_222.cminimap"
+  },
+  "Data": {
+    "Version": 195,
+    "BuildVersion": 0,
+    "RootChunk": {
+      "$type": "minimapEncodedShapes",
+      "BoxQuantizationBias": {
+        "$type": "Vector3",
+        "X": -5.43579102,
+        "Y": -3.90600014,
+        "Z": 0
+      },
+      "BoxQuantizationScale": {
+        "$type": "Vector3",
+        "X": 13.5900879,
+        "Y": 6.51000023,
+        "Z": 3
+      },
+      "Buffer": {
+        "BufferId": "0",
+        "Flags": 4063232,
+        "Bytes": "AAAAAAUAAAAFAAAABQABAAoAAAAFAAIADwAAAAUAAwAPAAAABQADABQAAAAFAAQAGQAAAAUABQAeAAAABQAGACMAAAAFAAcAIwAAAAUABwAoAAAABQAIAC0AAAAFAAkAMgAAAAUACgAyAAAABQAKACgAAAAFAAgAAAABAQAAAQEAAAEBAAABAQAAAQEAAAEBAAABAQAAAQEAAAEBAAABAQAAAQEAAAEBAAABAQAAAQEAAAEBgIbmQQrXE0IAAABCwHwDQgvXBEIAAABCAIXvQW3n+UEAAABCAFDTQXI93kEAAABCgJfqQXI93kEAAABCAF3RQaNw+0EAAABCAKS4QeomD0IAAABCgJvAQbgeBkIAAABCgM7VQZZDAEIAAABCANnoQZZDAEIAAABCAKYgQipcGkIAAABCwJkvQne+DkIAAABCAK4UQoPAF0IAAABCAK4UQmU7AkIAAABCAKYgQtej/EEAAABCAAAKAAoABQAACrdBC9fbQQAAAEIAAIA/QOETQtejFEIAAAxCAACAP0DhE0JwPfpBAAAAQgAAgD/AzDBC9igbQgAADEIAAIA/AAAAAAAAMAAAADAAAAAwAAAAYAAAADAAAACQAAAAMAAAAMAAAAAwAAAA8AAAADAAAAAgAQAAMAAAAFABAAAwAAAAgAEAADAAAACwAQAAMAAAAOABAAAwAAAAEAIAADAAAABAAgAAMAAAAHACAAAwAAAAoAIAADAAAADMjQAA//92of//7jLMjQAAl7N2of//vWB7GQAAKWoC7///JVzMjQAAxHV2of//vGDuEQAAJ2oK9P//oGKrSAAAC2yMz///3U/MjQAAL4h2of//sV8GigAAdHD6o///rjPMjQAAdLJ2of//n2IAAAAACmz/////oGJXZwAAC2wZu/////92oQAAzI0AAHah///MjZezdqHuMsyN7jJ2oZezzI0pansZvWAC7ylqAu+9YHsZxHV2oSVczI0lXHahxHXMjSdq7hG8YAr0J2oK9Lxg7hELbIzPoGKrSKBijM8LbKtIL4h2od1PzI3dT3ahL4jMjXRw+qOxXwaKsV/6o3RwBop0snahrjPMja4zdqF0ssyNCmz//59iAACfYv//CmwAAAtsGbugYldnoGIZuwtsV2cAAAEAAgAAAAMAAQAEAAUABgAEAAcABQAIAAkACgAIAAsACQAMAA0ADgAMAA8ADQAMAA0ADgAMAA8ADQAQABEAEgAQABMAEQAUABUAFgAUABcAFQAYABkAGgAYABsAGQAcAB0AHgAcAB8AHQAcAB0AHgAcAB8AHQAgACEAIgAgACMAIQAkACUAJgAkACcAJQAoACkAKgAoACsAKQAoACkAKgAoACsAKQAgACEAIgAgACMAIQCGJ/ovWa08/w=="
+      },
+      "cookingPlatform": "PLATFORM_PC",
+      "NumBorderPoints": 44,
+      "NumFillPoints": 90,
+      "NumOwners": 1,
+      "NumPoints": 0,
+      "NumShapes": 15,
+      "NumSpatialBuckets": 2,
+      "NumUniqueGeometry": 11,
+      "QuantizationBias": {
+        "$type": "Vector2",
+        "X": -5.43579102,
+        "Y": -3.90600014
+      },
+      "QuantizationScale": {
+        "$type": "Vector2",
+        "X": 13.5900879,
+        "Y": 6.51000023
+      },
+      "Version": 4294901800
+    },
+    "EmbeddedFiles": []
+  }
+}
