@@ -12,7 +12,8 @@ DDS_DX10_HEADER = 148
 BATCH = 48
 WORKERS = 2     # concurrent wine/texconv processes (texconv has no thread-count option); run at nice 19
 # Ink blends premultiplied alpha and samples textures with V flipped relative to PNG row order.
-TEXCONV_OPTS = ["-pmalpha", "-vflip"]
+# -bc q: quick BC7 mode, ~30x less CPU than the default with the same measured alpha error (max 39/255 on thin strokes).
+TEXCONV_OPTS = ["-pmalpha", "-vflip", "-bc", "q"]
 
 
 def options_string() -> str:
@@ -37,10 +38,10 @@ def _cached(png: Path, out_dir: Path) -> bool:
 
 def encode_bc7(pngs: list[Path], out_dir: Path, workers: int = WORKERS) -> dict[Path, bytes]:
     out_dir.mkdir(parents=True, exist_ok=True)
-    env = {**os.environ, "WINEDEBUG": "-all"}
+    env = {**os.environ, "WINEDEBUG": "-all", "OMP_NUM_THREADS": "1"}
     todo = [p for p in pngs if not _cached(p, out_dir)]
     def run(chunk: list[Path]) -> None:
-        subprocess.run(["nice", "-n", "19", "wine", str(TEXCONV), "-nogpu", "-f", "BC7_UNORM", "-m", "1", "-y", *TEXCONV_OPTS, "-o", _win(out_dir),
+        subprocess.run(["nice", "-n", "19", "wine", str(TEXCONV), "-nogpu", "-f", "BC7_UNORM", "-m", "1", "-y", "-singleproc", *TEXCONV_OPTS, "-o", _win(out_dir),
                         *map(_win, chunk)], check=True, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for png in chunk:
             dds = out_dir / png.with_suffix(".dds").name
