@@ -50,3 +50,31 @@ def test_cache_roundtrip(tmp_path):
     got = Footprints.load(tmp_path / "f.npz", "k")
     assert got is not None and [p.tolist() for p in got.polys] == [p.tolist() for p in fp.polys]
     assert Footprints.load(tmp_path / "f.npz", "other") is None
+
+
+def _overlaps(polys):
+    import shapely
+    sp = [shapely.Polygon(p) for p in polys]
+    tree = shapely.STRtree(sp)
+    worst = 0.0
+    for i, g in enumerate(sp):
+        for j in tree.query(g):
+            if j > i:
+                worst = max(worst, g.intersection(sp[j]).area)
+    return worst
+
+
+def test_block_larger_than_a_window_yields_one_polygon_of_correct_area():
+    b = np.concatenate([rect(10, 10, 900, 60), rect(2000, 2000, 2040, 2040)])           # 890 x 50 m crosses x = 500
+    for jobs in (1, 2):
+        fp = build_footprints(EMPTY, b, tile=500.0, margin=150.0, jobs=jobs)
+        big = [p for p in fp.polys if area(p) > 10000]
+        assert len(big) == 1 and abs(area(big[0]) - 890 * 50) < 0.03 * 890 * 50
+        assert _overlaps(fp.polys) < 1e-3
+
+
+def test_cut_blocks_in_every_window_are_repaired_by_the_city_union():
+    b = np.concatenate([rect(10, 10, 2600, 70), rect(1200, 10, 1260, 700)])              # longer than MAX_MARGIN reach
+    fp = build_footprints(EMPTY, b, tile=500.0, margin=150.0, jobs=1)
+    assert _overlaps(fp.polys) < 1e-3
+    assert len(fp.polys) == 1

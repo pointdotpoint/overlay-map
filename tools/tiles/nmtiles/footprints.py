@@ -17,7 +17,9 @@ import shapely
 
 PARAMS = dict(buf=0.3, close=4.0, road_buf=0.5, road_tri_buf=0.05, open=3.0, simplify=0.6, min_area=60.0)
 TILE, MARGIN = 500.0, 150.0
-VERSION = 1
+VERSION = 2
+MAX_MARGIN = 1200.0     # adaptive window growth cap (m); blocks beyond this are still repaired by the city-wide union
+EDGE_TOUCH = 5.0         # a footprint this close to its window border may have been truncated
 
 
 @dataclass
@@ -100,21 +102,38 @@ def _low_priority() -> None:
 
 
 def _tile(cell: tuple[int, int]) -> list[np.ndarray]:
-    from nmtiles.render_minimap import TriIndex
     road_idx, bld_idx, ox, oy, tile, margin = _JOB
     ix, iy = cell
     x0, y0 = ox + ix * tile, oy + iy * tile
-    w = (x0 - margin, y0 - margin, x0 + tile + margin, y0 + tile + margin)
-    b = bld_idx.tris[bld_idx.query(*w)]
-    if not len(b):
+    while True:
+        w = (x0 - margin, y0 - margin, x0 + tile + margin, y0 + tile + margin)
+        b = bld_idx.tris[bld_idx.query(*w)]
+        if not len(b):
+            return []
+        r = road_idx.tris[road_idx.query(*w)]
+        owned, grow = [], False
+        for p in clean_window(r, b):
+            rp = p.representative_point()
+            if x0 <= rp.x < x0 + tile and y0 <= rp.y < y0 + tile:
+                owned.append(p)
+                bx0, by0, bx1, by1 = p.bounds
+                grow |= (bx0 < w[0] + EDGE_TOUCH or by0 < w[1] + EDGE_TOUCH
+                         or bx1 > w[2] - EDGE_TOUCH or by1 > w[3] - EDGE_TOUCH)
+        if grow and margin * 2 <= MAX_MARGIN:
+            margin *= 2            # an owned footprint reaches the window border: redo with a larger window
+            continue
+        return [np.asarray(p.exterior.coords)[:-1] for p in owned]
+
+
+def merge_city(polys: list[np.ndarray]) -> list[np.ndarray]:
+    """City-wide union of the per-tile footprints (repairs duplicates and cuts at tile borders), then steps 3, 7, 8."""
+    if not polys:
         return []
-    r = road_idx.tris[road_idx.query(*w)]
-    out = []
-    for p in clean_window(r, b):
-        rp = p.representative_point()
-        if x0 <= rp.x < x0 + tile and y0 <= rp.y < y0 + tile:
-            out.append(np.asarray(p.exterior.coords)[:-1])
-    return out
+    g = shapely.union_all([shapely.Polygon(p) for p in polys])
+    g = _exteriors(g.simplify(PARAMS["simplify"]))
+    parts = [p for p in shapely.get_parts(g) if p.geom_type == "Polygon" and p.area >= PARAMS["min_area"]]
+    parts.sort(key=lambda p: (round(p.bounds[0], 3), round(p.bounds[1], 3), round(p.area, 3)))
+    return [np.asarray(p.exterior.coords)[:-1] for p in parts]
 
 
 def build_footprints(road: np.ndarray, building: np.ndarray, tile: float = TILE, margin: float = MARGIN,
@@ -144,7 +163,7 @@ def build_footprints(road: np.ndarray, building: np.ndarray, tile: float = TILE,
                     polys += r
     finally:
         _JOB = None
-    return Footprints(polys)
+    return Footprints(merge_city(polys))
 
 
 def math_floor(v: float, step: float) -> float:
