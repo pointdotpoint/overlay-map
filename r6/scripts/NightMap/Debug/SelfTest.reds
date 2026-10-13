@@ -354,6 +354,15 @@ public class NMSelfTest {
             && this.Near(NMTileLayer.FadeStep(1.0, dur * 0.25, dur, false), 0.75, 0.0001)
             && NMTileLayer.FadeStep(0.9, dur * 3.0, dur, true) == 1.0 && NMTileLayer.FadeStep(0.1, dur * 3.0, dur, false) == 0.0
             && NMTileLayer.FadeStep(0.3, 0.0, dur, true) == 0.3 && dur > 100.0 && dur < 250.0, this.F(dur));
+        // Outgoing opacity keeps the combined coverage constant: 1 - (1 - under) * (1 - op * a) == op, from op down to 0.
+        let fadeOk = true;
+        let fa = 0.0;
+        while fa < 0.999 {
+            let under = NMTileLayer.UnderOpacity(0.9, fa);
+            if !this.Near(1.0 - (1.0 - under) * (1.0 - 0.9 * fa), 0.9, 0.001) { fadeOk = false; }
+            fa += 0.1;
+        }
+        this.Check("tiles.fade_no_dim", fadeOk && this.Near(NMTileLayer.UnderOpacity(0.9, 0.0), 0.9, 0.0001) && NMTileLayer.UnderOpacity(0.9, 1.0) == 0.0, "");
         // SetTiles lookup: every listed tile is found, the first unlisted index of each level is not.
         let canvas = new inkCanvas();   // detached: widgets exist but are never drawn
         let hitsOk = true;
@@ -399,7 +408,7 @@ public class NMSelfTest {
         cam.SetMpp(2.0);
         sl.Update(cam, 16.0);
         let st2 = sl.CurrentLevel() == 2 && sl.PreviousLevel() == 1;
-        // Short step: after the swap the outgoing level holds alpha 16/150, so another 16 ms step would release it.
+        // Short step: after the swap the returning level is at ~0.95, so another 16 ms step would reach 1 and release the outgoing level.
         cam.SetMpp(1.0);
         sl.Update(cam, 1.0);
         let st3 = sl.CurrentLevel() == 1 && sl.PreviousLevel() == 2;

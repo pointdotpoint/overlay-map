@@ -8,8 +8,12 @@ module NightMap
 // panning and zooming is a single translation + scale on the container; the tiles never move. Tile widgets are only
 // added or removed when the visible index range of a level changes. The fade opacity is on the container.
 //
-// Level choice is downscale-only (PickLevel). When the level changes the previous level stays resident and fades out
-// over FadeMs while the new one fades in; at most two levels are resident.
+// Level choice is downscale-only (PickLevel). When the level changes the previous level stays resident underneath while
+// the new one fades in on top over FadeMs; at most two levels are resident. The tiles are translucent masks, so two
+// stacked levels would add up (and pop when the old one is dropped): the outgoing level is drawn at UnderOpacity, the
+// exact opacity that keeps the combined coverage at the layer opacity all through the fade. It starts at the normal
+// layer opacity and reaches 0 exactly when the incoming level reaches 1, where it is released. The outgoing level only
+// follows the camera (transform and opacity): it never loads tiles and keeps the tile range it had.
 public class NMTileLayer extends NMMapLayer {
     private let box: ref<inkCanvas>;
     private let setIdx: Int32;
@@ -37,7 +41,6 @@ public class NMTileLayer extends NMMapLayer {
     private let cur: Int32;
     private let prev: Int32;
     private let aCur: Float;
-    private let aPrev: Float;
     private let tint: HDRColor;
     private let opacity: Float;
     private let tintDirty: Bool;
@@ -47,8 +50,32 @@ public class NMTileLayer extends NMMapLayer {
     // Two resident levels at 4K (up to ~120 tiles each near a 2x ratio) with margin.
     public static func MaxSlots() -> Int32 { return 320; }
 
+    public static func TilePath(setName: String, lv: Int32, ix: Int32, iy: Int32) -> String {
+        return "nightmap\\tiles\\" + setName + "\\L" + ToString(lv) + "\\t_" + ToString(ix) + "_" + ToString(iy) + ".inkatlas";
+    }
+
+    // The UI atlas AND one tile the committed manifest lists (first tile of the coarsest level) must be in the depot: an
+    // old or mismatched archive passes the first check alone and would give a silently blank map.
     public static func ArchiveAvailable() -> Bool {
-        return NMTileManifest.Available() && GameInstance.GetResourceDepot().ResourceExists(NMTheme.UiAtlas());
+        if !NMTileManifest.Available() || !GameInstance.GetResourceDepot().ResourceExists(NMTheme.UiAtlas()) {
+            return false;
+        }
+        let lv = NMTileManifest.LevelCount() - 1;
+        if lv < 0 {
+            return false;
+        }
+        let nx = NMTileManifest.LevelNx(lv);
+        let s = 0;
+        while s < NMTileManifest.SetCount() {
+            // Bind to a local: ArraySize/indexing of a call temporary reads 0 in-game.
+            let tiles: array<Int32> = NMTileManifest.SetTiles(s, lv);
+            if ArraySize(tiles) > 0 {
+                let k = tiles[0];
+                return GameInstance.GetResourceDepot().ResourceExists(ResRef.FromString(NMTileLayer.TilePath(NMTileManifest.SetName(s), lv, k % nx, k / nx)));
+            }
+            s += 1;
+        }
+        return false;
     }
 
     public static func MakeContainer(parent: ref<inkCanvas>) -> ref<inkCanvas> {
@@ -128,6 +155,15 @@ public class NMTileLayer extends NMMapLayer {
         return ClampF(rising ? a + d : a - d, 0.0, 1.0);
     }
 
+    // Opacity of the outgoing level while the incoming one is at alpha a: with the incoming level at op * a on top,
+    // 1 - (1 - under) * (1 - op * a) = op for fully covered texels, so the pair never dims or brightens.
+    public static func UnderOpacity(op: Float, a: Float) -> Float {
+        if a >= 1.0 {
+            return 0.0;
+        }
+        return ClampF(1.0 - (1.0 - op) / MaxF(1.0 - a * op, 0.0001), 0.0, 1.0);
+    }
+
     // Is tile (ix, iy) of this set's level lv baked? Binary search in the sorted SetTiles list.
     public func Has(lv: Int32, ix: Int32, iy: Int32) -> Bool {
         if lv < 0 || lv >= ArraySize(this.lvStart) {
@@ -169,40 +205,39 @@ public class NMTileLayer extends NMMapLayer {
         }
         this.lastRev = cam.revision;
         let lv = NMTileLayer.PickLevel(cam.mpp);
+        let touch = this.tintDirty;
         if this.cur < 0 {
             this.cur = lv;
             this.aCur = 1.0;
         } else if lv != this.cur {
             if lv == this.prev {
-                // Zoomed back into the level that is still fading out: swap roles, alphas stay continuous.
+                // Zoomed back into the level that is still fading out: swap roles. The returning level was shown at
+                // UnderOpacity(aCur); as the incoming one it continues from the same opacity, and the other level
+                // (shown at op * aCur) is then exactly what UnderOpacity of the new alpha gives.
                 let tl = this.cur;
-                let ta = this.aCur;
+                this.aCur = this.opacity > 0.0001 ? NMTileLayer.UnderOpacity(this.opacity, this.aCur) / this.opacity : 1.0;
                 this.cur = this.prev;
-                this.aCur = this.aPrev;
                 this.prev = tl;
-                this.aPrev = ta;
+                touch = true;
+                this.Container(this.cur).Reparent(this.box);   // incoming draws above outgoing
             } else {
                 if this.prev >= 0 {
                     this.ReleaseLevel(this.prev);
                 }
                 this.prev = this.cur;
-                this.aPrev = this.aCur;
                 this.cur = lv;
                 this.aCur = 0.0;
+                touch = true;
+                this.Container(this.cur).Reparent(this.box);   // incoming draws above outgoing
             }
         }
-        let touch = this.tintDirty;
         if this.aCur < 1.0 {
             this.aCur = NMTileLayer.FadeStep(this.aCur, dtMs, NMTileLayer.FadeMs(), true);
             touch = true;
         }
-        if this.prev >= 0 {
-            this.aPrev = NMTileLayer.FadeStep(this.aPrev, dtMs, NMTileLayer.FadeMs(), false);
-            touch = true;
-            if this.aPrev <= 0.0 {
-                this.ReleaseLevel(this.prev);
-                this.prev = -1;
-            }
+        if this.prev >= 0 && this.aCur >= 1.0 {
+            this.ReleaseLevel(this.prev);
+            this.prev = -1;
         }
         if this.tintDirty {
             let s = 0;
@@ -212,9 +247,9 @@ public class NMTileLayer extends NMMapLayer {
             }
         }
         // The current level is placed first, so a full pool never starves the incoming level.
-        this.PlaceLevel(cam, this.cur, this.aCur, touch);
+        this.PlaceLevel(cam, this.cur, this.opacity * this.aCur, touch, true);
         if this.prev >= 0 {
-            this.PlaceLevel(cam, this.prev, this.aPrev, touch);
+            this.PlaceLevel(cam, this.prev, NMTileLayer.UnderOpacity(this.opacity, this.aCur), touch, false);
         }
         this.tintDirty = false;
     }
@@ -233,7 +268,7 @@ public class NMTileLayer extends NMMapLayer {
     }
 
     // One transform per frame for the whole level; tile widgets change only when the visible index range changes.
-    private func PlaceLevel(cam: ref<NMCamera>, lv: Int32, alpha: Float, touch: Bool) {
+    private func PlaceLevel(cam: ref<NMCamera>, lv: Int32, opac: Float, touch: Bool, load: Bool) {
         let mpp = NMTileManifest.LevelMpp(lv);
         let tw = 512.0 * mpp;
         let ox = NMTileManifest.LevelOriginX(lv);
@@ -249,7 +284,10 @@ public class NMTileLayer extends NMMapLayer {
         c.SetScale(new Vector2(k, k));
         c.SetTranslation(cam.WorldToMap(ox, otop));
         if touch || !shown {
-            c.SetOpacity(this.opacity * alpha);
+            c.SetOpacity(opac);
+        }
+        if !load && shown {
+            return;   // the outgoing level keeps its tile range: no new textures for a level that is about to vanish
         }
         let vis = cam.VisibleRect(0.0);
         let ix0 = Max(FloorF((vis.minX - ox) / tw), 0);
@@ -283,8 +321,7 @@ public class NMTileLayer extends NMMapLayer {
                     if slot >= 0 {
                         let img = this.pool[slot];
                         img.Reparent(c);
-                        img.SetAtlasResource(ResRef.FromString("nightmap\\tiles\\" + this.setName + "\\L" + ToString(lv)
-                            + "\\t_" + ToString(ix) + "_" + ToString(iy) + ".inkatlas"));
+                        img.SetAtlasResource(ResRef.FromString(NMTileLayer.TilePath(this.setName, lv, ix, iy)));
                         img.SetTexturePart(n"full");
                         img.SetTintColor(this.tint);
                         img.SetTranslation(new Vector2(Cast<Float>(ix) * 512.0, Cast<Float>(iy) * 512.0));
