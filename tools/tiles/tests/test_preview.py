@@ -14,7 +14,7 @@ def mask(path, a):
 
 def test_composite_tints_masks_over_dark_background_in_layer_order(tmp_path):
     road, stroke = mask(tmp_path / "r.png", 255), mask(tmp_path / "s.png", 255)
-    img = composite_sets({"road": {(0, 0): road}, "stroke": {(0, 0): stroke}}, LEVEL, (256.0, 768.0), (512, 512))
+    img = composite_sets({"road": {(0, 0): road}, "outline": {(0, 0): stroke}}, LEVEL, (256.0, 768.0), (512, 512))
     assert img.size == (512, 512)
     r, g, b = img.getpixel((10, 10))
     assert abs(r - (0.1 * (0.45 * PREVIEW_BG[0] + 0.55 * 0x1e) + 0.9 * 0x9f)) < 2          # stroke over road over bg

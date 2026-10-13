@@ -1,15 +1,10 @@
-import pytest
-
-from nmtiles.build import main, require_boxes
-from nmtiles.buildings import Boxes
+from nmtiles.build import main
 
 
-def test_require_boxes_rejects_empty():
-    with pytest.raises(SystemExit, match="no building boxes"):
-        require_boxes(Boxes.concat([]))
-
-
-def test_skip_export_without_building_data_explains(tmp_path):
-    (tmp_path / "meshes").mkdir()
-    with pytest.raises(SystemExit, match="without --skip-export"):
-        main(["--game", str(tmp_path), "--out", str(tmp_path), "--skip-export"])
+def test_levels_default_and_skip_export_accepted():
+    import argparse  # noqa: F401
+    import inspect
+    import nmtiles.build as b
+    src = inspect.getsource(b.main)
+    assert '"0.5,1,2,4,8,16"' in src and "--jobs" in src and "--skip-export" in src
+    assert "export_meshes" not in src and "load_boxes" not in src

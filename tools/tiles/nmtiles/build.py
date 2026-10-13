@@ -1,4 +1,4 @@
-"""End-to-end tile build: minimap + 3D-map meshes -> colourless mask tile sets -> BC7 tiles + UI atlas -> NightMap.archive + manifest."""
+"""End-to-end tile build: minimap geometry -> footprints -> colourless mask tile sets -> BC7 tiles + UI atlas -> NightMap.archive + manifest."""
 from __future__ import annotations
 
 import argparse
@@ -11,11 +11,9 @@ from pathlib import Path
 
 import numpy as np
 
-from nmtiles.buildings import Boxes
 from nmtiles.encode import encode_bc7
-from nmtiles.export import export_building_data, export_meshes, style_for
-from nmtiles.glb import keep_best_lod, read_glb
 from nmtiles.manifest import emit_manifest
+from nmtiles.footprints import load_or_build
 from nmtiles.minimap import load_city
 from nmtiles.pack import deserialize_all, pack_archive, write_resource
 from nmtiles.preview import write_previews
@@ -23,17 +21,10 @@ from nmtiles.render import level_grid
 from nmtiles.render_minimap import SETS, make_sources, png_name, render_level_tiles
 from nmtiles.resources import make_inkatlas_json, make_xbm_json
 from nmtiles.ui_atlas import build_ui_atlas
-from nmtiles.world import Transform
 
 HERE = Path(__file__).resolve().parents[1]
 REPO = HERE.parents[1]
 TPL = HERE / "templates"
-
-
-def require_boxes(boxes: Boxes) -> Boxes:
-    if len(boxes) == 0:
-        raise SystemExit("error: no building boxes were loaded; the tiles would have no buildings")
-    return boxes
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,7 +32,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--game", type=Path, default=Path.home() / "cyberpunk_symlink")
     ap.add_argument("--out", type=Path, default=HERE / "build")
     ap.add_argument("--levels", default="0.5,1,2,4,8,16")
-    ap.add_argument("--skip-export", action="store_true", help="reuse build/meshes and build/bdata")
+    ap.add_argument("--skip-export", action="store_true", help="accepted for compatibility; the build no longer reads 3D-map meshes")
     ap.add_argument("--jobs", type=int, default=4, help="workers for every process pool (BC7 encoding uses min(jobs, 2))")
     ap.add_argument("--game-version", default="2.31")
     args = ap.parse_args(argv)
@@ -49,30 +40,15 @@ def main(argv: list[str] | None = None) -> int:
     os.nice(19)
     game = args.game.resolve()
     out = args.out
-    mesh_dir = out / "meshes"
-    bdata_dir = out / "bdata"
-    if not args.skip_export:
-        shutil.rmtree(mesh_dir, ignore_errors=True)
-        export_meshes(game, mesh_dir)
-        export_building_data(game, bdata_dir)
-
-    if args.skip_export and not (bdata_dir / "3dmap_view.ent.json").exists():
-        raise SystemExit(f"error: --skip-export but {bdata_dir} has no building data; "
-                         f"run once without --skip-export (export_building_data fills it)")
-    styled: dict[str, list] = {}
-    for p in sorted(mesh_dir.rglob("*.glb")):
-        style = style_for(p.stem)
-        if style:
-            styled.setdefault(style, []).extend(keep_best_lod(read_glb(p)))
-    tf = Transform.load(HERE / "calibration.json")
-    world = np.vstack([tf.apply(m.positions) for s in ("land", "road") for m in styled.get(s, [])])
     city = load_city(game, out / "minimap_cache", workers=args.jobs)
-    mm = np.concatenate([city["road"].reshape(-1, 2), city["stroke"].reshape(-1, 2)])
-    bounds = (float(min(world[:, 0].min(), mm[:, 0].min())), float(min(world[:, 1].min(), mm[:, 1].min())),
-              float(max(world[:, 0].max(), mm[:, 0].max())), float(max(world[:, 1].max(), mm[:, 1].max())))
-    del world, mm
-    print(f"styles={ {k: len(v) for k, v in styled.items()} } road tris={len(city['road'])} stroke tris={len(city['stroke'])} "
-          f"bounds={bounds} transform={tf}", flush=True)
+    fp = load_or_build(city["road"], city["stroke"], out / "minimap_cache" / "footprints.npz", args.jobs)
+    if not fp.polys:
+        raise SystemExit("error: no building footprints were produced")
+    pts = np.concatenate(fp.polys + [city["road"].reshape(-1, 2)])
+    bounds = (float(pts[:, 0].min()), float(pts[:, 1].min()), float(pts[:, 0].max()), float(pts[:, 1].max()))
+    del pts
+    print(f"road tris={len(city['road'])} building tris={len(city['stroke'])} footprints={len(fp.polys)} "
+          f"bounds={bounds}", flush=True)
 
     png_dir = out / "png"
     shutil.rmtree(png_dir, ignore_errors=True)
@@ -82,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     for li, mpp in enumerate(float(x) for x in args.levels.split(",")):
         t_lv = time.time()
         grid = level_grid(bounds, mpp)
-        src = make_sources(city, styled, tf, max(grid.tile_world, 256.0))
+        src = make_sources(city["road"], fp.polys, max(grid.tile_world, 256.0))
         tiles = render_level_tiles(src, grid, li, png_dir, args.jobs)
         del src
         for s, cells in tiles.items():

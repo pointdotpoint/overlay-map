@@ -26,7 +26,8 @@ from typing import Callable
 import numpy as np
 
 ROAD_THICKNESS = 3.0        # metres: area / max bbox extent at or above this is a road, below it a stroke
-DECODE_VERSION = 1           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
+DECODE_VERSION = 2           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
+GROUND_Z, ELEVATED_Z, ELEVATED_MAX_THICK = 15.0, 80.0, 25.0   # spec 11.6 road rule
 LODS = (3, 4)               # sector LODs that carry the minimap geometry we use (spike 2: both, disjoint paths)
 # SECTOR_RE also matches z = -1 sectors (exterior_x_y_-1_*, about 1.3% of the triangles). They are included on
 # purpose (not verified to be surface-only; Task 12 should check for stray geometry).
@@ -130,15 +131,20 @@ def decode_shapes(root: dict) -> list[DecodedShape]:
     return out
 
 
-def classify(tris: np.ndarray, thickness: float = ROAD_THICKNESS) -> str:
-    """'road' when thickness (area / max bbox extent) >= 3 m, else 'stroke'."""
+def classify(tris: np.ndarray, z: float = 0.0, thickness: float = ROAD_THICKNESS) -> str:
+    """'road' when thick >= 3 m and (z < 15 or (z < 80 and thick < 25)) (spec 11.6), else 'stroke' (building geometry).
+
+    thick = area / max bbox extent; z = the shape's instance elevation (C.z)."""
     t = np.asarray(tris, np.float64)
     if len(t) == 0:
         return "stroke"
     area = 0.5 * np.abs((t[:, 1, 0] - t[:, 0, 0]) * (t[:, 2, 1] - t[:, 0, 1])
                         - (t[:, 2, 0] - t[:, 0, 0]) * (t[:, 1, 1] - t[:, 0, 1])).sum()
     ext = max(np.ptp(t[:, :, 0]), np.ptp(t[:, :, 1]))
-    return "road" if ext > 0 and area / ext >= thickness else "stroke"
+    if ext <= 0:
+        return "stroke"
+    thick = area / ext
+    return "road" if thick >= thickness and (z < GROUND_Z or (z < ELEVATED_Z and thick < ELEVATED_MAX_THICK)) else "stroke"
 
 
 def _check_identity(nd: dict) -> None:
@@ -182,7 +188,7 @@ def decode_sector(sector_json: dict) -> tuple[np.ndarray, np.ndarray, int]:
         for sh in decode_shapes(enc):
             if len(sh.tris) == 0:
                 continue
-            (road if classify(sh.tris) == "road" else stroke).append(sh.tris + off)
+            (road if classify(sh.tris, sh.z) == "road" else stroke).append(sh.tris + off)
     cat = lambda xs: np.concatenate(xs).astype(np.float32) if xs else np.zeros((0, 3, 2), np.float32)
     return cat(road), cat(stroke), nodes
 
@@ -225,7 +231,7 @@ def archive_key(archives: list[Path]) -> str:
 
 def npz_key(arc_key: str) -> str:
     """Key of the final npz: archives plus everything that changes the decoded result."""
-    return hashlib.sha256(f"{arc_key}|v{DECODE_VERSION}|road{ROAD_THICKNESS}|lods{LODS}".encode()).hexdigest()[:16]
+    return hashlib.sha256(f"{arc_key}|v{DECODE_VERSION}|road{ROAD_THICKNESS}/{GROUND_Z}/{ELEVATED_Z}/{ELEVATED_MAX_THICK}|lods{LODS}".encode()).hexdigest()[:16]
 
 
 def json_ok(path: Path) -> bool:

@@ -1,11 +1,10 @@
-"""Colourless mask tiles (white RGB, alpha = coverage) from the game's minimap geometry plus the 3D-map base/metro.
+"""Colourless mask tiles (white RGB, alpha = coverage) from the game's minimap geometry (spec 11.6).
 
-One tile set per class; the runtime tints them with SetTintColor from NMTheme:
-  base   land/water/cliff of the 3D map (roads and buildings off); only for levels with m/px >= BASE_MIN_MPP
-  road   minimap road triangles
-  glow   minimap strokes, Gaussian blurred (GLOW_RADIUS px at every level)
-  stroke minimap strokes
-  metro  3D-map metro (dashed)
+One tile set per class, in draw order; the runtime tints them with SetTintColor from NMTheme:
+  road     minimap road triangles
+  bfill    building footprint fill
+  glow     footprint outline, Gaussian blurred (GLOW_RADIUS px at every level)
+  outline  footprint exterior as a 1 px line at the level's resolution (drawn at 2x, width 2, downsampled)
 Every tile is rendered independently at SS x and downsampled (LANCZOS), with a margin that is cropped away afterwards,
 so neighbouring tiles agree along their shared edge and no whole-level image ever exists.
 """
@@ -14,27 +13,23 @@ from __future__ import annotations
 import math
 import multiprocessing as mp
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from nmtiles.glb import Mesh
-from nmtiles.render import LevelGrid, render_level, tile_grid
-from nmtiles.style import BASE_STYLES, STYLE
-from nmtiles.world import Transform
+from nmtiles.render import LevelGrid
 
-SETS = ("base", "road", "glow", "stroke", "metro")      # draw order, back to front
+SETS = ("road", "bfill", "glow", "outline")      # draw order, back to front
 SS = 2
 DEFAULT_JOBS = 4
-BASE_MIN_MPP = 2.0
 GLOW_RADIUS = 3.0                                        # px at every level
 GLOW_GAIN = 1.0
-EDGE_MARGIN = 2                                          # px: lets the LANCZOS kernel see the neighbouring tile
+EDGE_MARGIN = 3                                          # px: >= the LANCZOS support, so the kernel sees the neighbouring tile
+BATCH = 100_000                                          # primitives drawn per Python list conversion (bounded memory)
 GLOW_MARGIN = math.ceil(3 * GLOW_RADIUS) + 3             # >= 3 sigma
-_METRO_STYLE = {**STYLE, "metro": {**STYLE["metro"], "fill": (255, 255, 255, 255)}}
 
 
 class TriIndex:
@@ -83,37 +78,61 @@ class TriIndex:
 @dataclass
 class TileSources:
     road: TriIndex
-    stroke: TriIndex
-    metro: TriIndex
-    base_meshes: dict[str, list[Mesh]] = field(default_factory=dict)
-    metro_meshes: list[Mesh] = field(default_factory=list)
-    tf: Transform = field(default_factory=Transform)
+    foot: TriIndex                  # over the footprints' bboxes, as (n, 2, 2) corner pairs
+    polys: list[np.ndarray]         # footprint exteriors, world xy
 
 
-def make_sources(city: dict[str, np.ndarray], styled: dict[str, list[Mesh]], tf: Transform, cell: float) -> TileSources:
-    metro = [tf.apply(m.positions)[m.triangles] for m in styled.get("metro", [])]
-    metro_tris = np.concatenate(metro).astype(np.float32) if metro else np.zeros((0, 3, 2), np.float32)
-    return TileSources(TriIndex(city["road"], cell), TriIndex(city["stroke"], cell), TriIndex(metro_tris, cell),
-                       {s: styled[s] for s in BASE_STYLES if s in styled}, styled.get("metro", []), tf)
+def make_sources(road: np.ndarray, polys: list[np.ndarray], cell: float) -> TileSources:
+    boxes = np.array([[p.min(axis=0), p.max(axis=0)] for p in polys], np.float64).reshape(-1, 2, 2)
+    return TileSources(TriIndex(road, cell), TriIndex(boxes, cell), polys)
 
 
-def _mask(index: TriIndex, grid: LevelGrid, ix: int, iy: int, margin: int, outline: bool) -> np.ndarray | None:
-    """Coverage (uint8, (tile + 2 margin)^2, margin included) of the index's triangles, or None when none are near."""
+def _window(grid: LevelGrid, ix: int, iy: int, margin: int) -> tuple[float, float, float, float, int]:
+    """(x0, y1, x1, y0, px size): the world box of tile (ix, iy) plus `margin` px, top-left x0 / y1."""
     mpp, tw = grid.mpp, grid.tile_world
     x0, y1 = grid.origin_x + ix * tw - margin * mpp, grid.origin_top - iy * tw + margin * mpp
-    x1, y0 = x0 + tw + 2 * margin * mpp, y1 - tw - 2 * margin * mpp
+    return x0, y1, x0 + tw + 2 * margin * mpp, y1 - tw - 2 * margin * mpp, (grid.tile + 2 * margin) * SS
+
+
+def _fill_mask(index: TriIndex, grid: LevelGrid, ix: int, iy: int, margin: int) -> np.ndarray | None:
+    """Coverage (uint8, margin included) of the index's triangles. Pixel coordinates are floored before drawing, so
+    negative and positive coordinates round the same way and neighbouring tiles agree."""
+    x0, y1, x1, y0, size = _window(grid, ix, iy, margin)
     sel = index.query(x0, y0, x1, y1)
     if not len(sel):
         return None
-    size = (grid.tile + 2 * margin) * SS
-    px = index.tris[sel].astype(np.float64)
-    px[..., 0] = (px[..., 0] - x0) * (SS / mpp)
-    px[..., 1] = (y1 - px[..., 1]) * (SS / mpp)
     img = Image.new("L", (size, size), 0)
     draw = ImageDraw.Draw(img)
-    for t in px.reshape(-1, 6).tolist():
-        draw.polygon(t, fill=255, outline=255 if outline else None)     # outline keeps sub-pixel strokes visible
-    return np.asarray(img.resize((size // SS, size // SS), Image.LANCZOS))
+    s = SS / grid.mpp
+    for i in range(0, len(sel), BATCH):
+        px = index.tris[sel[i:i + BATCH]].astype(np.float64)
+        px[..., 0] = np.floor((px[..., 0] - x0) * s)
+        px[..., 1] = np.floor((y1 - px[..., 1]) * s)
+        for t in px.reshape(-1, 6).tolist():
+            draw.polygon(t, fill=255)
+    return _down(img)
+
+
+def _down(img: Image.Image) -> np.ndarray:
+    return np.asarray(img.resize((img.width // SS, img.height // SS), Image.LANCZOS))
+
+
+def _foot_masks(src: TileSources, grid: LevelGrid, ix: int, iy: int, margin: int) -> tuple[np.ndarray, np.ndarray] | None:
+    """(fill, outline) coverage of the footprints, margin included."""
+    x0, y1, x1, y0, size = _window(grid, ix, iy, margin)
+    sel = src.foot.query(x0, y0, x1, y1)
+    if not len(sel):
+        return None
+    fill, line = Image.new("L", (size, size), 0), Image.new("L", (size, size), 0)
+    df, dl = ImageDraw.Draw(fill), ImageDraw.Draw(line)
+    s = SS / grid.mpp
+    for i in sel:
+        p = src.polys[i]
+        c = np.column_stack((np.floor((p[:, 0] - x0) * s), np.floor((y1 - p[:, 1]) * s)))
+        pts = [tuple(v) for v in c.tolist()]
+        df.polygon(pts, fill=255)
+        dl.line(pts + pts[:1], fill=255, width=SS, joint="curve")
+    return _down(fill), _down(line)
 
 
 def _crop(a: np.ndarray, margin: int) -> np.ndarray:
@@ -138,26 +157,15 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
         if img is not None:
             out[name] = img
 
-    if grid.mpp >= BASE_MIN_MPP and src.base_meshes:
-        tg = tile_grid(grid, ix, iy, SS, EDGE_MARGIN)
-        rgba = render_level(src.base_meshes, src.tf, tg)
-        a = rgba.getchannel("A").resize((grid.tile + 2 * EDGE_MARGIN,) * 2, Image.LANCZOS)
-        put("base", _crop(np.asarray(a), EDGE_MARGIN))
-    m = _mask(src.road, grid, ix, iy, EDGE_MARGIN, outline=False)
+    m = _fill_mask(src.road, grid, ix, iy, EDGE_MARGIN)
     put("road", None if m is None else _crop(m, EDGE_MARGIN))
-    m = _mask(src.stroke, grid, ix, iy, GLOW_MARGIN, outline=True)
-    if m is not None:
-        put("stroke", _crop(m, GLOW_MARGIN))
-        blurred = Image.fromarray(m).filter(ImageFilter.GaussianBlur(GLOW_RADIUS))
-        g = np.asarray(blurred).astype(np.float32) * GLOW_GAIN
-        put("glow", _crop(np.minimum(g, 255).astype(np.uint8), GLOW_MARGIN))
-    tw, mpp = grid.tile_world, grid.mpp
-    x0, y1 = grid.origin_x + ix * tw, grid.origin_top - iy * tw
-    if len(src.metro.query(x0 - 2 * mpp, y1 - tw - 2 * mpp, x0 + tw + 2 * mpp, y1 + 2 * mpp)):
-        tg = tile_grid(grid, ix, iy, SS, EDGE_MARGIN)
-        rgba = render_level({"metro": src.metro_meshes}, src.tf, tg, style=_METRO_STYLE)
-        a = rgba.getchannel("A").resize((grid.tile + 2 * EDGE_MARGIN,) * 2, Image.LANCZOS)
-        put("metro", _crop(np.asarray(a), EDGE_MARGIN))
+    masks = _foot_masks(src, grid, ix, iy, GLOW_MARGIN)
+    if masks is not None:
+        fill, line = masks
+        put("bfill", _crop(fill, GLOW_MARGIN))
+        blurred = np.asarray(Image.fromarray(line).filter(ImageFilter.GaussianBlur(GLOW_RADIUS)))
+        put("glow", _crop(np.minimum(blurred.astype(np.float32) * GLOW_GAIN, 255).astype(np.uint8), GLOW_MARGIN))
+        put("outline", _crop(line, GLOW_MARGIN))
     return out
 
 

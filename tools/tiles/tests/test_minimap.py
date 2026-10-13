@@ -61,6 +61,16 @@ def test_quantization_endpoints():
     assert abs(q[1] - 7.5) < 1e-5
 
 
+def test_classify_uses_elevation_per_spec_11_6():
+    def rect(w, h):
+        return np.array([[(0, 0), (w, 0), (w, h)], [(0, 0), (w, h), (0, h)]], np.float32)
+    assert classify(rect(10, 40), z=5) == "road"
+    assert classify(rect(10, 40), z=50) == "road"          # elevated but narrow: freeway
+    assert classify(rect(40, 60), z=50) == "stroke"        # elevated and wide: a rooftop plate
+    assert classify(rect(10, 40), z=120) == "stroke"       # too high
+    assert classify(rect(40, 60), z=5) == "road"
+
+
 def test_classify_thickness():
     def rect(w, h):
         a, b, c, d = (0, 0), (w, 0), (w, h), (0, h)
