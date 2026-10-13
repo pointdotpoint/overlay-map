@@ -21,6 +21,7 @@ class LevelGrid:
     nx: int
     ny: int
     tile: int = 512
+    ss: int = 1         # supersampling the grid is drawn at (mpp is already divided by it); dash decisions use mpp * ss
 
     @property
     def tile_world(self) -> float:
@@ -43,6 +44,16 @@ def level_grid(bounds: tuple[float, float, float, float], mpp: float, tile: int 
     nx = max(1, math.ceil((maxx - ox) / tw))
     ny = max(1, math.ceil((otop - miny) / tw))
     return LevelGrid(mpp, ox, otop, nx, ny, tile)
+
+
+def tile_grid(grid: LevelGrid, ix: int, iy: int, ss: int = 1, margin: int = 0) -> LevelGrid:
+    """A one-tile grid covering tile (ix, iy) of `grid` plus `margin` px (of `grid`) on every side, drawn at ss x.
+
+    `render_level` on the result renders exactly that sub-rectangle, so no whole-level image is ever needed.
+    """
+    mpp = grid.mpp
+    return LevelGrid(mpp / ss, grid.origin_x + ix * grid.tile_world - margin * mpp,
+                     grid.origin_top - iy * grid.tile_world + margin * mpp, 1, 1, (grid.tile + 2 * margin) * ss, ss)
 
 
 def _to_px(xy: np.ndarray, origin_x: float, origin_top: float, mpp: float) -> np.ndarray:
@@ -88,7 +99,7 @@ def _draw_dashed(layer: Image.Image, meshes: list[Mesh], tf: Transform, grid: Le
     w, h = grid.width, grid.height
     on, off = dash
     period = on + off
-    if period / grid.mpp < MIN_DASH_PX:
+    if period / (grid.mpp * grid.ss) < MIN_DASH_PX:
         solid = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         _draw_mesh_list(ImageDraw.Draw(solid), meshes, tf, grid, (fill[0], fill[1], fill[2], int(fill[3] * on / period)))
         layer.alpha_composite(solid)
@@ -156,21 +167,21 @@ def _draw_boxes(draw: ImageDraw.ImageDraw, boxes: Boxes, grid: LevelGrid, spec: 
 
 
 def render_level(styled: dict[str, list[Mesh]], tf: Transform, grid: LevelGrid,
-                 boxes: Boxes | None = None) -> Image.Image:
+                 boxes: Boxes | None = None, style: dict = STYLE) -> Image.Image:
     w, h = grid.width, grid.height
     out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     names = set(styled) | ({"building"} if boxes is not None and len(boxes) else set())
-    for style in sorted(names, key=lambda s: STYLE[s]["order"]):
-        spec = STYLE[style]
+    for name in sorted(names, key=lambda s: style[s]["order"]):
+        spec = style[name]
         layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(layer)
         if "dash" in spec:
-            _draw_dashed(layer, styled.get(style, []), tf, grid, spec["fill"], spec["dash"])
+            _draw_dashed(layer, styled.get(name, []), tf, grid, spec["fill"], spec["dash"])
         else:
-            for m in styled.get(style, []):
+            for m in styled.get(name, []):
                 _draw_mesh(draw, m, tf, grid.origin_x, grid.origin_top, grid.mpp, w, h, spec["fill"],
                            spec.get("height_alpha", 0))
-        if style == "building" and boxes is not None:
+        if name == "building" and boxes is not None:
             _draw_boxes(draw, boxes, grid, spec, tf)
         if "glow" in spec:
             radius = max(1.0, 6.0 / grid.mpp)

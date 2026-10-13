@@ -8,3 +8,16 @@ STYLE = {
     "road_border": {"order": 5, "fill": (120, 235, 255, 217), "glow": (120, 235, 255, 90)},
     "metro":       {"order": 6, "fill": (255, 79, 216, 200), "dash": (24.0, 16.0)},   # dash = (on, off) in world metres
 }
+
+# The base tile set (spec 11.5): land, water and cliffs/coast of the 3D map; roads, road borders and buildings are off.
+BASE_STYLES = ("land", "water", "cliff")
+
+# Preview-only defaults for the colourless mask sets (the runtime takes these from NMTheme): rgb, alpha scale.
+PREVIEW_BG = (8, 18, 26)                     # #08121a
+PREVIEW_SETS = {
+    "base":   ((40, 200, 255), 1.0),
+    "road":   ((0x1e, 0x8c, 0x96), 0.55),
+    "glow":   ((0x9f, 0xf3, 0xff), 0.35),
+    "stroke": ((0x9f, 0xf3, 0xff), 0.9),
+    "metro":  ((255, 79, 216), 200 / 255),
+}
