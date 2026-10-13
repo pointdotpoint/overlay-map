@@ -20,7 +20,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let camera: ref<NMCamera>;
     private let lastMs: Float;
     private let holdMs: Float;
-    private let savedMpp: Float = 4.0;
+    private let savedMpp: Float = 0.0;   // 0 = not opened yet this session: start fully zoomed in
     private let frameNo: Int32;
     private let layers: ref<NMLayerStack>;
     private let renderer: ref<NMItemRenderer>;
@@ -173,7 +173,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.panel = NMPanel.Build(window, layout, IsDefined(s) ? s.panelOpacity : 0.74);
         let bounds = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
         this.camera = NMCamera.Create(layout.mapW, layout.mapH, bounds, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
-        this.camera.SetMpp(this.savedMpp);
+        this.camera.SetMpp(this.savedMpp > 0.0 ? this.savedMpp : NightMapSystem.MinMpp());
         this.CenterOnPlayer(true);
         if IsDefined(s) {
             this.panel.hints.SetText(NMInput.HintText(s));
