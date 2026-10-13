@@ -17,6 +17,7 @@ SWEEP_P95_BUDGET_MS = 3.0
 IDLE_ROWS = ("idle_0p5", "idle_2", "idle_8")
 SWEEP_ROWS = ("open_empty", "panzoom_0p5_16")   # open_empty is the cold sweep right after the baseline
 DRIFT_MAX_MS = 0.5       # |closed_end - closed_baseline| above this: the run's machine state moved, exclude it
+LOADED_MARK = "[NightMap] loaded"  # logged at every game start; --all-sessions ignores it
 # (scenario, avg budget, p95 budget) in report order
 GATES = ([("items_50000", AVG_BUDGET_MS, P95_BUDGET_MS)] + [(n, IDLE_AVG_BUDGET_MS, IDLE_P95_BUDGET_MS) for n in IDLE_ROWS]
          + [(n, SWEEP_AVG_BUDGET_MS, SWEEP_P95_BUDGET_MS) for n in SWEEP_ROWS])
@@ -116,8 +117,8 @@ def verdict(rows: list[dict]) -> tuple[bool, str]:
     return _gate(*deltas(rows))
 
 
-def judge(suites: list[list[dict]], n: int = 3) -> tuple[str, str]:
-    """PASS / FAIL / INCONCLUSIVE over the per-scenario median of the last ``n`` complete, non-drifted suites."""
+def select_valid(suites: list[list[dict]], n: int) -> tuple[list[list[dict]], list[str]]:
+    """The last ``n`` non-drifted suites (newest first), plus a note for each drifted suite skipped on the way."""
     valid, skipped = [], []
     for i in range(len(suites) - 1, -1, -1):
         if len(valid) >= n:
@@ -127,6 +128,20 @@ def judge(suites: list[list[dict]], n: int = 3) -> tuple[str, str]:
             skipped.append(f"run {i + 1} drifted ({'no closed_end row' if dr is None else f'|closed_end - closed_baseline| = {dr:.2f} ms'}), excluded")
         else:
             valid.append(suites[i])
+    return valid, skipped
+
+
+def current_session(text: str) -> str:
+    """The log from the last NightMap load on, so suites from earlier game sessions (older builds) are not judged."""
+    i = text.rfind(LOADED_MARK)
+    return text if i < 0 else text[i:]
+
+
+def judge(suites: list[list[dict]], n: int = 3) -> tuple[str, str]:
+    """PASS / FAIL / INCONCLUSIVE over the per-scenario median of the last ``n`` complete, non-drifted suites."""
+    if n < 1:
+        raise ValueError("n must be >= 1")
+    valid, skipped = select_valid(suites, n)
     note = "; ".join(skipped)
     per = [deltas(r) for r in valid]
     problems = sorted({p for _, ps in per for p in ps})
@@ -144,9 +159,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("log", nargs="?", type=Path, default=GAMELOG)
     ap.add_argument("--runs", type=int, default=3, help="number of valid suites whose median is judged (default 3)")
+    ap.add_argument("--all-sessions", action="store_true", help="also judge suites from earlier game sessions in the log")
     args = ap.parse_args()
+    if args.runs < 1:
+        ap.error("--runs must be >= 1")
     path = args.log
     text = path.read_text(errors="replace")
+    if not args.all_sessions:
+        text = current_session(text)
     try:
         rows = parse(text)
     except SuiteError as e:
@@ -166,8 +186,8 @@ def main() -> int:
     dr = drift(rows)
     print(f"closed_end drift: {'n/a' if dr is None else f'{dr:.2f} ms'} (limit {DRIFT_MAX_MS})")
     suites = parse_suites(text)
-    per = [deltas(r) for r in suites[-args.runs:] if drift(r) is not None and drift(r) <= DRIFT_MAX_MS]
-    print(f"\nmedians ({len(per)} of last {min(args.runs, len(suites))} runs usable, delta vs own closed_baseline):")
+    per = [deltas(r) for r in select_valid(suites, args.runs)[0]]
+    print(f"\nmedians over {len(per)} valid run(s) of {len(suites)} in this {'log' if args.all_sessions else 'session'} (delta vs own closed_baseline):")
     print(f"{'scenario':22} {'avg':>7} {'p95':>7}")
     for name, _, _ in GATES:
         vals = [d[name] for d, _ in per if name in d]

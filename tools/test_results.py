@@ -194,3 +194,35 @@ def test_inconclusive_with_too_few_runs_and_exit_code(tmp_path):
 def test_missing_row_in_a_valid_run_fails():
     status, msg = results.judge(_suites(_tiles(), _tiles(skip=("open_empty",)), _tiles()), 3)
     assert status == "FAIL" and "open_empty: row missing" in msg
+
+
+def test_only_the_current_game_session_is_judged(tmp_path):
+    import subprocess, sys
+    loaded = "[t] [1] [NightMap] loaded (tiles present, precise clock true)\n"
+    log = tmp_path / "s.log"
+    log.write_text(loaded + _tiles(idle_avg=25.0) * 3 + loaded + _tiles() * 3)   # old session over budget, new fine
+    script = Path(__file__).with_name("results.py")
+    r = subprocess.run([sys.executable, str(script), str(log)], capture_output=True, text=True)
+    assert r.returncode == 0 and "PASS" in r.stdout and "in this session" in r.stdout
+    log.write_text(loaded + _tiles() * 2 + loaded + _tiles())                    # new session has 1 run
+    r = subprocess.run([sys.executable, str(script), str(log)], capture_output=True, text=True)
+    assert r.returncode == 2 and "INCONCLUSIVE: 1 of 3 valid runs" in r.stdout
+    r = subprocess.run([sys.executable, str(script), str(log), "--all-sessions"], capture_output=True, text=True)
+    assert r.returncode == 0
+
+
+def test_runs_must_be_positive(tmp_path):
+    import subprocess, sys, pytest
+    with pytest.raises(ValueError):
+        results.judge(_suites(_tiles()), 0)
+    log = tmp_path / "z.log"
+    log.write_text(_tiles())
+    r = subprocess.run([sys.executable, str(Path(__file__).with_name("results.py")), str(log), "--runs", "0"],
+                       capture_output=True, text=True)
+    assert r.returncode == 2 and "--runs must be >= 1" in r.stderr
+
+
+def test_medians_table_uses_the_judged_runs():
+    s = _suites(_tiles(), _tiles(), _tiles(end_avg=18.5), _tiles())              # newest-but-one drifted
+    valid, skipped = results.select_valid(s, 3)
+    assert len(valid) == 3 and skipped and "run 3 drifted" in skipped[0]
