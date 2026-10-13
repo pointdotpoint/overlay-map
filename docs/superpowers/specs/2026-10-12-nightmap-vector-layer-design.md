@@ -270,3 +270,65 @@ check: no visible seams between adjacent road, land or water pieces (cell edges 
 - **Budgets.** Shape budget 810 in the build (`SHAPE_BUDGET`), 900 at runtime (`VecShapeBudget`). Widget pool 1800 (`VecPoolSize`), enough to hold two levels during a transition.
 - **Holes are cut with slits.** A polygon with holes becomes one ring by a 0.05 m wide keyhole cut from each hole's top vertex to the exterior (largest hole first). The bisect split of §10.1 is kept only as the fallback past recursion depth 64. Budget-ladder re-simplification of fill rings uses shapely, so a slit cannot collapse.
 - **Ladder order.** area (2, 4, 8, 16, 32) then tol (1.25, 1.5625, 2) then road width (4, 8, 12): streets are sacrificed last.
+
+## 11. Revision after checkpoint 3, round 2: baked tiles from the game's own minimap geometry (2026-10-13)
+
+**Why.** The exact-geometry vector map (§10) rendered in-game, but the user rated it "looks bad". It also cost about +3 ms
+per frame (57 vs 67 FPS), which is over the +2 ms budget. The user asked twice to reuse the game's own map assets. Two
+throwaway spikes answered that:
+- `.scratch/minimap_spike/FINDINGS.md` decoded the vanilla minimap geometry (`minimapEncodedShapes`, embedded in the
+  `exterior_*_{3,4,5,6}.streamingsector` files) for the whole city;
+- `BRIEF2.md` and its renders showed that the raw minimap look (`styled_close.png`, `styled_mid.png`) is excellent, but too
+  dense for live widgets: 118k shapes per close view.
+
+**User decision:** ship the raw minimap look as **baked raster tiles**, with the finest level around 0.5 m/px, and **retire
+the live vector layer**. This section supersedes §3–§6 and §10 for what ships. The vector code and history stay in git.
+
+### 11.1 Data (offline, `tools/tiles/nmtiles/minimap.py`)
+- **Sources.** Every `base\worlds\03_night_city\_compiled\default\exterior_*_{3,4,5,6}.streamingsector`:
+  - in `basegame_3_nightcity.archive`;
+  - in the EP1 archives, which add Dogtown and patch base sectors. An EP1 copy of a sector **replaces** the base copy,
+    since the game loads the patched one.
+- **Pipeline.** Extract (WolvenKit `extract`), then `convert s` to JSON. That's about 15 s per file, so run it in parallel,
+  cached under `build/minimap/` and keyed by archive size + mtime. Then decode `Data.EmbeddedFiles[]`
+  `minimapEncodedShapes` per the FINDINGS format table.
+- **Placement.** World xy = node `Position.xy` + decoded local xy. These are raw game coordinates, the same frame the
+  runtime camera uses. Skip nodes with `allInteriorShapes` and soft refs with no data; skip empty files (scale = -inf).
+- **Classes.** Per shape:
+  - **road** = fill whose thickness (area / max bbox extent) ≥ 3 m;
+  - **stroke** = everything else: building, floor and prop outlines drawn as thin filled polygons.
+- **Stacked floors.** All floors are kept. The layered look is the approved style.
+- **Coverage.** LOD 3 and LOD 4 nodes are both used (union), since they partly complement each other.
+- **Output.** Per-class triangle arrays in world xy (float32), cached as `.npz`.
+
+### 11.2 Styled tiles (offline, `render_minimap.py`)
+- **Levels.** Tile size 512 px, at **0.5, 1, 2, 4, 8, 16 m/px**: six levels, replacing 2/4/8/16. Each tile is rendered
+  **independently** (whole-level images at 0.5 m/px would need gigabytes), with antialiasing via 2× supersampling.
+- **Layers, bottom to top:**
+  1. the existing 3D-map base layer for land, water and coastline, as the current raster style draws it, with buildings
+     **off**;
+  2. minimap **road** fills `#1e8c96` at alpha 0.55;
+  3. minimap **strokes** `#9ff3ff` at alpha 0.9;
+  4. the existing 3D-map metro (pink).
+- **Empty tiles** (fully transparent) are not written. The runtime already treats missing tiles as empty.
+- **Encoding.** BC7 as today, without mipmaps.
+- **Archive budget.** The build reports the archive size; the target is ≤ 250 MB. If it's larger, the finest level becomes
+  0.75 m/px, and that change is recorded as a ruling.
+
+### 11.3 Runtime
+- **Tile layer.** It takes its levels from `TileManifest`, now six. The camera's minimum m/px = the finest level's m/px.
+- **Vector layer retired.**
+  - Remove the `vectorMap` setting and the vector code path from `NightMapSystem` (`UseVector`, `FallBackToRaster`,
+    `MaxMppFor(useVector)`).
+  - Delete `Render/VectorLayer.reds`, `Render/VectorLevel.reds`, the generated `VectorManifest.reds`, and the vector
+    pipeline modules and tests (`vector_*.py`).
+  - Remove the `Vec*` theme constants, the vector perf scenarios and the vector results thresholds.
+  - Remove `Debug/Trace.reds` too, unless the raster path still uses it.
+- **Perf gate.** Unchanged from sub-project 1. The raster scenarios must still pass, with the new finest level included in
+  the pan/zoom sweep.
+
+### 11.4 Acceptance (checkpoint 3, final)
+- The map looks like the vanilla minimap's hologram style at every zoom, and is crisp when fully zoomed in.
+- Alignment with the world: player marker, roads and buildings.
+- Perf suite PASS.
+- Archive ≤ 250 MB, or the ruling from §11.2.
