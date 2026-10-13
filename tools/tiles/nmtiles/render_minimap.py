@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 import multiprocessing as mp
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -27,6 +28,7 @@ from nmtiles.world import Transform
 
 SETS = ("base", "road", "glow", "stroke", "metro")      # draw order, back to front
 SS = 2
+DEFAULT_JOBS = 4
 BASE_MIN_MPP = 2.0
 GLOW_RADIUS = 3.0                                        # px at every level
 GLOW_GAIN = 1.0
@@ -166,6 +168,10 @@ def png_name(set_name: str, li: int, ix: int, iy: int) -> str:
 _JOB: tuple | None = None       # (sources, grid, level index, png dir); set before the fork so workers inherit it
 
 
+def _low_priority() -> None:
+    os.nice(19)
+
+
 def _work(cell: tuple[int, int]) -> tuple[int, int, list[str]]:
     src, grid, li, png_dir = _JOB
     ix, iy = cell
@@ -175,7 +181,7 @@ def _work(cell: tuple[int, int]) -> tuple[int, int, list[str]]:
     return ix, iy, list(tiles)
 
 
-def render_level_tiles(src: TileSources, grid: LevelGrid, li: int, png_dir: Path, workers: int | None = None,
+def render_level_tiles(src: TileSources, grid: LevelGrid, li: int, png_dir: Path, workers: int = DEFAULT_JOBS,
                        log: Callable[[str], None] = print) -> dict[str, list[tuple[int, int]]]:
     """Render every tile of one level to PNGs in a fork pool; returns the sorted (ix, iy) list per non-empty set."""
     global _JOB
@@ -183,7 +189,7 @@ def render_level_tiles(src: TileSources, grid: LevelGrid, li: int, png_dir: Path
     cells = [(ix, iy) for iy in range(grid.ny) for ix in range(grid.nx)]
     found: dict[str, list[tuple[int, int]]] = {s: [] for s in SETS}
     done = 0
-    with mp.get_context("fork").Pool(workers or mp.cpu_count()) as pool:
+    with mp.get_context("fork").Pool(workers, initializer=_low_priority) as pool:
         for ix, iy, names in pool.imap_unordered(_work, cells, chunksize=4):
             for n in names:
                 found[n].append((ix, iy))

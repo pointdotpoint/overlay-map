@@ -10,7 +10,7 @@ from pathlib import Path
 TEXCONV = Path.home() / ".local/bin/texconv.exe"
 DDS_DX10_HEADER = 148
 BATCH = 48
-WORKERS = 6     # concurrent wine/texconv processes
+WORKERS = 2     # concurrent wine/texconv processes (texconv has no thread-count option); run at nice 19
 # Ink blends premultiplied alpha and samples textures with V flipped relative to PNG row order.
 TEXCONV_OPTS = ["-pmalpha", "-vflip"]
 
@@ -40,7 +40,7 @@ def encode_bc7(pngs: list[Path], out_dir: Path, workers: int = WORKERS) -> dict[
     env = {**os.environ, "WINEDEBUG": "-all"}
     todo = [p for p in pngs if not _cached(p, out_dir)]
     def run(chunk: list[Path]) -> None:
-        subprocess.run(["wine", str(TEXCONV), "-nogpu", "-f", "BC7_UNORM", "-m", "1", "-y", *TEXCONV_OPTS, "-o", _win(out_dir),
+        subprocess.run(["nice", "-n", "19", "wine", str(TEXCONV), "-nogpu", "-f", "BC7_UNORM", "-m", "1", "-y", *TEXCONV_OPTS, "-o", _win(out_dir),
                         *map(_win, chunk)], check=True, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for png in chunk:
             dds = out_dir / png.with_suffix(".dds").name

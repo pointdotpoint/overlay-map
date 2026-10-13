@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 import time
@@ -41,9 +42,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=HERE / "build")
     ap.add_argument("--levels", default="0.5,1,2,4,8,16")
     ap.add_argument("--skip-export", action="store_true", help="reuse build/meshes and build/bdata")
+    ap.add_argument("--jobs", type=int, default=4, help="workers for every process pool (BC7 encoding uses min(jobs, 2))")
     ap.add_argument("--game-version", default="2.31")
     args = ap.parse_args(argv)
     t_start = time.time()
+    os.nice(19)
     game = args.game.resolve()
     out = args.out
     mesh_dir = out / "meshes"
@@ -63,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
             styled.setdefault(style, []).extend(keep_best_lod(read_glb(p)))
     tf = Transform.load(HERE / "calibration.json")
     world = np.vstack([tf.apply(m.positions) for s in ("land", "road") for m in styled.get(s, [])])
-    city = load_city(game, out / "minimap_cache")
+    city = load_city(game, out / "minimap_cache", workers=args.jobs)
     mm = np.concatenate([city["road"].reshape(-1, 2), city["stroke"].reshape(-1, 2)])
     bounds = (float(min(world[:, 0].min(), mm[:, 0].min())), float(min(world[:, 1].min(), mm[:, 1].min())),
               float(max(world[:, 0].max(), mm[:, 0].max())), float(max(world[:, 1].max(), mm[:, 1].max())))
@@ -80,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
         t_lv = time.time()
         grid = level_grid(bounds, mpp)
         src = make_sources(city, styled, tf, max(grid.tile_world, 256.0))
-        tiles = render_level_tiles(src, grid, li, png_dir)
+        tiles = render_level_tiles(src, grid, li, png_dir, args.jobs)
         del src
         for s, cells in tiles.items():
             for ix, iy in cells:
@@ -99,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
     ui_img.save(ui_png)
 
     all_pngs = [p for s in SETS for p in set_pngs[s].values()]
-    payloads = encode_bc7(all_pngs + [ui_png], out / "dds")
+    payloads = encode_bc7(all_pngs + [ui_png], out / "dds", min(args.jobs, 2))
     xbm_t = json.loads((TPL / "tile.xbm.json").read_text())
     atl_t = json.loads((TPL / "atlas.inkatlas.json").read_text())
     ws = out / "workspace"
