@@ -50,8 +50,9 @@ public abstract class NMTheme {
     public static func VecFailMs() -> Float { return 3000.0; }
     public static func VecIsBlock(style: Int32) -> Bool { return style >= 2 && style <= 4; }
     public static func VecVariant(style: Int32) -> inkEShapeVariant {
+        // Fill-only shapes render nothing in-game; fills use FillAndBorder with a transparent border.
         if style == 6 { return inkEShapeVariant.Border; }
-        return inkEShapeVariant.Fill;
+        return inkEShapeVariant.FillAndBorder;
     }
     public static func VecColor(style: Int32) -> HDRColor { return style == 6 ? NMTheme.Pink() : NMTheme.Cyan(); }
     public static func VecFillOpacity(style: Int32) -> Float {

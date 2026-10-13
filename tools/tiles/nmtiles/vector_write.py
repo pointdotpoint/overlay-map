@@ -23,6 +23,14 @@ def local_points(pts: np.ndarray, bounds: tuple, unit: float) -> np.ndarray:
     return np.column_stack(((pts[:, 0] - minx) / unit, (maxy - pts[:, 1]) / unit))
 
 
+def preset_points(s) -> np.ndarray:
+    """A closed fill ring is written open: ink closes fills itself, and a repeated first point makes the fill
+    draw nothing in-game. Line styles (metro) keep every point."""
+    if s.style != "metro" and len(s.pts) >= 4 and np.array_equal(s.pts[0], s.pts[-1]):
+        return s.pts[:-1]
+    return s.pts
+
+
 def collection_json(template: dict, cell: Cell, unit: float) -> dict:
     doc = copy.deepcopy(template)
     b = cell.bounds()
@@ -30,7 +38,7 @@ def collection_json(template: dict, cell: Cell, unit: float) -> dict:
         {"$type": "inkShapePreset",
          "name": {"$type": "CName", "$storage": "string", "$value": f"s{i}"},
          "points": [{"$type": "Vector2", "X": round(float(x), 3), "Y": round(float(y), 3)}
-                    for x, y in local_points(s.pts, b, unit)]}
+                    for x, y in local_points(preset_points(s), b, unit)]}
         for i, s in enumerate(cell.shapes)]
     return doc
 

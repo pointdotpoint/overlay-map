@@ -42,7 +42,10 @@ def test_collection_json_presets_in_order():
     doc = collection_json(TPL, _cell(), 0.5)
     presets = doc["Data"]["RootChunk"]["presets"]
     assert [p["name"]["$value"] for p in presets] == ["s0", "s1"]
-    assert len(presets[0]["points"]) == 5 and len(presets[1]["points"]) == 2
+    # The fill ring is written open (ink closes fills itself; a repeated first point makes the fill draw nothing).
+    assert len(presets[0]["points"]) == 4 and len(presets[1]["points"]) == 2
+    first, last = presets[0]["points"][0], presets[0]["points"][-1]
+    assert (first["X"], first["Y"]) != (last["X"], last["Y"])
     assert TPL["Data"]["RootChunk"]["presets"] == []          # template untouched
 
 
@@ -103,7 +106,7 @@ def test_write_level_orders_shapes_to_match_counts(tmp_path):
     row = write_level(tmp_path, 0, LV, g, {(1, 2): unordered}, TPL)
     doc = json.loads((tmp_path / "nightmap" / "vec" / "V0" / "c_1_2.inkshapecollection.json").read_text())
     presets = doc["Data"]["RootChunk"]["presets"]
-    assert len(presets[0]["points"]) == 5 and len(presets[1]["points"]) == 2      # s0 = block, s1 = road
+    assert len(presets[0]["points"]) == 4 and len(presets[1]["points"]) == 2      # s0 = block (open ring), s1 = road
     assert row["cells"][0]["counts"] == [0, 0, 0, 1, 0, 1, 0]
 
 
