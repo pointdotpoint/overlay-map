@@ -42,3 +42,32 @@ Table for the run at 08:37:
 | items_20000 | 20000 | 15.36 | +0.71 | 18.81 | 2.95 |
 | items_50000 | 50000 | 15.55 | +0.90 | 19.56 | 3.06 |
 | closed_end | 0 | 14.57 | -0.07 | 15.77 | 0.00 |
+
+## Checkpoint 3 (2026-10-13)
+
+Build: `feat/vector-layer`. Baked minimap tiles (spec §11). The vector layer is retired. The verified build is 0ce9195. Game 2.31 under Proton, at 2560×1440.
+
+| Step | Result |
+|---|---|
+| 1. Install | Pass. Installed only with the game closed: replacing the archive while the game runs makes every resource load fail. COMPILE OK. Archive 63.5 MB (63,528,960 B): 4 sets (road, bfill, glow, outline) × 6 levels (0.5–16 m/px), BC7. |
+| 2. Self-test | The first run gave `passed=72 failed=2`. Both were test bugs. `tiles.layer_state_machine`: a second 16 ms step correctly faded out and released the outgoing level. `tiles.theme_defaults`: the field was read on a call temporary, which reads 0. Both fixed in 0ce9195. Final run: `TEST|SUMMARY|passed=74|failed=0`. |
+| 3. Visual review | User screenshots at 100 M and 2 KM (Charter Hill). Teal filled roads, clean simple building footprints with outline and glow, no metro and no land/water background, as approved in the clean2 preview. Sharp when zoomed in. The player arrow sits on the right block. The user reported no seams or crossfade problems. |
+| 3b. User question | "Why aren't map pins showing by default?" Vanilla pins are sub-project 2 (core spec §1 roadmap) and will ride the item layer, together with the planned hidden-item / collectible POIs. |
+| 4. Performance | **PASS** against the §11.5 gates. The verdict comes from the complete run at 15:57. Runs at 13:56 (idle_8 +1.17 / +2.47, over) and 15:15 / 15:32 (incomplete; one with a 327 ms baseline hitch) were noise or invalid. The script cost of the idle tile layer is about 0.05 ms per frame, so the variance is GPU-side. |
+
+Table for the run at 15:57:
+
+| scenario | items | avg ms | +base | p95 | script avg |
+|---|---|---|---|---|---|
+| closed_baseline | 0 | 16.48 | +0.00 | 20.19 | 0.00 |
+| open_empty | 0 | 18.18 | +1.69 | 22.55 | 0.53 |
+| items_5000 | 5000 | 19.10 | +2.62 | 25.17 | 2.90 |
+| items_20000 | 20000 | 19.32 | +2.84 | 25.32 | 3.40 |
+| items_50000 | 50000 | 19.00 | +2.52 | 25.98 | 3.49 |
+| idle_0p5 | 0 | 16.51 | +0.03 | 20.22 | 0.04 |
+| idle_2 | 0 | 17.39 | +0.91 | 20.43 | 0.05 |
+| idle_8 | 0 | 16.55 | +0.07 | 20.45 | 0.05 |
+| panzoom_0p5_16 | 0 | 17.24 | +0.76 | 22.72 | 0.69 |
+| closed_end | 0 | 15.14 | -1.34 | 18.30 | 0.00 |
+
+Gates: idle ≤ +1.0 avg / +2.0 p95. Pan/zoom ≤ +1.5 / +3.0. items_50000 ≤ +3 / +6. Results: idle worst +0.91 / +0.27, pan/zoom +0.76 / +2.53, items_50000 +2.52 / +5.80.
