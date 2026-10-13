@@ -2631,6 +2631,18 @@ runs last. The spike code in `.scratch/minimap_spike/` (`fastdec.py`, `extract.p
 - Run `load_city` for real once and log the totals (sectors, nodes, road and stroke triangles). The cold run is
   long (about 772 sectors × 15 s ÷ workers). Report the wall time and the npz size.
 
+**Spec §11.5 is binding on Tasks 12–14:**
+- **Performance:** idle ≤ +1.0 ms avg and ≤ +2.0 ms p95; pan/zoom ≤ +1.5 ms avg and ≤ +3.0 ms p95.
+- **Look:** downscale-only level choice, a crossfade between levels, and a glow layer.
+- **Tiles:** colourless mask tile sets (base, road, stroke, glow, metro), tinted at runtime by `NMTheme`.
+- **Layer stack:** an `NMMapLayer` stack for future photos and widgets.
+
+Where Task 12 or 13 below says "coloured" or "single tile", §11.5 overrides it:
+- **Task 12** renders one white-alpha mask tile set per class, plus the glow set (strokes blurred, radius about 3 px at
+  each level), and emits a TileManifest with tile sets. Previews composite the sets with the default theme colours.
+- **Task 13** builds the layer stack, with one `NMTileLayer` per set, tint from `NMTheme`, crossfade between levels, and
+  the new perf gates in `tools/results.py`.
+
 ### Task 12: Styled minimap tiles in the build (`nmtiles/render_minimap.py`, `build.py`)
 
 **Files:**

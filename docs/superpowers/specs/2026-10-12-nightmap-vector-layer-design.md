@@ -332,3 +332,39 @@ the live vector layer**. This section supersedes §3–§6 and §10 for what shi
 - Alignment with the world: player marker, roads and buildings.
 - Perf suite PASS.
 - Archive ≤ 250 MB, or the ruling from §11.2.
+
+### 11.5 Product constraints (user, 2026-10-13); binding on everything in §11
+1. **Very light at runtime.** There is no reason to use the map otherwise. Hard gates in the perf suite, against the map
+   closed:
+   - map open and idle at any zoom: **≤ +1.0 ms avg, ≤ +2.0 ms p95**;
+   - continuous pan/zoom sweep: **≤ +1.5 ms avg, ≤ +3.0 ms p95**.
+
+   Tile widgets are bounded by the view: about 30 tiles per layer at 4K; there is no per-shape geometry at runtime.
+   Tile textures load asynchronously, and the map never blocks a frame waiting for them.
+2. **State-of-the-art look.**
+   - Antialiased (2× supersampled) tiles.
+   - Level choice: always the level whose m/px is ≤ the camera m/px, so tiles are only ever downscaled, never blurred
+     upscales. Fully zoomed in = 1:1 at 0.5 m/px.
+   - **Crossfade** between levels while zooming, with no pop.
+   - No seams between tiles.
+   - A subtle glow on building strokes. The glow is its own baked layer, so it can be themed and toggled.
+
+   The visual review at Task 14 judges the look against the vanilla minimap.
+3. **Built for future customisation:** theming, the user's photos (Google-Maps-like photo pins) and more widgets. So:
+   - **Tiles are colourless masks.** Each class is baked as its own tile set: white RGB, alpha = coverage. The sets are
+     `base` (land/water), `road`, `stroke`, `glow` and `metro`.
+   - **Colour is applied at runtime** with `SetTintColor` from `NMTheme`, so a theme change is instant and needs no
+     rebuild.
+   - **Layer stack.** The renderer is a stack of named layers (`NMMapLayer`), drawn in order: base, road, glow, stroke,
+     metro, [future: photos], items/markers, overlay/widgets. Each tile set is one generic `NMTileLayer` instance bound
+     to a manifest tile set, so a future photo or imagery layer reuses it. Layers can be toggled and tinted individually.
+   - This replaces §11.2's single coloured tile and its colour list. The colours become `NMTheme` defaults (road
+     `#1e8c96` at 0.55, stroke `#9ff3ff` at 0.9, glow `#9ff3ff` at 0.35, metro pink, base as today).
+   - **Size.** Masks need only coverage, but BC7 is kept, since its alpha quality is needed. Sparse sets (stroke, glow,
+     metro) skip empty tiles, and `base` is only built for levels ≥ 2 m/px, with the runtime upscaling base below that
+     (it's soft fills).
+   - **Archive budget.** Still ≤ 250 MB. The fallback order if over budget:
+     1. the glow layer's finest level at 1 m/px;
+     2. the finest level at 0.75 m/px.
+
+     Each fallback is recorded as a ruling.
