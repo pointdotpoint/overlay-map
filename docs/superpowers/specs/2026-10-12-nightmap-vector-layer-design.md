@@ -373,3 +373,31 @@ the live vector layer**. This section supersedes §3–§6 and §10 for what shi
    as a static offline dataset with per-category toggles and icons, plus clustering at far zoom.
    - The layer stack (point 3) keeps the markers layer above all map tiles and below the overlay/widgets.
    - Nothing in §11 may assume the markers layer holds only live game pins.
+
+### 11.6 Look revision (user, 2026-10-13, after the Task 12 previews)
+The user approved the prototype `.scratch/clean_preview/clean2_{close,mid}.png` (script `clean2.py`). These rules
+supersede §11.2 and §11.5's tile-set list:
+- **No metro layer.** Metro is removed for now.
+- **No base land/water layer.**
+- **Road class.** A minimap shape is a road when thick ≥ 3 m **and** (z < 15 m **or** (z < 80 m **and** thick < 25 m)).
+  That keeps streets and elevated roads/freeways and drops rooftop and floor plates. Everything else is building geometry.
+- **Building footprints**, clean and simple, one outline per building or block:
+  1. Union the building shapes, each buffered by 0.3 m.
+  2. Closing, 4 m.
+  3. Keep exterior rings only, so courtyards are filled.
+  4. Subtract road ∪ (buffer 0.5 m), which removes overpasses and skybridges.
+  5. Opening, 3 m.
+  6. Simplify, 0.6 m.
+  7. Exteriors again.
+  8. Drop pieces < 60 m².
+
+  Touching buildings merging into one block is accepted. Footprints are computed offline once, city-wide, as polygons,
+  then rasterised per level.
+- **Tile sets, in draw order:** `road` (fill), `bfill` (building fill), `glow` (blurred building outline), `outline`
+  (building outline: a 1 px line at each level's resolution, drawn at 2× then downsampled).
+- **Theme defaults:**
+  - road `#1e8c96` α0.55;
+  - bfill `#9ff3ff` α0.12;
+  - glow `#9ff3ff` α0.35;
+  - outline `#9ff3ff` α0.9;
+  - background `#08121a`.
