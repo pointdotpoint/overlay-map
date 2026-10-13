@@ -399,8 +399,9 @@ public class NMSelfTest {
         cam.SetMpp(2.0);
         sl.Update(cam, 16.0);
         let st2 = sl.CurrentLevel() == 2 && sl.PreviousLevel() == 1;
+        // Short step: after the swap the outgoing level holds alpha 16/150, so another 16 ms step would release it.
         cam.SetMpp(1.0);
-        sl.Update(cam, 16.0);
+        sl.Update(cam, 1.0);
         let st3 = sl.CurrentLevel() == 1 && sl.PreviousLevel() == 2;
         cam.SetMpp(8.0);
         sl.Update(cam, 16.0);
@@ -412,8 +413,12 @@ public class NMSelfTest {
         this.Check("tiles.settiles_lookup_misses", missOk, "");
         NMLog.Info("TEST|INFO|tiles.set_level_counts|" + counts);
         this.Check("tiles.no_empty_set_levels", Equals(emptyDetail, ""), emptyDetail);
-        this.Check("tiles.theme_defaults", this.Near(NMTheme.TileOpacity("road"), 0.55, 0.0001) && this.Near(NMTheme.TileOpacity("outline"), 0.9, 0.0001)
-            && this.Near(NMTheme.TileTint("road").Red, 0.118, 0.001), "");
+        // Read through locals: field access on a call temporary reads 0 in redscript.
+        let roadTint: HDRColor = NMTheme.TileTint("road");
+        let roadOp: Float = NMTheme.TileOpacity("road");
+        let outlineOp: Float = NMTheme.TileOpacity("outline");
+        this.Check("tiles.theme_defaults", this.Near(roadOp, 0.55, 0.0001) && this.Near(outlineOp, 0.9, 0.0001) && this.Near(roadTint.Red, 0.118, 0.001),
+            ToString(roadOp) + "," + ToString(outlineOp) + "," + ToString(roadTint.Red));
     }
 
     private func RendererCases() {
