@@ -69,14 +69,18 @@ def test_cli_exit_codes(tmp_path):
     import subprocess, sys
     script = Path(results.__file__ if hasattr(results, "__file__") else Path(__file__).with_name("results.py"))
     good = tmp_path / "good.log"
-    good.write_text(_tiles())
+    good.write_text(_tiles() * 3)
     bad = tmp_path / "bad.log"
-    bad.write_text(_tiles().replace("frame_avg=22.5", "frame_avg=24.0"))
+    bad.write_text((_tiles().replace("frame_avg=22.5", "frame_avg=24.0")) * 3)
     part = tmp_path / "part.log"
     part.write_text(LOG.replace("PERF|SUITE|done", ""))
     run = lambda p: subprocess.run([sys.executable, str(script), str(p)], capture_output=True, text=True)
     assert run(good).returncode == 0
     assert run(bad).returncode == 1
+    short = tmp_path / "short.log"
+    short.write_text(_tiles())
+    r = run(short)
+    assert r.returncode == 2 and "INCONCLUSIVE: 1 of 3 valid runs" in r.stdout
     r = run(part)
     assert r.returncode == 1 and "incomplete suite" in r.stdout
 
@@ -86,9 +90,10 @@ def _row(name, avg, p95):
             "|frame_p99=40.0|frame_max=60.0|script_avg=0.1|script_p95=0.2\n")
 
 
-def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=()):
+def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=(), open_avg=None, open_p95=None, end_avg=20.0):
     rows = {"idle_0p5": (idle_avg, idle_p95), "idle_2": (idle_avg, idle_p95), "idle_8": (idle_avg, idle_p95),
-            "panzoom_0p5_16": (sweep_avg, sweep_p95)}
+            "open_empty": (open_avg or sweep_avg, open_p95 or sweep_p95), "panzoom_0p5_16": (sweep_avg, sweep_p95),
+            "closed_end": (end_avg, 29.0)}
     body = "".join(_row(n, a, p) for n, (a, p) in rows.items() if n not in skip)
     return LOG.replace("[t] [1] [NightMap] PERF|SUITE|done", body + "[t] [1] [NightMap] PERF|SUITE|done")
 
@@ -133,3 +138,59 @@ def test_cli_truncated_tile_row_fails(tmp_path):
     log.write_text(_tiles().replace("|frame_p95=30.5", "", 1))
     r = subprocess.run([sys.executable, str(script), str(log)], capture_output=True, text=True)
     assert r.returncode == 1 and "idle_0p5" in r.stdout
+
+
+def _suites(*suites):
+    return results.parse_suites("".join(suites))
+
+
+def test_open_empty_is_gated_with_the_sweep_budget():
+    ok, msg = results.verdict(results.parse(_tiles(open_avg=21.5, open_p95=32.0)))
+    assert ok, msg
+    ok, msg = results.verdict(results.parse(_tiles(open_avg=21.51)))
+    assert not ok and "open_empty" in msg and "OVER" in msg
+    ok, msg = results.verdict(results.parse(_tiles(open_p95=32.01)))
+    assert not ok and "open_empty" in msg
+    ok, msg = results.verdict(results.parse(_tiles(skip=("open_empty",))))
+    assert not ok and "open_empty: row missing" in msg
+
+
+def test_median_of_three_runs_ignores_one_outlier():
+    s = _suites(_tiles(idle_avg=22.5), _tiles(), _tiles())          # one run over budget, two fine -> median fine
+    status, msg = results.judge(s, 3)
+    assert status == "PASS", msg
+    s = _suites(_tiles(idle_avg=22.5), _tiles(idle_avg=22.5), _tiles())     # two over budget -> median over
+    status, msg = results.judge(s, 3)
+    assert status == "FAIL" and "idle_0p5" in msg and "OVER" in msg
+
+
+def test_judge_uses_only_the_last_n_runs():
+    s = _suites(_tiles(idle_avg=25.0), _tiles(), _tiles(), _tiles())
+    assert results.judge(s, 3)[0] == "PASS"
+
+
+def test_drifted_runs_are_excluded_and_listed():
+    s = _suites(_tiles(), _tiles(end_avg=18.5), _tiles(), _tiles())          # run 2 drifted by 1.5 ms
+    status, msg = results.judge(s, 3)
+    assert status == "PASS" and "run 2 drifted" in msg
+    s = _suites(_tiles(), _tiles(end_avg=18.5), _tiles(end_avg=21.0), _tiles())
+    status, msg = results.judge(s, 3)
+    assert status == "INCONCLUSIVE" and msg.startswith("2 of 3 valid runs") and "run 3 drifted" in msg
+
+
+def test_inconclusive_with_too_few_runs_and_exit_code(tmp_path):
+    import subprocess, sys
+    assert results.judge(_suites(_tiles(), _tiles()), 3)[1].startswith("2 of 3 valid runs")
+    assert results.judge(_suites(_tiles(), _tiles()), 2)[0] == "PASS"
+    log = tmp_path / "d.log"
+    log.write_text(_tiles() * 2)
+    script = Path(__file__).with_name("results.py")
+    r = subprocess.run([sys.executable, str(script), str(log), "--runs", "2"], capture_output=True, text=True)
+    assert r.returncode == 0 and "medians" in r.stdout and "PASS" in r.stdout
+    r = subprocess.run([sys.executable, str(script), str(log)], capture_output=True, text=True)
+    assert r.returncode == 2 and "INCONCLUSIVE: 2 of 3 valid runs" in r.stdout
+
+
+def test_missing_row_in_a_valid_run_fails():
+    status, msg = results.judge(_suites(_tiles(), _tiles(skip=("open_empty",)), _tiles()), 3)
+    assert status == "FAIL" and "open_empty: row missing" in msg
