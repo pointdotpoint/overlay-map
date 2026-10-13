@@ -20,7 +20,6 @@ public class NMSelfTest {
         this.RendererCases();
         this.PickCases();
         this.VersionCases();
-        this.VectorCases();
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 
@@ -56,7 +55,7 @@ public class NMSelfTest {
 
     private func CameraCases() {
         let b = NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0);
-        let cam = NMCamera.Create(1880.0, 1480.0, b, 0.5, 16.0);
+        let cam = NMCamera.Create(1880.0, 1480.0, b, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
         cam.SetCenter(100.0, 200.0);
         let c = cam.WorldToMap(100.0, 200.0);
         this.Check("camera.center_maps_to_view_center", this.Near(c.X, 940.0, 0.01) && this.Near(c.Y, 740.0, 0.01), this.F(c.X) + "," + this.F(c.Y));
@@ -75,6 +74,8 @@ public class NMSelfTest {
         let zin = cam.mpp;
         cam.ZoomBy(0.000001);
         this.Check("camera.zoom_clamp", zin == 0.5 && cam.mpp == 16.0, this.F(zin) + "/" + this.F(cam.mpp));
+        this.Check("camera.limits_follow_manifest", NightMapSystem.MinMpp() == NMTileManifest.LevelMpp(0) && NightMapSystem.MaxMpp() == NMTileManifest.LevelMpp(NMTileManifest.LevelCount() - 1),
+            this.F(NightMapSystem.MinMpp()) + "/" + this.F(NightMapSystem.MaxMpp()));
         cam.SetCenter(99999.0, -99999.0);
         this.Check("camera.bounds_clamp", cam.cx == 4600.0 && cam.cy == -4600.0, this.F(cam.cx) + "," + this.F(cam.cy));
         cam.SetCenter(0.0, 0.0);
@@ -323,6 +324,7 @@ public class NMSelfTest {
             return;
         }
         let n = NMTileManifest.LevelCount();
+        this.Check("tiles.six_levels_four_sets", n == 6 && NMTileManifest.SetCount() == 4, ToString(n) + "/" + ToString(NMTileManifest.SetCount()));
         let ascending = true;
         let i = 1;
         while i < n {
@@ -330,26 +332,68 @@ public class NMSelfTest {
             i += 1;
         }
         this.Check("tiles.levels_ascending", n >= 1 && ascending, ToString(n));
-        let first = NMTileManifest.LevelMpp(0);
-        let last = NMTileManifest.LevelMpp(n - 1);
-        this.Check("tiles.pick_level", NMTileLayer.PickLevel(first * 0.25) == 0 && NMTileLayer.PickLevel(first) == 0
-            && (n < 2 || NMTileLayer.PickLevel(first * 1.01) == 1) && NMTileLayer.PickLevel(last * 10.0) == n - 1, "");
-        this.Check("tiles.ui_atlas_in_depot", GameInstance.GetResourceDepot().ResourceExists(NMTheme.UiAtlas()), "nightmap\\ui\\ui.inkatlas not found: archive not installed?");
-        let allNonEmpty = n >= 1;
-        let counts = "";
-        let t0: array<Int32>;
-        let li = 0;
-        while li < n {
-            let t: array<Int32> = NMTileManifest.LevelTiles(li);
-            if li == 0 { t0 = t; }
-            let cnt = ArraySize(t);
-            if cnt <= 0 { allNonEmpty = false; }
-            counts += (li > 0 ? "," : "") + ToString(cnt);
-            NMLog.Info("TEST|INFO|tiles.level" + ToString(li) + "|count=" + ToString(cnt) + "|nx=" + ToString(NMTileManifest.LevelNx(li)) + "|ny=" + ToString(NMTileManifest.LevelNy(li)));
-            li += 1;
+        this.Check("tiles.zoom_limits", this.Near(NMTileManifest.LevelMpp(0), 0.5, 0.0001) && this.Near(NMTileManifest.LevelMpp(n - 1), 16.0, 0.0001), "");
+        // PickLevel is downscale-only: the coarsest level with m/px <= camera m/px, clamped to the finest.
+        let pickOk = true;
+        let pickDetail = "";
+        let l = 0;
+        while l < n {
+            let m = NMTileManifest.LevelMpp(l);
+            let hi = l + 1 < n ? NMTileManifest.LevelMpp(l + 1) : m * 8.0;
+            if NMTileLayer.PickLevel(m) != l || NMTileLayer.PickLevel(m * 1.5) != l || NMTileLayer.PickLevel(hi * 0.999) != l {
+                pickOk = false;
+                pickDetail += "L" + ToString(l) + "=" + ToString(NMTileLayer.PickLevel(m)) + "," + ToString(NMTileLayer.PickLevel(m * 1.5)) + "," + ToString(NMTileLayer.PickLevel(hi * 0.999)) + " ";
+            }
+            l += 1;
         }
-        this.Check("tiles.level0_has_tiles", ArraySize(t0) > 0, "count=" + ToString(ArraySize(t0)));
-        this.Check("tiles.all_levels_have_tiles", allNonEmpty, "counts=" + counts);
+        this.Check("tiles.pick_level_downscale_only", pickOk && NMTileLayer.PickLevel(0.1) == 0 && NMTileLayer.PickLevel(1000.0) == n - 1, pickDetail);
+        this.Check("tiles.ui_atlas_in_depot", GameInstance.GetResourceDepot().ResourceExists(NMTheme.UiAtlas()), "nightmap\\ui\\ui.inkatlas not found: archive not installed?");
+        // Crossfade ramp: linear, clamped, symmetric.
+        let dur = NMTileLayer.FadeMs();
+        this.Check("tiles.fade_ramp", this.Near(NMTileLayer.FadeStep(0.0, dur * 0.5, dur, true), 0.5, 0.0001)
+            && this.Near(NMTileLayer.FadeStep(1.0, dur * 0.25, dur, false), 0.75, 0.0001)
+            && NMTileLayer.FadeStep(0.9, dur * 3.0, dur, true) == 1.0 && NMTileLayer.FadeStep(0.1, dur * 3.0, dur, false) == 0.0
+            && NMTileLayer.FadeStep(0.3, 0.0, dur, true) == 0.3 && dur > 100.0 && dur < 250.0, this.F(dur));
+        // SetTiles lookup: every listed tile is found, the first unlisted index of each level is not.
+        let canvas = new inkCanvas();   // detached: widgets exist but are never drawn
+        let hitsOk = true;
+        let missOk = true;
+        let emptyDetail = "";
+        let counts = "";
+        let s = 0;
+        while s < NMTileManifest.SetCount() {
+            let layer = NMTileLayer.Create(canvas, s);
+            let lv = 0;
+            while lv < n {
+                let tiles: array<Int32> = NMTileManifest.SetTiles(s, lv);
+                let nx = NMTileManifest.LevelNx(lv);
+                let total = nx * NMTileManifest.LevelNy(lv);
+                let sorted = true;
+                let prev = -1;
+                for key in tiles {
+                    if key <= prev { sorted = false; }
+                    prev = key;
+                    if !layer.Has(lv, key % nx, key / nx) { hitsOk = false; }
+                }
+                if !sorted { hitsOk = false; }
+                let probe = 0;
+                while probe < total && probe < ArraySize(tiles) && tiles[probe] == probe {
+                    probe += 1;
+                }
+                if probe < total && layer.Has(lv, probe % nx, probe / nx) { missOk = false; }
+                if layer.Has(lv, -1, 0) || layer.Has(lv, nx, 0) { missOk = false; }
+                if ArraySize(tiles) == 0 { emptyDetail += NMTileManifest.SetName(s) + ".L" + ToString(lv) + " "; }
+                counts += ToString(ArraySize(tiles)) + (lv + 1 < n ? "," : ";");
+                lv += 1;
+            }
+            s += 1;
+        }
+        this.Check("tiles.settiles_lookup_hits", hitsOk, "");
+        this.Check("tiles.settiles_lookup_misses", missOk, "");
+        NMLog.Info("TEST|INFO|tiles.set_level_counts|" + counts);
+        this.Check("tiles.no_empty_set_levels", Equals(emptyDetail, ""), emptyDetail);
+        this.Check("tiles.theme_defaults", this.Near(NMTheme.TileOpacity("road"), 0.55, 0.0001) && this.Near(NMTheme.TileOpacity("outline"), 0.9, 0.0001)
+            && this.Near(NMTheme.TileTint("road").Red, 0.118, 0.001), "");
     }
 
     private func RendererCases() {
@@ -392,92 +436,6 @@ public class NMSelfTest {
         L.SetVisible(false);
         r.Update(cam, 1880.0, 1480.0);
         this.Check("renderer.hidden_layer_draws_nothing", r.chipsUsed == 0 && r.clustersUsed == 0, ToString(r.chipsUsed) + "/" + ToString(r.clustersUsed));
-    }
-
-    private func VectorCaseLevel() -> ref<NMVecLevel> {
-        let lv = new NMVecLevel();
-        lv.index = 0;
-        lv.minMpp = 0.5;
-        lv.maxMpp = 0.8;
-        lv.unit = 1.0;
-        lv.ox = 0.0;
-        lv.otop = 300.0;
-        lv.nx = 3;
-        lv.ny = 3;
-        lv.cell = 100.0;
-        let counts: array<Int32> = [1, 0, 3, 0, 0, 2, 0];
-        let pts: array<Int32> = [5, 0, 30, 0, 0, 40, 0];
-        let c = 0;
-        while c < 9 {
-            ArrayPush(lv.keys, c);
-            ArrayPush(lv.bounds, Cast<Float>(c % 3) * 100.0);
-            ArrayPush(lv.bounds, Cast<Float>(c / 3) * 100.0);
-            ArrayPush(lv.bounds, 100.0);
-            ArrayPush(lv.bounds, 100.0);
-            for v in counts { ArrayPush(lv.counts, v); }
-            for v in pts { ArrayPush(lv.points, v); }
-            c += 1;
-        }
-        lv.BuildLookup();
-        return lv;
-    }
-
-    private func VectorCases() {
-        let mins: array<Float> = [0.5, 0.8, 1.6];
-        let maxs: array<Float> = [0.8, 1.6, 4.0];
-        this.Check("vector.pick_initial", NMVectorLayer.PickLevel(mins, maxs, -1, 0.6, 0.08) == 0
-            && NMVectorLayer.PickLevel(mins, maxs, -1, 1.0, 0.08) == 1, "");
-        this.Check("vector.pick_hysteresis_holds", NMVectorLayer.PickLevel(mins, maxs, 0, 0.85, 0.08) == 0, "");
-        this.Check("vector.pick_hysteresis_switches", NMVectorLayer.PickLevel(mins, maxs, 0, 0.9, 0.08) == 1, "");
-        this.Check("vector.pick_back_down_holds", NMVectorLayer.PickLevel(mins, maxs, 1, 0.76, 0.08) == 1, "");
-        // Hovering around the 0.8 boundary from level 0: 0.79, 0.83, 0.79, 0.85 must never leave level 0.
-        let cur = 0;
-        let hover: array<Float> = [0.79, 0.83, 0.79, 0.85];
-        let flips = 0;
-        for m in hover {
-            let next = NMVectorLayer.PickLevel(mins, maxs, cur, m, 0.08);
-            if next != cur { flips += 1; }
-            cur = next;
-        }
-        this.Check("vector.pick_no_flicker", flips == 0, ToString(flips));
-        this.Check("vector.pick_beyond_last", NMVectorLayer.PickLevel(mins, maxs, -1, 50.0, 0.08) == 2, "");
-        let none: array<Float>;
-        this.Check("vector.pick_no_levels", NMVectorLayer.PickLevel(none, none, -1, 1.0, 0.08) == -1, "");
-
-        let lv = this.VectorCaseLevel();
-        let c1 = NMVectorLayer.VisibleCells(lv, NMRect.Create(120.0, 120.0, 180.0, 180.0));
-        this.Check("vector.visible_centre_only", ArraySize(c1) == 1 && c1[0] == 4, ToString(ArraySize(c1)));
-        let c2 = NMVectorLayer.VisibleCells(lv, NMRect.Create(90.0, 90.0, 210.0, 210.0));
-        this.Check("vector.visible_centre_first", ArraySize(c2) == 9 && c2[0] == 4, ToString(ArraySize(c2)));
-        let c3 = NMVectorLayer.VisibleCells(lv, NMRect.Create(1000.0, 1000.0, 1200.0, 1200.0));
-        this.Check("vector.visible_outside_empty", ArraySize(c3) == 0, ToString(ArraySize(c3)));
-        this.Check("vector.path", Equals(lv.Path(5), "nightmap\\vec\\V0\\c_2_1.inkshapecollection"), lv.Path(5));
-        this.Check("vector.first_preset", lv.FirstPreset(4, 0) == 0 && lv.FirstPreset(4, 2) == 1 && lv.FirstPreset(4, 5) == 4, "");
-
-        let three: array<Int32> = [4, 0, 1];
-        let all = NMVectorLayer.PlanGroups(lv, three, 100000, 100000);
-        this.Check("vector.plan_all", ArraySize(all) == 9 && all[0] == 4 * 8 + 0 && all[6] == 4 * 8 + 2, ToString(ArraySize(all)));
-        let pts = NMVectorLayer.PlanGroups(lv, three, 170, 100000);       // 3 x (5 + 40) = 135, +30 for one block group
-        this.Check("vector.plan_points_blocks_last", ArraySize(pts) == 7 && ArrayContains(pts, 4 * 8 + 2) && !ArrayContains(pts, 0 * 8 + 2), ToString(ArraySize(pts)));
-        let shp = NMVectorLayer.PlanGroups(lv, three, 100000, 7);         // land 1 + road 2 per cell
-        this.Check("vector.plan_shapes", ArraySize(shp) == 5, ToString(ArraySize(shp)));
-
-        this.Check("vector.thickness_compensates", this.Near(NMVectorLayer.LineWidthFor(5, 0, 2.0), 0.75, 0.001), this.F(NMVectorLayer.LineWidthFor(5, 0, 2.0)));
-        this.Check("vector.thickness_step", !NMVectorLayer.NeedsThickness(1.0, 1.04, 0.05) && NMVectorLayer.NeedsThickness(1.0, 1.06, 0.05)
-            && NMVectorLayer.NeedsThickness(0.0, 1.0, 0.05), "");
-        this.Check("vector.raster_max_mpp", NightMapSystem.MaxMppFor(false) <= 16.001, this.F(NightMapSystem.MaxMppFor(false)));
-        if NMVectorManifest.Available() {
-            this.Check("vector.vector_max_mpp", NightMapSystem.MaxMppFor(true) > 16.0, this.F(NightMapSystem.MaxMppFor(true)));
-        }
-
-        if NMVectorManifest.Available() {
-            let k: array<Int32> = NMVectorManifest.LevelCells(0);
-            let b: array<Float> = NMVectorManifest.LevelBounds(0);
-            let n: array<Int32> = NMVectorManifest.LevelCounts(0);
-            this.Check("vector.manifest_arrays", ArraySize(k) > 0 && ArraySize(b) == 4 * ArraySize(k)
-                && ArraySize(n) == NMTheme.VecStyleCount() * ArraySize(k), ToString(ArraySize(k)));
-            this.Check("vector.manifest_styles", NMVectorManifest.StyleCount() == NMTheme.VecStyleCount(), "");
-        }
     }
 
     private func VersionCases() {

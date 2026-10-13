@@ -1,13 +1,14 @@
 module NightMap
 
-// Same camera path for every scenario: a 2.5 km circle with a zoom sweep across 1..16 m/unit.
+// Item scenarios share one camera path: a 2.5 km circle with a zoom sweep across 1..16 m/unit. The idle_* scenarios
+// hold a fixed downtown view at 0.5 / 2 / 8 m/unit; panzoom_0p5_16 sweeps the whole tile range (0.5..16).
 // "closed" scenarios keep the frame loop running but hide the panel and skip all module work.
 public class NMPerfSuite {
     public let running: Bool;
     private let names: array<String>;
     private let counts: array<Int32>;
     private let shows: array<Bool>;
-    private let modes: array<Int32>;      // 0 = circle + 1..16 sweep, 1 = fixed downtown view, 2 = circle + 0.5..32 sweep
+    private let modes: array<Int32>;      // 0 = circle + 1..16 sweep, 1 = fixed downtown view, 2 = circle + 0.5..16 sweep
     private let mpps: array<Float>;
     private let idx: Int32;
     private let phase: Int32;
@@ -40,12 +41,10 @@ public class NMPerfSuite {
         this.Add("items_5000", 5000, true, 0, 0.0);
         this.Add("items_20000", 20000, true, 0, 0.0);
         this.Add("items_50000", 50000, true, 0, 0.0);
-        this.Add("vector_V0_idle", 0, true, 1, 0.65);
-        this.Add("vector_V1_idle", 0, true, 1, 1.2);
-        this.Add("vector_V2_idle", 0, true, 1, 2.8);
-        this.Add("vector_V3_idle", 0, true, 1, 7.0);
-        this.Add("vector_V4_idle", 0, true, 1, 20.0);
-        this.Add("vector_panzoom", 0, true, 2, 0.0);
+        this.Add("idle_0p5", 0, true, 1, 0.5);
+        this.Add("idle_2", 0, true, 1, 2.0);
+        this.Add("idle_8", 0, true, 1, 8.0);
+        this.Add("panzoom_0p5_16", 0, true, 2, 0.0);
         this.Add("closed_end", 0, false, 0, 0.0);
         this.idx = 0;
         this.phase = 0;
@@ -96,7 +95,7 @@ public class NMPerfSuite {
         } else {
             cam.SetCenter(-700.0 + 2500.0 * CosF(a), 1500.0 + 2500.0 * SinF(a));
             if mode == 2 {
-                cam.SetMpp(0.5 * PowF(64.0, 0.5 - 0.5 * CosF(2.0 * a)));
+                cam.SetMpp(0.5 * PowF(32.0, 0.5 - 0.5 * CosF(2.0 * a)));
             } else {
                 cam.SetMpp(PowF(16.0, 0.5 - 0.5 * CosF(2.0 * a)));
             }

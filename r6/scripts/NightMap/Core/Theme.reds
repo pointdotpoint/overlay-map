@@ -39,40 +39,17 @@ public abstract class NMTheme {
     // 1.0 if ink rotates clockwise for positive angles; verified at Checkpoint 2.
     public static func PlayerRotationSign() -> Float { return 1.0; }
 
-    // Vector layer (sub-project 1b). Style ids match tools/tiles nmtiles.vector_config.STYLES:
-    // 0 land, 1 water, 2 block0, 3 block1, 4 block2, 5 road, 6 metro.
-    public static func VecStyleCount() -> Int32 { return 7; }
-    public static func VecPoolSize() -> Int32 { return 1800; }
-    public static func VecPointBudget() -> Int32 { return 30000; }
-    public static func VecShapeBudget() -> Int32 { return 900; }
-    public static func VecHysteresis() -> Float { return 0.08; }
-    public static func VecThicknessStep() -> Float { return 0.05; }
-    public static func VecFailMs() -> Float { return 3000.0; }
-    public static func VecIsBlock(style: Int32) -> Bool { return style >= 2 && style <= 4; }
-    public static func VecVariant(style: Int32) -> inkEShapeVariant {
-        // Fill-only shapes render nothing in-game; fills use FillAndBorder with a transparent border.
-        if style == 6 { return inkEShapeVariant.Border; }
-        return inkEShapeVariant.FillAndBorder;
+    // Tile-set tints (spec 11.6 defaults). Tiles are colourless masks; these are applied at runtime, so a theme
+    // change needs no rebuild. Keys are NMTileManifest.SetName values.
+    public static func TileTint(set: String) -> HDRColor {
+        if Equals(set, "road") { return new HDRColor(0.118, 0.549, 0.588, 1.0); }   // #1e8c96
+        return new HDRColor(0.624, 0.953, 1.0, 1.0);                                // #9ff3ff
     }
-    public static func VecColor(style: Int32) -> HDRColor { return style == 6 ? NMTheme.Pink() : NMTheme.Cyan(); }
-    public static func VecFillOpacity(style: Int32) -> Float {
-        if style == 0 { return 0.05; }
-        if style == 1 { return 0.16; }
-        if style == 2 { return 0.14; }
-        if style == 3 { return 0.19; }
-        if style == 4 { return 0.24; }
-        if style == 5 { return 0.22; }
-        return 0.0;
-    }
-    public static func VecBorderOpacity(style: Int32) -> Float {
-        if style == 6 { return 0.80; }
-        return 0.0;
-    }
-    // Target stroke width in map (screen) units.
-    public static func VecLineWidth(style: Int32, level: Int32) -> Float {
-        if style == 6 { return 2.0; }
-        if style == 5 { return level <= 2 ? 1.5 : 1.2; }
-        if NMTheme.VecIsBlock(style) { return 1.0; }
-        return 0.0;
+    public static func TileOpacity(set: String) -> Float {
+        if Equals(set, "road") { return 0.55; }
+        if Equals(set, "bfill") { return 0.12; }
+        if Equals(set, "glow") { return 0.35; }
+        if Equals(set, "outline") { return 0.9; }
+        return 1.0;
     }
 }

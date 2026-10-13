@@ -21,7 +21,7 @@ public class NMRect {
 }
 
 public abstract class NMMath {
-    // Heading in degrees from a world forward vector: 0 = north (+Y), 90 = east (+X).
+    // Heading in degrees from a world forward direction: 0 = north (+Y), 90 = east (+X).
     public static func HeadingDeg(fx: Float, fy: Float) -> Float {
         return AtanF(fx, fy) * 57.2957795;
     }

@@ -75,21 +75,11 @@ public class NightMapSettings extends ScriptableSystem {
     public let panelOpacity: Float = 0.74;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Display")
-    @runtimeProperty("ModSettings.category.order", "1")
-    @runtimeProperty("ModSettings.displayName", "Vector map")
-    @runtimeProperty("ModSettings.description", "Draws the map as smooth vector shapes. Off = the older raster tiles.")
-    public let vectorMap: Bool = true;
-
-    @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Debug")
     @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Debug tools")
     @runtimeProperty("ModSettings.description", "Enables the debug key chords and the clip probe.")
     public let debug: Bool = false;
-
-    // Not a setting: trace lines left this session (see NMTrace).
-    public let traceLeft: Int32;
 
     private func OnAttach() {
         NightMapRegisterSettings(this);

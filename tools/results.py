@@ -7,8 +7,13 @@ from pathlib import Path
 GAMELOG = Path.home() / "cyberpunk_symlink/bin/x64/plugins/cyber_engine_tweaks/gamelog.log"
 AVG_BUDGET_MS = 3.0
 P95_BUDGET_MS = 6.0
-VEC_AVG_BUDGET_MS = 2.0
-VEC_P95_BUDGET_MS = 4.0
+# Spec 11.5, all measured against the closed-map baseline.
+IDLE_AVG_BUDGET_MS = 1.0
+IDLE_P95_BUDGET_MS = 2.0
+SWEEP_AVG_BUDGET_MS = 1.5
+SWEEP_P95_BUDGET_MS = 3.0
+IDLE_ROWS = ("idle_0p5", "idle_2", "idle_8")
+SWEEP_ROW = "panzoom_0p5_16"
 
 
 class SuiteError(Exception):
@@ -55,19 +60,21 @@ def verdict(rows: list[dict]) -> tuple[bool, str]:
     d_p95 = test["frame_p95"] - base["frame_p95"]
     ok = d_avg <= AVG_BUDGET_MS and d_p95 <= P95_BUDGET_MS
     parts = [f"items_50000: avg +{d_avg:.2f} ms (budget {AVG_BUDGET_MS}), p95 +{d_p95:.2f} ms (budget {P95_BUDGET_MS})"]
-    vec = [r for r in rows if r["name"].startswith("vector_")]
-    for r in vec:
+    gates = [(n, IDLE_AVG_BUDGET_MS, IDLE_P95_BUDGET_MS) for n in IDLE_ROWS] + [(SWEEP_ROW, SWEEP_AVG_BUDGET_MS, SWEEP_P95_BUDGET_MS)]
+    for name, avg_b, p95_b in gates:
+        r = by.get(name)
+        if r is None:
+            ok = False
+            parts.append(f"{name}: row missing")
+            continue
         if "frame_avg" not in r or "frame_p95" not in r:
             ok = False
-            parts.append(f"{r['name']}: lacks frame_avg/frame_p95")
+            parts.append(f"{name}: lacks frame_avg/frame_p95")
             continue
         va, vp = r["frame_avg"] - base["frame_avg"], r["frame_p95"] - base["frame_p95"]
-        good = va <= VEC_AVG_BUDGET_MS and vp <= VEC_P95_BUDGET_MS
+        good = va <= avg_b and vp <= p95_b
         ok = ok and good
-        parts.append(f"{r['name']}: avg +{va:.2f} ms (budget {VEC_AVG_BUDGET_MS}), p95 +{vp:.2f} ms "
-                     f"(budget {VEC_P95_BUDGET_MS}){'' if good else ' OVER'}")
-    if not vec:
-        parts.append("no vector rows (raster run)")
+        parts.append(f"{name}: avg +{va:.2f} ms (budget {avg_b}), p95 +{vp:.2f} ms (budget {p95_b}){'' if good else ' OVER'}")
     return ok, "; ".join(parts)
 
 

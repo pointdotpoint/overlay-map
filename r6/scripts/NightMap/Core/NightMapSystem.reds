@@ -22,9 +22,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let holdMs: Float;
     private let savedMpp: Float = 4.0;
     private let frameNo: Int32;
-    private let tiles: ref<NMTileLayer>;
-    private let vector: ref<NMVectorLayer>;
-    private let vectorFailed: Bool;
+    private let layers: ref<NMLayerStack>;
     private let renderer: ref<NMItemRenderer>;
     private let crosshair: ref<NMCrosshair>;
     private let card: ref<NMInfoCard>;
@@ -67,27 +65,21 @@ public class NightMapSystem extends ScriptableSystem {
         return NightMapSettings.Get(this.GetGameInstance());
     }
 
-    public static func MaxMppFor(useVector: Bool) -> Float {
-        if useVector && NMVectorManifest.LevelCount() > 0 {
-            return NMVectorManifest.LevelMaxMpp(NMVectorManifest.LevelCount() - 1);
-        }
+    public static func MinMpp() -> Float {
+        return NMTileManifest.LevelCount() > 0 ? NMTileManifest.LevelMpp(0) : 0.5;
+    }
+
+    public static func MaxMpp() -> Float {
         return NMTileManifest.LevelCount() > 0 ? NMTileManifest.LevelMpp(NMTileManifest.LevelCount() - 1) : 16.0;
     }
 
-    private func UseVector() -> Bool {
-        let s = this.Settings();
-        return !this.vectorFailed && (IsDefined(s) ? s.vectorMap : true) && NMVectorManifest.Available();
-    }
+    public func Layers() -> ref<NMLayerStack> { return this.layers; }
 
-    private func FallBackToRaster() {
-        NMLog.Error("vector map failed to load - falling back to raster tiles");
-        this.vector.Destroy();
-        this.vector = null;
-        this.vectorFailed = true;
-        this.tiles = NMTileLayer.Create(this.panel.tiles);
-        this.camera.maxMpp = NightMapSystem.MaxMppFor(false);
-        this.camera.SetMpp(this.camera.mpp);
-        this.UpdateWarning();
+    // Re-applies NMTheme to the open map's tile layers (a no-op while closed).
+    public func ApplyTheme() {
+        if IsDefined(this.layers) {
+            this.layers.ApplyTheme();
+        }
     }
 
     private func HudWindow() -> wref<inkCompoundWidget> {
@@ -179,9 +171,8 @@ public class NightMapSystem extends ScriptableSystem {
         let s = this.Settings();
         let layout = NMPanelLayout.Compute(size.X, size.Y);
         this.panel = NMPanel.Build(window, layout, IsDefined(s) ? s.panelOpacity : 0.74);
-        let maxMpp = NightMapSystem.MaxMppFor(this.UseVector());
         let bounds = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
-        this.camera = NMCamera.Create(layout.mapW, layout.mapH, bounds, 0.5, maxMpp);
+        this.camera = NMCamera.Create(layout.mapW, layout.mapH, bounds, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
         this.camera.SetMpp(this.savedMpp);
         this.CenterOnPlayer(true);
         if IsDefined(s) {
@@ -200,14 +191,8 @@ public class NightMapSystem extends ScriptableSystem {
         let text = "";
         if !NMTileManifest.Available() {
             text = "TILE ARCHIVE MISSING - run tools/tiles build";
-        } else if IsDefined(this.tiles) && !this.tiles.available {
+        } else if IsDefined(this.layers) && !this.layers.available {
             text = "Map tiles not found: install NightMap.archive";
-        }
-        if this.vectorFailed {
-            if NotEquals(text, "") {
-                text += "  |  ";
-            }
-            text += "Vector map failed to load - showing raster tiles";
         }
         let built = NMTileManifest.SourceGameVersion();
         let handler = GameInstance.GetSystemRequestsHandler();
@@ -390,23 +375,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.imageRev = this.api.revision;
         this.layerEpoch = this.api.layerEpoch;
         let l = this.panel.layout;
-        let tr = this.Settings();
-        NMTrace.Reset("open", IsDefined(tr) && tr.debug);
-        this.vector = null;
-        this.tiles = null;
-        NMTrace.Line("UseVector");
-        let useVec = this.UseVector();
-        NMTrace.Line("UseVector=" + ToString(useVec));
-        if useVec {
-            NMTrace.Line("before NMVectorLayer.Create");
-            this.vector = NMVectorLayer.Create(this.panel.tiles);
-            NMTrace.Line("after NMVectorLayer.Create");
-        }
-        if !IsDefined(this.vector) || !this.vector.available {
-            this.vector = null;
-            NMTrace.Line("before NMTileLayer.Create");
-            this.tiles = NMTileLayer.Create(this.panel.tiles);
-        }
+        this.layers = NMLayerStack.Create(this.panel.tiles);
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, l.scale);
         this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
         this.crosshair = NMCrosshair.Create(this.panel.overlay, l.mapW, l.mapH, l.scale);
@@ -420,11 +389,7 @@ public class NightMapSystem extends ScriptableSystem {
         }
         this.perf = null;
         this.perfHidden = false;
-        if IsDefined(this.vector) {
-            this.vector.Destroy();
-        }
-        this.vector = null;
-        this.tiles = null;
+        this.layers = null;
         this.renderer = null;
         this.marker = null;
         this.crosshair = null;
@@ -433,15 +398,8 @@ public class NightMapSystem extends ScriptableSystem {
 
     private func UpdateModules(dt: Float) {
         let l = this.panel.layout;
-        if IsDefined(this.vector) {
-            this.vector.Update(this.camera, dt);
-            if this.vector.failed {
-                this.FallBackToRaster();
-            }
-        } else {
-            if IsDefined(this.tiles) {
-                this.tiles.Update(this.camera);
-            }
+        if IsDefined(this.layers) {
+            this.layers.Update(this.camera, dt);
         }
         if this.api.revision != this.imageRev {
             this.imageRev = this.api.revision;

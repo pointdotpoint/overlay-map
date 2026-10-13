@@ -20,9 +20,9 @@ def test_parse_reads_latest_suite():
 
 
 def test_verdict_pass_and_fail():
-    ok, msg = results.verdict(results.parse(LOG))
+    ok, msg = results.verdict(results.parse(_tiles()))
     assert ok, msg
-    bad = LOG.replace("frame_avg=22.5", "frame_avg=24.0")
+    bad = _tiles().replace("frame_avg=22.5", "frame_avg=24.0")
     ok, msg = results.verdict(results.parse(bad))
     assert not ok and "avg" in msg
 
@@ -69,9 +69,9 @@ def test_cli_exit_codes(tmp_path):
     import subprocess, sys
     script = Path(results.__file__ if hasattr(results, "__file__") else Path(__file__).with_name("results.py"))
     good = tmp_path / "good.log"
-    good.write_text(LOG)
+    good.write_text(_tiles())
     bad = tmp_path / "bad.log"
-    bad.write_text(LOG.replace("frame_avg=22.5", "frame_avg=24.0"))
+    bad.write_text(_tiles().replace("frame_avg=22.5", "frame_avg=24.0"))
     part = tmp_path / "part.log"
     part.write_text(LOG.replace("PERF|SUITE|done", ""))
     run = lambda p: subprocess.run([sys.executable, str(script), str(p)], capture_output=True, text=True)
@@ -81,44 +81,55 @@ def test_cli_exit_codes(tmp_path):
     assert r.returncode == 1 and "incomplete suite" in r.stdout
 
 
-VEC = """
-[t] [1] [NightMap] PERF|SUITE|start
-[t] [1] [NightMap] RESULT|closed_baseline|items=0|frames=300|setup_ms=0.1|frame_avg=20.0|frame_p95=29.0|frame_p99=40.0|frame_max=60.0|script_avg=0.01|script_p95=0.02
-[t] [1] [NightMap] RESULT|items_50000|items=50000|frames=300|setup_ms=900.0|frame_avg=22.5|frame_p95=33.0|frame_p99=45.0|frame_max=70.0|script_avg=1.9|script_p95=3.0
-[t] [1] [NightMap] RESULT|vector_V0_idle|items=0|frames=300|setup_ms=0|frame_avg=21.5|frame_p95=32.0|frame_p99=40.0|frame_max=60.0|script_avg=0.1|script_p95=0.2
-[t] [1] [NightMap] RESULT|vector_panzoom|items=0|frames=300|setup_ms=0|frame_avg=21.0|frame_p95=31.0|frame_p99=40.0|frame_max=60.0|script_avg=0.5|script_p95=1.0
-[t] [1] [NightMap] PERF|SUITE|done
-"""
+def _row(name, avg, p95):
+    return (f"[t] [1] [NightMap] RESULT|{name}|items=0|frames=300|setup_ms=0|frame_avg={avg}|frame_p95={p95}"
+            "|frame_p99=40.0|frame_max=60.0|script_avg=0.1|script_p95=0.2\n")
 
 
-def test_vector_rows_pass_within_budget():
-    ok, msg = results.verdict(results.parse(VEC))
+def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=()):
+    rows = {"idle_0p5": (idle_avg, idle_p95), "idle_2": (idle_avg, idle_p95), "idle_8": (idle_avg, idle_p95),
+            "panzoom_0p5_16": (sweep_avg, sweep_p95)}
+    body = "".join(_row(n, a, p) for n, (a, p) in rows.items() if n not in skip)
+    return LOG.replace("[t] [1] [NightMap] PERF|SUITE|done", body + "[t] [1] [NightMap] PERF|SUITE|done")
+
+
+def test_tile_rows_pass_within_budget():
+    # base avg 20.0 / p95 29.0: idle +0.5/+1.5, sweep +1.0/+2.5
+    ok, msg = results.verdict(results.parse(_tiles()))
     assert ok, msg
-    assert "vector_V0_idle" in msg and "vector_panzoom" in msg
+    assert "idle_0p5" in msg and "panzoom_0p5_16" in msg
 
 
-def test_vector_row_over_budget_fails():
-    ok, msg = results.verdict(results.parse(VEC.replace("frame_avg=21.5", "frame_avg=22.5")))
-    assert not ok and "vector_V0_idle" in msg
+def test_idle_over_budget_fails():
+    ok, msg = results.verdict(results.parse(_tiles(idle_avg=21.01)))
+    assert not ok and "idle_0p5" in msg
+    ok, msg = results.verdict(results.parse(_tiles(idle_p95=31.01)))
+    assert not ok and "idle_8" in msg
 
 
-def test_vector_p95_over_budget_fails():
-    ok, msg = results.verdict(results.parse(VEC.replace("frame_p95=31.0", "frame_p95=33.5")))
-    assert not ok and "vector_panzoom" in msg
+def test_sweep_over_budget_fails():
+    ok, msg = results.verdict(results.parse(_tiles(sweep_avg=21.51)))
+    assert not ok and "panzoom_0p5_16" in msg
+    ok, msg = results.verdict(results.parse(_tiles(sweep_p95=32.01)))
+    assert not ok and "panzoom_0p5_16" in msg
 
 
-def test_cli_truncated_vector_row_fails(tmp_path):
+def test_budget_boundaries():
+    ok, msg = results.verdict(results.parse(_tiles(idle_avg=21.0, idle_p95=31.0, sweep_avg=21.5, sweep_p95=32.0)))
+    assert ok, msg
+
+
+def test_missing_tile_row_fails():
+    ok, msg = results.verdict(results.parse(_tiles(skip=("idle_2",))))
+    assert not ok and "idle_2: row missing" in msg
+    ok, msg = results.verdict(results.parse(LOG))
+    assert not ok and "panzoom_0p5_16: row missing" in msg
+
+
+def test_cli_truncated_tile_row_fails(tmp_path):
     import subprocess, sys
     script = Path(__file__).with_name("results.py")
     log = tmp_path / "trunc.log"
-    log.write_text(VEC.replace("|frame_p95=32.0", ""))
+    log.write_text(_tiles().replace("|frame_p95=30.5", "", 1))
     r = subprocess.run([sys.executable, str(script), str(log)], capture_output=True, text=True)
-    assert r.returncode == 1 and "vector_V0_idle" in r.stdout
-
-
-def test_vector_budget_boundaries():
-    # base avg 20.0 / p95 29.0 -> +2.00 / +4.00 is exactly on budget
-    ok, msg = results.verdict(results.parse(VEC.replace("frame_avg=21.5", "frame_avg=22.0").replace("frame_p95=32.0", "frame_p95=33.0")))
-    assert ok, msg
-    ok, msg = results.verdict(results.parse(VEC.replace("frame_avg=21.5", "frame_avg=22.01")))
-    assert not ok and "vector_V0_idle" in msg
+    assert r.returncode == 1 and "idle_0p5" in r.stdout
