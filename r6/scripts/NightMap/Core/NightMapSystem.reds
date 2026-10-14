@@ -41,6 +41,14 @@ public class NightMapSystem extends ScriptableSystem {
     private let imageRev: Int32;
     private let vanilla: ref<NMVanilla>;
     private let filterView: Int32;
+    // Header change-cache: SetText / tint only when the value changed (reset in OnOpened).
+    private let hdrSubtitle: String;
+    private let hdrQuestState: Int32;   // -1 unknown, 0 hidden, 1 shown
+    private let hdrQuestTitle: String;
+    private let hdrQuestObjective: String;
+    private let hdrQuestIsQuest: Bool;
+    private let hdrHint: String;
+    private let hdrScaleLabel: String;
 
     private func OnAttach() {
         this.api = NightMap.Create();
@@ -375,6 +383,13 @@ public class NightMapSystem extends ScriptableSystem {
     private func OnOpened() {
         this.cardApiRev = -1;
         this.scaleRev = -1;
+        this.hdrSubtitle = "\n";   // sentinels no real text equals: force the first header write
+        this.hdrQuestTitle = "\n";
+        this.hdrQuestObjective = "\n";
+        this.hdrHint = "\n";
+        this.hdrScaleLabel = "\n";
+        this.hdrQuestState = -1;
+        this.hdrQuestIsQuest = false;
         this.cacheTotal = -1;
         this.imageRetries = 0;
         this.imageRev = this.api.revision;
@@ -555,20 +570,45 @@ public class NightMapSystem extends ScriptableSystem {
         let maxMeters = 336.0 * l.scale * this.camera.mpp;
         let len = NMMath.NiceLength(maxMeters);
         this.panel.scaleBar.SetSize(new Vector2(len / this.camera.mpp, 5.0 * l.scale));
-        this.panel.scaleLabel.SetText(NMMath.FormatMeters(len));
+        let label = NMMath.FormatMeters(len);
+        if NotEquals(label, this.hdrScaleLabel) {
+            this.panel.scaleLabel.SetText(label);
+            this.hdrScaleLabel = label;
+        }
     }
 
     private func UpdateHeader() {
         let s = this.Settings();
         let district = this.DistrictName();
-        this.panel.subtitle.SetText(this.filterView == 0 ? district : district + "   ·   " + NMVanillaFilters.ViewName(this.filterView));
+        let subtitle = this.filterView == 0 ? district : district + "   ·   " + NMVanillaFilters.ViewName(this.filterView);
+        if NotEquals(subtitle, this.hdrSubtitle) {
+            this.panel.subtitle.SetText(subtitle);
+            this.hdrSubtitle = subtitle;
+        }
         let q = NMQuestHeader.Read(this.GetGameInstance());
-        this.panel.questTitle.SetVisible(q.visible);
-        this.panel.questObjective.SetVisible(q.visible && StrLen(q.objective) > 0);
+        let qState = q.visible ? 1 : 0;
+        if qState != this.hdrQuestState {
+            this.panel.questTitle.SetVisible(q.visible);
+            this.hdrQuestState = qState;
+            this.hdrQuestObjective = "\n";   // visibility of the objective follows its text: re-evaluate below
+        }
         if q.visible {
-            this.panel.questTitle.SetText(StrUpper(q.title));
-            this.panel.questTitle.SetTintColor(NMTheme.VanillaStateColor(q.isQuest ? n"Quest" : n"Gigs"));
-            this.panel.questObjective.SetText(q.objective);
+            let title = StrUpper(q.title);
+            let titleChanged = NotEquals(title, this.hdrQuestTitle);
+            if titleChanged {
+                this.panel.questTitle.SetText(title);
+                this.hdrQuestTitle = title;
+            }
+            if titleChanged || NotEquals(q.isQuest, this.hdrQuestIsQuest) {
+                this.panel.questTitle.SetTintColor(NMTheme.VanillaStateColor(q.isQuest ? n"Quest" : n"Gigs"));
+                this.hdrQuestIsQuest = q.isQuest;
+            }
+        }
+        let objective = q.visible ? NMQuestHeader.Clip(q.objective, 190) : "";
+        if NotEquals(objective, this.hdrQuestObjective) {
+            this.panel.questObjective.SetVisible(StrLen(objective) > 0);
+            if StrLen(objective) > 0 { this.panel.questObjective.SetText(objective); }
+            this.hdrQuestObjective = objective;
         }
         this.UpdateScale();
         if IsDefined(s) {
@@ -576,7 +616,10 @@ public class NightMapSystem extends ScriptableSystem {
             if this.input.arrowSeen {
                 hint += "   ·   ARROW KEYS IGNORED - TURN NUMLOCK ON";
             }
-            this.panel.hints.SetText(hint);
+            if NotEquals(hint, this.hdrHint) {
+                this.panel.hints.SetText(hint);
+                this.hdrHint = hint;
+            }
         }
     }
 

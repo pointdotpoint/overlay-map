@@ -97,9 +97,10 @@ public class NMPanel {
         p.questTitle.SetVisible(false);
         p.questObjective = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Text());
         p.questObjective.SetTranslation(new Vector2(67.0 * s, 222.0 * s));
+        p.questObjective.SetWrappingAtPosition(layout.mapW * 0.6);   // two lines at most (see NMQuestHeader.Clip)
         p.questObjective.SetVisible(false);
         p.warning = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(32.0 * s), NMTheme.Pink());
-        p.warning.SetTranslation(new Vector2(67.0 * s, 270.0 * s));
+        p.warning.SetTranslation(new Vector2(67.0 * s, 306.0 * s));
         p.warning.SetVisible(false);
 
         // Scale bar (top-right of the map area).

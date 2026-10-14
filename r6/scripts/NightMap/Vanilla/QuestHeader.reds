@@ -13,6 +13,11 @@ public abstract class NMQuestHeader {
         return total > 0 ? text + " (" + ToString(cur) + "/" + ToString(total) + ")" : text;
     }
 
+    // Hard length limit for the two-line objective (the panel also wraps it at 60 % of the map width).
+    public static func Clip(text: String, maxChars: Int32) -> String {
+        return StrLen(text) > maxChars ? StrLeft(text, maxChars - 3) + "..." : text;
+    }
+
     public static func Read(gi: GameInstance) -> ref<NMQuestHeaderInfo> {
         let h = new NMQuestHeaderInfo();
         let jm = GameInstance.GetJournalManager(gi);
