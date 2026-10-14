@@ -434,6 +434,7 @@ public class NightMapSystem extends ScriptableSystem {
         if this.input.act {
             this.input.act = false;
             this.Activate();
+            this.UpdateHeader();
         }
         this.marker.Update(this.camera, GetPlayer(this.GetGameInstance()), l.mapW, l.mapH);
         if this.camera.revision != this.scaleRev {

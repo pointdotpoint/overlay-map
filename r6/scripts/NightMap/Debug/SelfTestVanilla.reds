@@ -8,6 +8,7 @@ public abstract class NMVanillaTests {
         NMVanillaTests.StyleCases(t);
         NMVanillaTests.DiffCases(t);
         NMVanillaTests.LiveCases(t);
+        NMVanillaTests.CardCases(t);
     }
 
     private static func TestApi() -> ref<NightMap> {
@@ -236,6 +237,28 @@ public abstract class NMVanillaTests {
         t.Check("vanilla.empty_poll_removes_all", v.diff.live == 0 && ft.count == 0, ToString(v.diff.live));
         t.Check("vanilla.unknown_variant_logged_once", v.LogOnceForTest(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant)
             && !v.LogOnceForTest(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant), "");
+    }
+
+    private static func CardCases(t: ref<NMSelfTest>) {
+        t.Check("text.loc_passthrough", Equals(NMVanillaText.Loc("Plain"), "Plain") && Equals(NMVanillaText.Loc(""), ""), "");
+        t.Check("text.loc_key_resolves", NotEquals(NMVanillaText.Loc("LocKey#44637"), "LocKey#44637"), NMVanillaText.Loc("LocKey#44637"));
+        t.Check("text.label_fallback", StrLen(NMVanillaText.LabelOf(gamedataMappinVariant.ServicePointDropPointVariant)) > 0, NMVanillaText.LabelOf(gamedataMappinVariant.ServicePointDropPointVariant));
+        let none = NMVanillaTracking.QuestInfo(GetGameInstance(), null);
+        t.Check("tracking.null_safe", !none.ok && !NMVanillaTracking.CanTrackQuest(GetGameInstance(), null), "");
+        // Details for a mirrored entry without a live mappin (key 0): falls back to the variant label, no actions.
+        let api = NMVanillaTests.TestApi();
+        let v = NMVanilla.Create(api, GetGameInstance());
+        let empty: array<ref<IMappin>>;
+        v.PollFrom(empty, 0ul);   // builds catalogue and layers
+        let e = new NMVanillaEntry();
+        e.key = 0ul;
+        e.slot = v.catalog.FilterIndexOf(gamedataMappinVariant.ServicePointFoodVariant);
+        e.snap = NMVanillaSnap.Make(0ul, 0.0, 0.0, gamedataMappinVariant.ServicePointFoodVariant, gamedataMappinPhase.DefaultPhase, true, false, e.slot);
+        let d = v.Details(e);
+        t.Check("vanilla.card_defined", IsDefined(d) && StrLen(d.title) > 0 && Equals(d.category, v.catalog.DisplayName(e.slot)), IsDefined(d) ? d.title : "null");
+        t.Check("vanilla.no_track_action_for_vendor", IsDefined(d) && ArraySize(d.actionKeys) == 0, "");
+        v.Activate(e);
+        t.Check("vanilla.activate_vendor_noop", Equals(v.lastAction, "none"), v.lastAction);
     }
 }
 

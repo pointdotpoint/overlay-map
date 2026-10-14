@@ -40,6 +40,7 @@ public class NMVanilla extends NMVanillaSink {
     private let lastPollMs: Float;
     private let polledOnce: Bool;
     private let loggedVariants: array<Int32>;
+    public let lastAction: String;
 
     public static func PollMs() -> Float { return 1500.0; }
 
@@ -194,7 +195,65 @@ public class NMVanilla extends NMVanillaSink {
         e.item = -1;
     }
 
-    // Card and activation: implemented in Task 6.
-    public func Details(e: ref<NMVanillaEntry>) -> ref<NightMapDetails> { return null; }
-    public func Activate(e: ref<NMVanillaEntry>) {}
+    public func Resolve(e: ref<NMVanillaEntry>) -> ref<IMappin> {
+        if !IsDefined(e) || e.key == 0ul { return null; }
+        let id: NewMappinID;
+        id.value = e.key;
+        return GameInstance.GetMappinSystem(this.gi).GetMappin(id);
+    }
+
+    private func ActKey() -> String {
+        let s = NightMapSettings.Get(this.gi);
+        return IsDefined(s) ? NMInput.KeyName(s.keyAct) : "NUM 0";
+    }
+
+    public func Details(e: ref<NMVanillaEntry>) -> ref<NightMapDetails> {
+        if !IsDefined(e) || !IsDefined(e.snap) { return null; }
+        let s = e.snap;
+        let m = this.Resolve(e);
+        let filterSlot = s.filter >= 0 ? s.filter : this.catalog.Count();
+        let d = NightMapDetails.Create(this.catalog.DisplayName(filterSlot), NMVanillaText.Title(m, s.variant));
+        if IsDefined(m) {
+            let district = NMVanillaText.District(m);
+            if StrLen(district) > 0 { d.WithSubtitle(district); }
+            d.AddRow("Distance", NMMath.FormatMeters(m.GetDistanceToPlayer()));
+        }
+        if Equals(s.phase, gamedataMappinPhase.UndiscoveredPhase) { d.AddRow("Status", "Undiscovered"); }
+        if Equals(s.phase, gamedataMappinPhase.CompletedPhase) { d.AddRow("Status", "Completed"); }
+        let manual = e.key != 0ul && NMVanillaTracking.ManualKey(this.gi) == e.key;
+        let info = NMVanillaTracking.QuestInfo(this.gi, m);
+        if info.ok {
+            if StrLen(info.title) > 0 { d.AddRow("Quest", info.title); }
+            if StrLen(info.objective) > 0 { d.AddRow("Objective", info.objective); }
+        }
+        if NMVanillaTracking.CanTrackQuest(this.gi, m) {
+            if NMVanillaTracking.IsQuestTracked(this.gi, m) {
+                d.AddRow("Status", "Tracked");
+            } else {
+                d.AddAction(this.ActKey(), "Track quest");
+            }
+        } else if manual {
+            d.AddRow("Status", "Tracked");
+            d.AddAction(this.ActKey(), Equals(s.variant, gamedataMappinVariant.CustomPositionVariant) ? "Clear waypoint" : "Stop tracking");
+        } else {
+            d.AddRow("Waypoint", "Coming with the native plugin");
+        }
+        return d;
+    }
+
+    // NUM 0 on a vanilla marker: track its quest, or clear the manual waypoint/tracking. Re-polls immediately.
+    public func Activate(e: ref<NMVanillaEntry>) {
+        this.lastAction = "none";
+        if !IsDefined(e) { return; }
+        let m = this.Resolve(e);
+        if NMVanillaTracking.CanTrackQuest(this.gi, m) && !NMVanillaTracking.IsQuestTracked(this.gi, m) {
+            if NMVanillaTracking.TrackQuest(this.gi, m) { this.lastAction = "track"; }
+        } else if e.key != 0ul && NMVanillaTracking.ManualKey(this.gi) == e.key {
+            if NMVanillaTracking.ClearManual(this.gi) { this.lastAction = "clear"; }
+        }
+        if NotEquals(this.lastAction, "none") {
+            NMLog.Info("vanilla|action|" + this.lastAction + "|" + ToString(e.snap.variant));
+            this.Tick(0.0, true);
+        }
+    }
 }
