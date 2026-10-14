@@ -85,17 +85,25 @@ def test_cli_exit_codes(tmp_path):
     assert r.returncode == 1 and "incomplete suite" in r.stdout
 
 
-def _row(name, avg, p95):
+def _row(name, avg, p95, script_avg=0.1, script_p95=0.2, extra=""):
     return (f"[t] [1] [NightMap] RESULT|{name}|items=0|frames=300|setup_ms=0|frame_avg={avg}|frame_p95={p95}"
-            "|frame_p99=40.0|frame_max=60.0|script_avg=0.1|script_p95=0.2\n")
+            f"|frame_p99=40.0|frame_max=60.0|script_avg={script_avg}|script_p95={script_p95}{extra}\n")
 
 
-def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=(), open_avg=None, open_p95=None, end_avg=20.0, vanilla_avg=None, vanilla_p95=None):
+def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=(), open_avg=None, open_p95=None, end_avg=20.0, vanilla_avg=None, vanilla_p95=None,
+           open_script=(0.4, 1.0), van_script=(0.8, 2.0), poll=0.5, poll_field=True, van_script_fields=True):
     rows = {"idle_0p5": (idle_avg, idle_p95), "idle_2": (idle_avg, idle_p95), "idle_8": (idle_avg, idle_p95),
             "open_empty": (open_avg or sweep_avg, open_p95 or sweep_p95),
             "vanilla_open": (vanilla_avg or open_avg or sweep_avg, vanilla_p95 or open_p95 or sweep_p95), "panzoom_0p5_16": (sweep_avg, sweep_p95),
             "closed_end": (end_avg, 29.0)}
-    body = "".join(_row(n, a, p) for n, (a, p) in rows.items() if n not in skip)
+    def row(n, a, p):
+        if n == "open_empty":
+            return _row(n, a, p, *open_script)
+        if n == "vanilla_open":
+            line = _row(n, a, p, *van_script, extra=f"|poll_ms_max={poll}" if poll_field else "")
+            return line if van_script_fields else line.replace(f"|script_avg={van_script[0]}", "")
+        return _row(n, a, p)
+    body = "".join(row(n, a, p) for n, (a, p) in rows.items() if n not in skip)
     return LOG.replace("[t] [1] [NightMap] PERF|SUITE|done", body + "[t] [1] [NightMap] PERF|SUITE|done")
 
 
@@ -239,3 +247,51 @@ def test_vanilla_open_is_gated_with_the_sweep_budget():
 def test_missing_vanilla_row_fails():
     status, msg = results.judge(_suites(_tiles(), _tiles(skip=("vanilla_open",)), _tiles()), 3)
     assert status == "FAIL" and "vanilla_open: row missing" in msg
+
+
+def test_vanilla_script_gates_pass_at_and_inside_the_margins():
+    ok, msg = results.verdict(results.parse(_tiles(open_script=(0.4, 1.0), van_script=(0.9, 2.5), poll=1.0)))
+    assert ok, msg
+    assert "vanilla_open script" in msg and "poll_ms_max 1.00" in msg
+
+
+def test_vanilla_script_avg_over_margin_fails():
+    ok, msg = results.verdict(results.parse(_tiles(van_script=(0.91, 2.0))))
+    assert not ok and "vanilla_open script: avg +0.51" in msg and "OVER" in msg
+
+
+def test_vanilla_script_p95_over_margin_fails():
+    ok, msg = results.verdict(results.parse(_tiles(van_script=(0.8, 2.51))))
+    assert not ok and "p95 +1.51" in msg and "OVER" in msg
+
+
+def test_vanilla_poll_over_budget_fails():
+    ok, msg = results.verdict(results.parse(_tiles(poll=1.01)))
+    assert not ok and "poll_ms_max 1.01 ms (budget 1.0) OVER" in msg
+
+
+def test_vanilla_missing_poll_field_fails():
+    ok, msg = results.verdict(results.parse(_tiles(poll_field=False)))
+    assert not ok and "vanilla_open: lacks script_avg/script_p95/poll_ms_max" in msg
+    status, msg = results.judge(_suites(_tiles(), _tiles(poll_field=False), _tiles()), 3)
+    assert status == "FAIL" and "lacks" in msg
+
+
+def test_vanilla_missing_script_field_fails():
+    ok, msg = results.verdict(results.parse(_tiles(van_script_fields=False)))
+    assert not ok and "lacks" in msg
+
+
+def test_vanilla_script_gates_use_the_median_of_the_runs():
+    over = dict(van_script=(2.0, 5.0), poll=3.0)
+    status, msg = results.judge(_suites(_tiles(**over), _tiles(), _tiles()), 3)
+    assert status == "PASS", msg                      # one outlier run
+    status, msg = results.judge(_suites(_tiles(**over), _tiles(**over), _tiles()), 3)
+    assert status == "FAIL" and "vanilla_open script" in msg and "OVER" in msg
+
+
+def test_script_gate_compares_against_open_empty_of_the_same_run():
+    ok, msg = results.verdict(results.parse(_tiles(open_script=(2.0, 5.0), van_script=(2.4, 6.4))))
+    assert ok, msg
+    ok, msg = results.verdict(results.parse(_tiles(open_script=(2.0, 5.0), van_script=(2.6, 6.4))))
+    assert not ok

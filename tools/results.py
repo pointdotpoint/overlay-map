@@ -16,6 +16,11 @@ SWEEP_AVG_BUDGET_MS = 1.5
 SWEEP_P95_BUDGET_MS = 3.0
 IDLE_ROWS = ("idle_0p5", "idle_2", "idle_8")
 SWEEP_ROWS = ("open_empty", "vanilla_open", "panzoom_0p5_16")   # open_empty: cold sweep, no markers; vanilla_open: real markers
+# vanilla_open script cost (the CPU-bound proxy; frame deltas hide it on GPU-bound machines), within the same run:
+SCRIPT_ROW, SCRIPT_REF_ROW = "vanilla_open", "open_empty"
+SCRIPT_AVG_MARGIN_MS = 0.5     # vanilla_open.script_avg <= open_empty.script_avg + this
+SCRIPT_P95_MARGIN_MS = 1.5     # vanilla_open.script_p95 <= open_empty.script_p95 + this
+POLL_MAX_MS = 1.0              # vanilla_open.poll_ms_max <= this (one poll, absolute)
 DRIFT_MAX_MS = 0.5       # |closed_end - closed_baseline| above this: the run's machine state moved, exclude it
 LOADED_MARK = "[NightMap] loaded"  # logged at every game start; --all-sessions ignores it
 # (scenario, avg budget, p95 budget) in report order
@@ -98,7 +103,34 @@ def deltas(rows: list[dict]) -> tuple[dict[str, tuple[float, float]], list[str]]
     return out, problems
 
 
-def _gate(d: dict[str, tuple[float, float]], problems: list[str]) -> tuple[bool, str]:
+def script_vals(rows: list[dict]) -> tuple[tuple[float, float, float] | None, list[str]]:
+    """(script_avg delta, script_p95 delta, poll_ms_max) of vanilla_open against this run's open_empty, plus problems.
+
+    A wholly missing row is reported by ``deltas`` already; a present row that lacks a field fails here."""
+    by = {r["name"]: r for r in rows}
+    van, ref = by.get(SCRIPT_ROW), by.get(SCRIPT_REF_ROW)
+    if van is None or ref is None:
+        return None, []
+    problems = []
+    if any(k not in ref for k in ("script_avg", "script_p95")):
+        problems.append(f"{SCRIPT_REF_ROW}: lacks script_avg/script_p95")
+    if any(k not in van for k in ("script_avg", "script_p95", "poll_ms_max")):
+        problems.append(f"{SCRIPT_ROW}: lacks script_avg/script_p95/poll_ms_max")
+    if problems:
+        return None, problems
+    return (van["script_avg"] - ref["script_avg"], van["script_p95"] - ref["script_p95"], van["poll_ms_max"]), []
+
+
+def _script_gate(sv: tuple[float, float, float]) -> tuple[bool, str]:
+    da, dp, poll = sv
+    good_a, good_p, good_poll = da <= SCRIPT_AVG_MARGIN_MS, dp <= SCRIPT_P95_MARGIN_MS, poll <= POLL_MAX_MS
+    return good_a and good_p and good_poll, (
+        f"{SCRIPT_ROW} script: avg +{da:.2f} ms (budget {SCRIPT_AVG_MARGIN_MS}){'' if good_a else ' OVER'}, "
+        f"p95 +{dp:.2f} ms (budget {SCRIPT_P95_MARGIN_MS}){'' if good_p else ' OVER'}, "
+        f"poll_ms_max {poll:.2f} ms (budget {POLL_MAX_MS}){'' if good_poll else ' OVER'}")
+
+
+def _gate(d: dict[str, tuple[float, float]], problems: list[str], sv: tuple[float, float, float] | None = None) -> tuple[bool, str]:
     if problems and not d:
         return False, "; ".join(problems)
     ok, parts = not problems, list(problems)
@@ -109,12 +141,18 @@ def _gate(d: dict[str, tuple[float, float]], problems: list[str]) -> tuple[bool,
         good = va <= avg_b and vp <= p95_b
         ok = ok and good
         parts.append(f"{name}: avg +{va:.2f} ms (budget {avg_b}), p95 +{vp:.2f} ms (budget {p95_b}){'' if good else ' OVER'}")
+    if sv is not None:
+        good, text = _script_gate(sv)
+        ok = ok and good
+        parts.append(text)
     return ok, "; ".join(parts)
 
 
 def verdict(rows: list[dict]) -> tuple[bool, str]:
     """Gate a single run against its own closed_baseline (no drift or median handling; see ``judge``)."""
-    return _gate(*deltas(rows))
+    d, problems = deltas(rows)
+    sv, sproblems = script_vals(rows)
+    return _gate(d, problems + sproblems, sv)
 
 
 def select_valid(suites: list[list[dict]], n: int) -> tuple[list[list[dict]], list[str]]:
@@ -144,14 +182,16 @@ def judge(suites: list[list[dict]], n: int = 3) -> tuple[str, str]:
     valid, skipped = select_valid(suites, n)
     note = "; ".join(skipped)
     per = [deltas(r) for r in valid]
-    problems = sorted({p for _, ps in per for p in ps})
+    svs = [script_vals(r) for r in valid]
+    problems = sorted({p for _, ps in per for p in ps} | {p for _, ps in svs for p in ps})
     if problems:
         return "FAIL", "; ".join(problems + ([note] if note else []))
     if len(valid) < n:
         return "INCONCLUSIVE", f"{len(valid)} of {n} valid runs" + (f" ({note})" if note else "")
     med = {name: (statistics.median(d[name][0] for d, _ in per), statistics.median(d[name][1] for d, _ in per))
            for name, _, _ in GATES}
-    ok, msg = _gate(med, [])
+    sv_med = tuple(statistics.median(v[i] for v, _ in svs) for i in range(3)) if all(v is not None for v, _ in svs) else None
+    ok, msg = _gate(med, [], sv_med)
     return ("PASS" if ok else "FAIL"), f"median of {n} runs: {msg}" + (f"; {note}" if note else "")
 
 
@@ -193,6 +233,10 @@ def main() -> int:
         vals = [d[name] for d, _ in per if name in d]
         if vals:
             print(f"{name:22} {statistics.median(v[0] for v in vals):>+7.2f} {statistics.median(v[1] for v in vals):>+7.2f}")
+    svs = [sv for sv, _ in (script_vals(r) for r in select_valid(suites, args.runs)[0]) if sv is not None]
+    if svs:
+        print(f"{SCRIPT_ROW} script vs {SCRIPT_REF_ROW}: avg {statistics.median(v[0] for v in svs):+.2f} ms, "
+              f"p95 {statistics.median(v[1] for v in svs):+.2f} ms, poll_ms_max {statistics.median(v[2] for v in svs):.2f} ms")
     status, msg = judge(suites, args.runs)
     print(f"{status}: {msg}")
     return {"PASS": 0, "FAIL": 1}.get(status, 2)
