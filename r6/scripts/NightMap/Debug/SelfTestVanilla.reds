@@ -240,12 +240,15 @@ public abstract class NMVanillaTests {
             i += 1;
         }
         t.Check("vanilla.book_consistent", ok, "");
-        // A synthetic unknown variant goes to Other and is logged once.
+        // An empty poll removes every mirrored marker.
         let fake: array<ref<IMappin>>;
         v.PollFrom(fake, 0ul);
         t.Check("vanilla.empty_poll_removes_all", v.diff.live == 0 && ft.count == 0, ToString(v.diff.live));
-        t.Check("vanilla.unknown_variant_logged_once", v.LogOnceForTest(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant)
-            && !v.LogOnceForTest(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant), "");
+        // Fresh instance that never polled, so its logged set is empty (routing is covered by vanilla.catalog_unknown_is_other).
+        let v2 = NMVanilla.Create(NMVanillaTests.TestApi(), GetGameInstance());
+        let first = v2.LogOnceForTest(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant);
+        let second = v2.LogOnceForTest(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant);
+        t.Check("vanilla.unknown_variant_logged_once", first && !second, "");
     }
 
     // Review focus 3 against the live map mappins. No side effects (never calls TrackQuest).
