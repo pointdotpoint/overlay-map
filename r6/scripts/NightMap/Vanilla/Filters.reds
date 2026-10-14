@@ -1,6 +1,8 @@
 module NightMap
 
 // Quick views (NUM /) x per-category Mod Settings toggles. View 0 = all; Other and TAROT appear only in view 0.
+// Deviation from spec 8 (controller ruling): the views follow the vanilla quick lists in filters.txt, so JOBS has no
+// Story/NCPD Scanner and SERVICES has no ApartmentToPurchase; those stay reachable in ALL.
 public abstract class NMVanillaFilters {
     public static func ViewCount() -> Int32 { return 3; }
 
@@ -15,12 +17,11 @@ public abstract class NMVanillaFilters {
         if isOther { return false; }
         if view == 1 {
             return Equals(t, gamedataWorldMapFilter.Quest) || Equals(t, gamedataWorldMapFilter.Gigs)
-                || Equals(t, gamedataWorldMapFilter.PsychoFilter) || Equals(t, gamedataWorldMapFilter.Story);
+                || Equals(t, gamedataWorldMapFilter.PsychoFilter);
         }
         return Equals(t, gamedataWorldMapFilter.RipperdocFilter) || Equals(t, gamedataWorldMapFilter.VendorFilter)
             || Equals(t, gamedataWorldMapFilter.AutofixerFilter) || Equals(t, gamedataWorldMapFilter.DropPoint)
-            || Equals(t, gamedataWorldMapFilter.FastTravel) || Equals(t, gamedataWorldMapFilter.ApartmentToPurchaseFilter)
-            || Equals(t, gamedataWorldMapFilter.CommonFilter);
+            || Equals(t, gamedataWorldMapFilter.FastTravel) || Equals(t, gamedataWorldMapFilter.CommonFilter);
     }
 
     public static func Enabled(s: ref<NightMapSettings>, t: gamedataWorldMapFilter) -> Bool {

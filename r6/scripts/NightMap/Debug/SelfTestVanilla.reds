@@ -297,29 +297,43 @@ public abstract class NMVanillaTests {
         t.Check("vanilla.unknown_variant_logged_once", first && !second, "");
     }
 
-    // Review focus 3 against the live map mappins. No side effects (never calls TrackQuest).
+    // Review focus 3 against the live map mappins. No side effects (never calls TrackQuest). Every mappin that
+    // CanTrackQuest accepts is re-derived independently of CanQuestTrack: Quest/SecondaryQuest group (read from the
+    // game's own group record), not racing, and an entry whose parent is a JournalQuestObjectiveBase (what
+    // TrackEntry needs). Anything else accepted counts as bad.
     private static func LiveTrackRules(t: ref<NMSelfTest>) {
         let gi = GetGameInstance();
+        let jm = GameInstance.GetJournalManager(gi);
         let arr: array<ref<IMappin>>;
         GameInstance.GetMappinSystem(gi).GetMappins(gamemappinsMappinTargetType.Map, arr);
         let withHash = 0;
+        let accepted = 0;
         let bad = 0;
-        let quest = 0;
-        let questOk = 0;
+        let questGroupNoEntry = 0;
+        let detail = "";
         for m in arr {
             if IsDefined(m) && NMVanillaTracking.JournalHash(m) != 0u {
                 withHash += 1;
-                if NMVanillaStyle.CanQuestTrack(m.GetVariant()) {
-                    quest += 1;
-                    if NMVanillaTracking.CanTrackQuest(gi, m) { questOk += 1; }
-                } else if NMVanillaTracking.CanTrackQuest(gi, m) {
-                    bad += 1;
+                let v = m.GetVariant();
+                let g = MappinUtils.GetMappinsGroup(v);
+                let name = IsDefined(g) ? g.GroupName() : n"";
+                let questGroup = Equals(name, n"Quest") || Equals(name, n"SecondaryQuest");
+                if NMVanillaTracking.CanTrackQuest(gi, m) {
+                    accepted += 1;
+                    let info = NMVanillaTracking.QuestInfo(gi, m);
+                    let parent = IsDefined(info.entry) ? jm.GetParentEntry(info.entry) as JournalQuestObjectiveBase : null;
+                    if !questGroup || Equals(v, gamedataMappinVariant.Zzz18_RacingVariant) || !IsDefined(parent) {
+                        bad += 1;
+                        detail += ToString(v) + "(" + NameToString(name) + ") ";
+                    }
+                } else if questGroup && !Equals(v, gamedataMappinVariant.Zzz18_RacingVariant) {
+                    questGroupNoEntry += 1;   // informational: a quest pin whose journal entry did not resolve
                 }
             }
         }
-        let detail = "mappins=" + ToString(ArraySize(arr)) + " withHash=" + ToString(withHash) + " questVariant=" + ToString(quest) + " trackable=" + ToString(questOk) + " bad=" + ToString(bad);
-        t.Check("tracking.live_non_quest_not_trackable", bad == 0, detail);
-        t.Check("tracking.live_quest_trackable", quest == 0 || questOk > 0, quest == 0 ? "none in save; " + detail : detail);
+        let summary = "mappins=" + ToString(ArraySize(arr)) + " withHash=" + ToString(withHash) + " accepted=" + ToString(accepted)
+            + " questPinsNoEntry=" + ToString(questGroupNoEntry) + " bad=" + ToString(bad) + " " + detail;
+        t.Check("tracking.live_accepted_are_quest_objectives", bad == 0, summary);
     }
 
     private static func CardCases(t: ref<NMSelfTest>) {
@@ -350,9 +364,13 @@ public abstract class NMVanillaTests {
     private static func FilterCases(t: ref<NMSelfTest>) {
         t.Check("filter.views", NMVanillaFilters.ViewCount() == 3 && Equals(NMVanillaFilters.ViewName(1), "JOBS"), "");
         t.Check("filter.all_has_everything", NMVanillaFilters.InView(0, gamedataWorldMapFilter.TarotFilter, false) && NMVanillaFilters.InView(0, gamedataWorldMapFilter.NoFilter, true), "");
-        t.Check("filter.jobs", NMVanillaFilters.InView(1, gamedataWorldMapFilter.Gigs, false) && NMVanillaFilters.InView(1, gamedataWorldMapFilter.Story, false)
+        t.Check("filter.jobs", NMVanillaFilters.InView(1, gamedataWorldMapFilter.Quest, false) && NMVanillaFilters.InView(1, gamedataWorldMapFilter.Gigs, false)
+            && NMVanillaFilters.InView(1, gamedataWorldMapFilter.PsychoFilter, false) && !NMVanillaFilters.InView(1, gamedataWorldMapFilter.Story, false)
             && !NMVanillaFilters.InView(1, gamedataWorldMapFilter.VendorFilter, false) && !NMVanillaFilters.InView(1, gamedataWorldMapFilter.NoFilter, true), "");
         t.Check("filter.services", NMVanillaFilters.InView(2, gamedataWorldMapFilter.FastTravel, false) && NMVanillaFilters.InView(2, gamedataWorldMapFilter.DropPoint, false)
+            && NMVanillaFilters.InView(2, gamedataWorldMapFilter.RipperdocFilter, false) && NMVanillaFilters.InView(2, gamedataWorldMapFilter.VendorFilter, false)
+            && NMVanillaFilters.InView(2, gamedataWorldMapFilter.AutofixerFilter, false) && NMVanillaFilters.InView(2, gamedataWorldMapFilter.CommonFilter, false)
+            && !NMVanillaFilters.InView(2, gamedataWorldMapFilter.ApartmentToPurchaseFilter, false)
             && !NMVanillaFilters.InView(2, gamedataWorldMapFilter.Quest, false) && !NMVanillaFilters.InView(2, gamedataWorldMapFilter.TarotFilter, false), "");
         let s = new NightMapSettings();
         s.filterVendor = false;

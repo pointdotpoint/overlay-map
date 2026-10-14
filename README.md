@@ -43,7 +43,7 @@ Build options and caches:
 - Arrow keys are never used (they steer vehicles). Keep NumLock on.
 - Zoom crossfades between six baked levels, from 0.5 m/px (single buildings) to 16 m/px (the whole city).
 - The game's own map markers (quests, gigs, NCPD, vendors, fast travel, …) appear with their vanilla icons. Crosshair a marker for details; `Numpad 0` tracks its quest, or clears your vanilla waypoint. Setting new waypoints comes with the optional native plugin (later).
-- `Numpad /` cycles the markers shown: All → Jobs → Services. Mod Settings → NightMap → Map filters turns each vanilla category on or off.
+- `Numpad /` cycles the markers shown: All → Jobs (quests, gigs, psycho) → Services (ripperdoc, vendors, autofixer, drop points, fast travel, your property), like the vanilla quick lists; NCPD scanner and apartments to rent show only in All. Mod Settings → NightMap → Map filters turns each vanilla category on or off.
 - The header shows the tracked quest and its current objective.
 - Mods can add their own items through the layer API.
 
