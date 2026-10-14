@@ -81,6 +81,7 @@ public abstract class NMPerfTests {
     public static func Run(t: ref<NMSelfTest>) {
         NMPerfTests.OccupiedCases(t);
         NMPerfTests.EquivalenceCases(t);
+        NMPerfTests.GrowReuseCases(t);
     }
 
     // The occupied lists must equal the set of non-empty cells after any add/move/update/remove sequence.
@@ -232,5 +233,63 @@ public abstract class NMPerfTests {
             k += 1;
         }
         t.Check("perf.conservation_all_layers", total == dbg.count + sp.count + sp2.count, ToString(total) + " of " + ToString(dbg.count + sp.count + sp2.count));
+    }
+
+    // ---- selection grow vs slot reuse (renderer slots are reassigned in placement order) ----
+
+    private static func GrowScale(r: ref<NMItemRenderer>, slot: Int32) -> Float {
+        return r.chipBg[slot].GetScale().X;
+    }
+
+    // Two icon pins, A at the camera centre (first placed, so the top slot) and B 300 m east. A is selected and
+    // fully grown. Returns the renderer; ids and the layer come back through out-style fields on the arguments.
+    private static func GrowSetup(out api: ref<NightMap>, out cam: ref<NMCamera>, out L: ref<NightMapLayer>, out ids: array<Int32>) -> ref<NMItemRenderer> {
+        api = NightMap.Create();
+        api.SetWorld(-6000.0, -4600.0, 4600.0, 7400.0);
+        L = api.CreateLayer(n"test.grow", "Grow", 5);
+        L.SetPinStyle(NightMapPinStyle.Icon);
+        L.SetCategory(n"test.g", "G", NMTheme.Cyan());
+        ArrayClear(ids);
+        ArrayPush(ids, L.Add(NightMapItem.Create(new Vector4(100.0, 100.0, 0.0, 1.0), n"test.g", NMTheme.UiAtlas(), n"icon_dot")));
+        ArrayPush(ids, L.Add(NightMapItem.Create(new Vector4(400.0, 100.0, 0.0, 1.0), n"test.g", NMTheme.UiAtlas(), n"icon_dot")));
+        let canvas = new inkCanvas();
+        let r = NMItemRenderer.Create(api, canvas, 1.0);
+        cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
+        cam.SetCenter(100.0, 100.0);
+        cam.SetMpp(0.6);
+        r.Update(cam, 1880.0, 1480.0);
+        r.ApplySelection(0, 0, 10000.0);   // candidate 0 is A; one big dt completes the grow
+        return r;
+    }
+
+    private static func GrowReuseCases(t: ref<NMSelfTest>) {
+        let api: ref<NightMap>;
+        let cam: ref<NMCamera>;
+        let L: ref<NightMapLayer>;
+        let ids: array<Int32>;
+        let top = NMTheme.ChipBudget() - 1;
+        let r = NMPerfTests.GrowSetup(api, cam, L, ids);
+        t.Check("grow.setup_grown", r.growSlot == top && r.growT == 1.0 && t.Near(NMPerfTests.GrowScale(r, top), NMTheme.VanillaEmphScale(), 0.001),
+            ToString(r.growSlot) + " " + t.F(r.growT) + " " + t.F(NMPerfTests.GrowScale(r, top)));
+        // 1. the selected item is removed and the slot is reused by the other pin
+        L.Remove(ids[0]);
+        r.Update(cam, 1880.0, 1480.0);
+        t.Check("grow.reset_on_slot_reuse", r.growSlot == -1 && ArraySize(r.candSlot) == 1 && r.candSlot[0] == top && t.Near(NMPerfTests.GrowScale(r, top), 1.0, 0.0001),
+            ToString(r.growSlot) + " " + t.F(NMPerfTests.GrowScale(r, top)));
+        // 2. the layer is hidden: the grown slot is hidden and reset
+        let r2 = NMPerfTests.GrowSetup(api, cam, L, ids);
+        L.SetVisible(false);
+        r2.Update(cam, 1880.0, 1480.0);
+        t.Check("grow.reset_on_hide", r2.growSlot == -1 && r2.chipsUsed == 0 && t.Near(NMPerfTests.GrowScale(r2, top), 1.0, 0.0001), ToString(r2.growSlot) + " " + t.F(NMPerfTests.GrowScale(r2, top)));
+        // 3. the pin turns emphasised in place (style flip on the same slot): the grow state is dropped
+        let r3 = NMPerfTests.GrowSetup(api, cam, L, ids);
+        L.Update(ids[0], NightMapItem.Create(new Vector4(100.0, 100.0, 0.0, 1.0), n"test.g", NMTheme.UiAtlas(), n"icon_dot").WithEmphasis(true));
+        r3.Update(cam, 1880.0, 1480.0);
+        t.Check("grow.reset_on_style_flip", r3.growSlot == -1 && r3.chipStyle[top] == 2, ToString(r3.growSlot) + " style " + ToString(r3.chipStyle[top]));
+        // 4. the selected pin moves out of view: its slot is hidden and the grow dropped
+        let r4 = NMPerfTests.GrowSetup(api, cam, L, ids);
+        L.Move(ids[0], new Vector4(3000.0, 3000.0, 0.0, 1.0));
+        r4.Update(cam, 1880.0, 1480.0);
+        t.Check("grow.reset_on_cull", r4.growSlot == -1 && t.Near(NMPerfTests.GrowScale(r4, top), 1.0, 0.0001), ToString(r4.growSlot) + " " + t.F(NMPerfTests.GrowScale(r4, top)));
     }
 }
