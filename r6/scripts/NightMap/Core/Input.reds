@@ -129,12 +129,12 @@ public class NMInput {
         return StrUpper(s);
     }
 
-    public static func HintText(s: ref<NightMapSettings>) -> String {
+    public static func HintText(s: ref<NightMapSettings>, view: String) -> String {
         return NMInput.KeyName(s.keyPanUp) + "/" + NMInput.KeyName(s.keyPanLeft) + "/" + NMInput.KeyName(s.keyPanRight) + "/" + NMInput.KeyName(s.keyPanDown) + " PAN"
             + "   ·   " + NMInput.KeyName(s.keyZoomIn) + " " + NMInput.KeyName(s.keyZoomOut) + " ZOOM"
             + "   ·   " + NMInput.KeyName(s.keyRecenter) + " FOLLOW"
             + "   ·   " + NMInput.KeyName(s.keyAct) + " ACT"
-            + "   ·   " + NMInput.KeyName(s.keyFilter) + " FILTER"
+            + "   ·   " + NMInput.KeyName(s.keyFilter) + " FILTER: " + view
             + "   ·   " + NMInput.KeyName(s.keyToggle) + " CLOSE";
     }
 }

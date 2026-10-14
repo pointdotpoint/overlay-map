@@ -189,7 +189,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.camera.SetMpp(this.savedMpp > 0.0 ? this.savedMpp : NightMapSystem.MinMpp());
         this.CenterOnPlayer(true);
         if IsDefined(s) {
-            this.panel.hints.SetText(NMInput.HintText(s));
+            this.panel.hints.SetText(NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView)));
         }
         this.isOpen = true;
         this.input.ResetHeld();
@@ -612,7 +612,7 @@ public class NightMapSystem extends ScriptableSystem {
         }
         this.UpdateScale();
         if IsDefined(s) {
-            let hint = NMInput.HintText(s);
+            let hint = NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView));
             if this.input.arrowSeen {
                 hint += "   ·   ARROW KEYS IGNORED - TURN NUMLOCK ON";
             }

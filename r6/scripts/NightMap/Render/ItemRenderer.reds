@@ -499,6 +499,9 @@ public class NMItemRenderer {
             bg.SetOpacity(style == 0 ? a : a * NMTheme.VanillaShadowOpacity());
             ic.SetOpacity(a);
             this.chipAlpha[slot] = a;
+            if slot == this.growSlot {
+                this.SetGrow(slot, this.growT);   // keep the grown (full) opacity for the new base alpha
+            }
         }
         bg.SetTranslation(p);
         ic.SetTranslation(p);

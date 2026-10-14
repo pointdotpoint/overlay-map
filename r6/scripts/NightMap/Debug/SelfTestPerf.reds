@@ -286,6 +286,13 @@ public abstract class NMPerfTests {
         L.Update(ids[0], NightMapItem.Create(new Vector4(100.0, 100.0, 0.0, 1.0), n"test.g", NMTheme.UiAtlas(), n"icon_dot").WithEmphasis(true));
         r3.Update(cam, 1880.0, 1480.0);
         t.Check("grow.reset_on_style_flip", r3.growSlot == -1 && r3.chipStyle[top] == 2, ToString(r3.growSlot) + " style " + ToString(r3.chipStyle[top]));
+        // 0. a mid-selection update of the selected pin's opacity keeps it grown at full opacity (not dim at 1.3x)
+        let r0 = NMPerfTests.GrowSetup(api, cam, L, ids);
+        L.Update(ids[0], NightMapItem.Create(new Vector4(100.0, 100.0, 0.0, 1.0), n"test.g", NMTheme.UiAtlas(), n"icon_dot").WithOpacity(0.5));
+        r0.Update(cam, 1880.0, 1480.0);
+        let want = 0.5;   // base 0.5 * idle opacity, grown to base / idle
+        t.Check("grow.keeps_opacity_on_update", r0.growSlot == top && t.Near(r0.chipIcon[top].GetOpacity(), want, 0.001) && t.Near(NMPerfTests.GrowScale(r0, top), NMTheme.VanillaEmphScale(), 0.001),
+            t.F(r0.chipIcon[top].GetOpacity()) + " want " + t.F(want));
         // 4. the selected pin moves out of view: its slot is hidden and the grow dropped
         let r4 = NMPerfTests.GrowSetup(api, cam, L, ids);
         L.Move(ids[0], new Vector4(3000.0, 3000.0, 0.0, 1.0));

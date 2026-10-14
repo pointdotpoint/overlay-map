@@ -71,7 +71,7 @@ public class NMVanillaDiff {
     public let added: Int32;
     public let changed: Int32;
     public let removed: Int32;
-    public let live: Int32;
+    public let live: Int32;     // mirrored entries (includes bounds-rejected ones, see DrawnCount)
 
     public static func Create() -> ref<NMVanillaDiff> {
         let d = new NMVanillaDiff();
@@ -91,6 +91,15 @@ public class NMVanillaDiff {
             return null;
         }
         return this.map.Get(key) as NMVanillaEntry;
+    }
+
+    // Entries whose layer item exists (OnAdd/OnChange can be rejected by the layer's bounds check: item == -1).
+    public func DrawnCount() -> Int32 {
+        let n = 0;
+        for e in this.entries {
+            if e.item >= 0 { n += 1; }
+        }
+        return n;
     }
 
     public func Apply(snaps: array<ref<NMVanillaSnap>>, sink: ref<NMVanillaSink>) {

@@ -184,7 +184,8 @@ public class NMVanilla extends NMVanillaSink {
         }
         this.diff.End(this);
         if this.diff.added + this.diff.removed > 0 {
-            NMLog.Info("vanilla|poll|n=" + ToString(ArraySize(arr)) + "|live=" + ToString(this.diff.live) + "|added=" + ToString(this.diff.added)
+            let drawn = this.diff.DrawnCount();   // only when logging: the steady state pays nothing
+            NMLog.Info("vanilla|poll|n=" + ToString(ArraySize(arr)) + "|live=" + ToString(drawn) + "|rejected=" + ToString(this.diff.live - drawn) + "|added=" + ToString(this.diff.added)
                 + "|changed=" + ToString(this.diff.changed) + "|removed=" + ToString(this.diff.removed));
         }
     }
