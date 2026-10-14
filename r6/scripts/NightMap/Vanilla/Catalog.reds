@@ -9,6 +9,10 @@ public class NMVanillaCatalog {
     private let filterOfVariant: array<Int32>;   // index = EnumInt(variant); value = filter index (Count() = Other)
     private let layerIds: array<CName>;           // per index incl. Other
     private let categoryNames: array<CName>;
+    // Per-variant style cache (index = EnumInt(variant)): the TweakDB / MappinUIUtils lookups run once per variant.
+    private let partCache: array<CName>;
+    private let colorCache: array<HDRColor>;
+    private let styleSet: array<Bool>;
 
     public static func Build() -> ref<NMVanillaCatalog> {
         let c = new NMVanillaCatalog();
@@ -79,6 +83,35 @@ public class NMVanillaCatalog {
     }
 
     public func Count() -> Int32 { return ArraySize(this.types); }
+
+    private func StyleSlot(v: gamedataMappinVariant) -> Int32 {
+        let vi = EnumInt(v);
+        if vi < 0 || vi > EnumInt(gamedataMappinVariant.Count) { return -1; }
+        if ArraySize(this.styleSet) == 0 {
+            let n = EnumInt(gamedataMappinVariant.Count) + 1;
+            ArrayResize(this.partCache, n);
+            ArrayResize(this.colorCache, n);
+            ArrayResize(this.styleSet, n);
+        }
+        if !this.styleSet[vi] {
+            this.partCache[vi] = NMVanillaStyle.PartOf(v);
+            this.colorCache[vi] = NMVanillaStyle.Color(v, gamedataMappinPhase.DefaultPhase);
+            this.styleSet[vi] = true;
+        }
+        return vi;
+    }
+
+    // NMVanillaStyle.PartOf / .Color memoised per variant (the phase only matters for Completed, handled here).
+    public func PartFor(v: gamedataMappinVariant) -> CName {
+        let i = this.StyleSlot(v);
+        return i >= 0 ? this.partCache[i] : NMVanillaStyle.PartOf(v);
+    }
+
+    public func ColorFor(v: gamedataMappinVariant, phase: gamedataMappinPhase) -> HDRColor {
+        if Equals(phase, gamedataMappinPhase.CompletedPhase) { return NMVanillaStyle.Color(v, phase); }
+        let i = this.StyleSlot(v);
+        return i >= 0 ? this.colorCache[i] : NMVanillaStyle.Color(v, phase);
+    }
 
     public func IsOther(i: Int32) -> Bool { return i >= ArraySize(this.types); }
 

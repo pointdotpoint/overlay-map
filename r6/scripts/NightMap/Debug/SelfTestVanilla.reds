@@ -215,6 +215,47 @@ public abstract class NMVanillaTests {
         let s6: array<ref<NMVanillaSnap>>;
         d.Apply(s6, sink);                                                       // gone from the list
         t.Check("diff.missing_removes", d.removed == 1 && d.live == 0, "");
+        // Allocation-light path: an unchanged marker keeps its snapshot object, a changed one gets a new snapshot.
+        let d2 = NMVanillaDiff.Create();
+        let sink2 = new NMVanillaTestSink();
+        let fv = gamedataMappinVariant.FastTravelVariant;
+        d2.Begin();
+        d2.Observe(7ul, 5.0, 5.0, 1.0, fv, def, true, false, 2, sink2);
+        d2.End(sink2);
+        let held = d2.Find(7ul);
+        held.snap.z = 123.0;   // marker: survives only while the snapshot object is kept
+        d2.Begin();
+        d2.Observe(7ul, 5.2, 5.0, 1.0, fv, def, true, false, 2, sink2);
+        d2.End(sink2);
+        t.Check("diff.steady_keeps_snapshot", d2.Find(7ul).snap.z == 123.0 && d2.changed == 0 && sink2.adds == 1, t.F(d2.Find(7ul).snap.z));
+        d2.Begin();
+        d2.Observe(7ul, 9.0, 5.0, 4.0, fv, def, true, false, 2, sink2);
+        d2.End(sink2);
+        t.Check("diff.change_replaces_snapshot", d2.Find(7ul).snap.z == 4.0 && d2.changed == 1 && d2.live == 1, t.F(d2.Find(7ul).snap.z));
+        d2.Begin();
+        d2.Observe(7ul, 9.0, 5.0, 4.0, fv, done, true, false, 2, sink2);   // completed + untracked: not shown
+        d2.End(sink2);
+        t.Check("diff.observe_hidden_removes", d2.removed == 1 && d2.live == 0 && sink2.removes == 1, "");
+        // inkHashMap.Get on a missing key should be null; when it is, flip NMVanillaDiff.MissIsNull() to true.
+        let hm = new inkHashMap();
+        t.Check("diff.hashmap_get_missing_null", !IsDefined(hm.Get(99ul)), "inkHashMap.Get(missing) is not null: keep MissIsNull() false");
+        // Per-variant style cache returns exactly what the uncached lookups do.
+        let cat = NMVanillaCatalog.Build();
+        let variants: array<gamedataMappinVariant> = [gamedataMappinVariant.FastTravelVariant, gamedataMappinVariant.DefaultQuestVariant,
+            gamedataMappinVariant.ServicePointFoodVariant, gamedataMappinVariant.Zzz16_RelicDeviceSpecialVariant, gamedataMappinVariant.Zzz17_NCARTVariant,
+            gamedataMappinVariant.CustomPositionVariant, gamedataMappinVariant.GangWatchVariant];
+        let same = true;
+        for cv in variants {
+            let c1 = cat.ColorFor(cv, def);
+            let c2 = NMVanillaStyle.Color(cv, def);
+            let c3 = cat.ColorFor(cv, done);
+            let c4 = NMVanillaStyle.Color(cv, done);
+            if NotEquals(cat.PartFor(cv), NMVanillaStyle.PartOf(cv))
+                || c1.Red != c2.Red || c1.Green != c2.Green || c1.Blue != c2.Blue || c3.Red != c4.Red || c3.Green != c4.Green || c3.Blue != c4.Blue {
+                same = false;
+            }
+        }
+        t.Check("vanilla.style_cache_matches", same, "");
     }
 
     // Uses the live MappinSystem (run the self-test in a loaded save) against a standalone test API.
@@ -222,6 +263,11 @@ public abstract class NMVanillaTests {
         let api = NMVanillaTests.TestApi();
         let v = NMVanilla.Create(api, GetGameInstance());
         t.Check("vanilla.tick_polls_when_forced", v.Tick(0.0, true), "");
+        t.Check("vanilla.poll_timed", v.pollMsLast >= 0.0 && v.pollMsMax >= v.pollMsLast, t.F(v.pollMsLast) + "/" + t.F(v.pollMsMax));
+        v.Tick(1.0, true);
+        t.Check("vanilla.steady_poll_ms", v.diff.added == 0 && v.pollMsLast < 5.0, "second poll " + t.F(v.pollMsLast) + " ms (added " + ToString(v.diff.added) + ")");
+        v.ResetPollStats();
+        t.Check("vanilla.poll_stats_reset", v.pollMsMax == 0.0 && v.pollMsLast == 0.0, "");
         t.Check("vanilla.tick_throttled", !v.Tick(10.0, false) && v.Tick(NMVanilla.PollMs() + 1.0, false), "");
         let n = v.catalog.Count();
         t.Check("vanilla.layers_created", IsDefined(api.GetLayer(n"Vanilla.FastTravel")) && IsDefined(api.GetLayer(n"Vanilla.Other"))

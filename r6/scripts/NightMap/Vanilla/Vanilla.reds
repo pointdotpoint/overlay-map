@@ -39,6 +39,8 @@ public class NMVanilla extends NMVanillaSink {
     private let pinnedListener: ref<NMVanillaListener>;
     private let lastPollMs: Float;
     private let polledOnce: Bool;
+    public let pollMsLast: Float;   // duration of the last poll (GetMappins + diff + layer updates), ms
+    public let pollMsMax: Float;    // max since ResetPollStats
     private let loggedVariants: array<Int32>;
     public let lastAction: String;
     public let enabled: Bool = true;
@@ -135,6 +137,11 @@ public class NMVanilla extends NMVanillaSink {
         this.enabled = true;
     }
 
+    public func ResetPollStats() {
+        this.pollMsLast = 0.0;
+        this.pollMsMax = 0.0;
+    }
+
     // Polls when forced or when PollMs has passed since the last poll. Returns true if it polled.
     public func Tick(nowMs: Float, force: Bool) -> Bool {
         if !this.enabled { return false; }
@@ -143,33 +150,39 @@ public class NMVanilla extends NMVanillaSink {
         }
         this.lastPollMs = nowMs;
         this.polledOnce = true;
+        let t0 = NMClock.NowMs();
         let arr: array<ref<IMappin>>;
         let ms = GameInstance.GetMappinSystem(this.gi);
         ms.GetMappins(gamemappinsMappinTargetType.Map, arr);
         let manual = ms.GetManuallyTrackedMappinID();
         this.PollFrom(arr, manual.value);
+        this.pollMsLast = NMClock.NowMs() - t0;
+        if this.pollMsLast > this.pollMsMax { this.pollMsMax = this.pollMsLast; }
         return true;
     }
 
     public func PollFrom(arr: array<ref<IMappin>>, manualKey: Uint64) {
         this.EnsureLayers();
-        let snaps: array<ref<NMVanillaSnap>>;
+        let cat = this.catalog;
+        this.diff.Begin();
         for m in arr {
             if IsDefined(m) {
+                // A marker that is neither visible nor tracked is never shown: skip the rest of its reads.
+                let visible = m.IsVisible();
                 let id = m.GetNewMappinID();
-                let pos = m.GetWorldPosition();
-                let v = m.GetVariant();
-                let filter = this.catalog.FilterIndexOf(v);
-                if this.catalog.IsOther(filter) && m.IsVisible() {
-                    this.LogOnce(v);
-                }
                 let tracked = m.IsPlayerTracked() || (manualKey != 0ul && id.value == manualKey);
-                let s = NMVanillaSnap.Make(id.value, pos.X, pos.Y, v, m.GetPhase(), m.IsVisible(), tracked, filter);
-                s.z = pos.Z;
-                ArrayPush(snaps, s);
+                if visible || tracked {
+                    let pos = m.GetWorldPosition();
+                    let v = m.GetVariant();
+                    let filter = cat.FilterIndexOf(v);
+                    if visible && cat.IsOther(filter) {
+                        this.LogOnce(v);
+                    }
+                    this.diff.Observe(id.value, pos.X, pos.Y, pos.Z, v, m.GetPhase(), visible, tracked, filter, this);
+                }
             }
         }
-        this.diff.Apply(snaps, this);
+        this.diff.End(this);
         if this.diff.added + this.diff.removed > 0 {
             NMLog.Info("vanilla|poll|n=" + ToString(ArraySize(arr)) + "|live=" + ToString(this.diff.live) + "|added=" + ToString(this.diff.added)
                 + "|changed=" + ToString(this.diff.changed) + "|removed=" + ToString(this.diff.removed));
@@ -194,8 +207,8 @@ public class NMVanilla extends NMVanillaSink {
     private func ItemFor(s: ref<NMVanillaSnap>, slot: Int32) -> ref<NightMapItem> {
         let catName = slot == -2 ? n"vanilla.pinned" : this.catalog.CategoryName(slot);
         let completed = Equals(s.phase, gamedataMappinPhase.CompletedPhase);
-        return NightMapItem.Create(new Vector4(s.x, s.y, s.z, 1.0), catName, NMTheme.MappinAtlas(), NMVanillaStyle.PartOf(s.variant))
-            .WithTint(NMVanillaStyle.Color(s.variant, s.phase))
+        return NightMapItem.Create(new Vector4(s.x, s.y, s.z, 1.0), catName, NMTheme.MappinAtlas(), this.catalog.PartFor(s.variant))
+            .WithTint(this.catalog.ColorFor(s.variant, s.phase))
             .WithEmphasis(s.tracked)
             .WithOpacity(completed ? NMVanillaStyle.CompletedOpacity() : 1.0);
     }

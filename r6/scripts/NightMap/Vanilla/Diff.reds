@@ -79,7 +79,14 @@ public class NMVanillaDiff {
         return d;
     }
 
+    // Set to true once `inkHashMap.Get` on a missing key is confirmed to return null (self-test
+    // diff.hashmap_get_missing_null): then Find costs one native call instead of two.
+    public static func MissIsNull() -> Bool { return false; }
+
     public func Find(key: Uint64) -> ref<NMVanillaEntry> {
+        if NMVanillaDiff.MissIsNull() {
+            return this.map.Get(key) as NMVanillaEntry;
+        }
         if !this.map.KeyExist(key) {
             return null;
         }
@@ -87,35 +94,60 @@ public class NMVanillaDiff {
     }
 
     public func Apply(snaps: array<ref<NMVanillaSnap>>, sink: ref<NMVanillaSink>) {
+        this.Begin();
+        for s in snaps {
+            if IsDefined(s) {
+                this.Observe(s.key, s.x, s.y, s.z, s.variant, s.phase, s.visible, s.tracked, s.filter, sink);
+            }
+        }
+        this.End(sink);
+    }
+
+    public func Begin() {
         this.gen += 1;
         this.added = 0;
         this.changed = 0;
         this.removed = 0;
-        for s in snaps {
-            if IsDefined(s) && NMVanillaRules.Shown(s) {
-                let e = this.Find(s.key);
-                if !IsDefined(e) {
-                    e = new NMVanillaEntry();
-                    e.key = s.key;
-                    e.snap = s;
-                    e.slot = NMVanillaRules.Slot(s);
-                    e.item = -1;
-                    e.gen = this.gen;
-                    sink.OnAdd(e);
-                    this.map.Insert(s.key, e);
-                    ArrayPush(this.entries, e);
-                    this.added += 1;
-                } else {
-                    e.gen = this.gen;
-                    if NMVanillaRules.Differs(e.snap, s) {
-                        sink.OnChange(e, s);
-                        e.snap = s;
-                        e.slot = NMVanillaRules.Slot(s);
-                        this.changed += 1;
-                    }
-                }
-            }
+    }
+
+    // One mappin of the current poll. Allocates a snapshot only when the marker is new or differs from the one
+    // already held (the steady state allocates nothing).
+    public func Observe(key: Uint64, x: Float, y: Float, z: Float, variant: gamedataMappinVariant, phase: gamedataMappinPhase,
+                        visible: Bool, tracked: Bool, filter: Int32, sink: ref<NMVanillaSink>) {
+        let shown = tracked || (visible && filter >= 0 && NotEquals(phase, gamedataMappinPhase.CompletedPhase));
+        if !shown {
+            return;
         }
+        let e = this.Find(key);
+        if !IsDefined(e) {
+            let s = NMVanillaSnap.Make(key, x, y, variant, phase, visible, tracked, filter);
+            s.z = z;
+            e = new NMVanillaEntry();
+            e.key = key;
+            e.snap = s;
+            e.slot = NMVanillaRules.Slot(s);
+            e.item = -1;
+            e.gen = this.gen;
+            sink.OnAdd(e);
+            this.map.Insert(key, e);
+            ArrayPush(this.entries, e);
+            this.added += 1;
+            return;
+        }
+        e.gen = this.gen;
+        let o = e.snap;
+        if AbsF(o.x - x) > 0.5 || AbsF(o.y - y) > 0.5 || NotEquals(o.variant, variant) || NotEquals(o.phase, phase)
+            || NotEquals(o.tracked, tracked) || o.filter != filter {
+            let s2 = NMVanillaSnap.Make(key, x, y, variant, phase, visible, tracked, filter);
+            s2.z = z;
+            sink.OnChange(e, s2);
+            e.snap = s2;
+            e.slot = NMVanillaRules.Slot(s2);
+            this.changed += 1;
+        }
+    }
+
+    public func End(sink: ref<NMVanillaSink>) {
         // Sweep: anything not seen (or no longer shown) this generation goes away. Swap-remove keeps it O(n).
         let i = ArraySize(this.entries) - 1;
         while i >= 0 {

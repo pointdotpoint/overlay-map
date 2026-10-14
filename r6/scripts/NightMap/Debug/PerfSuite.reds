@@ -94,6 +94,7 @@ public class NMPerfSuite {
                 this.frames = 0;
                 ArrayClear(this.samples);
                 ArrayClear(this.script);
+                sys.Vanilla().ResetPollStats();   // poll_ms_max covers the measured frames only
             }
             return;
         }
@@ -115,7 +116,7 @@ public class NMPerfSuite {
         ArrayPush(this.samples, dt);
         ArrayPush(this.script, scriptMs);
         if this.frames >= 300 {
-            this.Report();
+            this.Report(sys);
             this.idx += 1;
             this.phase = 0;
             if this.idx >= ArraySize(this.names) {
@@ -131,10 +132,11 @@ public class NMPerfSuite {
         }
     }
 
-    private func Report() {
+    private func Report(sys: ref<NightMapSystem>) {
         NMLog.Info("RESULT|" + this.names[this.idx] + "|items=" + ToString(this.counts[this.idx]) + "|frames=" + ToString(ArraySize(this.samples))
             + "|setup_ms=" + FloatToStringPrec(this.setupMs, 1) + "|" + NMPerfSuite.Stats("frame", this.samples, true) + "|" + NMPerfSuite.Stats("script", this.script, false)
-            + "|script_max=" + FloatToStringPrec(NMPerfSuite.MaxOf(this.script), 3));
+            + "|script_max=" + FloatToStringPrec(NMPerfSuite.MaxOf(this.script), 3)
+            + "|poll_ms_max=" + FloatToStringPrec(this.vanillas[this.idx] ? sys.Vanilla().pollMsMax : 0.0, 3));
     }
 
     private static func MaxOf(values: array<Float>) -> Float {
