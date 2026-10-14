@@ -18,6 +18,16 @@ public abstract class NMTheme {
 
     public static func UiAtlas() -> ResRef { return r"nightmap\\ui\\ui.inkatlas"; }
 
+    // ---- vanilla map markers (sub-project 2): values extracted from the vanilla world map (spike LOOK.md) ----
+    public static func MappinAtlas() -> ResRef { return r"base\\gameplay\\gui\\common\\icons\\mappin_icons.inkatlas"; }
+    public static func ShadowAtlas() -> ResRef { return r"base\\gameplay\\gui\\common\\shadow_blobs.inkatlas"; }
+    public static func VanillaIconSize() -> Float { return 64.0; }        // 4K units, as the vanilla world map
+    public static func VanillaShadowSize() -> Float { return 180.0; }     // soft blob under the icon; tune at checkpoint 4
+    public static func VanillaShadowOpacity() -> Float { return 0.8; }
+    public static func VanillaIdleOpacity() -> Float { return 0.5; }      // vanilla Mappin state opacity
+    public static func VanillaEmphScale() -> Float { return 1.3; }        // vanilla OnSelect end scale
+    public static func VanillaGrowMs() -> Float { return 150.0; }
+    public static func ShadowColor() -> HDRColor { return new HDRColor(0.0, 0.0, 0.0, 1.0); }
     public static func ChipSize() -> Float { return 112.0; }
     public static func ChipSelSize() -> Float { return 136.0; }
     public static func ClusterSize() -> Float { return 176.0; }

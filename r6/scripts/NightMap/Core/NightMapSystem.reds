@@ -425,6 +425,7 @@ public class NightMapSystem extends ScriptableSystem {
                 this.RefreshCard(changed);
             }
         }
+        this.renderer.ApplySelection(this.crosshair.sel, this.crosshair.selKind, dt);
         if this.input.act {
             this.input.act = false;
             this.Activate();

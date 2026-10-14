@@ -16,12 +16,17 @@ public class NMIconRef {
 public class NMItemRenderer {
     private let api: wref<NightMap>;
     private let scale: Float;
-    private let chipBg: array<ref<inkImage>>;
-    private let chipIcon: array<ref<inkImage>>;
+    public let chipBg: array<ref<inkImage>>;
+    public let chipIcon: array<ref<inkImage>>;
     private let chipOn: array<Bool>;
     private let chipCat: array<Int32>;
     private let chipIconKey: array<String>;
-    private let chipAlpha: array<Float>;
+    public let chipAlpha: array<Float>;
+    public let chipStyle: array<Int32>;   // -1 unset, 0 hex, 1 icon idle, 2 icon emphasised
+    public let growSlot: Int32;           // slot currently growing/grown for the selection (icon idle pins), -1 none
+    public let growT: Float;              // 0..1 progress of the selection grow
+    private let growLayer: Int32;
+    private let growItem: Int32;
     private let clBg: array<ref<inkImage>>;
     private let clText: array<ref<inkText>>;
     private let clShownCount: array<Int32>;
@@ -128,8 +133,12 @@ public class NMItemRenderer {
             ArrayPush(r.chipCat, -1);
             ArrayPush(r.chipIconKey, "");
             ArrayPush(r.chipAlpha, 1.0);
+            ArrayPush(r.chipStyle, -1);
             i += 1;
         }
+        r.growSlot = -1;
+        r.growLayer = -1;
+        r.growItem = -1;
         return r;
     }
 
@@ -329,6 +338,79 @@ public class NMItemRenderer {
         ic.key = "dot";
     }
 
+    // Switches a pooled chip between the hologram hex (0) and the vanilla icon look (1 idle, 2 emphasised).
+    private func ApplyChipStyle(slot: Int32, style: Int32) {
+        let bg = this.chipBg[slot];
+        let ic = this.chipIcon[slot];
+        if style == 0 {
+            bg.SetAtlasResource(NMTheme.UiAtlas());
+            bg.SetTexturePart(n"chip");
+            bg.SetSize(new Vector2(NMTheme.ChipSize() * this.scale, NMTheme.ChipSize() * this.scale));
+            ic.SetSize(new Vector2(NMTheme.IconSize() * this.scale, NMTheme.IconSize() * this.scale));
+        } else {
+            let k = style == 2 ? NMTheme.VanillaEmphScale() : 1.0;
+            bg.SetAtlasResource(NMTheme.ShadowAtlas());
+            bg.SetTexturePart(n"shadowBlobSquare_big");
+            bg.SetSize(new Vector2(NMTheme.VanillaShadowSize() * k * this.scale, NMTheme.VanillaShadowSize() * k * this.scale));
+            ic.SetSize(new Vector2(NMTheme.VanillaIconSize() * k * this.scale, NMTheme.VanillaIconSize() * k * this.scale));
+        }
+        bg.SetScale(new Vector2(1.0, 1.0));
+        ic.SetScale(new Vector2(1.0, 1.0));
+        if slot == this.growSlot {
+            this.growSlot = -1;
+        }
+        this.chipStyle[slot] = style;
+    }
+
+    // t in 0..1: scale 1 -> VanillaEmphScale and opacity idle -> full, like the vanilla OnSelect animation.
+    private func SetGrow(slot: Int32, t: Float) {
+        let k = 1.0 + (NMTheme.VanillaEmphScale() - 1.0) * t;
+        let base = this.chipAlpha[slot];
+        let full = MinF(1.0, base / NMTheme.VanillaIdleOpacity());
+        let o = base + (full - base) * t;
+        this.chipBg[slot].SetScale(new Vector2(k, k));
+        this.chipIcon[slot].SetScale(new Vector2(k, k));
+        this.chipIcon[slot].SetOpacity(o);
+        this.chipBg[slot].SetOpacity(o * NMTheme.VanillaShadowOpacity());
+    }
+
+    // Called every frame after the crosshair pick. Icon pins have no selection rim; an idle icon pin grows to the
+    // emphasis look over VanillaGrowMs. cand indexes the cand* arrays (-1 none); kind is the crosshair's selKind.
+    public func ApplySelection(cand: Int32, kind: Int32, dtMs: Float) {
+        let slot = -1;
+        let layer = -1;
+        let item = -1;
+        if cand >= 0 && kind == 0 && cand < ArraySize(this.candSlot) {
+            slot = this.candSlot[cand];
+            layer = this.candLayer[cand];
+            item = this.candItem[cand];
+        }
+        let isIcon = slot >= 0 && this.chipStyle[slot] >= 1;
+        if isIcon {
+            this.selChip.SetVisible(false);
+        }
+        let target = isIcon && this.chipStyle[slot] == 1 ? slot : -1;
+        let sameItem = layer == this.growLayer && item == this.growItem;
+        if target != this.growSlot || !sameItem {
+            if this.growSlot >= 0 {
+                this.SetGrow(this.growSlot, 0.0);
+            }
+            if !sameItem {
+                this.growT = 0.0;
+            }
+            this.growSlot = target;
+            this.growLayer = target >= 0 ? layer : -1;
+            this.growItem = target >= 0 ? item : -1;
+            if target >= 0 && this.growT > 0.0 {
+                this.SetGrow(target, this.growT);   // same item moved to another slot: keep its progress
+            }
+        }
+        if this.growSlot >= 0 && this.growT < 1.0 {
+            this.growT = MinF(1.0, this.growT + MaxF(dtMs, 0.0) / NMTheme.VanillaGrowMs());
+            this.SetGrow(this.growSlot, this.growT);
+        }
+    }
+
     private func PlaceChip(L: ref<NightMapLayer>, id: Int32, cam: ref<NMCamera>, viewW: Float, viewH: Float) -> Bool {
         if this.chipsUsed >= NMTheme.ChipBudget() {
             return false;
@@ -342,26 +424,38 @@ public class NMItemRenderer {
         this.chipsUsed += 1;
         let bg = this.chipBg[slot];
         let ic = this.chipIcon[slot];
+        if slot == this.growSlot && (L.index != this.growLayer || id != this.growItem) {
+            this.SetGrow(slot, 0.0);
+            this.growSlot = -1;
+        }
         let g = L.catGlobal[L.cat[id]];
         let color = this.api.catColor[g];
+        let style = L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0;
+        if this.chipStyle[slot] != style {
+            this.ApplyChipStyle(slot, style);
+            this.chipCat[slot] = -2;        // force the tint refresh below
+            this.chipAlpha[slot] = -1.0;    // force the opacity refresh below
+        }
         if this.chipCat[slot] != g || L.hasTint[id] {
-            bg.SetTintColor(color);
+            bg.SetTintColor(style == 0 ? color : NMTheme.ShadowColor());
             ic.SetTintColor(L.hasTint[id] ? L.tint[id] : color);
             this.chipCat[slot] = L.hasTint[id] ? -1 : g;
         }
         this.ResolveIcon(L, id);
-        if this.icon.pending {
-            this.pendingImages += 1;
-        }
+        if this.icon.pending { this.pendingImages += 1; }
         if NotEquals(this.chipIconKey[slot], this.icon.key) {
             ic.SetAtlasResource(this.icon.atlas);
             ic.SetTexturePart(this.icon.part);
             this.chipIconKey[slot] = this.icon.key;
         }
-        if this.chipAlpha[slot] != L.opacity {
-            bg.SetOpacity(L.opacity);
-            ic.SetOpacity(L.opacity);
-            this.chipAlpha[slot] = L.opacity;
+        let a = L.opacity * L.alpha[id];
+        if style == 1 {
+            a *= NMTheme.VanillaIdleOpacity();
+        }
+        if this.chipAlpha[slot] != a {
+            bg.SetOpacity(style == 0 ? a : a * NMTheme.VanillaShadowOpacity());
+            ic.SetOpacity(a);
+            this.chipAlpha[slot] = a;
         }
         bg.SetTranslation(p);
         ic.SetTranslation(p);
@@ -594,6 +688,10 @@ public class NMItemRenderer {
             if this.chipOn[s] {
                 this.chipBg[s].SetVisible(false);
                 this.chipIcon[s].SetVisible(false);
+                if s == this.growSlot {
+                    this.SetGrow(s, 0.0);
+                    this.growSlot = -1;
+                }
                 this.chipOn[s] = false;
             }
             s += 1;
