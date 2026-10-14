@@ -35,6 +35,7 @@ public class NightMapLayer {
     public let cat: array<Int32>;
     public let hasAtlas: array<Bool>;
     public let atlas: array<ResRef>;
+    public let atlasKey: array<String>;   // atlas identity string, computed once in Store (hot in the renderer)
     public let part: array<CName>;
     public let image: array<String>;
     public let imageResolved: array<String>;
@@ -130,6 +131,7 @@ public class NightMapLayer {
         this.cat[id] = this.LocalCat(item.category);
         this.hasAtlas[id] = item.hasAtlas;
         this.atlas[id] = item.atlas;
+        this.atlasKey[id] = item.hasAtlas ? ResRef.ToString(item.atlas) : "";
         this.part[id] = item.part;
         this.image[id] = item.imageKey;
         this.imageResolved[id] = "";
@@ -182,6 +184,7 @@ public class NightMapLayer {
         ArrayClear(this.cat);
         ArrayClear(this.hasAtlas);
         ArrayClear(this.atlas);
+        ArrayClear(this.atlasKey);
         ArrayClear(this.part);
         ArrayClear(this.image);
         ArrayClear(this.imageResolved);
@@ -325,6 +328,7 @@ public class NightMapLayer {
         ArrayPush(this.hasAtlas, false);
         let emptyRef: ResRef;
         ArrayPush(this.atlas, emptyRef);
+        ArrayPush(this.atlasKey, "");
         ArrayPush(this.part, n"");
         ArrayPush(this.image, "");
         ArrayPush(this.imageResolved, "");

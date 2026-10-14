@@ -3,7 +3,7 @@ module NightMap
 public class NMIconRef {
     public let atlas: ResRef;
     public let part: CName;
-    public let key: String;
+    public let key: String;   // identifies the atlas (not the part)
     public let pending: Bool;
 }
 
@@ -19,8 +19,11 @@ public class NMItemRenderer {
     public let chipBg: array<ref<inkImage>>;
     public let chipIcon: array<ref<inkImage>>;
     private let chipOn: array<Bool>;
-    private let chipCat: array<Int32>;
-    private let chipIconKey: array<String>;
+    private let chipIconKey: array<String>;   // atlas identity last set on the slot
+    private let chipIconPart: array<CName>;
+    private let chipTintOk: array<Bool>;
+    private let chipTintBg: array<HDRColor>;
+    private let chipTintIc: array<HDRColor>;
     public let chipAlpha: array<Float>;
     public let chipStyle: array<Int32>;   // -1 unset, 0 hex, 1 icon idle, 2 icon emphasised
     public let growSlot: Int32;           // slot currently growing/grown for the selection (icon idle pins), -1 none
@@ -133,8 +136,11 @@ public class NMItemRenderer {
             ArrayPush(r.chipBg, bg);
             ArrayPush(r.chipIcon, ic);
             ArrayPush(r.chipOn, false);
-            ArrayPush(r.chipCat, -1);
             ArrayPush(r.chipIconKey, "");
+            ArrayPush(r.chipIconPart, n"");
+            ArrayPush(r.chipTintOk, false);
+            ArrayPush(r.chipTintBg, NMTheme.Cyan());
+            ArrayPush(r.chipTintIc, NMTheme.Cyan());
             ArrayPush(r.chipAlpha, 1.0);
             ArrayPush(r.chipStyle, -1);
             i += 1;
@@ -346,7 +352,7 @@ public class NMItemRenderer {
         if L.hasAtlas[id] {
             ic.atlas = L.atlas[id];
             ic.part = L.part[id];
-            ic.key = ResRef.ToString(L.atlas[id]) + "|" + NameToString(L.part[id]);
+            ic.key = L.atlasKey[id];
             return;
         }
         let g = L.catGlobal[L.cat[id]];
@@ -434,6 +440,10 @@ public class NMItemRenderer {
         }
     }
 
+    private static func SameColor(a: HDRColor, b: HDRColor) -> Bool {
+        return a.Red == b.Red && a.Green == b.Green && a.Blue == b.Blue && a.Alpha == b.Alpha;
+    }
+
     private func PlaceChip(L: ref<NightMapLayer>, id: Int32, cam: ref<NMCamera>, viewW: Float, viewH: Float) -> Bool {
         if this.chipsUsed >= NMTheme.ChipBudget() {
             return false;
@@ -456,20 +466,30 @@ public class NMItemRenderer {
         let style = L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0;
         if this.chipStyle[slot] != style {
             this.ApplyChipStyle(slot, style);
-            this.chipCat[slot] = -2;        // force the tint refresh below
+            this.chipTintOk[slot] = false;  // force the tint refresh below
             this.chipAlpha[slot] = -1.0;    // force the opacity refresh below
         }
-        if this.chipCat[slot] != g || L.hasTint[id] {
-            bg.SetTintColor(style == 0 ? color : NMTheme.ShadowColor());
-            ic.SetTintColor(L.hasTint[id] ? L.tint[id] : color);
-            this.chipCat[slot] = L.hasTint[id] ? -1 : g;
+        let bgTint = style == 0 ? color : NMTheme.ShadowColor();
+        let icTint = L.hasTint[id] ? L.tint[id] : color;
+        if !this.chipTintOk[slot] || !NMItemRenderer.SameColor(this.chipTintBg[slot], bgTint) {
+            bg.SetTintColor(bgTint);
+            this.chipTintBg[slot] = bgTint;
         }
+        if !this.chipTintOk[slot] || !NMItemRenderer.SameColor(this.chipTintIc[slot], icTint) {
+            ic.SetTintColor(icTint);
+            this.chipTintIc[slot] = icTint;
+        }
+        this.chipTintOk[slot] = true;
         this.ResolveIcon(L, id);
         if this.icon.pending { this.pendingImages += 1; }
         if NotEquals(this.chipIconKey[slot], this.icon.key) {
             ic.SetAtlasResource(this.icon.atlas);
             ic.SetTexturePart(this.icon.part);
             this.chipIconKey[slot] = this.icon.key;
+            this.chipIconPart[slot] = this.icon.part;
+        } else if NotEquals(this.chipIconPart[slot], this.icon.part) {
+            ic.SetTexturePart(this.icon.part);
+            this.chipIconPart[slot] = this.icon.part;
         }
         let a = L.opacity * L.alpha[id];
         if style == 1 {
