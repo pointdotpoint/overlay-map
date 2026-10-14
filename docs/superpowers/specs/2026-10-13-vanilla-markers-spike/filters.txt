@@ -1,0 +1,18 @@
+QFILTER|quick|count=4
+QFILTER|0|key=UI-Menus-WorldMap-Filter-Dynamic|name=Dynamic|type=NoFilter|collect=0|members=0|list=
+QFILTER|1|key=UI-Menus-WorldMap-Filter-Jobs|name=Jobs|type=Gigs|collect=0|members=15|list=ExclamationMarkVariant,DefaultQuestVariant,FixerVariant,QuestGiverVariant,BountyHuntVariant,RetrievingVariant,ThieveryVariant,SabotageVariant,ClientInDistressVariant,ConvoyVariant,HuntForPsychoVariant,Zzz18_RacingVariant,Zzz06_NCPDGigVariant,Zzz12_WorldEncounterVariant,Zzz09_CourierSandboxActivityVariant
+QFILTER|2|key=UI-Menus-WorldMap-Filter-ServicePoint|name=Service Point|type=ServicePoint|collect=0|members=21|list=CustomPositionVariant,Zzz19_DelamainTaxiVariant,Zzz20_DelamainTaxiDestinationVariant,VehicleVariant,Zzz03_MotorcycleVariant,ApartmentVariant,ServicePointRipperdocVariant,ServicePointClothesVariant,ServicePointFoodVariant,ServicePointJunkVariant,ServicePointMedsVariant,ServicePointNetTrainerVariant,ServicePointGunsVariant,Zzz14_ServicePointBlackMarketVariant,ServicePointMeleeTrainerVariant,ServicePointBarVariant,ServicePointProstituteVariant,ServicePointDropPointVariant,FastTravelVariant,Zzz17_NCARTVariant,Zzz01_CarForPurchaseVariant
+QFILTER|3|key=UI-Settings-Video-QualitySetting-Custom|name=Custom|type=CustomFilter|collect=0|members=0|list=
+CFILTER|custom|count=12
+CFILTER|0|key=UI-Menus-WorldMap-Filter-Jobs|name=Jobs|type=Quest|collect=0|members=2|list=ExclamationMarkVariant,DefaultQuestVariant
+CFILTER|1|key=UI-Quests-Labels-StreetStories|name=Gigs|type=Gigs|collect=0|members=12|list=FixerVariant,QuestGiverVariant,Zzz12_WorldEncounterVariant,Zzz09_CourierSandboxActivityVariant,BountyHuntVariant,RetrievingVariant,ThieveryVariant,SabotageVariant,ClientInDistressVariant,ConvoyVariant,Zzz18_RacingVariant,Zzz06_NCPDGigVariant
+CFILTER|2|key=UI-MappinTypes-HuntforPsycho|name=Cyberpsycho Sighting|type=PsychoFilter|collect=0|members=1|list=HuntForPsychoVariant
+CFILTER|3|key=UI-Menus-WorldMap-Filter-NcpdScanner|name=NCPD Scanner|type=Story|collect=1|members=4|list=MinorActivityVariant,GangWatchVariant,HiddenStashVariant,OutpostVariant
+CFILTER|4|key=UI-Menus-WorldMap-Filter-FastTravel|name=Fast Travel|type=FastTravel|collect=0|members=2|list=FastTravelVariant,Zzz17_NCARTVariant
+CFILTER|5|key=UI-Menus-WorldMap-Filter-Ripperdoc|name=Ripperdoc|type=RipperdocFilter|collect=1|members=1|list=ServicePointRipperdocVariant
+CFILTER|6|key=UI-Menus-WorldMap-Filter-Vendor|name=Vendor|type=VendorFilter|collect=1|members=10|list=ServicePointClothesVariant,ServicePointFoodVariant,ServicePointJunkVariant,ServicePointMedsVariant,ServicePointNetTrainerVariant,ServicePointGunsVariant,Zzz14_ServicePointBlackMarketVariant,ServicePointMeleeTrainerVariant,ServicePointBarVariant,ServicePointProstituteVariant
+CFILTER|7|key=UI-Menus-WorldMap-Filter-Autofixer|name=Autofixer|type=AutofixerFilter|collect=1|members=1|list=Zzz01_CarForPurchaseVariant
+CFILTER|8|key=UI-MappinTypes-Dropbox|name=Drop Point|type=DropPoint|collect=0|members=1|list=ServicePointDropPointVariant
+CFILTER|9|key=UI-MappinTypes-ApartmentToPurchase|name=Apartment for Rent|type=ApartmentToPurchaseFilter|collect=0|members=1|list=Zzz05_ApartmentToPurchaseVariant
+CFILTER|10|key=UI-PanelNames-TAROT|name=TAROT|type=TarotFilter|collect=1|members=1|list=TarotVariant
+CFILTER|11|key=UI-Menus-WorldMap-Filter-YourProperty|name=Your Apartments|type=CommonFilter|collect=0|members=6|list=CustomPositionVariant,Zzz19_DelamainTaxiVariant,Zzz20_DelamainTaxiDestinationVariant,VehicleVariant,Zzz03_MotorcycleVariant,ApartmentVariant
