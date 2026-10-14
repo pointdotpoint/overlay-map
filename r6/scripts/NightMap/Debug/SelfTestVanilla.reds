@@ -6,6 +6,7 @@ public abstract class NMVanillaTests {
         NMVanillaTests.PinApiCases(t);
         NMVanillaTests.IconStyleCases(t);
         NMVanillaTests.StyleCases(t);
+        NMVanillaTests.DiffCases(t);
     }
 
     private static func TestApi() -> ref<NightMap> {
@@ -154,5 +155,77 @@ public abstract class NMVanillaTests {
         let other = cat.FilterIndexOf(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant);
         t.Check("vanilla.catalog_unknown_is_other", other == n && cat.IsOther(other) && Equals(cat.LayerId(other), n"Vanilla.Other"), ToString(other));
         t.Check("vanilla.catalog_names", StrLen(cat.DisplayName(ft)) > 0 && Equals(cat.LayerId(ft), n"Vanilla.FastTravel") && cat.Priority(gw) > cat.Priority(ft), cat.DisplayName(ft));
+    }
+
+    private static func Snap(key: Uint64, x: Float, phase: gamedataMappinPhase, visible: Bool, tracked: Bool, filter: Int32) -> ref<NMVanillaSnap> {
+        return NMVanillaSnap.Make(key, x, 100.0, gamedataMappinVariant.FastTravelVariant, phase, visible, tracked, filter);
+    }
+
+    private static func DiffCases(t: ref<NMSelfTest>) {
+        let def = gamedataMappinPhase.DefaultPhase;
+        let done = gamedataMappinPhase.CompletedPhase;
+        // Rules truth table.
+        t.Check("rules.visible_shown", NMVanillaRules.Shown(NMVanillaTests.Snap(1ul, 0.0, def, true, false, 3)), "");
+        t.Check("rules.invisible_hidden", !NMVanillaRules.Shown(NMVanillaTests.Snap(1ul, 0.0, def, false, false, 3)), "");
+        t.Check("rules.completed_hidden", !NMVanillaRules.Shown(NMVanillaTests.Snap(1ul, 0.0, done, true, false, 3)), "");
+        t.Check("rules.tracked_always", NMVanillaRules.Shown(NMVanillaTests.Snap(1ul, 0.0, done, false, true, 3)), "");
+        t.Check("rules.skip_filter", !NMVanillaRules.Shown(NMVanillaTests.Snap(1ul, 0.0, def, true, false, -1)), "");
+        t.Check("rules.slots", NMVanillaRules.Slot(NMVanillaTests.Snap(1ul, 0.0, def, true, true, 3)) == -2
+            && NMVanillaRules.Slot(NMVanillaTests.Snap(1ul, 0.0, def, true, false, 3)) == 3, "");
+        // Diff.
+        let d = NMVanillaDiff.Create();
+        let sink = new NMVanillaTestSink();
+        let s1: array<ref<NMVanillaSnap>>;
+        ArrayPush(s1, NMVanillaTests.Snap(10ul, 0.0, def, true, false, 1));
+        ArrayPush(s1, NMVanillaTests.Snap(11ul, 50.0, def, true, false, 2));
+        ArrayPush(s1, NMVanillaTests.Snap(12ul, 90.0, def, false, false, 2));   // invisible: never added
+        d.Apply(s1, sink);
+        t.Check("diff.first_adds", sink.adds == 2 && d.added == 2 && d.live == 2, ToString(sink.adds));
+        let s2: array<ref<NMVanillaSnap>>;
+        ArrayPush(s2, NMVanillaTests.Snap(10ul, 0.2, def, true, false, 1));     // 0.2 m: below the move threshold
+        ArrayPush(s2, NMVanillaTests.Snap(11ul, 50.0, def, true, false, 2));
+        d.Apply(s2, sink);
+        t.Check("diff.steady_no_changes", d.added == 0 && d.changed == 0 && d.removed == 0, ToString(d.changed));
+        let s3: array<ref<NMVanillaSnap>>;
+        ArrayPush(s3, NMVanillaTests.Snap(10ul, 10.0, def, true, false, 1));    // moved 10 m
+        ArrayPush(s3, NMVanillaTests.Snap(11ul, 50.0, def, true, true, 2));     // now tracked -> pinned
+        d.Apply(s3, sink);
+        t.Check("diff.move_changes", d.changed == 2, ToString(d.changed));
+        t.Check("diff.tracked_moves_to_pinned", sink.relayers == 1 && d.Find(11ul).slot == -2, "");
+        let s4: array<ref<NMVanillaSnap>>;
+        ArrayPush(s4, NMVanillaTests.Snap(10ul, 10.0, done, true, false, 1));   // completed + untracked -> hidden
+        ArrayPush(s4, NMVanillaTests.Snap(11ul, 50.0, def, false, false, 2));   // untracked + invisible -> hidden
+        d.Apply(s4, sink);
+        t.Check("diff.phase_completed_removes", d.removed == 2 && d.live == 0 && !IsDefined(d.Find(10ul)), ToString(d.removed));
+        t.Check("diff.invisible_removes", sink.removes == 2, "");
+        let s5: array<ref<NMVanillaSnap>>;
+        ArrayPush(s5, NMVanillaTests.Snap(10ul, 10.0, def, true, false, 1));
+        d.Apply(s5, sink);
+        let s6: array<ref<NMVanillaSnap>>;
+        d.Apply(s6, sink);                                                       // gone from the list
+        t.Check("diff.missing_removes", d.removed == 1 && d.live == 0, "");
+    }
+}
+
+public class NMVanillaTestSink extends NMVanillaSink {
+    public let adds: Int32;
+    public let changes: Int32;
+    public let removes: Int32;
+    public let relayers: Int32;
+    public let nextItem: Int32;
+
+    public func OnAdd(e: ref<NMVanillaEntry>) {
+        this.adds += 1;
+        e.item = this.nextItem;
+        this.nextItem += 1;
+    }
+
+    public func OnChange(e: ref<NMVanillaEntry>, s: ref<NMVanillaSnap>) {
+        this.changes += 1;
+        if e.slot != NMVanillaRules.Slot(s) { this.relayers += 1; }
+    }
+
+    public func OnRemove(e: ref<NMVanillaEntry>) {
+        this.removes += 1;
     }
 }
