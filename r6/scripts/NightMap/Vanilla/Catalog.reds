@@ -6,17 +6,26 @@ public class NMVanillaCatalog {
     public let types: array<gamedataWorldMapFilter>;
     public let names: array<String>;
     public let firstVariant: array<gamedataMappinVariant>;
-    private let memberVariant: array<Int32>;   // flattened (variant, filter index) pairs
-    private let memberFilter: array<Int32>;
+    private let filterOfVariant: array<Int32>;   // index = EnumInt(variant); value = filter index (Count() = Other)
+    private let layerIds: array<CName>;           // per index incl. Other
+    private let categoryNames: array<CName>;
 
     public static func Build() -> ref<NMVanillaCatalog> {
         let c = new NMVanillaCatalog();
         let rec = TweakDBInterface.GetWorldMapFiltersListRecord(t"WorldMap.WorldMapCustomFiltersList");
         if !IsDefined(rec) {
             NMLog.Error("vanilla|catalog|WorldMapCustomFiltersList missing; all markers go to Other");
+            c.Finish();
             return c;
         }
         let n = rec.GetListCount();
+        let vsize = EnumInt(gamedataMappinVariant.Count) + 1;
+        ArrayResize(c.filterOfVariant, vsize);
+        let z = 0;
+        while z < vsize {
+            c.filterOfVariant[z] = -1;
+            z += 1;
+        }
         let i = 0;
         while i < n {
             let g = rec.GetListItem(i);
@@ -33,8 +42,10 @@ public class NMVanillaCatalog {
                     if IsDefined(mv) {
                         let v = mv.Type();
                         if k == 0 { first = v; }
-                        ArrayPush(c.memberVariant, EnumInt(v));
-                        ArrayPush(c.memberFilter, idx);
+                        let vi = EnumInt(v);
+                        if vi >= 0 && vi < vsize && c.filterOfVariant[vi] < 0 {
+                            c.filterOfVariant[vi] = idx;   // first filter in TweakDB order wins
+                        }
                     }
                     k += 1;
                 }
@@ -42,7 +53,29 @@ public class NMVanillaCatalog {
             }
             i += 1;
         }
+        c.Finish();
         return c;
+    }
+
+    // Unlisted variants -> Other index; per-index CName caches (incl. Other).
+    private func Finish() {
+        let other = ArraySize(this.types);
+        let z = 0;
+        while z < ArraySize(this.filterOfVariant) {
+            if this.filterOfVariant[z] < 0 { this.filterOfVariant[z] = other; }
+            z += 1;
+        }
+        let i = 0;
+        while i <= other {
+            if i == other {
+                ArrayPush(this.layerIds, n"Vanilla.Other");
+                ArrayPush(this.categoryNames, n"vanilla.other");
+            } else {
+                ArrayPush(this.layerIds, StringToName("Vanilla." + ToString(this.types[i])));
+                ArrayPush(this.categoryNames, StringToName("vanilla." + ToString(this.types[i])));
+            }
+            i += 1;
+        }
     }
 
     public func Count() -> Int32 { return ArraySize(this.types); }
@@ -52,13 +85,8 @@ public class NMVanillaCatalog {
     // First filter (TweakDB order) listing v, else Count() (Other).
     public func FilterIndexOf(v: gamedataMappinVariant) -> Int32 {
         let key = EnumInt(v);
-        let i = 0;
-        let n = ArraySize(this.memberVariant);
-        while i < n {
-            if this.memberVariant[i] == key {
-                return this.memberFilter[i];
-            }
-            i += 1;
+        if key >= 0 && key < ArraySize(this.filterOfVariant) {
+            return this.filterOfVariant[key];
         }
         return ArraySize(this.types);
     }
@@ -68,11 +96,11 @@ public class NMVanillaCatalog {
     }
 
     public func LayerId(i: Int32) -> CName {
-        return this.IsOther(i) ? n"Vanilla.Other" : StringToName("Vanilla." + ToString(this.types[i]));
+        return i >= 0 && i < ArraySize(this.layerIds) ? this.layerIds[i] : n"Vanilla.Other";
     }
 
     public func CategoryName(i: Int32) -> CName {
-        return this.IsOther(i) ? n"vanilla.other" : StringToName("vanilla." + ToString(this.types[i]));
+        return i >= 0 && i < ArraySize(this.categoryNames) ? this.categoryNames[i] : n"vanilla.other";
     }
 
     public func DisplayName(i: Int32) -> String {
