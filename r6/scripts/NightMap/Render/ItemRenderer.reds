@@ -64,6 +64,7 @@ public class NMItemRenderer {
     private let ordX: array<Int32>;
     private let ordY: array<Int32>;
     private let visit: array<Int32>;
+    private let indRg: array<Int32>;
     public let forceScan: Bool;   // test hook: bypass the occupied-cell lists (reference behaviour)
     private let icon: ref<NMIconRef>;
     private let lastCamRev: Int32;
@@ -169,12 +170,17 @@ public class NMItemRenderer {
         let individual = NMGrid.CellSize(0) / cam.mpp >= spacing;
         let clusterLayers: array<Int32>;
         let order: array<Int32> = this.LayerOrder();
+        if individual {
+            // Same level-0 range and ring order for every layer: build them once per relayout.
+            this.indRg = this.CellRange(0, cam, 60.0 * this.scale);
+            this.RingOrder(this.indRg[0], this.indRg[1], this.indRg[2], this.indRg[3], this.CenterCell(0, cam, false), this.CenterCell(0, cam, true));
+        }
         for li in order {
             let L = api.layers[li];
             if L.VisibleAt(cam.mpp) && L.count > 0 {
                 if !L.clustering {
                     this.PlaceAllOf(L, cam, viewW, viewH);
-                } else if individual && this.chipsUsed + this.CountVisible(L, cam) <= NMTheme.ChipBudget() {
+                } else if individual && (this.chipsUsed + L.count <= NMTheme.ChipBudget() || this.chipsUsed + this.CountVisible(L) <= NMTheme.ChipBudget()) {
                     this.PlaceCellsOf(L, cam, viewW, viewH);
                 } else {
                     ArrayPush(clusterLayers, li);
@@ -218,10 +224,26 @@ public class NMItemRenderer {
         return r;
     }
 
-    private func CountVisible(L: ref<NightMapLayer>, cam: ref<NMCamera>) -> Int32 {
-        let rg = this.CellRange(0, cam, 60.0 * this.scale);
+    // Items of L in the level-0 range of this relayout (this.indRg). Sparse layers sum their occupied cells.
+    private func CountVisible(L: ref<NightMapLayer>) -> Int32 {
+        let rg = this.indRg;
         let side = NMGrid.Side(0);
         let n = 0;
+        let on = L.occN[0];
+        let area = (rg[2] - rg[0] + 1) * (rg[3] - rg[1] + 1);
+        if !this.forceScan && on * 2 < area {
+            let oi = 0;
+            while oi < on {
+                let cell = L.occ[oi];
+                oi += 1;
+                let gy = cell / side;
+                let gx = cell - gy * side;
+                if gx >= rg[0] && gx <= rg[2] && gy >= rg[1] && gy <= rg[3] {
+                    n += L.cnt[cell];
+                }
+            }
+            return n;
+        }
         let gy = rg[1];
         while gy <= rg[3] {
             let gx = rg[0];
@@ -280,10 +302,9 @@ public class NMItemRenderer {
         return FloorF((cam.cx - NMGrid.OriginX()) / cs);
     }
 
+    // Uses the ring order Update built for this relayout (ordX/ordY over the level-0 range).
     private func PlaceCellsOf(L: ref<NightMapLayer>, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
-        let rg = this.CellRange(0, cam, 60.0 * this.scale);
         let side = NMGrid.Side(0);
-        this.RingOrder(rg[0], rg[1], rg[2], rg[3], this.CenterCell(0, cam, false), this.CenterCell(0, cam, true));
         let n = ArraySize(this.ordX);
         let i = 0;
         while i < n {
