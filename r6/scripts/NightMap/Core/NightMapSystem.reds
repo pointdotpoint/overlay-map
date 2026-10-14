@@ -548,6 +548,14 @@ public class NightMapSystem extends ScriptableSystem {
     private func UpdateHeader() {
         let s = this.Settings();
         this.panel.subtitle.SetText(this.DistrictName());
+        let q = NMQuestHeader.Read(this.GetGameInstance());
+        this.panel.questTitle.SetVisible(q.visible);
+        this.panel.questObjective.SetVisible(q.visible && StrLen(q.objective) > 0);
+        if q.visible {
+            this.panel.questTitle.SetText(StrUpper(q.title));
+            this.panel.questTitle.SetTintColor(NMTheme.VanillaStateColor(q.isQuest ? n"Quest" : n"Gigs"));
+            this.panel.questObjective.SetText(q.objective);
+        }
         this.UpdateScale();
         if IsDefined(s) {
             let hint = NMInput.HintText(s);

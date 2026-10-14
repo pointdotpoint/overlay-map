@@ -9,6 +9,14 @@ public abstract class NMVanillaTests {
         NMVanillaTests.DiffCases(t);
         NMVanillaTests.LiveCases(t);
         NMVanillaTests.CardCases(t);
+        NMVanillaTests.HeaderCases(t);
+    }
+
+    private static func HeaderCases(t: ref<NMSelfTest>) {
+        t.Check("header.objective_plain", Equals(NMQuestHeader.FormatObjective("Talk to Judy", 0, 0), "Talk to Judy"), "");
+        t.Check("header.objective_counter", Equals(NMQuestHeader.FormatObjective("Collect parts", 2, 5), "Collect parts (2/5)"), NMQuestHeader.FormatObjective("Collect parts", 2, 5));
+        let info = NMQuestHeader.Read(GetGameInstance());
+        t.Check("header.read_safe", IsDefined(info) && (!info.visible || StrLen(info.title) > 0), IsDefined(info) ? info.title : "null");
     }
 
     private static func TestApi() -> ref<NightMap> {

@@ -45,6 +45,8 @@ public class NMPanel {
     public let title: ref<inkText>;
     public let subtitle: ref<inkText>;
     public let warning: ref<inkText>;
+    public let questTitle: ref<inkText>;
+    public let questObjective: ref<inkText>;
     public let scaleBar: ref<inkRectangle>;
     public let scaleLabel: ref<inkText>;
     public let hints: ref<inkText>;
@@ -90,8 +92,14 @@ public class NMPanel {
         p.title.SetTranslation(new Vector2(67.0 * s, 46.0 * s));
         p.subtitle = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(34.0 * s), NMTheme.Cyan());
         p.subtitle.SetTranslation(new Vector2(67.0 * s, 128.0 * s));
+        p.questTitle = NMUi.Text(p.root, NMTheme.HeadingFont(), n"Bold", Cast<Int32>(34.0 * s), NMTheme.VanillaStateColor(n"Quest"));
+        p.questTitle.SetTranslation(new Vector2(67.0 * s, 178.0 * s));
+        p.questTitle.SetVisible(false);
+        p.questObjective = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Text());
+        p.questObjective.SetTranslation(new Vector2(67.0 * s, 222.0 * s));
+        p.questObjective.SetVisible(false);
         p.warning = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(32.0 * s), NMTheme.Pink());
-        p.warning.SetTranslation(new Vector2(67.0 * s, 176.0 * s));
+        p.warning.SetTranslation(new Vector2(67.0 * s, 270.0 * s));
         p.warning.SetVisible(false);
 
         // Scale bar (top-right of the map area).
