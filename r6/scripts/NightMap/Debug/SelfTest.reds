@@ -21,6 +21,7 @@ public class NMSelfTest {
         this.PickCases();
         this.VersionCases();
         NMVanillaTests.Run(this);
+        NMPerfTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 
@@ -168,6 +169,8 @@ public class NMSelfTest {
                 total += L.cnt[base + k];
                 k += 1;
             }
+            let occErr = NMPerfTests.OccErr(L);
+            if NotEquals(occErr, "") { return occErr; }
             if total != L.count { return "total " + ToString(total) + " != count " + ToString(L.count); }
             level += 1;
         }

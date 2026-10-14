@@ -55,6 +55,11 @@ public class NightMapLayer {
     public let sumX: array<Float>;     // [cell]
     public let sumY: array<Float>;     // [cell]
     public let tally: array<Int32>;    // [cell * MaxCats + local category]
+    // Occupied cells per level, so sparse layers cost O(occupied) instead of O(cells in view). One flat array:
+    // level l's cells are occ[Base(l) .. Base(l) + occN[l]); occPos[cell] is the cell's position in it (-1 empty).
+    public let occ: array<Int32>;
+    public let occPos: array<Int32>;
+    public let occN: array<Int32>;     // [level]
     private let gridReady: Bool;
 
     public static func Create(owner: ref<NightMap>, id: CName, displayName: String, priority: Int32, index: Int32) -> ref<NightMapLayer> {
@@ -291,6 +296,12 @@ public class NightMapLayer {
         ArrayClear(this.sumX);
         ArrayClear(this.sumY);
         ArrayClear(this.tally);
+        ArrayClear(this.occ);
+        ArrayClear(this.occPos);
+        ArrayClear(this.occN);
+        ArrayResize(this.occ, total);
+        ArrayResize(this.occPos, total);
+        ArrayResize(this.occN, 3);
         ArrayResize(this.head, total);
         ArrayResize(this.cnt, total);
         ArrayResize(this.sumX, total);
@@ -299,6 +310,7 @@ public class NightMapLayer {
         let c = 0;
         while c < total {
             this.head[c] = -1;
+            this.occPos[c] = -1;
             c += 1;
         }
         this.gridReady = true;
@@ -345,6 +357,12 @@ public class NightMapLayer {
             }
             this.head[c] = id;
             this.cnt[c] += 1;
+            if this.cnt[c] == 1 {
+                let n = this.occN[l];
+                this.occ[NMGrid.Base(l) + n] = c;
+                this.occPos[c] = n;
+                this.occN[l] = n + 1;
+            }
             this.sumX[c] += this.px[id];
             this.sumY[c] += this.py[id];
             this.tally[c * NMGrid.MaxCats() + this.cat[id]] += 1;
@@ -371,6 +389,12 @@ public class NightMapLayer {
             if this.cnt[c] == 0 {
                 this.sumX[c] = 0.0;   // reset float drift
                 this.sumY[c] = 0.0;
+                let pos = this.occPos[c];
+                let last = this.occ[NMGrid.Base(l) + this.occN[l] - 1];
+                this.occ[NMGrid.Base(l) + pos] = last;
+                this.occPos[last] = pos;
+                this.occPos[c] = -1;
+                this.occN[l] -= 1;
             } else {
                 this.sumX[c] -= this.px[id];
                 this.sumY[c] -= this.py[id];

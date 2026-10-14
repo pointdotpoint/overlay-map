@@ -63,6 +63,8 @@ public class NMItemRenderer {
     private let bTHead: array<Int32>;
     private let ordX: array<Int32>;
     private let ordY: array<Int32>;
+    private let visit: array<Int32>;
+    public let forceScan: Bool;   // test hook: bypass the occupied-cell lists (reference behaviour)
     private let icon: ref<NMIconRef>;
     private let lastCamRev: Int32;
     private let lastApiRev: Int32;
@@ -473,6 +475,57 @@ public class NMItemRenderer {
         return true;
     }
 
+    // Fills this.visit with the non-empty cells of L at a level inside rg, in ascending cell index (= row-major,
+    // the order a full scan visits them, so float sums and "last cell wins" are unchanged). A sparse layer is read
+    // from its occupied-cell list (insertion-sorted, capped at 64 in-range cells); a dense one, or forceScan, scans.
+    private func CollectCells(L: ref<NightMapLayer>, level: Int32, rg: array<Int32>) {
+        ArrayClear(this.visit);
+        let side = NMGrid.Side(level);
+        let base = NMGrid.Base(level);
+        let area = (rg[2] - rg[0] + 1) * (rg[3] - rg[1] + 1);
+        let on = L.occN[level];
+        let sparse = !this.forceScan && on * 2 < area;
+        if sparse {
+            let oi = 0;
+            while oi < on && sparse {
+                let cell = L.occ[base + oi];
+                oi += 1;
+                let rel = cell - base;
+                let gy = rel / side;
+                let gx = rel - gy * side;
+                if gx >= rg[0] && gx <= rg[2] && gy >= rg[1] && gy <= rg[3] {
+                    if ArraySize(this.visit) >= 64 {
+                        sparse = false;
+                    } else {
+                        let j = ArraySize(this.visit);
+                        ArrayPush(this.visit, cell);
+                        while j > 0 && this.visit[j - 1] > cell {
+                            this.visit[j] = this.visit[j - 1];
+                            j -= 1;
+                        }
+                        this.visit[j] = cell;
+                    }
+                }
+            }
+            if sparse {
+                return;
+            }
+            ArrayClear(this.visit);
+        }
+        let gy = rg[1];
+        while gy <= rg[3] {
+            let gx = rg[0];
+            while gx <= rg[2] {
+                let cell = base + gy * side + gx;
+                if L.cnt[cell] > 0 {
+                    ArrayPush(this.visit, cell);
+                }
+                gx += 1;
+            }
+            gy += 1;
+        }
+    }
+
     private func PlaceClusters(layers: array<Int32>, cam: ref<NMCamera>, viewW: Float, viewH: Float, individual: Bool) {
         let sp = NMTheme.ClusterSpacing() * this.scale;
         let level = 0;
@@ -515,37 +568,35 @@ public class NMItemRenderer {
         for li in layers {
             let L = this.api.layers[li];
             let ncat = ArraySize(L.catGlobal);
-            let gy = rg[1];
-            while gy <= rg[3] {
-                let gx = rg[0];
-                while gx <= rg[2] {
-                    let cell = base + gy * side + gx;
-                    let c = L.cnt[cell];
-                    if c > 0 {
-                        b = (gy / k - by0) * bw + (gx / k - bx0);
-                        this.bCount[b] += c;
-                        this.bSx[b] += L.sumX[cell];
-                        this.bSy[b] += L.sumY[cell];
-                        this.bAnyLayer[b] = li;
-                        this.bAnyCell[b] = cell;
-                        let lc = 0;
-                        while lc < ncat {
-                            let t = L.tally[cell * NMGrid.MaxCats() + lc];
-                            if t > 0 {
-                                let gi = b * maxCats + L.catGlobal[lc];
-                                if this.bCat[gi] == 0 {
-                                    ArrayPush(this.tGi, gi);
-                                    ArrayPush(this.tNext, this.bTHead[b]);
-                                    this.bTHead[b] = ArraySize(this.tGi) - 1;
-                                }
-                                this.bCat[gi] += t;
-                            }
-                            lc += 1;
+            this.CollectCells(L, level, rg);
+            let vn = ArraySize(this.visit);
+            let vi = 0;
+            while vi < vn {
+                let cell = this.visit[vi];
+                vi += 1;
+                let rel = cell - base;
+                let gy = rel / side;
+                let gx = rel - gy * side;
+                b = (gy / k - by0) * bw + (gx / k - bx0);
+                this.bCount[b] += L.cnt[cell];
+                this.bSx[b] += L.sumX[cell];
+                this.bSy[b] += L.sumY[cell];
+                this.bAnyLayer[b] = li;
+                this.bAnyCell[b] = cell;
+                let lc = 0;
+                while lc < ncat {
+                    let t = L.tally[cell * NMGrid.MaxCats() + lc];
+                    if t > 0 {
+                        let gi = b * maxCats + L.catGlobal[lc];
+                        if this.bCat[gi] == 0 {
+                            ArrayPush(this.tGi, gi);
+                            ArrayPush(this.tNext, this.bTHead[b]);
+                            this.bTHead[b] = ArraySize(this.tGi) - 1;
                         }
+                        this.bCat[gi] += t;
                     }
-                    gx += 1;
+                    lc += 1;
                 }
-                gy += 1;
             }
         }
         let worldSize = Cast<Float>(k) * NMGrid.CellSize(level);
