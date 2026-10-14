@@ -310,6 +310,7 @@ public abstract class NMVanillaTests {
         let accepted = 0;
         let bad = 0;
         let questGroupNoEntry = 0;
+        let questWithHash = 0;
         let detail = "";
         for m in arr {
             if IsDefined(m) && NMVanillaTracking.JournalHash(m) != 0u {
@@ -318,6 +319,7 @@ public abstract class NMVanillaTests {
                 let g = MappinUtils.GetMappinsGroup(v);
                 let name = IsDefined(g) ? g.GroupName() : n"";
                 let questGroup = Equals(name, n"Quest") || Equals(name, n"SecondaryQuest");
+                if questGroup && !Equals(v, gamedataMappinVariant.Zzz18_RacingVariant) { questWithHash += 1; }
                 if NMVanillaTracking.CanTrackQuest(gi, m) {
                     accepted += 1;
                     let info = NMVanillaTracking.QuestInfo(gi, m);
@@ -332,8 +334,9 @@ public abstract class NMVanillaTests {
             }
         }
         let summary = "mappins=" + ToString(ArraySize(arr)) + " withHash=" + ToString(withHash) + " accepted=" + ToString(accepted)
-            + " questPinsNoEntry=" + ToString(questGroupNoEntry) + " bad=" + ToString(bad) + " " + detail;
+            + " questWithHash=" + ToString(questWithHash) + " questPinsNoEntry=" + ToString(questGroupNoEntry) + " bad=" + ToString(bad) + " " + detail;
         t.Check("tracking.live_accepted_are_quest_objectives", bad == 0, summary);
+        t.Check("tracking.live_quest_pin_trackable", questWithHash == 0 || accepted > 0, questWithHash == 0 ? "none in save; " + summary : summary);
     }
 
     private static func CardCases(t: ref<NMSelfTest>) {

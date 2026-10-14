@@ -240,10 +240,11 @@ public class NMItemRenderer {
         if !this.forceScan && on * 2 < area {
             let oi = 0;
             while oi < on {
-                let cell = L.occ[oi];
+                let cell = L.occ[NMGrid.Base(0) + oi];
                 oi += 1;
-                let gy = cell / side;
-                let gx = cell - gy * side;
+                let rel = cell - NMGrid.Base(0);
+                let gy = rel / side;
+                let gx = rel - gy * side;
                 if gx >= rg[0] && gx <= rg[2] && gy >= rg[1] && gy <= rg[3] {
                     n += L.cnt[cell];
                 }
@@ -254,7 +255,7 @@ public class NMItemRenderer {
         while gy <= rg[3] {
             let gx = rg[0];
             while gx <= rg[2] {
-                n += L.cnt[gy * side + gx];
+                n += L.cnt[NMGrid.Base(0) + gy * side + gx];
                 gx += 1;
             }
             gy += 1;
@@ -520,41 +521,27 @@ public class NMItemRenderer {
     }
 
     // Fills this.visit with the non-empty cells of L at a level inside rg, in ascending cell index (= row-major,
-    // the order a full scan visits them, so float sums and "last cell wins" are unchanged). A sparse layer is read
-    // from its occupied-cell list (insertion-sorted, capped at 64 in-range cells); a dense one, or forceScan, scans.
+    // the order a full scan visits them, so float sums and "last cell wins" are unchanged). The layer's occupied list
+    // is already sorted, so a sparse layer is one filtered pass; a layer dense in view (or forceScan) scans.
     private func CollectCells(L: ref<NightMapLayer>, level: Int32, rg: array<Int32>) {
         ArrayClear(this.visit);
         let side = NMGrid.Side(level);
         let base = NMGrid.Base(level);
         let area = (rg[2] - rg[0] + 1) * (rg[3] - rg[1] + 1);
         let on = L.occN[level];
-        let sparse = !this.forceScan && on * 2 < area;
-        if sparse {
+        if !this.forceScan && on * 2 < area {
             let oi = 0;
-            while oi < on && sparse {
+            while oi < on {
                 let cell = L.occ[base + oi];
                 oi += 1;
                 let rel = cell - base;
                 let gy = rel / side;
                 let gx = rel - gy * side;
                 if gx >= rg[0] && gx <= rg[2] && gy >= rg[1] && gy <= rg[3] {
-                    if ArraySize(this.visit) >= 64 {
-                        sparse = false;
-                    } else {
-                        let j = ArraySize(this.visit);
-                        ArrayPush(this.visit, cell);
-                        while j > 0 && this.visit[j - 1] > cell {
-                            this.visit[j] = this.visit[j - 1];
-                            j -= 1;
-                        }
-                        this.visit[j] = cell;
-                    }
+                    ArrayPush(this.visit, cell);
                 }
             }
-            if sparse {
-                return;
-            }
-            ArrayClear(this.visit);
+            return;
         }
         let gy = rg[1];
         while gy <= rg[3] {

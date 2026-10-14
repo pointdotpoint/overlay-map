@@ -604,7 +604,7 @@ public class NightMapSystem extends ScriptableSystem {
                 this.hdrQuestIsQuest = q.isQuest;
             }
         }
-        let objective = q.visible ? NMQuestHeader.Clip(q.objective, 190) : "";
+        let objective = q.visible ? NMQuestHeader.Clip(q.objective, 130) : "";
         if NotEquals(objective, this.hdrQuestObjective) {
             this.panel.questObjective.SetVisible(StrLen(objective) > 0);
             if StrLen(objective) > 0 { this.panel.questObjective.SetText(objective); }

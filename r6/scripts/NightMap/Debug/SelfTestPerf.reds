@@ -103,6 +103,11 @@ public abstract class NMPerfTests {
                 }
                 k += 1;
             }
+            let so = 1;
+            while so < L.occN[level] {
+                if L.occ[base + so - 1] >= L.occ[base + so] { return "occ not sorted level=" + ToString(level) + " at " + ToString(so); }
+                so += 1;
+            }
             if nonEmpty != L.occN[level] { return "occN " + ToString(L.occN[level]) + " != non-empty " + ToString(nonEmpty) + " level=" + ToString(level); }
             level += 1;
         }
@@ -186,6 +191,17 @@ public abstract class NMPerfTests {
             }
             i += 1;
         }
+        // A wide layer (the formerly capped case): 400 items on a lattice over the whole city, one per few cells.
+        let wide = api.CreateLayer(n"test.wide", "Wide", 20);
+        wide.SetPinStyle(NightMapPinStyle.Icon);
+        wide.SetCategory(n"test.w", "W", NMTheme.Pink());
+        i = 0;
+        while i < 400 {
+            let wx = minX + 1000.0 + Cast<Float>((i * 37) % 20) / 20.0 * (spanX - 2000.0) + Cast<Float>(i % 7) * 13.0;
+            let wy = minY + 1000.0 + Cast<Float>((i * 11) % 20 + (i / 20) % 3) / 22.0 * (spanY - 2000.0);
+            wide.Add(NightMapItem.Create(new Vector4(wx, wy, 0.0, 1.0), n"test.w", NMTheme.UiAtlas(), n"icon_dot"));
+            i += 1;
+        }
         let canvas = new inkCanvas();
         let r = NMItemRenderer.Create(api, canvas, 1.0);
         let bounds = NMRect.Create(minX, minY, NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
@@ -222,6 +238,8 @@ public abstract class NMPerfTests {
         }
         t.Check("perf.occ_identical_to_scan", Equals(bad, "") && runs == 21, bad);
         t.Check("perf.equivalence_exercised", sawCluster && sawChip && dbg.count == 3000, "");
+        // The wide layer must really have > 150 occupied level-0 cells (the old 64 cap's territory) over the city.
+        t.Check("perf.wide_layer_exceeds_old_cap", wide.occN[0] > 150 && Equals(NMPerfTests.OccErr(wide), ""), ToString(wide.occN[0]));
         // Conservation with the sparse path: at 16 m/unit every alive item of every layer is drawn once.
         cam.SetCenter((bounds.minX + bounds.maxX) * 0.5, (bounds.minY + bounds.maxY) * 0.5);
         cam.SetMpp(16.0);
@@ -233,7 +251,7 @@ public abstract class NMPerfTests {
             total += r.clTotal[k];
             k += 1;
         }
-        t.Check("perf.conservation_all_layers", total == dbg.count + sp.count + sp2.count, ToString(total) + " of " + ToString(dbg.count + sp.count + sp2.count));
+        t.Check("perf.conservation_all_layers", total == dbg.count + sp.count + sp2.count + wide.count, ToString(total) + " of " + ToString(dbg.count + sp.count + sp2.count + wide.count));
     }
 
     // ---- selection grow vs slot reuse (renderer slots are reassigned in placement order) ----

@@ -56,7 +56,7 @@ public class NightMapLayer {
     public let sumX: array<Float>;     // [cell]
     public let sumY: array<Float>;     // [cell]
     public let tally: array<Int32>;    // [cell * MaxCats + local category]
-    // Occupied cells per level, so sparse layers cost O(occupied) instead of O(cells in view). One flat array:
+    // Occupied cells per level, sorted by cell index, so sparse layers cost O(occupied) instead of O(cells in view). One flat array:
     // level l's cells are occ[Base(l) .. Base(l) + occN[l]); occPos[cell] is the cell's position in it (-1 empty).
     public let occ: array<Int32>;
     public let occPos: array<Int32>;
@@ -364,9 +364,23 @@ public class NightMapLayer {
             this.head[c] = id;
             this.cnt[c] += 1;
             if this.cnt[c] == 1 {
+                // ordered insert (binary search, then shift the tail right): O(occupied) only on this 0 -> 1 transition
+                let ob = NMGrid.Base(l);
                 let n = this.occN[l];
-                this.occ[NMGrid.Base(l) + n] = c;
-                this.occPos[c] = n;
+                let lo = 0;
+                let hi = n;
+                while lo < hi {
+                    let mid = (lo + hi) / 2;
+                    if this.occ[ob + mid] < c { lo = mid + 1; } else { hi = mid; }
+                }
+                let q = n;
+                while q > lo {
+                    this.occ[ob + q] = this.occ[ob + q - 1];
+                    this.occPos[this.occ[ob + q]] = q;
+                    q -= 1;
+                }
+                this.occ[ob + lo] = c;
+                this.occPos[c] = lo;
                 this.occN[l] = n + 1;
             }
             this.sumX[c] += this.px[id];
@@ -395,12 +409,17 @@ public class NightMapLayer {
             if this.cnt[c] == 0 {
                 this.sumX[c] = 0.0;   // reset float drift
                 this.sumY[c] = 0.0;
-                let pos = this.occPos[c];
-                let last = this.occ[NMGrid.Base(l) + this.occN[l] - 1];
-                this.occ[NMGrid.Base(l) + pos] = last;
-                this.occPos[last] = pos;
+                // ordered delete: shift the tail left so the list stays sorted by cell index
+                let ob = NMGrid.Base(l);
+                let n = this.occN[l];
+                let q = this.occPos[c];
+                while q < n - 1 {
+                    this.occ[ob + q] = this.occ[ob + q + 1];
+                    this.occPos[this.occ[ob + q]] = q;
+                    q += 1;
+                }
                 this.occPos[c] = -1;
-                this.occN[l] -= 1;
+                this.occN[l] = n - 1;
             } else {
                 this.sumX[c] -= this.px[id];
                 this.sumY[c] -= this.py[id];

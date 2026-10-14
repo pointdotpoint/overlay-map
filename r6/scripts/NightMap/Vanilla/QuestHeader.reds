@@ -13,7 +13,7 @@ public abstract class NMQuestHeader {
         return total > 0 ? text + " (" + ToString(cur) + "/" + ToString(total) + ")" : text;
     }
 
-    // Hard length limit for the two-line objective (the panel also wraps it at 60 % of the map width).
+    // Hard length limit that keeps the objective to two lines (it wraps at 60 % of the map width, about 70 characters per line), clear of the warning text.
     public static func Clip(text: String, maxChars: Int32) -> String {
         return StrLen(text) > maxChars ? StrLeft(text, maxChars - 3) + "..." : text;
     }
