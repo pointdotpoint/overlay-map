@@ -247,6 +247,7 @@ public class NMVanilla extends NMVanillaSink {
         if !IsDefined(e) { return; }
         let m = this.Resolve(e);
         if NMVanillaTracking.CanTrackQuest(this.gi, m) && !NMVanillaTracking.IsQuestTracked(this.gi, m) {
+            NMVanillaTracking.ClearCustomWaypoint(this.gi);   // vanilla TryTrackQuestOrSetWaypoint clears the waypoint first
             if NMVanillaTracking.TrackQuest(this.gi, m) { this.lastAction = "track"; }
         } else if e.key != 0ul && NMVanillaTracking.ManualKey(this.gi) == e.key {
             if NMVanillaTracking.ClearManual(this.gi) { this.lastAction = "clear"; }

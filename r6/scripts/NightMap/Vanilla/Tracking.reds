@@ -66,6 +66,19 @@ public abstract class NMVanillaTracking {
         return id.value;
     }
 
+    // Unregisters the manually tracked pin only if it is a vanilla custom waypoint (CustomPositionVariant).
+    public static func ClearCustomWaypoint(gi: GameInstance) -> Bool {
+        let ms = GameInstance.GetMappinSystem(gi);
+        let id = ms.GetManuallyTrackedMappinID();
+        if id.value == 0ul { return false; }
+        let m = ms.GetMappin(id);
+        if IsDefined(m) && Equals(m.GetVariant(), gamedataMappinVariant.CustomPositionVariant) {
+            ms.UnregisterMappin(id);
+            return true;
+        }
+        return false;
+    }
+
     // Clears the vanilla custom waypoint, or stops tracking a manually tracked non-quest pin.
     public static func ClearManual(gi: GameInstance) -> Bool {
         let ms = GameInstance.GetMappinSystem(gi);

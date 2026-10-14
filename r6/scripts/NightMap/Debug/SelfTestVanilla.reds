@@ -239,6 +239,31 @@ public abstract class NMVanillaTests {
             && !v.LogOnceForTest(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant), "");
     }
 
+    // Review focus 3 against the live map mappins. No side effects (never calls TrackQuest).
+    private static func LiveTrackRules(t: ref<NMSelfTest>) {
+        let gi = GetGameInstance();
+        let arr: array<ref<IMappin>>;
+        GameInstance.GetMappinSystem(gi).GetMappins(gamemappinsMappinTargetType.Map, arr);
+        let withHash = 0;
+        let bad = 0;
+        let quest = 0;
+        let questOk = 0;
+        for m in arr {
+            if IsDefined(m) && NMVanillaTracking.JournalHash(m) != 0u {
+                withHash += 1;
+                if NMVanillaStyle.CanQuestTrack(m.GetVariant()) {
+                    quest += 1;
+                    if NMVanillaTracking.CanTrackQuest(gi, m) { questOk += 1; }
+                } else if NMVanillaTracking.CanTrackQuest(gi, m) {
+                    bad += 1;
+                }
+            }
+        }
+        let detail = "mappins=" + ToString(ArraySize(arr)) + " withHash=" + ToString(withHash) + " questVariant=" + ToString(quest) + " trackable=" + ToString(questOk) + " bad=" + ToString(bad);
+        t.Check("tracking.live_non_quest_not_trackable", bad == 0, detail);
+        t.Check("tracking.live_quest_trackable", quest == 0 || questOk > 0, quest == 0 ? "none in save; " + detail : detail);
+    }
+
     private static func CardCases(t: ref<NMSelfTest>) {
         t.Check("text.loc_passthrough", Equals(NMVanillaText.Loc("Plain"), "Plain") && Equals(NMVanillaText.Loc(""), ""), "");
         t.Check("text.loc_key_resolves", NotEquals(NMVanillaText.Loc("LocKey#44637"), "LocKey#44637"), NMVanillaText.Loc("LocKey#44637"));
@@ -246,6 +271,7 @@ public abstract class NMVanillaTests {
         let none = NMVanillaTracking.QuestInfo(GetGameInstance(), null);
         t.Check("tracking.null_safe", !none.ok && !NMVanillaTracking.CanTrackQuest(GetGameInstance(), null), "");
         // Details for a mirrored entry without a live mappin (key 0): falls back to the variant label, no actions.
+        // (Trivial by design; the live-mappin track rules are covered by tracking.live_* checks (LiveTrackRules).)
         let api = NMVanillaTests.TestApi();
         let v = NMVanilla.Create(api, GetGameInstance());
         let empty: array<ref<IMappin>>;
@@ -257,6 +283,7 @@ public abstract class NMVanillaTests {
         let d = v.Details(e);
         t.Check("vanilla.card_defined", IsDefined(d) && StrLen(d.title) > 0 && Equals(d.category, v.catalog.DisplayName(e.slot)), IsDefined(d) ? d.title : "null");
         t.Check("vanilla.no_track_action_for_vendor", IsDefined(d) && ArraySize(d.actionKeys) == 0, "");
+        NMVanillaTests.LiveTrackRules(t);
         v.Activate(e);
         t.Check("vanilla.activate_vendor_noop", Equals(v.lastAction, "none"), v.lastAction);
     }
