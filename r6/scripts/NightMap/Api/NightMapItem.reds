@@ -14,6 +14,8 @@ public class NightMapItem {
     public let tint: HDRColor;
     public let label: String;
     public let priority: Int32;
+    public let emphasis: Bool;
+    public let opacity: Float = 1.0;
 
     public static func Create(pos: Vector4, category: CName, atlas: ResRef, part: CName) -> ref<NightMapItem> {
         let it = new NightMapItem();
@@ -51,6 +53,18 @@ public class NightMapItem {
 
     public func WithPriority(priority: Int32) -> ref<NightMapItem> {
         this.priority = priority;
+        return this;
+    }
+
+    // Always drawn at full strength (and, for Icon-style layers, at the emphasis scale), like a tracked marker.
+    public func WithEmphasis(on: Bool) -> ref<NightMapItem> {
+        this.emphasis = on;
+        return this;
+    }
+
+    // Per-item opacity multiplier (layer opacity still applies), clamped to 0..1.
+    public func WithOpacity(a: Float) -> ref<NightMapItem> {
+        this.opacity = ClampF(a, 0.0, 1.0);
         return this;
     }
 }

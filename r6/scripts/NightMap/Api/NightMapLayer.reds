@@ -1,5 +1,11 @@
 module NightMap
 
+// How a layer's individual items are drawn. Clusters are always hexes.
+public enum NightMapPinStyle {
+    Hex = 0,
+    Icon = 1
+}
+
 // One source of map content. Items live in struct-of-arrays storage indexed by a stable id and are
 // linked into the 3-level grid pyramid (NMGrid) so the renderer can aggregate by cell without scanning items.
 public class NightMapLayer {
@@ -12,6 +18,7 @@ public class NightMapLayer {
     public let minMpp: Float = 0.0;
     public let maxMpp: Float = 100000.0;
     public let clustering: Bool = true;
+    public let pinStyle: Int32;
     public let listener: ref<NightMapLayerListener>;
     public let revision: Int32;
     private let owner: wref<NightMap>;
@@ -35,6 +42,8 @@ public class NightMapLayer {
     public let tint: array<HDRColor>;
     public let label: array<String>;
     public let prio: array<Int32>;
+    public let emph: array<Bool>;
+    public let alpha: array<Float>;
     public let count: Int32;
     private let freeIds: array<Int32>;
 
@@ -84,19 +93,7 @@ public class NightMapLayer {
             this.Grow();
         }
         this.alive[id] = true;
-        this.px[id] = item.x;
-        this.py[id] = item.y;
-        this.pz[id] = item.z;
-        this.cat[id] = this.LocalCat(item.category);
-        this.hasAtlas[id] = item.hasAtlas;
-        this.atlas[id] = item.atlas;
-        this.part[id] = item.part;
-        this.image[id] = item.imageKey;
-        this.imageResolved[id] = "";
-        this.hasTint[id] = item.hasTint;
-        this.tint[id] = item.tint;
-        this.label[id] = item.label;
-        this.prio[id] = item.priority;
+        this.Store(id, item);
         this.Link(id);
         this.count += 1;
         this.Touch();
@@ -118,6 +115,46 @@ public class NightMapLayer {
         this.Link(id);
         this.Touch();
         return true;
+    }
+
+    // Copies an item's fields into slot id (position, category, icon, tint, label, priority, emphasis, opacity).
+    private func Store(id: Int32, item: ref<NightMapItem>) {
+        this.px[id] = item.x;
+        this.py[id] = item.y;
+        this.pz[id] = item.z;
+        this.cat[id] = this.LocalCat(item.category);
+        this.hasAtlas[id] = item.hasAtlas;
+        this.atlas[id] = item.atlas;
+        this.part[id] = item.part;
+        this.image[id] = item.imageKey;
+        this.imageResolved[id] = "";
+        this.hasTint[id] = item.hasTint;
+        this.tint[id] = item.tint;
+        this.label[id] = item.label;
+        this.prio[id] = item.priority;
+        this.emph[id] = item.emphasis;
+        this.alpha[id] = item.opacity;
+    }
+
+    // Replaces an item's content in place (position, category, icon, tint, label, emphasis, opacity). The id stays valid.
+    public func Update(id: Int32, item: ref<NightMapItem>) -> Bool {
+        if !this.IsAlive(id) || !IsDefined(item) {
+            return false;
+        }
+        if !this.owner.InBounds(item.x, item.y) {
+            this.WarnOnce("bounds", "update outside world bounds rejected");
+            return false;
+        }
+        this.Unlink(id);
+        this.Store(id, item);
+        this.Link(id);
+        this.Touch();
+        return true;
+    }
+
+    public func SetPinStyle(style: NightMapPinStyle) {
+        this.pinStyle = EnumInt(style);
+        this.Touch();
     }
 
     public func Remove(id: Int32) -> Bool {
@@ -147,6 +184,8 @@ public class NightMapLayer {
         ArrayClear(this.tint);
         ArrayClear(this.label);
         ArrayClear(this.prio);
+        ArrayClear(this.emph);
+        ArrayClear(this.alpha);
         ArrayClear(this.freeIds);
         ArrayClear(this.cellOf);
         ArrayClear(this.nextIn);
@@ -281,6 +320,8 @@ public class NightMapLayer {
         ArrayPush(this.tint, new HDRColor(1.0, 1.0, 1.0, 1.0));
         ArrayPush(this.label, "");
         ArrayPush(this.prio, 0);
+        ArrayPush(this.emph, false);
+        ArrayPush(this.alpha, 1.0);
         let l = 0;
         while l < 3 {
             ArrayPush(this.cellOf, -1);

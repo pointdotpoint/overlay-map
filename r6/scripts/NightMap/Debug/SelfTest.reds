@@ -20,6 +20,7 @@ public class NMSelfTest {
         this.RendererCases();
         this.PickCases();
         this.VersionCases();
+        NMVanillaTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 

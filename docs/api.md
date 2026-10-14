@@ -48,6 +48,8 @@ layer.Clear();
 - Item ids are plain indices. After `Remove` or `Clear`, ids can be reused by later `Add` calls, so drop any id you removed.
 - Up to 7 categories per layer; further categories map to `other`. Up to 64 categories across all layers.
 - Optional item modifiers: `WithTint(color)` and `WithPriority(priority)`.
+- `layer.Update(id, item)` replaces an item's content in place (position, icon, tint, label, emphasis, opacity) and keeps its id. Returns `false` for dead ids or out-of-bounds positions.
+- `WithEmphasis(true)` draws the item at full strength (and enlarged on Icon-style layers), e.g. for a tracked marker. `WithOpacity(a)` multiplies the item's opacity (0..1) on top of the layer opacity.
 - Image items: `NightMapItem.Image(pos, category, "shot://photo.png|max256x256")` needs RedIMGRetriever. The icon appears once the image is loaded.
 
 ## Display controls
@@ -56,7 +58,10 @@ layer.SetVisible(false);
 layer.SetOpacity(0.6);
 layer.SetZoomRange(0.5, 4.0);     // only shown while the camera is between 0.5 and 4 meters per unit
 layer.SetClustering(false);       // always individual chips
+layer.SetPinStyle(NightMapPinStyle.Icon);
 ```
+
+`NightMapPinStyle.Icon` draws each item like the vanilla world map: the icon over a soft shadow, dimmed to 50 % until it is selected or emphasised, then full strength at 1.3×. `Hex` (the default) draws hologram hex chips. Clusters are hexes in both styles.
 
 Non-clustering layers are scanned in full on every relayout, so keep them small (under ~500 items).
 
