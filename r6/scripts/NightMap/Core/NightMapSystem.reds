@@ -439,6 +439,8 @@ public class NightMapSystem extends ScriptableSystem {
         if this.input.act {
             this.input.act = false;
             this.Activate();
+            this.cardApiRev = -1;      // refresh the card next frame (tracked state, action label), spec 7
+            this.renderer.Invalidate();
             this.UpdateHeader();
         }
         if this.input.filter {
@@ -495,7 +497,7 @@ public class NightMapSystem extends ScriptableSystem {
             if !IsDefined(d) {
                 d = this.DefaultDetails(L, c.selItem);
             }
-            this.card.ShowDetails(d, this.api.catColor[L.catGlobal[L.cat[c.selItem]]]);
+            this.card.ShowDetails(d, d.hasColor ? d.color : this.api.catColor[L.catGlobal[L.cat[c.selItem]]]);
         } else if c.selKind == 1 && c.sel >= 0 {
             let slot = this.renderer.candSlot[c.sel];
             let cats: array<Int32>;

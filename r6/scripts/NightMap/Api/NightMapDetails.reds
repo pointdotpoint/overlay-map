@@ -10,6 +10,8 @@ public class NightMapDetails {
     public let rowValues: array<String>;
     public let actionKeys: array<String>;
     public let actionLabels: array<String>;
+    public let hasColor: Bool;
+    public let color: HDRColor;   // card category colour; unset = the layer category colour
 
     public static func Create(category: String, title: String) -> ref<NightMapDetails> {
         let d = new NightMapDetails();
@@ -29,6 +31,12 @@ public class NightMapDetails {
             ArrayPush(this.rowKeys, key);
             ArrayPush(this.rowValues, value);
         }
+        return this;
+    }
+
+    public func WithColor(c: HDRColor) -> ref<NightMapDetails> {
+        this.color = c;
+        this.hasColor = true;
         return this;
     }
 

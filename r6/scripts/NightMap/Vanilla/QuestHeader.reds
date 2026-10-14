@@ -36,7 +36,15 @@ public abstract class NMQuestHeader {
         if NMVanillaTracking.ManualKey(gi) != 0ul {
             h.visible = true;
             h.isQuest = true;
-            h.title = NMVanillaText.LabelOf(gamedataMappinVariant.CustomPositionVariant);
+            let ms = GameInstance.GetMappinSystem(gi);
+            let mid = ms.GetManuallyTrackedMappinID();
+            let m = ms.GetMappin(mid);
+            // Custom waypoint keeps its label; any other manually tracked pin (a vendor, a fast travel point) shows its own title.
+            if IsDefined(m) && NotEquals(m.GetVariant(), gamedataMappinVariant.CustomPositionVariant) {
+                h.title = NMVanillaText.Title(m, m.GetVariant());
+            } else {
+                h.title = NMVanillaText.LabelOf(gamedataMappinVariant.CustomPositionVariant);
+            }
         }
         return h;
     }

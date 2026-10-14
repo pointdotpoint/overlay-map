@@ -21,6 +21,7 @@ public abstract class NMVanillaStyle {
         let p = MappinUIUtils.MappinToTexturePart(v);
         if Equals(p, n"relic_dataterm") { return n"relic_access_point"; }
         if Equals(p, n"failed_crossing") { return n"dogtown_gate"; }
+        if Equals(p, n"PhoneCall") { return n"quest"; }
         if Equals(p, n"invalid") || Equals(p, n"") || Equals(p, n"None") { return n"quest"; }
         return p;
     }

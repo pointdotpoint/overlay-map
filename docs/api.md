@@ -82,6 +82,7 @@ layer.SetListener(new MyListener());
 ```
 
 `OnSelected(id)` fires first, so you can refresh state that `GetDetails(id)` then reads.
+`NightMapDetails.WithColor(color)` overrides the card's category colour (default: the layer category colour).
 Limits: 6 rows, 3 actions (extras are ignored). Return `null` from `GetDetails` to get the default card (category, label, distance).
 
 ## Performance contract

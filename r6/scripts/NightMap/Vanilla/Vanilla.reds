@@ -129,7 +129,7 @@ public class NMVanilla extends NMVanillaSink {
     public func SetEnabled(on: Bool) {
         this.enabled = on;
         this.ApplyFilters(this.filterView, this.filterSettings);
-        if on { this.Tick(0.0, true); }
+        if on { this.Tick(NMClock.NowMs(), true); }
     }
 
     // Flag only: no filter pass, no poll. For the close path; the next OnOpened re-applies filters and force-polls.
@@ -260,7 +260,8 @@ public class NMVanilla extends NMVanillaSink {
         let s = e.snap;
         let m = this.Resolve(e);
         let filterSlot = s.filter >= 0 ? s.filter : this.catalog.Count();
-        let d = NightMapDetails.Create(this.catalog.DisplayName(filterSlot), NMVanillaText.Title(m, s.variant));
+        let d = NightMapDetails.Create(this.catalog.DisplayName(filterSlot), NMVanillaText.Title(m, s.variant))
+            .WithColor(this.catalog.ColorFor(s.variant, s.phase));   // the marker's own colour, not the layer's
         if IsDefined(m) {
             let district = NMVanillaText.District(m);
             if StrLen(district) > 0 { d.WithSubtitle(district); }
@@ -302,7 +303,7 @@ public class NMVanilla extends NMVanillaSink {
         }
         if NotEquals(this.lastAction, "none") {
             NMLog.Info("vanilla|action|" + this.lastAction + "|" + ToString(e.snap.variant));
-            this.Tick(0.0, true);
+            this.Tick(NMClock.NowMs(), true);   // re-poll now; the current time keeps the 1.5 s cadence, no double poll
         }
     }
 }
