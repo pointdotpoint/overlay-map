@@ -82,6 +82,7 @@ public abstract class NMPerfTests {
         NMPerfTests.OccupiedCases(t);
         NMPerfTests.EquivalenceCases(t);
         NMPerfTests.GrowReuseCases(t);
+        NMPerfTests.ImageCacheCases(t);
     }
 
     // The occupied lists must equal the set of non-empty cells after any add/move/update/remove sequence.
@@ -298,5 +299,19 @@ public abstract class NMPerfTests {
         L.Move(ids[0], new Vector4(3000.0, 3000.0, 0.0, 1.0));
         r4.Update(cam, 1880.0, 1480.0);
         t.Check("grow.reset_on_cull", r4.growSlot == -1 && t.Near(NMPerfTests.GrowScale(r4, top), 1.0, 0.0001), ToString(r4.growSlot) + " " + t.F(NMPerfTests.GrowScale(r4, top)));
+    }
+
+    // Update keeps the resolved image while the image key is unchanged and drops it when the key changes.
+    private static func ImageCacheCases(t: ref<NMSelfTest>) {
+        let api = NightMap.Create();
+        api.SetWorld(-6000.0, -4600.0, 4600.0, 7400.0);
+        let L = api.CreateLayer(n"test.img", "Img", 5);
+        L.SetCategory(n"test.i", "I", NMTheme.Cyan());
+        let id = L.Add(NightMapItem.Image(new Vector4(0.0, 0.0, 0.0, 1.0), n"test.i", "photo/a"));
+        L.imageResolved[id] = "resolved/a";
+        L.Update(id, NightMapItem.Image(new Vector4(5.0, 5.0, 0.0, 1.0), n"test.i", "photo/a"));
+        t.Check("update.keeps_resolved_image", Equals(L.imageResolved[id], "resolved/a"), L.imageResolved[id]);
+        L.Update(id, NightMapItem.Image(new Vector4(5.0, 5.0, 0.0, 1.0), n"test.i", "photo/b"));
+        t.Check("update.resets_resolved_on_new_image", Equals(L.imageResolved[id], "") && Equals(L.image[id], "photo/b"), L.imageResolved[id]);
     }
 }

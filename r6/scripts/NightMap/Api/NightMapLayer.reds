@@ -133,8 +133,10 @@ public class NightMapLayer {
         this.atlas[id] = item.atlas;
         this.atlasKey[id] = item.hasAtlas ? ResRef.ToString(item.atlas) : "";
         this.part[id] = item.part;
-        this.image[id] = item.imageKey;
-        this.imageResolved[id] = "";
+        if NotEquals(this.image[id], item.imageKey) {
+            this.image[id] = item.imageKey;
+            this.imageResolved[id] = "";   // only a different image needs resolving again
+        }
         this.hasTint[id] = item.hasTint;
         this.tint[id] = item.tint;
         this.label[id] = item.label;
