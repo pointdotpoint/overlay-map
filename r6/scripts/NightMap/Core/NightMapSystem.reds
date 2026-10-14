@@ -39,12 +39,14 @@ public class NightMapSystem extends ScriptableSystem {
     private let layerEpoch: Int32;
     private let imageRetries: Int32;
     private let imageRev: Int32;
+    private let vanilla: ref<NMVanilla>;
 
     private func OnAttach() {
         this.api = NightMap.Create();
         if NMTileManifest.Available() {
             this.api.SetWorld(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
         }
+        this.vanilla = NMVanilla.Create(this.api, this.GetGameInstance());
         this.input = new NMInput();
         GameInstance.GetCallbackSystem().RegisterCallback(n"Input/Key", this, n"OnKeyInput");
         NMLog.Info("loaded (tiles " + (NMTileManifest.Available() ? "present" : "missing") + ", precise clock " + ToString(NMClock.Precise()) + ")");
@@ -57,6 +59,7 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     public func Api() -> ref<NightMap> { return this.api; }
+    public func Vanilla() -> ref<NMVanilla> { return this.vanilla; }
     public func IsOpen() -> Bool { return this.isOpen; }
     public func Camera() -> ref<NMCamera> { return this.camera; }
     public func Panel() -> ref<NMPanel> { return this.panel; }
@@ -381,6 +384,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.crosshair = NMCrosshair.Create(this.panel.overlay, l.mapW, l.mapH, l.scale);
         this.card = NMInfoCard.Create(this.panel.card, l.cardW, l.scale);
         this.UpdateHeader();
+        this.vanilla.Tick(NMClock.NowMs(), true);
     }
 
     private func OnClosing() {
@@ -398,6 +402,7 @@ public class NightMapSystem extends ScriptableSystem {
 
     private func UpdateModules(dt: Float) {
         let l = this.panel.layout;
+        this.vanilla.Tick(NMClock.NowMs(), false);
         if IsDefined(this.layers) {
             this.layers.Update(this.camera, dt);
         }

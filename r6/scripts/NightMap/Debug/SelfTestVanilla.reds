@@ -7,6 +7,7 @@ public abstract class NMVanillaTests {
         NMVanillaTests.IconStyleCases(t);
         NMVanillaTests.StyleCases(t);
         NMVanillaTests.DiffCases(t);
+        NMVanillaTests.LiveCases(t);
     }
 
     private static func TestApi() -> ref<NightMap> {
@@ -204,6 +205,37 @@ public abstract class NMVanillaTests {
         let s6: array<ref<NMVanillaSnap>>;
         d.Apply(s6, sink);                                                       // gone from the list
         t.Check("diff.missing_removes", d.removed == 1 && d.live == 0, "");
+    }
+
+    // Uses the live MappinSystem (run the self-test in a loaded save) against a standalone test API.
+    private static func LiveCases(t: ref<NMSelfTest>) {
+        let api = NMVanillaTests.TestApi();
+        let v = NMVanilla.Create(api, GetGameInstance());
+        t.Check("vanilla.tick_polls_when_forced", v.Tick(0.0, true), "");
+        t.Check("vanilla.tick_throttled", !v.Tick(10.0, false) && v.Tick(NMVanilla.PollMs() + 1.0, false), "");
+        let n = v.catalog.Count();
+        t.Check("vanilla.layers_created", IsDefined(api.GetLayer(n"Vanilla.FastTravel")) && IsDefined(api.GetLayer(n"Vanilla.Other"))
+            && IsDefined(api.GetLayer(n"Vanilla.Pinned")) && ArraySize(api.layers) == n + 2, ToString(ArraySize(api.layers)));
+        let ft = api.GetLayer(n"Vanilla.FastTravel");
+        t.Check("vanilla.layer_style_icon", ft.pinStyle == 1 && !v.pinned.clustering, "");
+        t.Check("vanilla.markers_mirrored", v.diff.live > 0 && ft.count > 0, ToString(v.diff.live));
+        // Every mirrored item's book entry points back at the same key.
+        let ok = true;
+        let i = 0;
+        while i < ArraySize(ft.alive) {
+            if ft.alive[i] {
+                let e = v.EntryFor(v.catalog.FilterIndexOf(gamedataMappinVariant.FastTravelVariant), i);
+                if !IsDefined(e) || e.item != i { ok = false; }
+            }
+            i += 1;
+        }
+        t.Check("vanilla.book_consistent", ok, "");
+        // A synthetic unknown variant goes to Other and is logged once.
+        let fake: array<ref<IMappin>>;
+        v.PollFrom(fake, 0ul);
+        t.Check("vanilla.empty_poll_removes_all", v.diff.live == 0 && ft.count == 0, ToString(v.diff.live));
+        t.Check("vanilla.unknown_variant_logged_once", v.LogOnceForTest(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant)
+            && !v.LogOnceForTest(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant), "");
     }
 }
 
