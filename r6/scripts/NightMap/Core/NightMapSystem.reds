@@ -40,6 +40,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let imageRetries: Int32;
     private let imageRev: Int32;
     private let vanilla: ref<NMVanilla>;
+    private let filterView: Int32;
 
     private func OnAttach() {
         this.api = NightMap.Create();
@@ -60,6 +61,7 @@ public class NightMapSystem extends ScriptableSystem {
 
     public func Api() -> ref<NightMap> { return this.api; }
     public func Vanilla() -> ref<NMVanilla> { return this.vanilla; }
+    public func SetVanillaEnabled(on: Bool) { this.vanilla.SetEnabled(on); }
     public func IsOpen() -> Bool { return this.isOpen; }
     public func Camera() -> ref<NMCamera> { return this.camera; }
     public func Panel() -> ref<NMPanel> { return this.panel; }
@@ -384,6 +386,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.crosshair = NMCrosshair.Create(this.panel.overlay, l.mapW, l.mapH, l.scale);
         this.card = NMInfoCard.Create(this.panel.card, l.cardW, l.scale);
         this.UpdateHeader();
+        this.vanilla.ApplyFilters(this.filterView, this.Settings());
         this.vanilla.Tick(NMClock.NowMs(), true);
     }
 
@@ -434,6 +437,12 @@ public class NightMapSystem extends ScriptableSystem {
         if this.input.act {
             this.input.act = false;
             this.Activate();
+            this.UpdateHeader();
+        }
+        if this.input.filter {
+            this.input.filter = false;
+            this.filterView = (this.filterView + 1) % NMVanillaFilters.ViewCount();
+            this.vanilla.ApplyFilters(this.filterView, this.Settings());
             this.UpdateHeader();
         }
         this.marker.Update(this.camera, GetPlayer(this.GetGameInstance()), l.mapW, l.mapH);
@@ -547,7 +556,8 @@ public class NightMapSystem extends ScriptableSystem {
 
     private func UpdateHeader() {
         let s = this.Settings();
-        this.panel.subtitle.SetText(this.DistrictName());
+        let district = this.DistrictName();
+        this.panel.subtitle.SetText(this.filterView == 0 ? district : district + "   ·   " + NMVanillaFilters.ViewName(this.filterView));
         let q = NMQuestHeader.Read(this.GetGameInstance());
         this.panel.questTitle.SetVisible(q.visible);
         this.panel.questObjective.SetVisible(q.visible && StrLen(q.objective) > 0);

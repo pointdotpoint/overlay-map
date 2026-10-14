@@ -65,6 +65,97 @@ public class NightMapSettings extends ScriptableSystem {
     public let keyAct: EInputKey = EInputKey.IK_NumPad0;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Keys")
+    @runtimeProperty("ModSettings.category.order", "0")
+    @runtimeProperty("ModSettings.displayName", "Cycle marker filter")
+    @runtimeProperty("ModSettings.description", "Cycles the map markers shown: All, Jobs, Services.")
+    public let keyFilter: EInputKey = EInputKey.IK_NumSlash;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Jobs")
+    @runtimeProperty("ModSettings.description", "Show main and side job markers.")
+    public let filterJobs: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Gigs")
+    @runtimeProperty("ModSettings.description", "Show gig and fixer markers.")
+    public let filterGigs: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Cyberpsycho Sighting")
+    @runtimeProperty("ModSettings.description", "Show cyberpsycho sightings.")
+    public let filterPsycho: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "NCPD Scanner")
+    @runtimeProperty("ModSettings.description", "Show NCPD scanner hustles, stashes and outposts.")
+    public let filterNcpd: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Fast Travel")
+    @runtimeProperty("ModSettings.description", "Show fast-travel points and NCART stations.")
+    public let filterFastTravel: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Ripperdoc")
+    @runtimeProperty("ModSettings.description", "Show ripperdocs.")
+    public let filterRipperdoc: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Vendor")
+    @runtimeProperty("ModSettings.description", "Show vendors.")
+    public let filterVendor: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Autofixer")
+    @runtimeProperty("ModSettings.description", "Show vehicles for sale.")
+    public let filterAutofixer: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Drop Point")
+    @runtimeProperty("ModSettings.description", "Show drop points.")
+    public let filterDropPoint: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Apartment for Rent")
+    @runtimeProperty("ModSettings.description", "Show apartments for rent.")
+    public let filterApartmentRent: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "TAROT")
+    @runtimeProperty("ModSettings.description", "Show tarot graffiti.")
+    public let filterTarot: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Your Apartments")
+    @runtimeProperty("ModSettings.description", "Show your apartments, vehicles and waypoint.")
+    public let filterYourProperty: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "1")
     @runtimeProperty("ModSettings.displayName", "Panel opacity")
@@ -76,7 +167,7 @@ public class NightMapSettings extends ScriptableSystem {
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Debug")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Debug tools")
     @runtimeProperty("ModSettings.description", "Enables the debug key chords and the clip probe.")
     public let debug: Bool = false;

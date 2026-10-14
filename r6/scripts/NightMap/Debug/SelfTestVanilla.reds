@@ -10,6 +10,7 @@ public abstract class NMVanillaTests {
         NMVanillaTests.LiveCases(t);
         NMVanillaTests.CardCases(t);
         NMVanillaTests.HeaderCases(t);
+        NMVanillaTests.FilterCases(t);
     }
 
     private static func HeaderCases(t: ref<NMSelfTest>) {
@@ -294,6 +295,41 @@ public abstract class NMVanillaTests {
         NMVanillaTests.LiveTrackRules(t);
         v.Activate(e);
         t.Check("vanilla.activate_vendor_noop", Equals(v.lastAction, "none"), v.lastAction);
+    }
+
+
+    private static func FilterCases(t: ref<NMSelfTest>) {
+        t.Check("filter.views", NMVanillaFilters.ViewCount() == 3 && Equals(NMVanillaFilters.ViewName(1), "JOBS"), "");
+        t.Check("filter.all_has_everything", NMVanillaFilters.InView(0, gamedataWorldMapFilter.TarotFilter, false) && NMVanillaFilters.InView(0, gamedataWorldMapFilter.NoFilter, true), "");
+        t.Check("filter.jobs", NMVanillaFilters.InView(1, gamedataWorldMapFilter.Gigs, false) && NMVanillaFilters.InView(1, gamedataWorldMapFilter.Story, false)
+            && !NMVanillaFilters.InView(1, gamedataWorldMapFilter.VendorFilter, false) && !NMVanillaFilters.InView(1, gamedataWorldMapFilter.NoFilter, true), "");
+        t.Check("filter.services", NMVanillaFilters.InView(2, gamedataWorldMapFilter.FastTravel, false) && NMVanillaFilters.InView(2, gamedataWorldMapFilter.DropPoint, false)
+            && !NMVanillaFilters.InView(2, gamedataWorldMapFilter.Quest, false) && !NMVanillaFilters.InView(2, gamedataWorldMapFilter.TarotFilter, false), "");
+        let s = new NightMapSettings();
+        s.filterVendor = false;
+        t.Check("filter.toggle_off", !NMVanillaFilters.Visible(0, s, gamedataWorldMapFilter.VendorFilter, false) && NMVanillaFilters.Visible(0, s, gamedataWorldMapFilter.FastTravel, false), "");
+        t.Check("filter.other_ignores_toggles", NMVanillaFilters.Visible(0, s, gamedataWorldMapFilter.NoFilter, true), "");
+        // Layer visibility applied, pinned always visible, disabled hides everything.
+        let api = NMVanillaTests.TestApi();
+        let v = NMVanilla.Create(api, GetGameInstance());
+        let empty: array<ref<IMappin>>;
+        v.PollFrom(empty, 0ul);
+        v.ApplyFilters(1, s);
+        let vend = v.LayerForSlot(v.catalog.FilterIndexOf(gamedataMappinVariant.ServicePointFoodVariant));
+        let gigs = v.LayerForSlot(v.catalog.FilterIndexOf(gamedataMappinVariant.RetrievingVariant));
+        t.Check("filter.apply_layers", !vend.visible && gigs.visible && v.pinned.visible, "");
+        v.SetEnabled(false);
+        t.Check("filter.disabled_hides_all", !gigs.visible && !v.pinned.visible && !v.Tick(999999.0, false), "");
+        v.SetEnabled(true);
+        t.Check("filter.reenabled", v.pinned.visible, "");
+        // Input: the filter key sets the flag only while the map is open.
+        let ks = new NightMapSettings();
+        ks.keyFilter = EInputKey.IK_NumSlash;
+        let inp = new NMInput();
+        inp.Handle(ks, EInputKey.IK_NumSlash, EInputAction.IACT_Press, false, false, false, false);
+        let closedIgnored = !inp.filter;
+        inp.Handle(ks, EInputKey.IK_NumSlash, EInputAction.IACT_Press, false, false, false, true);
+        t.Check("filter.key", closedIgnored && inp.filter, "");
     }
 }
 

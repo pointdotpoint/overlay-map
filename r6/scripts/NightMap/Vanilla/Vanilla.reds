@@ -41,6 +41,9 @@ public class NMVanilla extends NMVanillaSink {
     private let polledOnce: Bool;
     private let loggedVariants: array<Int32>;
     public let lastAction: String;
+    public let enabled: Bool = true;
+    private let filterView: Int32;
+    private let filterSettings: ref<NightMapSettings>;
 
     public static func PollMs() -> Float { return 1500.0; }
 
@@ -101,8 +104,35 @@ public class NMVanilla extends NMVanillaSink {
         return IsDefined(li) ? li.Get(item) : null;
     }
 
+    // Shows/hides each filter layer; Vanilla.Pinned (tracked quest marker, waypoint) is always visible while enabled.
+    // SetVisible bumps the API revision, so only call it on an actual change.
+    public func ApplyFilters(view: Int32, s: ref<NightMapSettings>) {
+        this.EnsureLayers();
+        let i = 0;
+        while i < ArraySize(this.layers) {
+            let want = this.enabled && NMVanillaFilters.Visible(view, s, this.catalog.TypeOf(i), this.catalog.IsOther(i));
+            if NotEquals(this.layers[i].visible, want) {
+                this.layers[i].SetVisible(want);
+            }
+            i += 1;
+        }
+        if NotEquals(this.pinned.visible, this.enabled) {
+            this.pinned.SetVisible(this.enabled);
+        }
+        this.filterView = view;
+        this.filterSettings = s;
+    }
+
+    // Perf suite: off hides every vanilla layer and stops polling; on restores the last filters and re-polls.
+    public func SetEnabled(on: Bool) {
+        this.enabled = on;
+        this.ApplyFilters(this.filterView, this.filterSettings);
+        if on { this.Tick(0.0, true); }
+    }
+
     // Polls when forced or when PollMs has passed since the last poll. Returns true if it polled.
     public func Tick(nowMs: Float, force: Bool) -> Bool {
+        if !this.enabled { return false; }
         if !force && this.polledOnce && nowMs - this.lastPollMs < NMVanilla.PollMs() {
             return false;
         }
