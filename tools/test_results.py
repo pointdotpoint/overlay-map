@@ -90,9 +90,10 @@ def _row(name, avg, p95):
             "|frame_p99=40.0|frame_max=60.0|script_avg=0.1|script_p95=0.2\n")
 
 
-def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=(), open_avg=None, open_p95=None, end_avg=20.0):
+def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=(), open_avg=None, open_p95=None, end_avg=20.0, vanilla_avg=None, vanilla_p95=None):
     rows = {"idle_0p5": (idle_avg, idle_p95), "idle_2": (idle_avg, idle_p95), "idle_8": (idle_avg, idle_p95),
-            "open_empty": (open_avg or sweep_avg, open_p95 or sweep_p95), "panzoom_0p5_16": (sweep_avg, sweep_p95),
+            "open_empty": (open_avg or sweep_avg, open_p95 or sweep_p95),
+            "vanilla_open": (vanilla_avg or open_avg or sweep_avg, vanilla_p95 or open_p95 or sweep_p95), "panzoom_0p5_16": (sweep_avg, sweep_p95),
             "closed_end": (end_avg, 29.0)}
     body = "".join(_row(n, a, p) for n, (a, p) in rows.items() if n not in skip)
     return LOG.replace("[t] [1] [NightMap] PERF|SUITE|done", body + "[t] [1] [NightMap] PERF|SUITE|done")
@@ -226,3 +227,15 @@ def test_medians_table_uses_the_judged_runs():
     s = _suites(_tiles(), _tiles(), _tiles(end_avg=18.5), _tiles())              # newest-but-one drifted
     valid, skipped = results.select_valid(s, 3)
     assert len(valid) == 3 and skipped and "run 3 drifted" in skipped[0]
+
+
+def test_vanilla_open_is_gated_with_the_sweep_budget():
+    ok = results.verdict(results.parse(_tiles(vanilla_avg=21.4, vanilla_p95=31.9)))
+    assert ok[0], ok[1]
+    bad = results.verdict(results.parse(_tiles(vanilla_avg=21.6)))
+    assert not bad[0] and "vanilla_open" in bad[1]
+
+
+def test_missing_vanilla_row_fails():
+    status, msg = results.judge(_suites(_tiles(), _tiles(skip=("vanilla_open",)), _tiles()), 3)
+    assert status == "FAIL" and "vanilla_open: row missing" in msg

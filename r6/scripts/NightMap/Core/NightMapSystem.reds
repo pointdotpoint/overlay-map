@@ -394,6 +394,8 @@ public class NightMapSystem extends ScriptableSystem {
         if IsDefined(this.perf) && this.perf.running {
             NMDebugLayer.Remove(this.api);
         }
+        // Perf suite may have vanilla markers off; never leave them disabled. Flag only, no poll while closed.
+        this.vanilla.MarkEnabled();
         this.perf = null;
         this.perfHidden = false;
         this.layers = null;

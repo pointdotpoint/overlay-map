@@ -10,6 +10,7 @@ public class NMPerfSuite {
     private let shows: array<Bool>;
     private let modes: array<Int32>;      // 0 = circle + 1..16 sweep, 1 = fixed downtown view, 2 = circle + 0.5..16 sweep
     private let mpps: array<Float>;
+    private let vanillas: array<Bool>;   // vanilla map markers enabled during the scenario
     private let idx: Int32;
     private let phase: Int32;
     private let frames: Int32;
@@ -22,12 +23,13 @@ public class NMPerfSuite {
     private let savedY: Float;
     private let saved: Bool;
 
-    private func Add(name: String, count: Int32, show: Bool, mode: Int32, mpp: Float) {
+    private func Add(name: String, count: Int32, show: Bool, mode: Int32, mpp: Float, vanilla: Bool) {
         ArrayPush(this.names, name);
         ArrayPush(this.counts, count);
         ArrayPush(this.shows, show);
         ArrayPush(this.modes, mode);
         ArrayPush(this.mpps, mpp);
+        ArrayPush(this.vanillas, vanilla);
     }
 
     public func Start() {
@@ -36,16 +38,18 @@ public class NMPerfSuite {
         ArrayClear(this.shows);
         ArrayClear(this.modes);
         ArrayClear(this.mpps);
-        this.Add("closed_baseline", 0, false, 0, 0.0);
-        this.Add("open_empty", 0, true, 0, 0.0);
-        this.Add("items_5000", 5000, true, 0, 0.0);
-        this.Add("items_20000", 20000, true, 0, 0.0);
-        this.Add("items_50000", 50000, true, 0, 0.0);
-        this.Add("idle_0p5", 0, true, 1, 0.5);
-        this.Add("idle_2", 0, true, 1, 2.0);
-        this.Add("idle_8", 0, true, 1, 8.0);
-        this.Add("panzoom_0p5_16", 0, true, 2, 0.0);
-        this.Add("closed_end", 0, false, 0, 0.0);
+        ArrayClear(this.vanillas);
+        this.Add("closed_baseline", 0, false, 0, 0.0, false);
+        this.Add("open_empty", 0, true, 0, 0.0, false);
+        this.Add("vanilla_open", 0, true, 0, 0.0, true);
+        this.Add("items_5000", 5000, true, 0, 0.0, false);
+        this.Add("items_20000", 20000, true, 0, 0.0, false);
+        this.Add("items_50000", 50000, true, 0, 0.0, false);
+        this.Add("idle_0p5", 0, true, 1, 0.5, false);
+        this.Add("idle_2", 0, true, 1, 2.0, false);
+        this.Add("idle_8", 0, true, 1, 8.0, false);
+        this.Add("panzoom_0p5_16", 0, true, 2, 0.0, false);
+        this.Add("closed_end", 0, false, 0, 0.0, false);
         this.idx = 0;
         this.phase = 0;
         this.saved = false;
@@ -71,6 +75,7 @@ public class NMPerfSuite {
             }
             this.setupMs = NMClock.NowMs() - t0;
             sys.SetPerfHidden(!this.shows[this.idx]);
+            sys.SetVanillaEnabled(this.vanillas[this.idx]);
             this.phase = 1;
             this.frames = 0;
             return;
@@ -117,6 +122,7 @@ public class NMPerfSuite {
                 this.running = false;
                 NMDebugLayer.Remove(sys.Api());
                 sys.SetPerfHidden(false);
+                sys.SetVanillaEnabled(true);
                 cam.SetMpp(this.savedMpp);
                 cam.SetCenter(this.savedX, this.savedY);
                 cam.follow = this.savedFollow;
@@ -127,7 +133,16 @@ public class NMPerfSuite {
 
     private func Report() {
         NMLog.Info("RESULT|" + this.names[this.idx] + "|items=" + ToString(this.counts[this.idx]) + "|frames=" + ToString(ArraySize(this.samples))
-            + "|setup_ms=" + FloatToStringPrec(this.setupMs, 1) + "|" + NMPerfSuite.Stats("frame", this.samples, true) + "|" + NMPerfSuite.Stats("script", this.script, false));
+            + "|setup_ms=" + FloatToStringPrec(this.setupMs, 1) + "|" + NMPerfSuite.Stats("frame", this.samples, true) + "|" + NMPerfSuite.Stats("script", this.script, false)
+            + "|script_max=" + FloatToStringPrec(NMPerfSuite.MaxOf(this.script), 3));
+    }
+
+    private static func MaxOf(values: array<Float>) -> Float {
+        let m = 0.0;
+        for v in values {
+            if v > m { m = v; }
+        }
+        return m;
     }
 
     // frame_avg|frame_p95|frame_p99|frame_max  (or script_avg|script_p95)

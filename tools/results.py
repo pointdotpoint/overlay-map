@@ -15,7 +15,7 @@ IDLE_P95_BUDGET_MS = 2.0
 SWEEP_AVG_BUDGET_MS = 1.5
 SWEEP_P95_BUDGET_MS = 3.0
 IDLE_ROWS = ("idle_0p5", "idle_2", "idle_8")
-SWEEP_ROWS = ("open_empty", "panzoom_0p5_16")   # open_empty is the cold sweep right after the baseline
+SWEEP_ROWS = ("open_empty", "vanilla_open", "panzoom_0p5_16")   # open_empty: cold sweep, no markers; vanilla_open: real markers
 DRIFT_MAX_MS = 0.5       # |closed_end - closed_baseline| above this: the run's machine state moved, exclude it
 LOADED_MARK = "[NightMap] loaded"  # logged at every game start; --all-sessions ignores it
 # (scenario, avg budget, p95 budget) in report order

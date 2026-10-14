@@ -130,6 +130,11 @@ public class NMVanilla extends NMVanillaSink {
         if on { this.Tick(0.0, true); }
     }
 
+    // Flag only: no filter pass, no poll. For the close path; the next OnOpened re-applies filters and force-polls.
+    public func MarkEnabled() {
+        this.enabled = true;
+    }
+
     // Polls when forced or when PollMs has passed since the last poll. Returns true if it polled.
     public func Tick(nowMs: Float, force: Bool) -> Bool {
         if !this.enabled { return false; }
