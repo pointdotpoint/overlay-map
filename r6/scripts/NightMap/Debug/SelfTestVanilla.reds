@@ -5,6 +5,7 @@ public abstract class NMVanillaTests {
     public static func Run(t: ref<NMSelfTest>) {
         NMVanillaTests.PinApiCases(t);
         NMVanillaTests.IconStyleCases(t);
+        NMVanillaTests.StyleCases(t);
     }
 
     private static func TestApi() -> ref<NightMap> {
@@ -122,5 +123,36 @@ public abstract class NMVanillaTests {
         let sa2 = NMVanillaTests.SlotOf(r, L.index, a);
         let sizeA2 = r.chipBg[sa2].GetSize();
         t.Check("icons.style_switch_resets_size", r.chipStyle[sa2] == 0 && t.Near(sizeA2.X, NMTheme.ChipSize(), 0.01), t.F(sizeA2.X));
+    }
+
+    private static func StyleCases(t: ref<NMSelfTest>) {
+        let def = gamedataMappinPhase.DefaultPhase;
+        t.Check("vanilla.state_completed", Equals(NMVanillaStyle.StateOf(gamedataMappinVariant.GangWatchVariant, gamedataMappinPhase.CompletedPhase), n"QuestComplete"), "");
+        t.Check("vanilla.state_metro", Equals(NMVanillaStyle.StateOf(gamedataMappinVariant.Zzz17_NCARTVariant, def), n"FastTravelMetro"), "");
+        t.Check("vanilla.state_quest", Equals(NMVanillaStyle.StateOf(gamedataMappinVariant.DefaultQuestVariant, def), n"Quest"), ToString(NMVanillaStyle.StateOf(gamedataMappinVariant.DefaultQuestVariant, def)));
+        t.Check("vanilla.state_vendor", Equals(NMVanillaStyle.StateOf(gamedataMappinVariant.ServicePointFoodVariant, def), n"ServicePoint"), "");
+        let q = NMTheme.VanillaStateColor(n"Quest");
+        let unknown = NMTheme.VanillaStateColor(n"NoSuchState");
+        t.Check("vanilla.color_table", t.Near(q.Red, 1.0, 0.01) && t.Near(q.Blue, 0.306, 0.01) && t.Near(unknown.Green, 1.0, 0.01), "");
+        t.Check("vanilla.part_fast_travel", Equals(NMVanillaStyle.PartOf(gamedataMappinVariant.FastTravelVariant), n"fast_travel"), "");
+        t.Check("vanilla.part_fallback", Equals(NMVanillaStyle.PartOf(gamedataMappinVariant.Zzz16_RelicDeviceSpecialVariant), n"relic_access_point")
+            && NotEquals(NMVanillaStyle.PartOf(gamedataMappinVariant.ActionScanVariant), n"invalid"), ToString(NMVanillaStyle.PartOf(gamedataMappinVariant.ActionScanVariant)));
+        t.Check("vanilla.track_rules", NMVanillaStyle.CanQuestTrack(gamedataMappinVariant.DefaultQuestVariant)
+            && NMVanillaStyle.CanQuestTrack(gamedataMappinVariant.RetrievingVariant)
+            && !NMVanillaStyle.CanQuestTrack(gamedataMappinVariant.Zzz18_RacingVariant)
+            && !NMVanillaStyle.CanQuestTrack(gamedataMappinVariant.FastTravelVariant)
+            && !NMVanillaStyle.CanQuestTrack(gamedataMappinVariant.ServicePointFoodVariant), "");
+        let cat = NMVanillaCatalog.Build();
+        let n = cat.Count();
+        t.Check("vanilla.catalog_twelve", n == 12, ToString(n));
+        let ft = cat.FilterIndexOf(gamedataMappinVariant.FastTravelVariant);
+        let gw = cat.FilterIndexOf(gamedataMappinVariant.GangWatchVariant);
+        let dp = cat.FilterIndexOf(gamedataMappinVariant.ServicePointDropPointVariant);
+        let wp = cat.FilterIndexOf(gamedataMappinVariant.CustomPositionVariant);
+        t.Check("vanilla.catalog_members", Equals(cat.TypeOf(ft), gamedataWorldMapFilter.FastTravel) && Equals(cat.TypeOf(gw), gamedataWorldMapFilter.Story)
+            && Equals(cat.TypeOf(dp), gamedataWorldMapFilter.DropPoint) && Equals(cat.TypeOf(wp), gamedataWorldMapFilter.CommonFilter), "");
+        let other = cat.FilterIndexOf(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant);
+        t.Check("vanilla.catalog_unknown_is_other", other == n && cat.IsOther(other) && Equals(cat.LayerId(other), n"Vanilla.Other"), ToString(other));
+        t.Check("vanilla.catalog_names", StrLen(cat.DisplayName(ft)) > 0 && Equals(cat.LayerId(ft), n"Vanilla.FastTravel") && cat.Priority(gw) > cat.Priority(ft), cat.DisplayName(ft));
     }
 }

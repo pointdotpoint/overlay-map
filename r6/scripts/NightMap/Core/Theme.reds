@@ -27,6 +27,20 @@ public abstract class NMTheme {
     public static func VanillaIdleOpacity() -> Float { return 0.5; }      // vanilla Mappin state opacity
     public static func VanillaEmphScale() -> Float { return 1.3; }        // vanilla OnSelect end scale
     public static func VanillaGrowMs() -> Float { return 150.0; }
+    // Vanilla map-marker colour per widget state (MappinsGroup.WidgetState). Unknown states are white.
+    public static func VanillaStateColor(state: CName) -> HDRColor {
+        if Equals(state, n"Quest") { return new HDRColor(1.0, 1.0, 0.306, 1.0); }            // #FFFF4E
+        if Equals(state, n"Gigs") { return new HDRColor(0.0, 1.0, 0.835, 1.0); }             // #00FFD5
+        if Equals(state, n"Default") { return new HDRColor(1.0, 0.443, 0.404, 1.0); }        // #FF7167
+        if Equals(state, n"QuestComplete") { return new HDRColor(0.42, 0.424, 0.424, 1.0); } // #6B6C6C
+        if Equals(state, n"QuestUntracked") { return new HDRColor(0.847, 0.349, 0.071, 1.0); } // #D85912
+        if Equals(state, n"Story") { return new HDRColor(0.369, 0.965, 1.0, 1.0); }          // #5EF6FF
+        if Equals(state, n"FastTravel") { return new HDRColor(0.349, 0.706, 1.0, 1.0); }     // #59B4FF
+        if Equals(state, n"FastTravelMetro") { return new HDRColor(0.8, 0.506, 1.0, 1.0); }  // #CC81FF
+        if Equals(state, n"Relic") { return new HDRColor(0.471, 0.678, 1.0, 1.0); }          // #78ADFF
+        if Equals(state, n"Player") { return new HDRColor(0.161, 1.0, 0.725, 1.0); }         // #29FFB9
+        return new HDRColor(1.0, 1.0, 1.0, 1.0);   // ServicePoint, Vehicle, VehicleForPurchase and anything unknown
+    }
     public static func ShadowColor() -> HDRColor { return new HDRColor(0.0, 0.0, 0.0, 1.0); }
     public static func ChipSize() -> Float { return 112.0; }
     public static func ChipSelSize() -> Float { return 136.0; }
