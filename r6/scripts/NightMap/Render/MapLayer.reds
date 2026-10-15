@@ -14,7 +14,7 @@ public class NMMapLayer {
 //   2. [future] photos: the user's photo pins / imagery. Add one more NMMapLayer after the last tile set in
 //      NMLayerStack.Create; a generic NMTileLayer bound to a new manifest set already does it.
 //   3. Items and markers (NMPanel.items, drawn by NMItemRenderer). Never assumes live game pins only.
-//   4. Overlay and widgets (NMPanel.overlay: crosshair, player marker, hints).
+//   4. Overlay and widgets (NMPanel.overlay: player marker, tooltip).
 public class NMLayerStack {
     private let layers: array<ref<NMMapLayer>>;
     public let available: Bool;

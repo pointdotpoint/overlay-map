@@ -1,6 +1,6 @@
 module NightMap
 
-// Fixed reticle at the map-area center; selects the nearest candidate within SelectRadius.
+// Selection state; picks the nearest candidate to the map-area centre within SelectRadius (no reticle is drawn).
 public class NMCrosshair {
     public let sel: Int32;
     public let selKind: Int32;
@@ -9,22 +9,12 @@ public class NMCrosshair {
     public let selX: Float;
     public let selY: Float;
 
-    public static func Create(parent: ref<inkCanvas>, viewW: Float, viewH: Float, scale: Float) -> ref<NMCrosshair> {
+    public static func Create() -> ref<NMCrosshair> {
         let c = new NMCrosshair();
         c.sel = -1;
         c.selKind = -1;
         c.selLayer = -1;
         c.selItem = -1;
-        let cx = viewW * 0.5;
-        let cy = viewH * 0.5;
-        NMUi.Image(parent, n"ring", cx, cy, NMTheme.RingSize() * scale, NMTheme.Cyan(), true);
-        let a = 154.0 * scale;
-        let len = 39.0 * scale;
-        let w = 5.0 * scale;
-        NMUi.Rect(parent, cx - a, cy - w * 0.5, len, w, NMTheme.Cyan(), 0.95);
-        NMUi.Rect(parent, cx + a - len, cy - w * 0.5, len, w, NMTheme.Cyan(), 0.95);
-        NMUi.Rect(parent, cx - w * 0.5, cy - a, w, len, NMTheme.Cyan(), 0.95);
-        NMUi.Rect(parent, cx - w * 0.5, cy + a - len, w, len, NMTheme.Cyan(), 0.95);
         return c;
     }
 

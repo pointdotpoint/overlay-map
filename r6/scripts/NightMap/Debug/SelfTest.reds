@@ -19,6 +19,7 @@ public class NMSelfTest {
         this.TileCases();
         this.RendererCases();
         this.PickCases();
+        this.TooltipCases();
         this.VersionCases();
         NMVanillaTests.Run(this);
         NMPerfTests.Run(this);
@@ -313,13 +314,15 @@ public class NMSelfTest {
         for sz in sizes {
             let l = NMPanelLayout.Compute(sz.X, sz.Y);
             let inside = l.x >= 0.0 && l.y >= 0.0 && l.x + l.w <= sz.X + 0.01 && l.y + l.h <= sz.Y + 0.01;
-            let parts = l.mapW > 0.0 && l.mapH > 0.0 && l.cardW > 0.0 && this.Near(l.mapW, l.w * 0.70, 0.5);
+            let parts = l.mapW > 0.0 && l.mapH > 0.0 && this.Near(l.mapW, l.w, 0.001);
             if !inside || !parts {
                 ok = false;
                 detail += this.F(sz.X) + "x" + this.F(sz.Y) + " ";
             }
         }
         this.Check("layout.fits_all_aspects", ok, detail);
+        let full = NMPanelLayout.Compute(3840.0, 2160.0);
+        this.Check("layout.full_width_map", full.mapW == full.w, this.F(full.mapW) + "/" + this.F(full.w));
     }
 
     private func TileCases() {
@@ -483,6 +486,32 @@ public class NMSelfTest {
         this.Check("version.normalise.suffix", Equals(NightMapSystem.Normalise("2.31 (build 12345)"), "2.31"), "");
         this.Check("version.normalise.leading_space", Equals(NightMapSystem.Normalise(" 2.31"), "2.31"), "");
         this.Check("version.normalise.garbage_unknown", Equals(NightMapSystem.Normalise("unknown"), ""), "");
+    }
+
+    private func TooltipCases() {
+        let p = NMTooltip.Place(1000.0, 500.0, 620.0, 200.0, 3000.0, 1500.0, 1.0);
+        this.Check("tooltip.place_right", this.Near(p.X, 1060.0, 0.01) && this.Near(p.Y, 400.0, 0.01), this.F(p.X) + "," + this.F(p.Y));
+        let f = NMTooltip.Place(2800.0, 500.0, 620.0, 200.0, 3000.0, 1500.0, 1.0);
+        this.Check("tooltip.flip_left_near_edge", this.Near(f.X, 2800.0 - 60.0 - 620.0, 0.01), this.F(f.X));
+        let top = NMTooltip.Place(1000.0, 20.0, 620.0, 200.0, 3000.0, 1500.0, 1.0);
+        let bot = NMTooltip.Place(1000.0, 1490.0, 620.0, 200.0, 3000.0, 1500.0, 1.0);
+        this.Check("tooltip.clamp_vertical", this.Near(top.Y, 0.0, 0.01) && this.Near(bot.Y, 1300.0, 0.01), this.F(top.Y) + "/" + this.F(bot.Y));
+        let canvas = new inkCanvas();   // detached: widgets exist but are never drawn
+        let t = NMTooltip.Create(canvas, 3000.0, 1500.0, 1.0);
+        this.Check("tooltip.hidden_when_nothing_selected", !t.IsShown(), "");
+        let d = NightMapDetails.Create("cat", "A very long title that must be truncated with an ellipsis");
+        let i = 0;
+        while i < 6 {
+            d.AddRow("Key" + ToString(i), "value");
+            i += 1;
+        }
+        d.AddAction("NUM 0", "Track quest");
+        d.AddAction("NUM 1", "Other");
+        t.ShowDetails(d, NMTheme.Cyan());
+        this.Check("tooltip.max_three_rows", t.IsShown() && t.RowsShown() == 3, ToString(t.RowsShown()));
+        t.Hide();
+        this.Check("tooltip.hides_again", !t.IsShown(), "");
+        this.Check("tooltip.truncate", Equals(NMTooltip.Truncate("abcdef", 4), "abc…") && Equals(NMTooltip.Truncate("abc", 4), "abc"), "");
     }
 
     private func PickCases() {

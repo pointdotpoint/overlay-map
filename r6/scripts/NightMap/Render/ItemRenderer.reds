@@ -104,7 +104,7 @@ public class NMItemRenderer {
                 ArrayPush(r.miniOn, false);
                 k += 1;
             }
-            let t = NMUi.Text(parent, NMTheme.HeadingFont(), n"Bold", Cast<Int32>(52.0 * scale), NMTheme.Text());
+            let t = NMUi.Text(parent, NMTheme.BodyFont(), n"Bold", Cast<Int32>(52.0 * scale), NMTheme.Text());
             t.SetAnchorPoint(new Vector2(0.5, 0.5));
             t.SetHorizontalAlignment(textHorizontalAlignment.Center);
             t.SetVisible(false);
@@ -404,8 +404,8 @@ public class NMItemRenderer {
         this.chipBg[slot].SetOpacity(o * NMTheme.VanillaShadowOpacity());
     }
 
-    // Called every frame after the crosshair pick. Icon pins have no selection rim; an idle icon pin grows to the
-    // emphasis look over VanillaGrowMs. cand indexes the cand* arrays (-1 none); kind is the crosshair's selKind.
+    // Called every frame after the pick. Icon pins have no selection rim; an idle icon pin grows to the
+    // emphasis look over VanillaGrowMs. cand indexes the cand* arrays (-1 none); kind is the selection kind.
     public func ApplySelection(cand: Int32, kind: Int32, dtMs: Float) {
         let slot = -1;
         let layer = -1;

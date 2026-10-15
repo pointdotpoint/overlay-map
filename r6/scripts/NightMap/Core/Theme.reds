@@ -13,7 +13,6 @@ public abstract class NMTheme {
     public static func ZoomRatePerSecond() -> Float { return 4.0; }
     public static func CardOpacity() -> Float { return 0.5; }
 
-    public static func HeadingFont() -> String { return "base\\gameplay\\gui\\fonts\\orbitron\\orbitron.inkfontfamily"; }
     public static func BodyFont() -> String { return "base\\gameplay\\gui\\fonts\\raj\\raj.inkfontfamily"; }
 
     public static func UiAtlas() -> ResRef { return r"nightmap\\ui\\ui.inkatlas"; }
@@ -48,7 +47,6 @@ public abstract class NMTheme {
     public static func ClusterSelSize() -> Float { return 200.0; }
     public static func MiniSize() -> Float { return 80.0; }
     public static func IconSize() -> Float { return 48.0; }
-    public static func RingSize() -> Float { return 216.0; }
     public static func PlayerSize() -> Float { return 112.0; }
     public static func BracketSize() -> Float { return 110.0; }
     public static func MiniOffsetY() -> Float { return -106.0; }

@@ -65,7 +65,7 @@ layer.SetPinStyle(NightMapPinStyle.Icon);
 
 Non-clustering layers are scanned in full on every relayout, so keep them small (under ~500 items).
 
-## Info card and activation
+## Tooltip and activation
 ```swift
 public class MyListener extends NightMapLayerListener {
     public func OnSelected(id: Int32) { /* called when the item is selected, before GetDetails(id) */ }
@@ -82,8 +82,8 @@ layer.SetListener(new MyListener());
 ```
 
 `OnSelected(id)` fires first, so you can refresh state that `GetDetails(id)` then reads.
-`NightMapDetails.WithColor(color)` overrides the card's category colour (default: the layer category colour).
-Limits: 6 rows, 3 actions (extras are ignored). Return `null` from `GetDetails` to get the default card (category, label, distance).
+`NightMapDetails.WithColor(color)` overrides the tooltip's category colour (default: the layer category colour).
+Limits: 6 rows, 3 actions (extras are ignored). The hover tooltip shows the category, title, the first 3 rows and the first action; the description, subtitle and the rest stay in the API. Return `null` from `GetDetails` to get the default tooltip (category, label, distance).
 
 ## Performance contract
 Items cost nothing until visible. At most 300 chips and 80 clusters are drawn at once, whatever the item count.

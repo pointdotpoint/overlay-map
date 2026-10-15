@@ -1,6 +1,6 @@
 module NightMap
 
-// Centered hologram panel: map area (left 70%, clipped), docked card (right 30%), hint bar at the bottom.
+// Centered hologram panel: full-width clipped map area, hint bar at the bottom.
 public class NMPanelLayout {
     public let winW: Float;
     public let winH: Float;
@@ -11,7 +11,6 @@ public class NMPanelLayout {
     public let h: Float;
     public let mapW: Float;
     public let mapH: Float;
-    public let cardW: Float;
     public let hintH: Float;
 
     public static func Compute(winW: Float, winH: Float) -> ref<NMPanelLayout> {
@@ -27,8 +26,7 @@ public class NMPanelLayout {
         l.x = (winW - l.w) * 0.5;
         l.y = (winH - l.h) * 0.5;
         l.hintH = NMTheme.HintHeight() * l.scale;
-        l.mapW = l.w * 0.70;
-        l.cardW = l.w - l.mapW;
+        l.mapW = l.w;
         l.mapH = l.h - l.hintH;
         return l;
     }
@@ -41,8 +39,6 @@ public class NMPanel {
     public let tiles: ref<inkCanvas>;
     public let items: ref<inkCanvas>;
     public let overlay: ref<inkCanvas>;
-    public let card: ref<inkCanvas>;
-    public let title: ref<inkText>;
     public let subtitle: ref<inkText>;
     public let warning: ref<inkText>;
     public let questTitle: ref<inkText>;
@@ -76,31 +72,23 @@ public class NMPanel {
         p.items = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
         p.overlay = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
 
-        // Card column and divider.
-        NMUi.Rect(p.root, layout.mapW, 0.0, layout.cardW, layout.mapH, NMTheme.CardBg(), NMTheme.CardOpacity());
-        NMUi.Rect(p.root, layout.mapW, 0.0, 2.0 * s, layout.mapH, NMTheme.Cyan(), 0.35);
-        p.card = NMUi.Canvas(p.root, layout.mapW, 0.0, layout.cardW, layout.mapH);
-
         // Hint bar.
         NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.CardBg(), 0.6);
         p.hints = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(34.0 * s), NMTheme.Cyan());
         p.hints.SetTranslation(new Vector2(58.0 * s, layout.mapH + 34.0 * s));
 
         // Header over the map area.
-        p.title = NMUi.Text(p.root, NMTheme.HeadingFont(), n"Bold", Cast<Int32>(62.0 * s), NMTheme.Text());
-        p.title.SetText("NIGHT CITY");
-        p.title.SetTranslation(new Vector2(67.0 * s, 46.0 * s));
         p.subtitle = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(34.0 * s), NMTheme.Cyan());
-        p.subtitle.SetTranslation(new Vector2(67.0 * s, 128.0 * s));
-        p.questTitle = NMUi.Text(p.root, NMTheme.HeadingFont(), n"Bold", Cast<Int32>(34.0 * s), NMTheme.VanillaStateColor(n"Quest"));
-        p.questTitle.SetTranslation(new Vector2(67.0 * s, 178.0 * s));
+        p.subtitle.SetTranslation(new Vector2(67.0 * s, 46.0 * s));
+        p.questTitle = NMUi.Text(p.root, NMTheme.BodyFont(), n"Bold", Cast<Int32>(34.0 * s), NMTheme.VanillaStateColor(n"Quest"));
+        p.questTitle.SetTranslation(new Vector2(67.0 * s, 100.0 * s));
         p.questTitle.SetVisible(false);
         p.questObjective = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Text());
-        p.questObjective.SetTranslation(new Vector2(67.0 * s, 222.0 * s));
+        p.questObjective.SetTranslation(new Vector2(67.0 * s, 146.0 * s));
         p.questObjective.SetWrappingAtPosition(layout.mapW * 0.6);   // two lines at most (see NMQuestHeader.Clip)
         p.questObjective.SetVisible(false);
         p.warning = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(32.0 * s), NMTheme.Pink());
-        p.warning.SetTranslation(new Vector2(67.0 * s, 306.0 * s));
+        p.warning.SetTranslation(new Vector2(67.0 * s, 240.0 * s));
         p.warning.SetVisible(false);
 
         // Scale bar (top-right of the map area).

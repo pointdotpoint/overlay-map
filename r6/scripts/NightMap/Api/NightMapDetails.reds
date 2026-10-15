@@ -1,6 +1,6 @@
 module NightMap
 
-// Info-card payload returned by NightMapLayerListener.GetDetails.
+// Tooltip payload returned by NightMapLayerListener.GetDetails.
 public class NightMapDetails {
     public let category: String;
     public let title: String;
@@ -11,7 +11,7 @@ public class NightMapDetails {
     public let actionKeys: array<String>;
     public let actionLabels: array<String>;
     public let hasColor: Bool;
-    public let color: HDRColor;   // card category colour; unset = the layer category colour
+    public let color: HDRColor;   // tooltip category colour; unset = the layer category colour
 
     public static func Create(category: String, title: String) -> ref<NightMapDetails> {
         let d = new NightMapDetails();

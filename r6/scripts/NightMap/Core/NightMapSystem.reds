@@ -25,9 +25,9 @@ public class NightMapSystem extends ScriptableSystem {
     private let layers: ref<NMLayerStack>;
     private let renderer: ref<NMItemRenderer>;
     private let crosshair: ref<NMCrosshair>;
-    private let card: ref<NMInfoCard>;
+    private let tooltip: ref<NMTooltip>;
     private let marker: ref<NMPlayerMarker>;
-    private let cardApiRev: Int32;
+    private let tipApiRev: Int32;
     private let scaleRev: Int32;
     private let perf: ref<NMPerfSuite>;
     private let perfHidden: Bool;
@@ -381,7 +381,7 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private func OnOpened() {
-        this.cardApiRev = -1;
+        this.tipApiRev = -1;
         this.scaleRev = -1;
         this.hdrSubtitle = "\n";   // sentinels no real text equals: force the first header write
         this.hdrQuestTitle = "\n";
@@ -398,8 +398,8 @@ public class NightMapSystem extends ScriptableSystem {
         this.layers = NMLayerStack.Create(this.panel.tiles);
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, l.scale);
         this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
-        this.crosshair = NMCrosshair.Create(this.panel.overlay, l.mapW, l.mapH, l.scale);
-        this.card = NMInfoCard.Create(this.panel.card, l.cardW, l.scale);
+        this.crosshair = NMCrosshair.Create();
+        this.tooltip = NMTooltip.Create(this.panel.overlay, l.mapW, l.mapH, l.scale);
         this.UpdateHeader();
         this.vanilla.ApplyFilters(this.filterView, this.Settings());
         this.vanilla.Tick(NMClock.NowMs(), true);
@@ -417,7 +417,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.renderer = null;
         this.marker = null;
         this.crosshair = null;
-        this.card = null;
+        this.tooltip = null;
     }
 
     private func UpdateModules(dt: Float) {
@@ -439,22 +439,24 @@ public class NightMapSystem extends ScriptableSystem {
         if this.api.layerEpoch != this.layerEpoch {
             this.layerEpoch = this.api.layerEpoch;
             this.crosshair.Reset();
-            this.cardApiRev = -1;
+            this.tipApiRev = -1;
         }
         let relaid = this.renderer.Update(this.camera, l.mapW, l.mapH);
         if relaid {
             let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale);
-            // Re-query card content only when the selection or the data changed, not on every pan frame.
-            if changed || this.api.revision != this.cardApiRev || this.ClusterStale() {
-                this.cardApiRev = this.api.revision;
-                this.RefreshCard(changed);
+            // Re-query tooltip content only when the selection or the data changed, not on every pan frame.
+            if changed || this.api.revision != this.tipApiRev || this.ClusterStale() {
+                this.tipApiRev = this.api.revision;
+                this.RefreshTooltip(changed);
             }
+            // The camera moved (relayout): selX/selY changed, so follow the marker. No-op while hidden.
+            this.tooltip.Reposition(this.crosshair.selX, this.crosshair.selY);
         }
         this.renderer.ApplySelection(this.crosshair.sel, this.crosshair.selKind, dt);
         if this.input.act {
             this.input.act = false;
             this.Activate();
-            this.cardApiRev = -1;      // refresh the card next frame (tracked state, action label), spec 7
+            this.tipApiRev = -1;      // refresh the tooltip next frame (tracked state, action label), spec 7
             this.renderer.Invalidate();
             this.UpdateHeader();
         }
@@ -494,12 +496,12 @@ public class NightMapSystem extends ScriptableSystem {
         return false;
     }
 
-    private func RefreshCard(changed: Bool) {
+    private func RefreshTooltip(changed: Bool) {
         let c = this.crosshair;
         if c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers) {
             let L = this.api.layers[c.selLayer];
             if !L.IsAlive(c.selItem) {
-                this.card.ShowEmpty();
+                this.tooltip.Hide();
                 return;
             }
             let d: ref<NightMapDetails>;
@@ -512,7 +514,7 @@ public class NightMapSystem extends ScriptableSystem {
             if !IsDefined(d) {
                 d = this.DefaultDetails(L, c.selItem);
             }
-            this.card.ShowDetails(d, d.hasColor ? d.color : this.api.catColor[L.catGlobal[L.cat[c.selItem]]]);
+            this.tooltip.ShowDetails(d, d.hasColor ? d.color : this.api.catColor[L.catGlobal[L.cat[c.selItem]]]);
         } else if c.selKind == 1 && c.sel >= 0 {
             let slot = this.renderer.candSlot[c.sel];
             let cats: array<Int32>;
@@ -528,9 +530,9 @@ public class NightMapSystem extends ScriptableSystem {
             this.cacheCats = cats;
             this.cacheCounts = counts;
             let s = this.Settings();
-            this.card.ShowCluster(this.renderer.clTotal[slot], cats, counts, this.api, IsDefined(s) ? NMInput.KeyName(s.keyAct) : "ACT");
+            this.tooltip.ShowCluster(this.renderer.clTotal[slot], IsDefined(s) ? NMInput.KeyName(s.keyAct) : "ACT");
         } else {
-            this.card.ShowEmpty();
+            this.tooltip.Hide();
         }
     }
 
