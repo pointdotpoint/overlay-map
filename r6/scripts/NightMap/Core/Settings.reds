@@ -1,5 +1,10 @@
 module NightMap
 
+public enum NightMapHoloColor {
+    Cyan = 0,
+    Green = 1
+}
+
 public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Keys")
@@ -165,14 +170,14 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.max", "1.0")
     public let panelOpacity: Float = 0.45;
 
-    // Mod Settings does support enums, but nothing in this repo uses one and it cannot be checked offline: a Bool is the
-    // fallback the spec allows (false = cyan, true = green).
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "1")
-    @runtimeProperty("ModSettings.displayName", "Green hologram")
-    @runtimeProperty("ModSettings.description", "Tints the map tiles, overlays, frame and header green instead of cyan (applies on next open).")
-    public let greenHologram: Bool = false;
+    @runtimeProperty("ModSettings.displayName", "Hologram colour")
+    @runtimeProperty("ModSettings.description", "Tints the map tiles, overlays, frame and header text (applies on next open).")
+    @runtimeProperty("ModSettings.displayValues.Cyan", "Cyan")
+    @runtimeProperty("ModSettings.displayValues.Green", "Green")
+    public let holoColor: NightMapHoloColor = NightMapHoloColor.Cyan;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")

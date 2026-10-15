@@ -64,7 +64,7 @@ public abstract class NMTheme {
     public static func PlayerRotationSign() -> Float { return 1.0; }
 
     // ---- hologram look (cyan default, green alternative). Every function takes the colour choice: nothing here reads
-    // settings, so the look is testable. `green` is NightMapSettings.greenHologram, passed in by the system on open.
+    // settings, so the look is testable. `green` is NightMapSettings.holoColor == Green, passed in by the system on open.
     // Accent: glow tiles and overlays (grid, noise, scan bar, edge glow). Highlight: frame, brackets, hint/header text.
     public static func HoloAccent(green: Bool) -> HDRColor {
         if green { return new HDRColor(0.365, 1.0, 0.541, 1.0); }   // #5dff8a

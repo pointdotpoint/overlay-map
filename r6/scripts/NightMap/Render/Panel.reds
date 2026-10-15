@@ -48,7 +48,7 @@ public class NMPanel {
     public let hints: ref<inkText>;
     public let holo: ref<NMHolo>;
 
-    // green / effects: NightMapSettings.greenHologram / hologramEffects, passed in so the layout stays testable.
+    // green / effects: NightMapSettings.holoColor == Green / hologramEffects, passed in so the layout stays testable.
     public static func Build(window: wref<inkCompoundWidget>, layout: ref<NMPanelLayout>, opacity: Float, green: Bool, effects: Bool) -> ref<NMPanel> {
         let p = new NMPanel();
         p.layout = layout;

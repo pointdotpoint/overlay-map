@@ -20,7 +20,13 @@ def _block(src: str, field: str) -> str:
 
 def test_hologram_settings_live_under_display_with_the_right_defaults():
     s = (SCRIPTS / "Core" / "Settings.reds").read_text()
-    assert "public let greenHologram: Bool = false;" in s and "public let hologramEffects: Bool = true;" in s
-    for field, name in (("greenHologram", "Green hologram"), ("hologramEffects", "Hologram effects")):
+    assert "public let holoColor: NightMapHoloColor = NightMapHoloColor.Cyan;" in s
+    assert "public let hologramEffects: Bool = true;" in s and "greenHologram" not in s
+    assert re.search(r"enum NightMapHoloColor \{\s*Cyan = 0,\s*Green = 1\s*\}", s)
+    for field, name in (("holoColor", "Hologram colour"), ("hologramEffects", "Hologram effects")):
         b = _block(s, field)
         assert '"ModSettings.category", "Display"' in b and f'"ModSettings.displayName", "{name}"' in b
+    b = _block(s, "holoColor")
+    assert '"ModSettings.displayValues.Cyan", "Cyan"' in b and '"ModSettings.displayValues.Green", "Green"' in b
+    system = (SCRIPTS / "Core" / "NightMapSystem.reds").read_text()
+    assert "Equals(s.holoColor, NightMapHoloColor.Green)" in system

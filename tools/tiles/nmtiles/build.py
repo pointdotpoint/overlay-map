@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 
 from nmtiles.encode import encode_bc7
 from nmtiles.holo_atlas import build_holo_atlas
@@ -27,6 +28,7 @@ from nmtiles.ui_atlas import build_ui_atlas
 HERE = Path(__file__).resolve().parents[1]
 REPO = HERE.parents[1]
 TPL = HERE / "templates"
+GLOW_TEX = 256     # glow tile texture size (other sets are 512)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -72,6 +74,9 @@ def main(argv: list[str] | None = None) -> int:
               " ".join(f"{s}={len(tiles.get(s, []))}" for s in SETS) + f" ({time.time() - t_lv:.0f}s)", flush=True)
     print("tiles per set: " + " ".join(f"{s}={len(set_pngs[s])}" for s in SETS), flush=True)
 
+    # Glow tiles are soft: ship them at half resolution (the runtime stretches every tile image to 512 units).
+    for p in set_pngs["glow"].values():
+        Image.open(p).resize((GLOW_TEX, GLOW_TEX), Image.BOX).save(p, compress_level=3)
     for p in write_previews(levels, set_pngs, out):
         print(f"preview {p}")
 
@@ -94,9 +99,10 @@ def main(argv: list[str] | None = None) -> int:
     for s in SETS:
         for (li, ix, iy), p in set_pngs[s].items():
             base = f"nightmap\\tiles\\{s}\\L{li}\\t_{ix}_{iy}"
-            write_resource(ws, base + ".xbm", make_xbm_json(xbm_t, 512, 512, payloads[p]))
+            tex = GLOW_TEX if s == "glow" else 512
+            write_resource(ws, base + ".xbm", make_xbm_json(xbm_t, tex, tex, payloads[p]))
             write_resource(ws, base + ".inkatlas",
-                           make_inkatlas_json(atl_t, base + ".xbm", {"full": (0, 0, 512, 512)}, 512, 512))
+                           make_inkatlas_json(atl_t, base + ".xbm", {"full": (0, 0, tex, tex)}, tex, tex))
     write_resource(ws, "nightmap\\ui\\ui.xbm", make_xbm_json(xbm_t, 1024, 1024, payloads[ui_png]))
     write_resource(ws, "nightmap\\ui\\ui.inkatlas",
                    make_inkatlas_json(atl_t, "nightmap\\ui\\ui.xbm", ui_parts, 1024, 1024))

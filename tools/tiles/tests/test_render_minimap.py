@@ -153,3 +153,9 @@ def test_margin_change_leaves_the_other_sets_identical():
     assert "glow" in a and "glow" not in b
     for name in ("road", "bfill", "outline"):
         assert a[name].tobytes() == b[name].tobytes(), name
+
+
+def test_glow_gain_falls_with_level_so_far_zoom_is_not_haze():
+    from nmtiles.render_minimap import GLOW_GAIN, glow_gain
+    g = [glow_gain(m) for m in (2.0, 4.0, 8.0, 16.0)]
+    assert g[0] == GLOW_GAIN and all(a > b for a, b in zip(g, g[1:])) and g[3] < 1.0

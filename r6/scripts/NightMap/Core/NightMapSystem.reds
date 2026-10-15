@@ -23,7 +23,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let savedMpp: Float = 0.0;   // 0 = not opened yet this session: start fully zoomed in
     private let frameNo: Int32;
     private let layers: ref<NMLayerStack>;
-    private let holoGreen: Bool;       // NightMapSettings.greenHologram, read once per open
+    private let holoGreen: Bool;       // NightMapSettings.holoColor == Green, read once per open
     private let holoEffects: Bool;     // NightMapSettings.hologramEffects, read once per open
     private let renderer: ref<NMItemRenderer>;
     private let crosshair: ref<NMCrosshair>;
@@ -185,7 +185,7 @@ public class NightMapSystem extends ScriptableSystem {
         }
         let s = this.Settings();
         let layout = NMPanelLayout.Compute(size.X, size.Y);
-        this.holoGreen = IsDefined(s) ? s.greenHologram : false;
+        this.holoGreen = IsDefined(s) ? Equals(s.holoColor, NightMapHoloColor.Green) : false;
         this.holoEffects = IsDefined(s) ? s.hologramEffects : true;
         this.panel = NMPanel.Build(window, layout, IsDefined(s) ? s.panelOpacity : NMTheme.DefaultPanelOpacity(), this.holoGreen, this.holoEffects);
         let bounds = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());

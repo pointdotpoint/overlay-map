@@ -33,8 +33,8 @@ public class NMHolo {
         return h;
     }
 
-    // One period of the scanline texture on screen; the scanline loop translates by exactly this much.
-    public func ScanPeriod() -> Float { return NMTheme.ScanPeriod() * this.scale; }
+    // One period of the scanline texture (a tiled part repeats at its native size, so no scale term); the scanline loop translates by exactly this much.
+    public func ScanPeriod() -> Float { return NMTheme.ScanPeriod(); }
     public func BarHeight() -> Float { return this.mapH * 0.14; }
     public func ProxyCount() -> Int32 { return ArraySize(this.proxies); }
 
@@ -74,8 +74,8 @@ public class NMHolo {
         let o = NMTheme.HoloEdgeOpacity();
         ArrayPush(this.edges, NMUi.HoloImage(parent, n"holo_edge_t", 0.0, 0.0, w, t, c, o, inkBrushTileType.NoTile));
         ArrayPush(this.edges, NMUi.HoloImage(parent, n"holo_edge_b", 0.0, h - t, w, t, c, o, inkBrushTileType.NoTile));
-        ArrayPush(this.edges, NMUi.HoloImage(parent, n"holo_edge_l", 0.0, 0.0, t, h, c, o, inkBrushTileType.NoTile));
-        ArrayPush(this.edges, NMUi.HoloImage(parent, n"holo_edge_r", w - t, 0.0, t, h, c, o, inkBrushTileType.NoTile));
+        ArrayPush(this.edges, NMUi.HoloImage(parent, n"holo_edge_l", 0.0, t, t, h - 2.0 * t, c, o, inkBrushTileType.NoTile));
+        ArrayPush(this.edges, NMUi.HoloImage(parent, n"holo_edge_r", w - t, t, t, h - 2.0 * t, c, o, inkBrushTileType.NoTile));
     }
 
     public static func Fade(from: Float, to: Float, delay: Float, dur: Float) -> ref<inkAnimTransparency> {

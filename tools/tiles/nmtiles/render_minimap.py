@@ -28,7 +28,14 @@ SS = 2
 DEFAULT_JOBS = 4
 GLOW_MIN_MPP = 2.0                                       # glow tiles exist only at m/px >= this (L2..L5)
 GLOW_RADIUS = 1.5                                        # Gaussian sigma in px at every glow level: 3 m at 2 m/px, reach ~9 m
-GLOW_GAIN = 2.5                                          # a blurred 1 px line peaks near 0.26 of full alpha; lift it
+GLOW_GAIN = 2.5                                          # gain at 2 m/px (a blurred 1 px line peaks near 0.26); falls with sqrt(mpp)
+
+
+def glow_gain(mpp: float) -> float:
+    """Coarser levels are drawn at the same screen size from a blur whose reach grows with mpp, so they get less gain:
+    otherwise the far zoom reads as haze, not glow."""
+    return GLOW_GAIN * math.sqrt(GLOW_MIN_MPP / max(mpp, GLOW_MIN_MPP))
+
 GLOW_MARGIN = math.ceil(3 * GLOW_RADIUS) + 3             # >= 3 sigma plus the LANCZOS support
 EDGE_MARGIN = 3                                          # px: >= the LANCZOS support, so the kernel sees the neighbouring tile
 BATCH = 100_000                                          # primitives drawn per Python list conversion (bounded memory)
@@ -156,7 +163,7 @@ def _road_edge(road: np.ndarray) -> np.ndarray:
     return road - np.minimum(road, eroded)
 
 
-def _glow(road: np.ndarray | None, line: np.ndarray | None) -> np.ndarray | None:
+def _glow(road: np.ndarray | None, line: np.ndarray | None, gain: float = GLOW_GAIN) -> np.ndarray | None:
     """Blurred max(road rim, footprint outline), lifted by GLOW_GAIN; margin included."""
     parts = []
     if road is not None:
@@ -167,7 +174,7 @@ def _glow(road: np.ndarray | None, line: np.ndarray | None) -> np.ndarray | None
         return None
     src = np.maximum.reduce(parts)
     blurred = np.asarray(Image.fromarray(src).filter(ImageFilter.GaussianBlur(GLOW_RADIUS)))
-    return np.minimum(blurred.astype(np.float32) * GLOW_GAIN, 255).astype(np.uint8)
+    return np.minimum(blurred.astype(np.float32) * gain, 255).astype(np.uint8)
 
 
 def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str, Image.Image]:
@@ -192,7 +199,7 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
         put("bfill", _crop(fill, margin))
         put("outline", _crop(line, margin))
     if glow_on:
-        g = _glow(road, line)
+        g = _glow(road, line, glow_gain(grid.mpp))
         put("glow", None if g is None else _crop(g, margin))
     return out
 

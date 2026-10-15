@@ -52,8 +52,11 @@ public abstract class NMHoloTests {
         t.Check("holo.glow_layer_level_offset", near.CurrentLevel() == 2 && far.CurrentLevel() == n - 1 && near.LevelOffset() == 2,
             ToString(near.CurrentLevel()) + "/" + ToString(far.CurrentLevel()));
         t.Check("holo.glow_has_no_l0_tiles", !near.Has(0, 0, 0) && !near.Has(1, 0, 0), "");
-        let stack = NMLayerStack.WantsSet("glow", false) || !NMLayerStack.WantsSet("glow", true) || !NMLayerStack.WantsSet("road", false);
-        t.Check("holo.effects_off_drops_glow_layer", !stack && NMLayerStack.SetOffset("glow") == 2 && NMLayerStack.SetOffset("road") == 0, "");
+        t.Check("holo.set_offsets", NMLayerStack.WantsSet("glow", true) && NMLayerStack.SetOffset("glow") == 2 && NMLayerStack.SetOffset("road") == 0, "");
+        let stack = NMLayerStack.Create(canvas, false, false);
+        let withFx = NMLayerStack.Create(canvas, false, true);
+        t.Check("holo.effects_off_drops_glow_layer", !IsDefined(stack.Layer("glow")) && stack.LayerCount() == 3 && IsDefined(withFx.Layer("glow")) && withFx.LayerCount() == 4,
+            ToString(stack.LayerCount()) + "/" + ToString(withFx.LayerCount()));
     }
 
     private static func ThemeCases(t: ref<NMSelfTest>) {
@@ -99,7 +102,7 @@ public abstract class NMHoloTests {
         t.Check("holo.effects_on_builds_overlays", IsDefined(on.grid) && IsDefined(on.scan) && IsDefined(on.noise) && IsDefined(on.bar) && ArraySize(on.edges) == 4, "");
         t.Check("holo.overlay_opacities", t.Near(on.grid.GetOpacity(), 0.07, 0.0001) && t.Near(on.scan.GetOpacity(), 0.20, 0.0001)
             && t.Near(on.noise.GetOpacity(), 0.12, 0.0001) && t.Near(on.bar.GetOpacity(), 0.0, 0.0001), "");
-        t.Check("holo.scan_period_scales", t.Near(on.ScanPeriod(), 8.0, 0.0001) && t.Near(on.scan.GetHeight(), 1480.0 + 8.0, 0.01), t.F(on.ScanPeriod()));
+        t.Check("holo.scan_period_is_native", t.Near(on.ScanPeriod(), 4.0, 0.0001) && t.Near(on.scan.GetHeight(), 1480.0 + 4.0, 0.01), t.F(on.ScanPeriod()));
         // A whole panel with effects off: the Part 1 look, no overlay widgets, no animations, the see-through default opacity.
         let host = new inkCanvas();
         let layout = NMPanelLayout.Compute(3840.0, 2160.0);
