@@ -150,7 +150,7 @@ public class NMTooltip {
         this.category.SetText(StrUpper(d.category));
         this.category.SetTintColor(color);
         this.bar.SetTintColor(color);
-        this.title.SetText(NMTooltip.Truncate(StrUpper(d.title), 26));
+        this.title.SetText(NMTooltip.Truncate(StrUpper(d.title), 22));
         let i = 0;
         while i < n {
             this.rowKey[i].SetText(StrUpper(NMTooltip.Truncate(d.rowKeys[i], 12)));
