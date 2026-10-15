@@ -1,6 +1,8 @@
 """Colourless mask tiles (white RGB, alpha = coverage) from the game's minimap geometry (spec 11.6).
 
 One tile set per class, in draw order; the runtime tints them with SetTintColor from NMTheme:
+  glow     blurred road edges + footprint outlines (levels with mpp >= GLOW_MIN_MPP only; the runtime draws it from a
+           level 2 steps coarser than the camera's, upscaled, so bilinear filtering makes the bloom soft)
   road     minimap road triangles
   bfill    building footprint fill
   outline  footprint exterior as a 1 px line at the level's resolution (drawn at 2x, width 2, downsampled)
@@ -17,13 +19,17 @@ from pathlib import Path
 from typing import Callable
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from nmtiles.render import LevelGrid
 
-SETS = ("road", "bfill", "outline")      # draw order, back to front
+SETS = ("glow", "road", "bfill", "outline")      # draw order, back to front
 SS = 2
 DEFAULT_JOBS = 4
+GLOW_MIN_MPP = 2.0                                       # glow tiles exist only at m/px >= this (L2..L5)
+GLOW_RADIUS = 1.5                                        # Gaussian sigma in px at every glow level: 3 m at 2 m/px, reach ~9 m
+GLOW_GAIN = 2.5                                          # a blurred 1 px line peaks near 0.26 of full alpha; lift it
+GLOW_MARGIN = math.ceil(3 * GLOW_RADIUS) + 3             # >= 3 sigma plus the LANCZOS support
 EDGE_MARGIN = 3                                          # px: >= the LANCZOS support, so the kernel sees the neighbouring tile
 BATCH = 100_000                                          # primitives drawn per Python list conversion (bounded memory)
 
@@ -144,6 +150,26 @@ def _white(alpha: np.ndarray) -> Image.Image | None:
     return Image.fromarray(out, "RGBA")
 
 
+def _road_edge(road: np.ndarray) -> np.ndarray:
+    """1-2 px wide rim of the road coverage (coverage minus its 3x3 erosion)."""
+    eroded = np.asarray(Image.fromarray(road).filter(ImageFilter.MinFilter(3)))
+    return road - np.minimum(road, eroded)
+
+
+def _glow(road: np.ndarray | None, line: np.ndarray | None) -> np.ndarray | None:
+    """Blurred max(road rim, footprint outline), lifted by GLOW_GAIN; margin included."""
+    parts = []
+    if road is not None:
+        parts.append(_road_edge(road))
+    if line is not None:
+        parts.append(line)
+    if not parts:
+        return None
+    src = np.maximum.reduce(parts)
+    blurred = np.asarray(Image.fromarray(src).filter(ImageFilter.GaussianBlur(GLOW_RADIUS)))
+    return np.minimum(blurred.astype(np.float32) * GLOW_GAIN, 255).astype(np.uint8)
+
+
 def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str, Image.Image]:
     """The non-empty mask tiles of tile (ix, iy), by set name. An empty dict means: write nothing."""
     out: dict[str, Image.Image] = {}
@@ -153,13 +179,21 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
         if img is not None:
             out[name] = img
 
-    m = _fill_mask(src.road, grid, ix, iy, EDGE_MARGIN)
-    put("road", None if m is None else _crop(m, EDGE_MARGIN))
-    masks = _foot_masks(src, grid, ix, iy, EDGE_MARGIN)
+    # Levels with a glow set render every mask with the larger margin (the window shifts by whole pixels, so the
+    # cropped result is identical) and blur it before cropping.
+    glow_on = grid.mpp >= GLOW_MIN_MPP
+    margin = GLOW_MARGIN if glow_on else EDGE_MARGIN
+    road = _fill_mask(src.road, grid, ix, iy, margin)
+    put("road", None if road is None else _crop(road, margin))
+    masks = _foot_masks(src, grid, ix, iy, margin)
+    line = None
     if masks is not None:
         fill, line = masks
-        put("bfill", _crop(fill, EDGE_MARGIN))
-        put("outline", _crop(line, EDGE_MARGIN))
+        put("bfill", _crop(fill, margin))
+        put("outline", _crop(line, margin))
+    if glow_on:
+        g = _glow(road, line)
+        put("glow", None if g is None else _crop(g, margin))
     return out
 
 

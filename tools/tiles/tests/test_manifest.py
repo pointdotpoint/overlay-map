@@ -96,3 +96,14 @@ def test_fractional_mpp_keeps_precision_and_decimal_point():
     src = emit_manifest([lv(0.75, 4, 4, road=[(0, 0)]), lv(1.5, 2, 2)], (-6012.0, -4608.0, 4589.0, 7381.0), "2.31", SETS)
     assert "case 0: return 0.75;" in src and "case 1: return 1.5;" in src
     assert (_f(0.75), _f(3), _f(0.0625), _f(1e-7), _f(1234567.0)) == ("0.75", "3.0", "0.0625", "0.0", "1234567.0")
+
+
+def test_glow_listed_with_empty_l0_l1_and_tiles_only_from_l2():
+    levels = [lv(0.5, 40, 40, road=[(0, 0)]), lv(1.0, 20, 20, road=[(0, 0)]),
+              lv(2.0, 10, 10, road=[(0, 0)], glow=[(1, 0), (0, 0)]), lv(4.0, 5, 5, glow=[(2, 2)])]
+    src = emit_manifest(levels, (0.0, 0.0, 1.0, 1.0), "2.31", ["glow", "road", "bfill", "outline"])
+    assert 'case 0: return "glow";' in src
+    assert "case 2: return NMTileManifest.Tiles_0_2()" in src and "case 3: return NMTileManifest.Tiles_0_3()" in src
+    assert "Tiles_0_0()" not in src and "Tiles_0_1()" not in src      # glow (set 0): nothing at L0/L1
+    assert "Tiles_0_2_0() -> array<Int32> {\n        return [0, 1];" in src
+    assert "case 100: return" in src and "case 101: return" in src   # road still has L0 and L1

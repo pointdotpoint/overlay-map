@@ -12,6 +12,8 @@ from pathlib import Path
 import numpy as np
 
 from nmtiles.encode import encode_bc7
+from nmtiles.holo_atlas import build_holo_atlas
+from nmtiles.holo_preview import write_holo_previews
 from nmtiles.manifest import emit_manifest
 from nmtiles.footprints import load_or_build
 from nmtiles.minimap import load_city
@@ -77,8 +79,14 @@ def main(argv: list[str] | None = None) -> int:
     ui_png = png_dir / "ui.png"
     ui_img.save(ui_png)
 
+    holo_img, holo_parts = build_holo_atlas()
+    holo_png = png_dir / "holo.png"
+    holo_img.save(holo_png)
+    for p in write_holo_previews(levels, set_pngs, out):
+        print(f"preview {p}")
+
     all_pngs = [p for s in SETS for p in set_pngs[s].values()]
-    payloads = encode_bc7(all_pngs + [ui_png], out / "dds", min(args.jobs, 2))
+    payloads = encode_bc7(all_pngs + [ui_png, holo_png], out / "dds", min(args.jobs, 2))
     xbm_t = json.loads((TPL / "tile.xbm.json").read_text())
     atl_t = json.loads((TPL / "atlas.inkatlas.json").read_text())
     ws = out / "workspace"
@@ -92,6 +100,9 @@ def main(argv: list[str] | None = None) -> int:
     write_resource(ws, "nightmap\\ui\\ui.xbm", make_xbm_json(xbm_t, 1024, 1024, payloads[ui_png]))
     write_resource(ws, "nightmap\\ui\\ui.inkatlas",
                    make_inkatlas_json(atl_t, "nightmap\\ui\\ui.xbm", ui_parts, 1024, 1024))
+    write_resource(ws, "nightmap\\ui\\holo.xbm", make_xbm_json(xbm_t, holo_img.width, holo_img.height, payloads[holo_png]))
+    write_resource(ws, "nightmap\\ui\\holo.inkatlas",
+                   make_inkatlas_json(atl_t, "nightmap\\ui\\holo.xbm", holo_parts, holo_img.width, holo_img.height))
 
     deserialize_all(ws)
     archive = pack_archive(ws, REPO / "archive" / "pc" / "mod" / "NightMap.archive")
