@@ -10,7 +10,10 @@ public class NMMapLayer {
 }
 
 // Draw order, bottom to top. Only the first group lives in NMLayerStack; the rest are separate canvases in NMPanel.
-//   1. Tile sets, in NMTileManifest.SetName order: road, bfill, outline.   (NMTileLayer, one per set)
+//   0. [effects on] hologram grid, under everything (NMHolo; a tiled image in NMPanel.mapContent).
+//   1. Tile sets, in NMTileManifest.SetName order: glow, road, bfill, outline.   (NMTileLayer, one per set; glow is
+//      drawn from a level NMTheme.GlowLevelOffset() coarser than the camera's, and is not created with effects off)
+//      then [effects on] scanlines and noise (NMHolo), still under the markers.
 //   2. [future] photos: the user's photo pins / imagery. Add one more NMMapLayer after the last tile set in
 //      NMLayerStack.Create; a generic NMTileLayer bound to a new manifest set already does it.
 //   3. Items and markers (NMPanel.items, drawn by NMItemRenderer). Never assumes live game pins only.
@@ -19,26 +22,40 @@ public class NMLayerStack {
     private let layers: array<ref<NMMapLayer>>;
     public let available: Bool;
 
-    public static func Create(parent: ref<inkCanvas>) -> ref<NMLayerStack> {
+    // Does a set get a layer? The glow set only exists while the hologram effects are on.
+    public static func WantsSet(name: String, effects: Bool) -> Bool {
+        return effects || NotEquals(name, "glow");
+    }
+
+    public static func SetOffset(name: String) -> Int32 {
+        return Equals(name, "glow") ? NMTheme.GlowLevelOffset() : 0;
+    }
+
+    public static func Create(parent: ref<inkCanvas>, green: Bool, effects: Bool) -> ref<NMLayerStack> {
         let st = new NMLayerStack();
         st.available = NMTileLayer.ArchiveAvailable();
         if st.available {
             let s = 0;
             while s < NMTileManifest.SetCount() {
-                ArrayPush(st.layers, NMTileLayer.Create(parent, s));
+                let name = NMTileManifest.SetName(s);
+                if NMLayerStack.WantsSet(name, effects) {
+                    ArrayPush(st.layers, NMTileLayer.Create(parent, s, NMLayerStack.SetOffset(name)));
+                }
                 s += 1;
             }
         } else {
             ArrayPush(st.layers, NMGridLayer.Create(parent));
         }
-        st.ApplyTheme();
+        st.ApplyTheme(green);
         return st;
     }
 
+    public func LayerCount() -> Int32 { return ArraySize(this.layers); }
+
     // Re-reads every layer's tint and opacity from NMTheme. Call after the theme changes.
-    public func ApplyTheme() {
+    public func ApplyTheme(green: Bool) {
         for l in this.layers {
-            l.SetTint(NMTheme.TileTint(l.Name()), NMTheme.TileOpacity(l.Name()));
+            l.SetTint(NMTheme.TileTint(l.Name(), green), NMTheme.TileOpacity(l.Name()));
         }
     }
 

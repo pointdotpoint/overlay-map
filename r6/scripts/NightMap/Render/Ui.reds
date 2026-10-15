@@ -40,6 +40,23 @@ public abstract class NMUi {
         return img;
     }
 
+    // Image from the hologram atlas (nightmap\\ui\\holo.inkatlas), stretched to w x h, or tiled when tile != NoTile
+    // (the part then repeats at its native size over the widget). Tint and opacity are set once; nothing updates per frame.
+    public static func HoloImage(parent: wref<inkCompoundWidget>, part: CName, x: Float, y: Float, w: Float, h: Float, color: HDRColor, opacity: Float, tile: inkBrushTileType) -> ref<inkImage> {
+        let img = new inkImage();
+        img.SetAnchor(inkEAnchor.TopLeft);
+        img.SetAtlasResource(NMTheme.HoloAtlas());
+        img.SetTexturePart(part);
+        img.SetBrushTileType(tile);
+        img.SetSize(new Vector2(w, h));
+        img.SetTranslation(new Vector2(x, y));
+        img.SetTintColor(color);
+        img.SetOpacity(opacity);
+        img.SetInteractive(false);
+        img.Reparent(parent);
+        return img;
+    }
+
     public static func Text(parent: wref<inkCompoundWidget>, font: String, style: CName, size: Int32, color: HDRColor) -> ref<inkText> {
         let t = new inkText();
         t.SetAnchor(inkEAnchor.TopLeft);

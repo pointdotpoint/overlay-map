@@ -159,11 +159,27 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "1")
     @runtimeProperty("ModSettings.displayName", "Panel opacity")
-    @runtimeProperty("ModSettings.description", "Background opacity of the map panel (applies on next open).")
+    @runtimeProperty("ModSettings.description", "Background opacity of the map panel; low values let the world show through (applies on next open).")
     @runtimeProperty("ModSettings.step", "0.02")
     @runtimeProperty("ModSettings.min", "0.3")
     @runtimeProperty("ModSettings.max", "1.0")
-    public let panelOpacity: Float = 0.74;
+    public let panelOpacity: Float = 0.45;
+
+    // Mod Settings does support enums, but nothing in this repo uses one and it cannot be checked offline: a Bool is the
+    // fallback the spec allows (false = cyan, true = green).
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Green hologram")
+    @runtimeProperty("ModSettings.description", "Tints the map tiles, overlays, frame and header green instead of cyan (applies on next open).")
+    public let greenHologram: Bool = false;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Hologram effects")
+    @runtimeProperty("ModSettings.description", "Glow, grid, scanlines, noise, scan bar, edge glow and marker halos, with their animations. Off looks like the plain map (applies on next open).")
+    public let hologramEffects: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Debug")

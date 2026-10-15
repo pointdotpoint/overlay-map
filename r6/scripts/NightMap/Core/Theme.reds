@@ -16,6 +16,7 @@ public abstract class NMTheme {
     public static func BodyFont() -> String { return "base\\gameplay\\gui\\fonts\\raj\\raj.inkfontfamily"; }
 
     public static func UiAtlas() -> ResRef { return r"nightmap\\ui\\ui.inkatlas"; }
+    public static func HoloAtlas() -> ResRef { return r"nightmap\\ui\\holo.inkatlas"; }
 
     // ---- vanilla map markers (sub-project 2): values extracted from the vanilla world map (spike LOOK.md) ----
     public static func MappinAtlas() -> ResRef { return r"base\\gameplay\\gui\\common\\icons\\mappin_icons.inkatlas"; }
@@ -62,13 +63,57 @@ public abstract class NMTheme {
     // 1.0 if ink rotates clockwise for positive angles; verified at Checkpoint 2.
     public static func PlayerRotationSign() -> Float { return 1.0; }
 
-    // Tile-set tints (spec 11.6 defaults). Tiles are colourless masks; these are applied at runtime, so a theme
-    // change needs no rebuild. Keys are NMTileManifest.SetName values.
-    public static func TileTint(set: String) -> HDRColor {
-        if Equals(set, "road") { return new HDRColor(0.118, 0.549, 0.588, 1.0); }   // #1e8c96
-        return new HDRColor(0.624, 0.953, 1.0, 1.0);                                // #9ff3ff
+    // ---- hologram look (cyan default, green alternative). Every function takes the colour choice: nothing here reads
+    // settings, so the look is testable. `green` is NightMapSettings.greenHologram, passed in by the system on open.
+    // Accent: glow tiles and overlays (grid, noise, scan bar, edge glow). Highlight: frame, brackets, hint/header text.
+    public static func HoloAccent(green: Bool) -> HDRColor {
+        if green { return new HDRColor(0.365, 1.0, 0.541, 1.0); }   // #5dff8a
+        return new HDRColor(0.310, 0.890, 1.0, 1.0);                // #4fe3ff
+    }
+    public static func HoloHighlight(green: Bool) -> HDRColor {
+        if green { return new HDRColor(0.553, 1.0, 0.659, 1.0); }   // #8dffa8
+        return NMTheme.Cyan();
+    }
+    public static func HoloBackground(green: Bool) -> HDRColor {
+        if green { return new HDRColor(0.027, 0.078, 0.051, 1.0); } // #07140d
+        return NMTheme.MapBackground();                             // #08121a
+    }
+    // Corner brackets: the highlight colour; with effects on it gets HDR gain so it reads brighter than the frame.
+    public static func BracketColor(green: Bool, effects: Bool) -> HDRColor {
+        let c = NMTheme.HoloHighlight(green);
+        if !effects {
+            return c;
+        }
+        let g = NMTheme.HoloBracketGain();
+        return new HDRColor(c.Red * g, c.Green * g, c.Blue * g, 1.0);
+    }
+    public static func HoloScanColor() -> HDRColor { return new HDRColor(0.0, 0.0, 0.0, 1.0); }
+    public static func HoloGridOpacity() -> Float { return 0.07; }
+    public static func HoloScanOpacity() -> Float { return 0.20; }
+    public static func HoloNoiseOpacity() -> Float { return 0.12; }   // the flicker animation moves it between 0.08 and 0.14
+    public static func HoloBarOpacity() -> Float { return 0.25; }
+    public static func HoloEdgeOpacity() -> Float { return 0.6; }
+    public static func HoloBracketGain() -> Float { return 1.25; }   // brackets brighten with HDR gain (bloom not verified)
+    public static func HaloOpacity() -> Float { return 0.35; }       // marker halo in the pin's own colour (effects on)
+    public static func HaloSize() -> Float { return 200.0; }
+    public static func ScanPeriod() -> Float { return 4.0; }          // holo_scan line spacing in 4K units
+    public static func DefaultPanelOpacity() -> Float { return 0.45; }   // see-through; keep equal to NightMapSettings.panelOpacity
+    // The glow layer draws a level this many steps coarser than the camera's, upscaled (bilinear = soft bloom).
+    public static func GlowLevelOffset() -> Int32 { return 2; }
+
+    // Tile-set tints. Tiles are colourless masks; these are applied at runtime, so a theme change needs no rebuild.
+    // Keys are NMTileManifest.SetName values.
+    public static func TileTint(set: String, green: Bool) -> HDRColor {
+        if Equals(set, "glow") { return NMTheme.HoloAccent(green); }
+        if Equals(set, "road") {
+            if green { return new HDRColor(0.122, 0.604, 0.322, 1.0); }   // #1f9a52
+            return new HDRColor(0.118, 0.549, 0.588, 1.0);                // #1e8c96
+        }
+        if green { return new HDRColor(0.659, 1.0, 0.749, 1.0); }         // #a8ffbf (bfill, outline)
+        return new HDRColor(0.624, 0.953, 1.0, 1.0);                      // #9ff3ff
     }
     public static func TileOpacity(set: String) -> Float {
+        if Equals(set, "glow") { return 0.45; }
         if Equals(set, "road") { return 0.55; }
         if Equals(set, "bfill") { return 0.12; }
         if Equals(set, "outline") { return 0.9; }

@@ -45,6 +45,9 @@ public class NMTileLayer extends NMMapLayer {
     private let opacity: Float;
     private let tintDirty: Bool;
     private let lastRev: Int32;
+    // Levels coarser than the camera's pick this layer draws (0 for the road/bfill/outline sets). The glow set uses +2:
+    // it is baked only at L2.., drawn upscaled by levelMpp / cam.mpp through the same container transform.
+    private let levelOffset: Int32;
 
     public static func FadeMs() -> Float { return 150.0; }
     // Two resident levels at 4K (up to ~120 tiles each near a 2x ratio) with margin.
@@ -86,14 +89,15 @@ public class NMTileLayer extends NMMapLayer {
         return c;
     }
 
-    public static func Create(parent: ref<inkCanvas>, setIdx: Int32) -> ref<NMTileLayer> {
+    public static func Create(parent: ref<inkCanvas>, setIdx: Int32, levelOffset: Int32) -> ref<NMTileLayer> {
         let t = new NMTileLayer();
         t.setIdx = setIdx;
+        t.levelOffset = Max(levelOffset, 0);
         t.setName = NMTileManifest.SetName(setIdx);
         t.lastRev = -1;
         t.cur = -1;
         t.prev = -1;
-        t.tint = NMTheme.TileTint(t.setName);
+        t.tint = NMTheme.TileTint(t.setName, false);
         t.opacity = NMTheme.TileOpacity(t.setName);
         t.box = NMTileLayer.MakeContainer(parent);
         let base = 0;
@@ -148,6 +152,14 @@ public class NMTileLayer extends NMMapLayer {
         }
         return best;
     }
+
+    // The level a layer with a level offset draws for a camera m/px: the picked level `offset` steps coarser, clamped to the
+    // coarsest. offset 0 is PickLevel.
+    public static func PickLevelOffset(mpp: Float, offset: Int32) -> Int32 {
+        return Min(NMTileLayer.PickLevel(mpp) + Max(offset, 0), NMTileManifest.LevelCount() - 1);
+    }
+
+    public func LevelOffset() -> Int32 { return this.levelOffset; }
 
     // Crossfade ramp: one step of a linear 0..1 alpha. rising = fading in, else fading out.
     public static func FadeStep(a: Float, dtMs: Float, durMs: Float, rising: Bool) -> Float {
@@ -204,7 +216,7 @@ public class NMTileLayer extends NMMapLayer {
             return;
         }
         this.lastRev = cam.revision;
-        let lv = NMTileLayer.PickLevel(cam.mpp);
+        let lv = NMTileLayer.PickLevelOffset(cam.mpp, this.levelOffset);
         let touch = this.tintDirty;
         if this.cur < 0 {
             this.cur = lv;

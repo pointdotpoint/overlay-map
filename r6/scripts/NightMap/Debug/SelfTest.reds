@@ -21,6 +21,7 @@ public class NMSelfTest {
         this.PickCases();
         this.TooltipCases();
         this.VersionCases();
+        NMHoloTests.Run(this);
         NMVanillaTests.Run(this);
         NMPerfTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
@@ -331,7 +332,7 @@ public class NMSelfTest {
             return;
         }
         let n = NMTileManifest.LevelCount();
-        this.Check("tiles.six_levels_three_sets", n == 6 && NMTileManifest.SetCount() == 3, ToString(n) + "/" + ToString(NMTileManifest.SetCount()));
+        this.Check("tiles.six_levels_four_sets", n == 6 && NMTileManifest.SetCount() == 4, ToString(n) + "/" + ToString(NMTileManifest.SetCount()));
         let ascending = true;
         let i = 1;
         while i < n {
@@ -378,7 +379,7 @@ public class NMSelfTest {
         let counts = "";
         let s = 0;
         while s < NMTileManifest.SetCount() {
-            let layer = NMTileLayer.Create(canvas, s);
+            let layer = NMTileLayer.Create(canvas, s, 0);
             let lv = 0;
             while lv < n {
                 let tiles: array<Int32> = NMTileManifest.SetTiles(s, lv);
@@ -398,7 +399,8 @@ public class NMSelfTest {
                 }
                 if probe < total && layer.Has(lv, probe % nx, probe / nx) { missOk = false; }
                 if layer.Has(lv, -1, 0) || layer.Has(lv, nx, 0) { missOk = false; }
-                if ArraySize(tiles) == 0 { emptyDetail += NMTileManifest.SetName(s) + ".L" + ToString(lv) + " "; }
+                // glow is baked only at L2.. (mpp >= 2): empty at L0/L1 by design, checked in HoloCases
+                if ArraySize(tiles) == 0 && !(Equals(NMTileManifest.SetName(s), "glow") && lv < 2) { emptyDetail += NMTileManifest.SetName(s) + ".L" + ToString(lv) + " "; }
                 counts += ToString(ArraySize(tiles)) + (lv + 1 < n ? "," : ";");
                 lv += 1;
             }
@@ -408,7 +410,7 @@ public class NMSelfTest {
         let cb = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
         let cam = NMCamera.Create(1880.0, 1480.0, cb, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
         cam.SetCenter(-1800.0, 150.0);
-        let sl = NMTileLayer.Create(canvas, 0);
+        let sl = NMTileLayer.Create(canvas, NMHoloTests.SetIndex("road"), 0);
         cam.SetMpp(1.0);
         sl.Update(cam, 16.0);
         let st1 = sl.CurrentLevel() == 1 && sl.PreviousLevel() == -1;
@@ -430,7 +432,7 @@ public class NMSelfTest {
         NMLog.Info("TEST|INFO|tiles.set_level_counts|" + counts);
         this.Check("tiles.no_empty_set_levels", Equals(emptyDetail, ""), emptyDetail);
         // Read through locals: field access on a call temporary reads 0 in redscript.
-        let roadTint: HDRColor = NMTheme.TileTint("road");
+        let roadTint: HDRColor = NMTheme.TileTint("road", false);
         let roadOp: Float = NMTheme.TileOpacity("road");
         let outlineOp: Float = NMTheme.TileOpacity("outline");
         this.Check("tiles.theme_defaults", this.Near(roadOp, 0.55, 0.0001) && this.Near(outlineOp, 0.9, 0.0001) && this.Near(roadTint.Red, 0.118, 0.001),

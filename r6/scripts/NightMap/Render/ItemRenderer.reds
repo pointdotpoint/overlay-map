@@ -68,6 +68,7 @@ public class NMItemRenderer {
     private let ordY: array<Int32>;
     private let visit: array<Int32>;
     private let indRg: array<Int32>;
+    private let halo: Bool;       // effects on: icon pins get a soft halo in their own colour instead of the dark shadow blob
     public let forceScan: Bool;   // test hook: bypass the occupied-cell lists (reference behaviour)
     private let icon: ref<NMIconRef>;
     private let lastCamRev: Int32;
@@ -368,6 +369,16 @@ public class NMItemRenderer {
         ic.key = "dot";
     }
 
+    // Set once right after Create (before the first Update): the per-slot style, size, tint and opacity caches below
+    // already carry the halo, so there is no per-frame work.
+    public func SetHalo(on: Bool) { this.halo = on; }
+    public func HaloOn() -> Bool { return this.halo; }
+
+    // Opacity factor of the blob behind an icon pin: the halo (own colour) or the vanilla dark shadow.
+    private func BlobOpacity() -> Float {
+        return this.halo ? NMTheme.HaloOpacity() : NMTheme.VanillaShadowOpacity();
+    }
+
     // Switches a pooled chip between the hologram hex (0) and the vanilla icon look (1 idle, 2 emphasised).
     private func ApplyChipStyle(slot: Int32, style: Int32) {
         let bg = this.chipBg[slot];
@@ -379,9 +390,15 @@ public class NMItemRenderer {
             ic.SetSize(new Vector2(NMTheme.IconSize() * this.scale, NMTheme.IconSize() * this.scale));
         } else {
             let k = style == 2 ? NMTheme.VanillaEmphScale() : 1.0;
-            bg.SetAtlasResource(NMTheme.ShadowAtlas());
-            bg.SetTexturePart(n"shadowBlobSquare_big");
-            bg.SetSize(new Vector2(NMTheme.VanillaShadowSize() * k * this.scale, NMTheme.VanillaShadowSize() * k * this.scale));
+            let blob = this.halo ? NMTheme.HaloSize() : NMTheme.VanillaShadowSize();
+            if this.halo {
+                bg.SetAtlasResource(NMTheme.HoloAtlas());
+                bg.SetTexturePart(n"holo_halo");
+            } else {
+                bg.SetAtlasResource(NMTheme.ShadowAtlas());
+                bg.SetTexturePart(n"shadowBlobSquare_big");
+            }
+            bg.SetSize(new Vector2(blob * k * this.scale, blob * k * this.scale));
             ic.SetSize(new Vector2(NMTheme.VanillaIconSize() * k * this.scale, NMTheme.VanillaIconSize() * k * this.scale));
         }
         bg.SetScale(new Vector2(1.0, 1.0));
@@ -401,7 +418,7 @@ public class NMItemRenderer {
         this.chipBg[slot].SetScale(new Vector2(k, k));
         this.chipIcon[slot].SetScale(new Vector2(k, k));
         this.chipIcon[slot].SetOpacity(o);
-        this.chipBg[slot].SetOpacity(o * NMTheme.VanillaShadowOpacity());
+        this.chipBg[slot].SetOpacity(o * this.BlobOpacity());
     }
 
     // Called every frame after the pick. Icon pins have no selection rim; an idle icon pin grows to the
@@ -470,8 +487,8 @@ public class NMItemRenderer {
             this.chipTintOk[slot] = false;  // force the tint refresh below
             this.chipAlpha[slot] = -1.0;    // force the opacity refresh below
         }
-        let bgTint = style == 0 ? color : NMTheme.ShadowColor();
         let icTint = L.hasTint[id] ? L.tint[id] : color;
+        let bgTint = style == 0 ? color : (this.halo ? icTint : NMTheme.ShadowColor());
         if !this.chipTintOk[slot] || !NMItemRenderer.SameColor(this.chipTintBg[slot], bgTint) {
             bg.SetTintColor(bgTint);
             this.chipTintBg[slot] = bgTint;
@@ -497,7 +514,7 @@ public class NMItemRenderer {
             a *= NMTheme.VanillaIdleOpacity();
         }
         if this.chipAlpha[slot] != a {
-            bg.SetOpacity(style == 0 ? a : a * NMTheme.VanillaShadowOpacity());
+            bg.SetOpacity(style == 0 ? a : a * this.BlobOpacity());
             ic.SetOpacity(a);
             this.chipAlpha[slot] = a;
             if slot == this.growSlot {
