@@ -8,6 +8,7 @@ public class NMRouteLine {
     public let color: HDRColor;
     public let tintDirty: Bool;
     public let dirty: Bool;                // world changed since the last projection
+    public let cursor: Int32;              // last matched world segment (the trim search starts here)
     public let canvas: ref<inkCanvas>;
     public let glowCanvas: ref<inkCanvas>;
     public let coreCanvas: ref<inkCanvas>;
@@ -86,6 +87,7 @@ public class NMRouteLayer {
         if NMRouteGeom.Changed(l.world, pts) {
             l.world = pts;
             l.dirty = true;
+            l.cursor = 0;
         }
     }
 
@@ -117,7 +119,8 @@ public class NMRouteLayer {
         ArrayClear(l.cum);
         if ArraySize(l.world) < 2 { return; }
         let proj: array<Vector2>;
-        for w in NMRouteGeom.Trim(l.world, px, py) {
+        l.cursor = Max(NMRouteGeom.Closest(l.world, px, py, l.cursor), 0);
+        for w in NMRouteGeom.TrimAt(l.world, px, py, l.cursor) {
             ArrayPush(proj, cam.WorldToMap(w.X, w.Y));
         }
         l.screen = NMRouteGeom.Simplify(proj, 1.0);

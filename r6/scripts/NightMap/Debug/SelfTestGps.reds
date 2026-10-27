@@ -101,6 +101,12 @@ public abstract class NMGpsTests {
         let d = NMRouteGeom.Trim(r, 40.0, 30.0);
         t.Check("geom.trim_window", ArraySize(d) >= 2 && NMGpsTests.Same(d[1], 0.0, 30.0), NMGpsTests.Dump(d));
 
+        // The 30 m window starts at the cursor (last matched segment), so a V far along the route is never pulled back.
+        t.Check("geom.closest_from_start", NMRouteGeom.Closest(r, 0.0, 12.0, 0) == 1, ToString(NMRouteGeom.Closest(r, 0.0, 12.0, 0)));
+        t.Check("geom.closest_from_cursor", NMRouteGeom.Closest(r, 38.0, 31.0, 3) == 3, ToString(NMRouteGeom.Closest(r, 38.0, 31.0, 3)));
+        let e = NMRouteGeom.TrimAt(r, 38.0, 31.0, 3);
+        t.Check("geom.trim_cursor", ArraySize(e) == 3 && NMGpsTests.Same(e[1], 38.0, 30.0) && NMGpsTests.Same(e[2], 40.0, 30.0), NMGpsTests.Dump(e));
+
         let bent: array<Vector2>;
         ArrayPush(bent, new Vector2(0.0, 0.0));
         ArrayPush(bent, new Vector2(0.0, 5.0));

@@ -12,35 +12,47 @@ public abstract class NMRouteGeom {
         return NMRouteGeom.Dist2(a[0], b[0]) > 0.25 || NMRouteGeom.Dist2(a[n - 1], b[n - 1]) > 0.25;
     }
 
-    // [P, projection of P on the closest early segment, the rest of the route after that segment].
-    // Drops the part V has passed, and joins V to the route when V strayed off it before the next re-plan.
+    // Trim from the route start (no cursor).
     public static func Trim(pts: array<Vector2>, px: Float, py: Float) -> array<Vector2> {
-        let out: array<Vector2>;
+        return NMRouteGeom.TrimAt(pts, px, py, NMRouteGeom.Closest(pts, px, py, 0));
+    }
+
+    // Index of the segment closest to P among those starting less than TrimWindow() along the route from segment
+    // `from` (the caller's cursor: the last matched segment). Never searches behind the cursor, so the line cannot
+    // be pulled back to the route start when V is far along it. -1 when there is no segment.
+    public static func Closest(pts: array<Vector2>, px: Float, py: Float, from: Int32) -> Int32 {
         let n = ArraySize(pts);
-        if n < 2 {
-            for p in pts { ArrayPush(out, p); }
-            return out;
-        }
+        if n < 2 { return -1; }
         let p = new Vector2(px, py);
         let best = -1;
         let bestD = 0.0;
-        let bestQ = pts[0];
         let along = 0.0;
-        let i = 0;
+        let i = Min(Max(from, 0), n - 2);
         while i < n - 1 && along < NMRouteGeom.TrimWindow() {
-            let q = NMRouteGeom.Project(p, pts[i], pts[i + 1]);
-            let d = NMRouteGeom.Dist2(p, q);
+            let d = NMRouteGeom.Dist2(p, NMRouteGeom.Project(p, pts[i], pts[i + 1]));
             if best < 0 || d < bestD {
                 best = i;
                 bestD = d;
-                bestQ = q;
             }
             along += SqrtF(NMRouteGeom.Dist2(pts[i], pts[i + 1]));
             i += 1;
         }
+        return best;
+    }
+
+    // [P, projection of P on segment `seg`, the rest of the route after that segment].
+    // Drops the part V has passed, and joins V to the route when V strayed off it before the next re-plan.
+    public static func TrimAt(pts: array<Vector2>, px: Float, py: Float, seg: Int32) -> array<Vector2> {
+        let out: array<Vector2>;
+        let n = ArraySize(pts);
+        if n < 2 || seg < 0 {
+            for p in pts { ArrayPush(out, p); }
+            return out;
+        }
+        let p = new Vector2(px, py);
         ArrayPush(out, p);
-        ArrayPush(out, bestQ);
-        let k = best + 1;
+        ArrayPush(out, NMRouteGeom.Project(p, pts[seg], pts[seg + 1]));
+        let k = seg + 1;
         while k < n {
             ArrayPush(out, pts[k]);
             k += 1;
