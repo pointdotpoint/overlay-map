@@ -31,6 +31,9 @@ public class NMTeleportDriver {
     private let start: Vector4;
     private let steps: Int32;
     private let elapsedMs: Float;
+    private let lifted: Bool;              // vehicle seen at the lift height
+    private let stable: Int32;             // agreeing hits in a row
+    private let lastHitZ: Float;
     private let done: Bool;
     public let result: String;
 
@@ -61,15 +64,33 @@ public class NMTeleportDriver {
             this.mover.Move(new Vector4(t.x, t.y, NMTeleport.LiftZ(), 1.0));
             return 0;
         }
-        if this.steps == 2 && this.inVehicle && this.mover.Position().Z < NMTeleport.LiftZ() - NMTeleport.RefuseDrop() {
-            return this.Finish("refused|vehicle");
-        }
         this.elapsedMs += dtMs;
+        // A vehicle may follow the lift a few frames late; only one still down after RefuseWindowMs was refused, and
+        // then everything goes back to the start (a late lift must not strand it up there).
+        if this.inVehicle && !this.lifted {
+            if this.mover.Position().Z >= NMTeleport.LiftZ() - NMTeleport.RefuseDrop() {
+                this.lifted = true;
+            } else {
+                if this.elapsedMs >= NMTeleport.RefuseWindowMs() {
+                    this.mover.Move(this.start);
+                    return this.Finish("refused|vehicle");
+                }
+                this.mover.Move(new Vector4(t.x, t.y, NMTeleport.LiftZ(), 1.0));
+                return 0;
+            }
+        }
+        // Collision streams in piece by piece: land only once StableProbes() hits in a row agree.
         let hit = this.ground.Probe(t.x, t.y);
         if IsDefined(hit) {
-            let z = NMTeleport.LandZ(hit.z, hit.hasWater, hit.waterZ, this.inVehicle);
-            this.mover.Move(new Vector4(t.x, t.y, z, 1.0));
-            return this.Finish("ok|" + NMTeleport.LandKind(hit.z, hit.hasWater, hit.waterZ, this.inVehicle) + "|" + NMTeleportDriver.Xyz(t.x, t.y, z));
+            this.stable = this.stable > 0 && AbsF(hit.z - this.lastHitZ) <= NMTeleport.StableTolerance() ? this.stable + 1 : 1;
+            this.lastHitZ = hit.z;
+            if this.stable >= NMTeleport.StableProbes() {
+                let z = NMTeleport.LandZ(hit.z, hit.hasWater, hit.waterZ, this.inVehicle);
+                this.mover.Move(new Vector4(t.x, t.y, z, 1.0));
+                return this.Finish("ok|" + NMTeleport.LandKind(hit.z, hit.hasWater, hit.waterZ, this.inVehicle) + "|" + NMTeleportDriver.Xyz(t.x, t.y, z));
+            }
+        } else {
+            this.stable = 0;
         }
         if this.elapsedMs >= NMTeleport.SettleTimeoutMs() {
             this.mover.Move(this.start);

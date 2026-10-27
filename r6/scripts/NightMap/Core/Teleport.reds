@@ -17,6 +17,9 @@ public abstract class NMTeleport {
     public static func FootOffset() -> Float { return 0.5; }
     public static func VehicleOffset() -> Float { return 1.0; }
     public static func RefuseDrop() -> Float { return 50.0; }        // a lifted vehicle this far below LiftZ did not move
+    public static func RefuseWindowMs() -> Float { return 500.0; }   // how long a vehicle may lag the lift before it counts as refused
+    public static func StableProbes() -> Int32 { return 3; }         // agreeing hits in a row before landing (collision streams in)
+    public static func StableTolerance() -> Float { return 0.1; }
 
     // Vanilla layers whose marker Z is a floor V can stand on. Pinned (waypoint, tracked quest pin) and Other (markers
     // riding NPCs or vehicles) are not.

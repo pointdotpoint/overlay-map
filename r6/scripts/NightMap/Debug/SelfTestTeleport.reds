@@ -5,6 +5,7 @@ public class NMFakeMover extends NMMover {
     public let moves: array<Vector4>;
     public let start: Vector4;
     public let moving: Bool;
+    public let movesAfter: Int32;     // Position() follows moves only once this many were made (a late vehicle); 0 = at once
     public let invalidAfter: Int32;   // Valid() turns false once this many moves were made; 0 = never
 
     public static func Create(start: Vector4) -> ref<NMFakeMover> {
@@ -18,7 +19,7 @@ public class NMFakeMover extends NMMover {
 
     public func Position() -> Vector4 {
         let n = ArraySize(this.moves);
-        return this.moving && n > 0 ? this.moves[n - 1] : this.start;
+        return this.moving && n > 0 && n >= this.movesAfter ? this.moves[n - 1] : this.start;
     }
 
     public func Move(p: Vector4) { ArrayPush(this.moves, p); }
@@ -28,6 +29,7 @@ public class NMFakeMover extends NMMover {
 public class NMFakeGround extends NMGround {
     public let hitOn: Int32;
     public let calls: Int32;
+    public let zs: array<Float>;      // when set: the hit Z per probe from hitOn on (last value repeats)
     public let z: Float;
     public let hasWater: Bool;
     public let waterZ: Float;
@@ -46,6 +48,8 @@ public class NMFakeGround extends NMGround {
         if this.hitOn <= 0 || this.calls < this.hitOn { return null; }
         let h = new NMGroundHit();
         h.z = this.z;
+        let n = ArraySize(this.zs);
+        if n > 0 { h.z = this.zs[Min(this.calls - this.hitOn, n - 1)]; }
         h.hasWater = this.hasWater;
         h.waterZ = this.waterZ;
         return h;
@@ -139,7 +143,27 @@ public abstract class NMTeleportTests {
         m5.moving = false;
         let d5 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m5, NMFakeGround.Create(1, 40.0, false, 0.0), true);
         NMTeleportTests.Drive(d5);
-        t.Check("teleport.driver_refused", Equals(d5.result, "refused|vehicle") && ArraySize(m5.moves) == 1, d5.result + " " + ToString(ArraySize(m5.moves)));
+        let back5 = NMTeleportTests.Last(m5);
+        t.Check("teleport.driver_refused", Equals(d5.result, "refused|vehicle") && back5.Z == 20.0 && back5.X == 7.0,
+            d5.result + " " + ToString(ArraySize(m5.moves)));
+
+        // A vehicle that follows the teleport a few frames late is not a refusal; it lands with the vehicle offset.
+        let m7 = NMFakeMover.Create(new Vector4(7.0, 8.0, 20.0, 1.0));
+        m7.movesAfter = 4;
+        let d7 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m7, NMFakeGround.Create(1, 40.0, false, 0.0), true);
+        NMTeleportTests.Drive(d7);
+        t.Check("teleport.driver_vehicle_late", StrBeginsWith(d7.result, "ok|ground") && t.Near(NMTeleportTests.Last(m7).Z, 41.0, 0.001), d7.result);
+
+        // Collision still streaming in: the first hits disagree; land only on StableProbes() agreeing hits.
+        let m8 = NMFakeMover.Create(start);
+        let g8 = NMFakeGround.Create(1, 0.0, false, 0.0);
+        ArrayPush(g8.zs, 10.0);
+        ArrayPush(g8.zs, 25.0);
+        ArrayPush(g8.zs, 40.0);
+        let d8 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m8, g8, false);
+        NMTeleportTests.Drive(d8);
+        t.Check("teleport.driver_stable", t.Near(NMTeleportTests.Last(m8).Z, 40.5, 0.001) && g8.calls >= 2 + NMTeleport.StableProbes(),
+            d8.result + " calls " + ToString(g8.calls));
 
         let m6 = NMFakeMover.Create(start);
         m6.invalidAfter = 1;
