@@ -44,7 +44,9 @@ Build options and caches:
 - Zoom crossfades between six baked levels, from 0.5 m/px (single buildings) to 16 m/px (the whole city).
 - The game's own map markers (quests, gigs, NCPD, vendors, fast travel, …) appear with their vanilla icons. Move the map so a marker is nearest the centre to see its tooltip; `Numpad 0` tracks its quest, or clears your vanilla waypoint. Setting new waypoints comes with the optional native plugin (later).
 - `Numpad /` cycles the markers shown: All → Jobs (quests, gigs, psycho) → Services (ripperdoc, vendors, autofixer, drop points, fast travel, your property), like the vanilla quick lists; NCPD scanner and apartments to rent show only in All. Mod Settings → NightMap → Map filters turns each vanilla category on or off.
-- The header shows the tracked quest and its current objective.
+- The header (bottom right) shows the tracked quest and its current objective.
+- GPS routes: the route to your vanilla waypoint (white) and to the tracked quest (yellow, teal for gigs) are mirrored from the minimap as flowing dots. Mod Settings → NightMap → Display → GPS routes.
+- The game's HUD fades out while the map is open (Display → Hide HUD while open).
 - Mods can add their own items through the layer API.
 
 ### Debug tools

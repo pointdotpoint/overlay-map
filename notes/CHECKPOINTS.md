@@ -71,3 +71,16 @@ Table for the run at 15:57:
 | closed_end | 0 | 15.14 | -1.34 | 18.30 | 0.00 |
 
 Gates: idle ≤ +1.0 avg / +2.0 p95. Pan/zoom ≤ +1.5 / +3.0. items_50000 ≤ +3 / +6. Results: idle worst +0.91 / +0.27, pan/zoom +0.76 / +2.53, items_50000 +2.52 / +5.80.
+
+## GPS routes, checkpoint A (2026-10-27)
+
+Build: `feat/gps-route`. Game 2.5 under Proton, at 2560×1440 (tiles built for 2.31; NightMap logs the version warning).
+
+| Step | Result |
+|---|---|
+| 1. Install | Pass. COMPILE OK. |
+| 2. Quest and waypoint routes | Pass (user). Both routes appear, end at their targets and follow the roads. The first build drew rotated dashes; the user found bends jagged. The native line widget cannot be created in-game, so routes now use the minimap's own `pathCircle` dots (spec §4.4 Outcome). The user then asked for wider dots (RouteScale 0.5 → 1.25). |
+| 3. Header, HUD | Pass (user). Quest header at the bottom right; HUD fades out while open and comes back on close, minimap included, with routes still updating. |
+| 4. Self-test | `passed=241 failed=9`. All `gps.*`, `geom.*`, `hud.*` and route tests pass except `route.flow_toward_dest` (reports 0). The user sees the flow working, so this is a test problem; 97ced85 makes the test log its numbers. The other 8 failures (`grow.*` ×5, `perf.wide_layer_exceeds_old_cap`, `vanilla.catalog_twelve` = 13, `tracking.live_accepted_are_quest_objectives`) are in code this branch does not touch and are left for a separate fix. |
+
+Checkpoint B (perf suite with a route tracked, `route_open`) not run yet.

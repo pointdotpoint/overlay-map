@@ -1,6 +1,8 @@
 # NightMap: GPS route layer
 
-**Status:** design agreed in conversation on 2026-10-27. The written spec awaits user review.
+**Status:** implemented on `feat/gps-route` (2026-10-27). The drawing changed after in-game review: see §4.4
+"Outcome". Two user requests were added on the same branch: the quest header moved to the map's bottom right, and the
+HUD fades out while the map is open (§10).
 **Branch:** `spike/gps-probe` (holds the probe and the findings). The build goes on a new `feat/gps-route` from `main`.
 **Spike evidence:** `2026-10-27-gps-route-spike/FINDINGS.md`. The probe is `r6/scripts/NightMap/Debug/GpsProbe.reds`.
 
@@ -141,6 +143,18 @@ A dropped reading is logged at most once per open, as "gps|reject|<reason>".
 - **If it fails:** use the fallback, which needs no atlas change.
 - Record which approach was used, and why, in the plan or the commit.
 
+**Outcome** *(2026-10-27, in-game)*:
+1. The fallback (rotated rectangle dashes) shipped first and worked, but the user found bends jagged: each straight
+   dash is a chord, and its ends poke out on curves.
+2. The preferred approach is not possible. Script cannot `new` an `inkLinePattern` (abstract), and creating one by
+   name through Codeware reflection (`Reflection.GetClass(n"inkLinePattern").MakeInstance()`) compiles but returns
+   null in-game (`gps|line widget unavailable`).
+3. Copying the minimap's widget style showed what the minimap draws: `part=pathCircle`, 13×13, spacing 5,
+   `rotateWithSegment=false`. Its route is a row of unrotated round dots, which is why it reads smooth on bends.
+4. **Shipped:** pooled `inkImage` dots with the minimap's own atlas and `pathCircle` part, copied from the live
+   minimap on the first read (`NMRouteStyle`), at `RouteScale` 1.25 × the UI scale (the user asked for a wider line
+   than 0.5). Same cap (400, now `DotCap`), clipping, flow and pinning as the fallback. No atlas change was needed.
+
 ## 5. Behaviour rules
 - No route in the minimap means no route in NightMap. That covers nothing tracked, an objective without a location,
   and interiors where the minimap shows none.
@@ -214,3 +228,12 @@ A dropped reading is logged at most once per open, as "gps|reject|<reason>".
 4. Old routes left behind after clearing or re-tracking. Every reading replaces both routes, and an absent route
    clears.
 5. Cost of the dash animation on long routes when zoomed in: the cap and clipping (§4.3, §4.4).
+
+## 10. Added on the branch (user requests during review)
+- **Quest header at the bottom right.** District, tracked quest and objective sit in a right-aligned vertical panel
+  anchored at the map area's bottom-right corner, stacked from the bottom so a hidden quest or a two-line objective
+  leaves no gap. The tile warning stays at the top left.
+- **HUD hidden while open.** `NMHudHider` fades every other child of the HUD window to zero opacity on open and gives
+  each its own opacity back on close; every 30 frames it fades HUD widgets added or faded back in meanwhile. Opacity,
+  not visibility, so the minimap keeps running and the routes keep updating. Setting: Display → "Hide HUD while open",
+  on by default.
