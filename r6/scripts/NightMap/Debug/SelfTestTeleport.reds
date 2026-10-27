@@ -1,10 +1,132 @@
 module NightMap
 
+// Test seam: records moves instead of teleporting. Position is the last move, or `start` when it ignores moves.
+public class NMFakeMover extends NMMover {
+    public let moves: array<Vector4>;
+    public let start: Vector4;
+    public let moving: Bool;
+    public let invalidAfter: Int32;   // Valid() turns false once this many moves were made; 0 = never
+
+    public static func Create(start: Vector4) -> ref<NMFakeMover> {
+        let m = new NMFakeMover();
+        m.start = start;
+        m.moving = true;
+        return m;
+    }
+
+    public func Valid() -> Bool { return this.invalidAfter <= 0 || ArraySize(this.moves) < this.invalidAfter; }
+
+    public func Position() -> Vector4 {
+        let n = ArraySize(this.moves);
+        return this.moving && n > 0 ? this.moves[n - 1] : this.start;
+    }
+
+    public func Move(p: Vector4) { ArrayPush(this.moves, p); }
+}
+
+// Test seam: no hit until the `hitOn`-th probe (0 = never).
+public class NMFakeGround extends NMGround {
+    public let hitOn: Int32;
+    public let calls: Int32;
+    public let z: Float;
+    public let hasWater: Bool;
+    public let waterZ: Float;
+
+    public static func Create(hitOn: Int32, z: Float, hasWater: Bool, waterZ: Float) -> ref<NMFakeGround> {
+        let g = new NMFakeGround();
+        g.hitOn = hitOn;
+        g.z = z;
+        g.hasWater = hasWater;
+        g.waterZ = waterZ;
+        return g;
+    }
+
+    public func Probe(x: Float, y: Float) -> ref<NMGroundHit> {
+        this.calls += 1;
+        if this.hitOn <= 0 || this.calls < this.hitOn { return null; }
+        let h = new NMGroundHit();
+        h.z = this.z;
+        h.hasWater = this.hasWater;
+        h.waterZ = this.waterZ;
+        return h;
+    }
+}
+
 // Self-test group for teleport: target choice, landing maths and the driver with fake game seams. Called from
 // NMSelfTest.Run(). Nothing is teleported.
 public abstract class NMTeleportTests {
     public static func Run(t: ref<NMSelfTest>) {
         NMTeleportTests.TargetCases(t);
+        NMTeleportTests.DriverCases(t);
+    }
+
+    // Steps a driver at 16 ms until it is done (at most 1000 steps); returns the step count.
+    private static func Drive(d: ref<NMTeleportDriver>) -> Int32 {
+        let n = 0;
+        while n < 1000 {
+            n += 1;
+            if d.Step(16.0) == 1 { return n; }
+        }
+        return n;
+    }
+
+    private static func Target(x: Float, y: Float, z: Float, exact: Bool) -> ref<NMTeleportTarget> {
+        let t = new NMTeleportTarget();
+        t.x = x;
+        t.y = y;
+        t.z = z;
+        t.exact = exact;
+        return t;
+    }
+
+    private static func Last(m: ref<NMFakeMover>) -> Vector4 {
+        return m.moves[ArraySize(m.moves) - 1];
+    }
+
+    private static func DriverCases(t: ref<NMSelfTest>) {
+        let start = new Vector4(7.0, 8.0, 9.0, 1.0);
+
+        let m1 = NMFakeMover.Create(start);
+        let d1 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 3.0, true), m1, NMFakeGround.Create(0, 0.0, false, 0.0), false);
+        NMTeleportTests.Drive(d1);
+        t.Check("teleport.driver_marker", ArraySize(m1.moves) == 1 && t.Near(m1.moves[0].Z, 3.5, 0.001) && m1.moves[0].X == 1.0
+            && StrBeginsWith(d1.result, "ok|marker"), d1.result);
+
+        let m2 = NMFakeMover.Create(start);
+        let d2 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m2, NMFakeGround.Create(3, 40.0, false, 0.0), false);
+        NMTeleportTests.Drive(d2);
+        t.Check("teleport.driver_ground", t.Near(NMTeleportTests.Last(m2).Z, 40.5, 0.001) && StrBeginsWith(d2.result, "ok|ground"), d2.result);
+        let held = ArraySize(m2.moves) >= 2;
+        let i = 0;
+        while i < ArraySize(m2.moves) - 1 {
+            if m2.moves[i].Z != NMTeleport.LiftZ() { held = false; }
+            i += 1;
+        }
+        t.Check("teleport.driver_holds", held, ToString(ArraySize(m2.moves)) + " moves");
+
+        let m3 = NMFakeMover.Create(start);
+        let d3 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m3, NMFakeGround.Create(1, -10.0, true, 0.0), false);
+        NMTeleportTests.Drive(d3);
+        t.Check("teleport.driver_water", t.Near(NMTeleportTests.Last(m3).Z, 0.0, 0.001) && StrBeginsWith(d3.result, "ok|water"), d3.result);
+
+        let m4 = NMFakeMover.Create(start);
+        let d4 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m4, NMFakeGround.Create(0, 0.0, false, 0.0), false);
+        let steps = NMTeleportTests.Drive(d4);
+        let back = NMTeleportTests.Last(m4);
+        t.Check("teleport.driver_timeout", back.X == 7.0 && back.Y == 8.0 && back.Z == 9.0 && Equals(d4.result, "failed|no ground")
+            && Cast<Float>(steps) * 16.0 >= NMTeleport.SettleTimeoutMs(), d4.result + " " + ToString(steps));
+
+        let m5 = NMFakeMover.Create(new Vector4(7.0, 8.0, 20.0, 1.0));
+        m5.moving = false;
+        let d5 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m5, NMFakeGround.Create(1, 40.0, false, 0.0), true);
+        NMTeleportTests.Drive(d5);
+        t.Check("teleport.driver_refused", Equals(d5.result, "refused|vehicle") && ArraySize(m5.moves) == 1, d5.result + " " + ToString(ArraySize(m5.moves)));
+
+        let m6 = NMFakeMover.Create(start);
+        m6.invalidAfter = 1;
+        let d6 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m6, NMFakeGround.Create(1, 40.0, false, 0.0), false);
+        NMTeleportTests.Drive(d6);
+        t.Check("teleport.driver_lost", Equals(d6.result, "failed|lost") && ArraySize(m6.moves) == 1, d6.result + " " + ToString(ArraySize(m6.moves)));
     }
 
     private static func TargetCases(t: ref<NMSelfTest>) {
