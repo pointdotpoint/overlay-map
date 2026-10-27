@@ -87,6 +87,10 @@ public class NightMapSystem extends ScriptableSystem {
     }
     public func SetVanillaEnabled(on: Bool) { this.vanilla.SetEnabled(on); }
     public func SetRoutesEnabled(on: Bool) { this.routesOff = !on; }
+    public func RoutesOn() -> Bool { return !this.routesOff; }
+
+    // Perf-suite overrides never outlive the map: a suite closed mid-run must not leave routes off for the session.
+    public func ClearPerfOverrides() { this.routesOff = false; }
     public func Routes() -> ref<NMRouteLayer> { return this.routes; }
     public func IsOpen() -> Bool { return this.isOpen; }
     public func Camera() -> ref<NMCamera> { return this.camera; }
@@ -453,6 +457,7 @@ public class NightMapSystem extends ScriptableSystem {
         }
         // Perf suite may have vanilla markers off; never leave them disabled. Flag only, no poll while closed.
         this.vanilla.MarkEnabled();
+        this.ClearPerfOverrides();
         this.perf = null;
         this.perfHidden = false;
         this.layers = null;

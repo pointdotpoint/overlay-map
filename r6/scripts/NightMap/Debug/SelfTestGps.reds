@@ -50,6 +50,14 @@ public abstract class NMGpsTests {
         let r = IsDefined(sys) ? sys.Gps().Read(GetPlayer(gi)) : null;
         let ok = IsDefined(r) && (ArraySize(r.quest) == 0 || ArraySize(r.quest) >= 2) && (ArraySize(r.tracked) == 0 || ArraySize(r.tracked) >= 2);
         t.Check("gps.read_safe", ok, IsDefined(r) ? "quest " + ToString(ArraySize(r.quest)) + " tracked " + ToString(ArraySize(r.tracked)) : "null");
+        // A perf run closed mid-suite must not leave the routes off for the session (OnClosing clears the override).
+        if IsDefined(sys) {
+            let was = sys.RoutesOn();
+            sys.SetRoutesEnabled(false);
+            sys.ClearPerfOverrides();
+            t.Check("gps.routes_override_cleared", sys.RoutesOn(), "");
+            sys.SetRoutesEnabled(was);
+        }
     }
 
     // [(0,0), (0,10), (0,20), (0,30), (40,30)]: 70 m, a corner at (0,30).
