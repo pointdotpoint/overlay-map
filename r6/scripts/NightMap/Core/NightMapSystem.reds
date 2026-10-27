@@ -46,6 +46,8 @@ public class NightMapSystem extends ScriptableSystem {
     private let routes: ref<NMRouteLayer>;
     private let routesOff: Bool;          // perf suite override (SetRoutesEnabled)
     private let hud: ref<NMHudHider>;     // set while the map is open with "Hide HUD while open" on
+    private let teleport: ref<NMTeleportDriver>;   // set while a teleport runs (it outlives the map)
+    private let teleportLastMs: Float;
     private let lastRouteReadMs: Float;
     private let filterView: Int32;
     // Header change-cache: SetText / tint only when the value changed (reset in OnOpened).
@@ -304,6 +306,67 @@ public class NightMapSystem extends ScriptableSystem {
         return major + "." + minor;
     }
 
+    // Teleports V (or V's vehicle) to the map point: the selected item, else the map centre (spec
+    // 2026-10-27-nightmap-teleport-design.md §4). Closes the map; the driver keeps ticking until it lands.
+    public func StartTeleport() -> Bool {
+        if IsDefined(this.teleport) {
+            NMLog.Info("teleport|refused|busy");
+            return false;
+        }
+        let gi = this.GetGameInstance();
+        let player = GetPlayer(gi);
+        if !IsDefined(player) || !IsDefined(this.camera) || !IsDefined(this.crosshair) {
+            return false;
+        }
+        let vehicle: ref<VehicleObject> = GetMountedVehicle(player);
+        let inVehicle = IsDefined(vehicle);
+        let c = this.crosshair;
+        let kind = -1;
+        let layerId = n"";
+        let marker = new Vector4(0.0, 0.0, 0.0, 1.0);
+        if c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers) && this.api.layers[c.selLayer].IsAlive(c.selItem) {
+            let L = this.api.layers[c.selLayer];
+            kind = 0;
+            layerId = L.id;
+            marker = L.Position(c.selItem);
+        }
+        let t = NMTeleport.Choose(kind, layerId, marker, this.camera.cx, this.camera.cy, inVehicle);
+        if !NMTeleport.InBounds(t.x, t.y) {
+            NMLog.Info("teleport|refused|outside map");
+            return false;
+        }
+        let obj: ref<GameObject> = inVehicle ? vehicle : player;
+        this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), inVehicle);
+        this.Close();
+        this.teleportLastMs = NMClock.NowMs();
+        this.ScheduleTeleport();
+        return true;
+    }
+
+    public func TeleportTick() {
+        if !IsDefined(this.teleport) {
+            return;
+        }
+        let now = NMClock.NowMs();
+        let dt = ClampF(now - this.teleportLastMs, 0.0, 100.0);
+        this.teleportLastMs = now;
+        if this.teleport.Step(dt) == 1 {
+            NMLog.Info("teleport|" + this.teleport.result);
+            this.teleport = null;
+            return;
+        }
+        this.ScheduleTeleport();
+    }
+
+    // Self-test hook: install (or clear with null) a running driver.
+    public func SetTeleportDriverForTest(d: ref<NMTeleportDriver>) { this.teleport = d; }
+
+    private func ScheduleTeleport() {
+        let cb = new NightMapTeleportFrame();
+        cb.system = this;
+        GameInstance.GetDelaySystem(this.GetGameInstance()).DelayCallback(cb, 0.0, false);
+    }
+
     public func Close() {
         if !this.isOpen {
             return;
@@ -484,6 +547,13 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private func UpdateModules(dt: Float) {
+        // First: a started teleport closes the map, and nothing below may run on the destroyed panel.
+        if this.input.teleport {
+            this.input.teleport = false;
+            if this.StartTeleport() {
+                return;
+            }
+        }
         let l = this.panel.layout;
         this.vanilla.Tick(NMClock.NowMs(), false);
         if IsDefined(this.layers) {

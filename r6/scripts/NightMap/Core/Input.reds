@@ -6,6 +6,7 @@ public class NMInput {
     public let toggle: Bool;
     public let recenter: Bool;
     public let act: Bool;
+    public let teleport: Bool;
     public let filter: Bool;
     public let zoomIn: Bool;
     public let zoomOut: Bool;
@@ -77,6 +78,10 @@ public class NMInput {
             if pressed { this.filter = true; }
             return true;
         }
+        if s.teleportEnabled && Equals(key, s.keyTeleport) {
+            if pressed { this.teleport = true; }
+            return true;
+        }
         return false;
     }
 
@@ -109,6 +114,7 @@ public class NMInput {
         this.recenter = false;
         this.act = false;
         this.filter = false;
+        this.teleport = false;
     }
 
     public static func KeyName(key: EInputKey) -> String {
@@ -134,6 +140,7 @@ public class NMInput {
             + "   ·   " + NMInput.KeyName(s.keyZoomIn) + " " + NMInput.KeyName(s.keyZoomOut) + " ZOOM"
             + "   ·   " + NMInput.KeyName(s.keyRecenter) + " FOLLOW"
             + "   ·   " + NMInput.KeyName(s.keyAct) + " ACT"
+            + (s.teleportEnabled ? "   ·   " + NMInput.KeyName(s.keyTeleport) + " TELEPORT" : "")
             + "   ·   " + NMInput.KeyName(s.keyFilter) + " FILTER: " + view
             + "   ·   " + NMInput.KeyName(s.keyToggle) + " CLOSE";
     }

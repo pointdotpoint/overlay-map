@@ -77,6 +77,13 @@ public class NightMapSettings extends ScriptableSystem {
     public let keyFilter: EInputKey = EInputKey.IK_NumSlash;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Keys")
+    @runtimeProperty("ModSettings.category.order", "0")
+    @runtimeProperty("ModSettings.displayName", "Teleport")
+    @runtimeProperty("ModSettings.description", "Teleports V, and V's vehicle, to the point the map is pointing at.")
+    public let keyTeleport: EInputKey = EInputKey.IK_NumPeriod;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
     @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Jobs")
@@ -199,6 +206,13 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.displayName", "Hide HUD while open")
     @runtimeProperty("ModSettings.description", "Fade out the game's HUD (minimap, quest tracker, hotkeys, prompts) while the map is open.")
     public let hideHud: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Teleport key")
+    @runtimeProperty("ModSettings.description", "Teleport V, and V's vehicle, to the map point.")
+    public let teleportEnabled: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Debug")

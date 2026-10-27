@@ -58,6 +58,25 @@ public abstract class NMTeleportTests {
     public static func Run(t: ref<NMSelfTest>) {
         NMTeleportTests.TargetCases(t);
         NMTeleportTests.DriverCases(t);
+        NMTeleportTests.WiringCases(t);
+    }
+
+    private static func WiringCases(t: ref<NMSelfTest>) {
+        let s = new NightMapSettings();
+        s.teleportEnabled = true;
+        t.Check("teleport.hint_on", StrContains(NMInput.HintText(s, "ALL"), "TELEPORT"), "");
+        s.teleportEnabled = false;
+        t.Check("teleport.hint_off", !StrContains(NMInput.HintText(s, "ALL"), "TELEPORT"), "");
+
+        let sys = NightMapSystem.Get(GetGameInstance());
+        if IsDefined(sys) {
+            let busy = NMTeleportDriver.Create(NMTeleportTests.Target(0.0, 0.0, 0.0, false), new NMMover(), new NMGround(), false);
+            sys.SetTeleportDriverForTest(busy);
+            t.Check("teleport.busy", !sys.StartTeleport(), "");
+            sys.SetTeleportDriverForTest(null);
+        } else {
+            t.Check("teleport.busy", false, "no NightMapSystem");
+        }
     }
 
     // Steps a driver at 16 ms until it is done (at most 1000 steps); returns the step count.
