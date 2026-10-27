@@ -45,6 +45,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let gps: ref<NMGps>;
     private let routes: ref<NMRouteLayer>;
     private let routesOff: Bool;          // perf suite override (SetRoutesEnabled)
+    private let hud: ref<NMHudHider>;     // set while the map is open with "Hide HUD while open" on
     private let lastRouteReadMs: Float;
     private let filterView: Int32;
     // Header change-cache: SetText / tint only when the value changed (reset in OnOpened).
@@ -208,6 +209,9 @@ public class NightMapSystem extends ScriptableSystem {
         this.holoGreen = IsDefined(s) ? Equals(s.holoColor, NightMapHoloColor.Green) : false;
         this.holoEffects = IsDefined(s) ? s.hologramEffects : true;
         this.panel = NMPanel.Build(window, layout, IsDefined(s) ? s.panelOpacity : NMTheme.DefaultPanelOpacity(), this.holoGreen, this.holoEffects);
+        if !IsDefined(s) || s.hideHud {
+            this.hud = NMHudHider.Hide(window, this.panel.root);
+        }
         let bounds = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
         this.camera = NMCamera.Create(layout.mapW, layout.mapH, bounds, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
         this.camera.SetMpp(this.savedMpp > 0.0 ? this.savedMpp : NightMapSystem.MinMpp());
@@ -312,6 +316,10 @@ public class NightMapSystem extends ScriptableSystem {
             this.input.ResetHeld();
         }
         this.OnClosing();
+        if IsDefined(this.hud) {
+            this.hud.Restore();
+            this.hud = null;
+        }
         if IsDefined(this.panel) {
             this.panel.Destroy();
         }
@@ -528,6 +536,7 @@ public class NightMapSystem extends ScriptableSystem {
         }
         if this.frameNo % 30 == 0 {
             this.UpdateHeader();
+            if IsDefined(this.hud) { this.hud.Refresh(); }
         }
     }
 
