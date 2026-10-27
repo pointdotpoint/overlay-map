@@ -12,7 +12,10 @@ mkdir -p "$SANDBOX/engine/tools" "$SANDBOX/r6/cache" "$SANDBOX/r6/scripts"/{Code
 cp "$GAME/engine/tools/scc.exe" "$GAME/engine/tools/scc_lib.dll" "$SANDBOX/engine/tools/"
 cp "$GAME/r6/cache/final.redscripts" "$SANDBOX/r6/cache/"
 cp "$GAME"/red4ext/plugins/Codeware/Scripts/*.reds "$SANDBOX/r6/scripts/Codeware/"
-cp "$GAME"/r6/scripts/RedIMGRetriever/*.reds "$SANDBOX/r6/scripts/RedIMGRetriever/"
+# RedIMGRetriever is optional; NightMap compiles either way through @if(ModuleExists).
+if [ -d "$GAME/r6/scripts/RedIMGRetriever" ]; then
+  cp "$GAME"/r6/scripts/RedIMGRetriever/*.reds "$SANDBOX/r6/scripts/RedIMGRetriever/"
+fi
 cp "$GAME"/red4ext/plugins/mod_settings/*.reds "$SANDBOX/r6/scripts/ModSettings/"
 cp -r "$HERE/r6/scripts/NightMap" "$SANDBOX/r6/scripts/NightMap"
 
