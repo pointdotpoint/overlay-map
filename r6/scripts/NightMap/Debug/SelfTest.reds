@@ -25,6 +25,7 @@ public class NMSelfTest {
         NMVanillaTests.Run(this);
         NMGpsTests.Run(this);
         NMHudTests.Run(this);
+        NMTeleportTests.Run(this);
         NMPerfTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
