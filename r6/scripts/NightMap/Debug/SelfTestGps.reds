@@ -18,15 +18,15 @@ public abstract class NMGpsTests {
         return -1;
     }
 
-    // Screen Y of the visible waypoint-route dot nearest the top of the map (the destination, for a route north).
+    // Screen Y of the placed waypoint-route dot nearest the top of the map (the destination, for a route north).
+    // Reads the first DotsUsed() dots, not IsVisible(), which is false for a canvas that is not on screen.
     private static func LastDotY(L: ref<NMRouteLayer>) -> Float {
         let line = L.Root().GetWidget(NMGpsTests.ChildIndex(L.Root(), n"tracked")) as inkCompoundWidget;
         let core = line.GetWidget(1) as inkCompoundWidget;   // children: glow canvas, core canvas
         let best = 100000.0;
         let i = 0;
-        while i < core.GetNumChildren() {
-            let w = core.GetWidget(i);
-            if w.IsVisible() { best = MinF(best, w.GetTranslation().Y); }
+        while i < L.DotsUsed(true) {
+            best = MinF(best, core.GetWidget(i).GetTranslation().Y);
             i += 1;
         }
         return best;
@@ -67,7 +67,7 @@ public abstract class NMGpsTests {
         let y0 = NMGpsTests.LastDotY(P);
         P.Update(cam, 0.0, 5.0, 0.0, 400.0, 400.0);
         let y1 = NMGpsTests.LastDotY(P);
-        t.Check("route.pinned", t.Near(y0, y1, 0.01), t.F(y0) + " -> " + t.F(y1));
+        t.Check("route.pinned", y0 < 1000.0 && t.Near(y0, y1, 0.01), t.F(y0) + " -> " + t.F(y1));
 
         // Flow runs toward the destination (up the screen): 100 ms moves every dot FlowSpeed * 0.1 closer to it.
         P.Update(cam, 0.0, 5.0, 100.0, 400.0, 400.0);

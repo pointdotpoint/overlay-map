@@ -70,7 +70,7 @@ public class NMRouteLayer {
 
     public static func DotCap() -> Int32 { return 400; }
     public static func FlowSpeed() -> Float { return 30.0; }   // units per second, toward the destination
-    public static func RouteScale() -> Float { return 0.5; }   // minimap units to map units, before the UI scale
+    public static func RouteScale() -> Float { return 1.25; }  // minimap units to map units, before the UI scale
     public static func GlowSize() -> Float { return 2.0; }     // glow dot size, times the core dot's
     public static func GlowOpacity() -> Float { return 0.25; }
     public static func ClipMargin() -> Float { return 64.0; }
@@ -105,6 +105,7 @@ public class NMRouteLayer {
 
     public func Root() -> ref<inkCanvas> { return this.root; }
     public func DotsShown() -> Int32 { return this.shown; }
+    public func DotsUsed(tracked: Bool) -> Int32 { return tracked ? this.tracked.used : this.quest.used; }
     public func SetVisible(on: Bool) { this.root.SetVisible(on); }
     public func HasStyle() -> Bool { return IsDefined(this.style); }
 
