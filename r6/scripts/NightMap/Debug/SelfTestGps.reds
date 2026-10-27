@@ -4,6 +4,73 @@ module NightMap
 public abstract class NMGpsTests {
     public static func Run(t: ref<NMSelfTest>) {
         NMGpsTests.MathCases(t);
+        NMGpsTests.GeomCases(t);
+    }
+
+    // [(0,0), (0,10), (0,20), (0,30), (40,30)]: 70 m, a corner at (0,30).
+    private static func Route() -> array<Vector2> {
+        let r: array<Vector2>;
+        ArrayPush(r, new Vector2(0.0, 0.0));
+        ArrayPush(r, new Vector2(0.0, 10.0));
+        ArrayPush(r, new Vector2(0.0, 20.0));
+        ArrayPush(r, new Vector2(0.0, 30.0));
+        ArrayPush(r, new Vector2(40.0, 30.0));
+        return r;
+    }
+
+    private static func Same(a: Vector2, x: Float, y: Float) -> Bool {
+        return AbsF(a.X - x) <= 0.001 && AbsF(a.Y - y) <= 0.001;
+    }
+
+    private static func Dump(pts: array<Vector2>) -> String {
+        let s = ToString(ArraySize(pts)) + ":";
+        for p in pts {
+            s += " " + FloatToStringPrec(p.X, 1) + "," + FloatToStringPrec(p.Y, 1);
+        }
+        return s;
+    }
+
+    private static func GeomCases(t: ref<NMSelfTest>) {
+        let r = NMGpsTests.Route();
+        let same = NMGpsTests.Route();
+        t.Check("geom.changed_same", !NMRouteGeom.Changed(r, same), "");
+        let end04 = NMGpsTests.Route();
+        end04[4] = new Vector2(40.4, 30.0);
+        t.Check("geom.changed_end_0p4", !NMRouteGeom.Changed(r, end04), "");
+        let end06 = NMGpsTests.Route();
+        end06[4] = new Vector2(40.6, 30.0);
+        t.Check("geom.changed_end_0p6", NMRouteGeom.Changed(r, end06), "");
+        let shorter = NMGpsTests.Route();
+        ArrayPop(shorter);
+        t.Check("geom.changed_count", NMRouteGeom.Changed(r, shorter), "");
+
+        let a = NMRouteGeom.Trim(r, 0.0, 0.0);
+        t.Check("geom.trim_at_start", ArraySize(a) == 6 && NMGpsTests.Same(a[0], 0.0, 0.0) && NMGpsTests.Same(a[1], 0.0, 0.0)
+            && NMGpsTests.Same(a[2], 0.0, 10.0), NMGpsTests.Dump(a));
+        let b = NMRouteGeom.Trim(r, 0.0, 12.0);
+        t.Check("geom.trim_12m", ArraySize(b) == 5 && NMGpsTests.Same(b[0], 0.0, 12.0) && NMGpsTests.Same(b[1], 0.0, 12.0)
+            && NMGpsTests.Same(b[2], 0.0, 20.0) && NMGpsTests.Same(b[3], 0.0, 30.0) && NMGpsTests.Same(b[4], 40.0, 30.0), NMGpsTests.Dump(b));
+        let c = NMRouteGeom.Trim(r, 20.0, 12.0);
+        t.Check("geom.trim_off_route", ArraySize(c) >= 3 && NMGpsTests.Same(c[0], 20.0, 12.0) && NMGpsTests.Same(c[1], 0.0, 12.0)
+            && NMGpsTests.Same(c[2], 0.0, 20.0), NMGpsTests.Dump(c));
+        let d = NMRouteGeom.Trim(r, 40.0, 30.0);
+        t.Check("geom.trim_window", ArraySize(d) >= 2 && NMGpsTests.Same(d[1], 0.0, 30.0), NMGpsTests.Dump(d));
+
+        let bent: array<Vector2>;
+        ArrayPush(bent, new Vector2(0.0, 0.0));
+        ArrayPush(bent, new Vector2(0.0, 5.0));
+        ArrayPush(bent, new Vector2(0.0, 10.0));
+        ArrayPush(bent, new Vector2(10.0, 10.0));
+        let sb = NMRouteGeom.Simplify(bent, 1.0);
+        t.Check("geom.simplify_keeps_corner", ArraySize(sb) == 3 && NMGpsTests.Same(sb[0], 0.0, 0.0) && NMGpsTests.Same(sb[1], 0.0, 10.0)
+            && NMGpsTests.Same(sb[2], 10.0, 10.0), NMGpsTests.Dump(sb));
+        let two: array<Vector2>;
+        ArrayPush(two, new Vector2(1.0, 2.0));
+        ArrayPush(two, new Vector2(3.0, 4.0));
+        let s2 = NMRouteGeom.Simplify(two, 1.0);
+        t.Check("geom.simplify_keeps_ends", ArraySize(s2) == 2 && NMGpsTests.Same(s2[0], 1.0, 2.0) && NMGpsTests.Same(s2[1], 3.0, 4.0), NMGpsTests.Dump(s2));
+
+        t.Check("geom.length", t.Near(NMRouteGeom.Length(r), 70.0, 0.001), t.F(NMRouteGeom.Length(r)));
     }
 
     // Absolute minimap point for world point w: the forward transform of FINDINGS.md (test-only inverse of ToWorld).
