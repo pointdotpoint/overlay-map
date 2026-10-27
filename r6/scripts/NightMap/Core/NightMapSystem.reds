@@ -43,6 +43,9 @@ public class NightMapSystem extends ScriptableSystem {
     private let imageRev: Int32;
     private let vanilla: ref<NMVanilla>;
     private let gps: ref<NMGps>;
+    private let routes: ref<NMRouteLayer>;
+    private let routesOff: Bool;          // perf suite override (SetRoutesEnabled)
+    private let lastRouteReadMs: Float;
     private let filterView: Int32;
     // Header change-cache: SetText / tint only when the value changed (reset in OnOpened).
     private let hdrSubtitle: String;
@@ -83,6 +86,8 @@ public class NightMapSystem extends ScriptableSystem {
         return this.gps;
     }
     public func SetVanillaEnabled(on: Bool) { this.vanilla.SetEnabled(on); }
+    public func SetRoutesEnabled(on: Bool) { this.routesOff = !on; }
+    public func Routes() -> ref<NMRouteLayer> { return this.routes; }
     public func IsOpen() -> Bool { return this.isOpen; }
     public func Camera() -> ref<NMCamera> { return this.camera; }
     public func Panel() -> ref<NMPanel> { return this.panel; }
@@ -419,6 +424,27 @@ public class NightMapSystem extends ScriptableSystem {
         this.UpdateHeader();
         this.vanilla.ApplyFilters(this.filterView, this.Settings());
         this.vanilla.Tick(NMClock.NowMs(), true);
+        this.Gps().BeginOpen();
+        this.routes = NMRouteLayer.Create(this.panel.routes, l.scale, this.holoEffects);
+        this.lastRouteReadMs = 0.0;
+        if this.RoutesWanted() {
+            this.ReadRoutes();   // routes on the first frame, not 500 ms later
+        }
+    }
+
+    private func RoutesWanted() -> Bool {
+        let s = this.Settings();
+        return !this.routesOff && (!IsDefined(s) || s.showRoutes);
+    }
+
+    // The minimap's routes in world space, coloured by the tracked quest's type (Quest yellow / Gigs teal).
+    private func ReadRoutes() {
+        let gi = this.GetGameInstance();
+        let r = this.Gps().Read(GetPlayer(gi));
+        let hdr = NMQuestHeader.Read(gi);
+        let color = IsDefined(hdr) && !hdr.isQuest ? NMTheme.VanillaStateColor(n"Gigs") : NMTheme.VanillaStateColor(n"Quest");
+        this.routes.SetRoutes(r.quest, color, r.tracked);
+        this.lastRouteReadMs = NMClock.NowMs();
     }
 
     private func OnClosing() {
@@ -434,6 +460,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.marker = null;
         this.crosshair = null;
         this.tooltip = null;
+        this.routes = null;
     }
 
     private func UpdateModules(dt: Float) {
@@ -457,6 +484,7 @@ public class NightMapSystem extends ScriptableSystem {
             this.crosshair.Reset();
             this.tipApiRev = -1;
         }
+        this.UpdateRoutes(dt);
         let relaid = this.renderer.Update(this.camera, l.mapW, l.mapH);
         if relaid {
             let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale);
@@ -489,6 +517,22 @@ public class NightMapSystem extends ScriptableSystem {
         if this.frameNo % 30 == 0 {
             this.UpdateHeader();
         }
+    }
+
+    // Read every 500 ms; trim, project and flow every frame. Hidden (and no reads) when the setting is off.
+    private func UpdateRoutes(dt: Float) {
+        let player = GetPlayer(this.GetGameInstance());
+        if !this.RoutesWanted() || !IsDefined(player) {
+            this.routes.SetVisible(false);
+            return;
+        }
+        this.routes.SetVisible(true);
+        if NMClock.NowMs() - this.lastRouteReadMs >= 500.0 {
+            this.ReadRoutes();
+        }
+        let l = this.panel.layout;
+        let p = player.GetWorldPosition();
+        this.routes.Update(this.camera, p.X, p.Y, dt, l.mapW, l.mapH);
     }
 
     // True when the selected cluster's displayed total or category counts differ from the cached ones.

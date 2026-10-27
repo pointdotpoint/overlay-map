@@ -187,6 +187,13 @@ public class NightMapSettings extends ScriptableSystem {
     public let hologramEffects: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "GPS routes")
+    @runtimeProperty("ModSettings.description", "Show the waypoint and quest routes from the minimap.")
+    public let showRoutes: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Debug")
     @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Debug tools")
