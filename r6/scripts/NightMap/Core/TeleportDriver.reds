@@ -23,8 +23,9 @@ public class NMMover {
 }
 
 // One teleport, one decision per frame (spec 2026-10-27-nightmap-teleport-design.md §4.3-4.5). Exact targets land
-// in one move. Otherwise: lift to LiftZ, then each frame probe the ground; a hit lands (on the water surface when
-// water lies above it), no hit re-lifts so V never falls, and after SettleTimeoutMs V goes back to the start.
+// in one move. Otherwise: lift to LiftZ once, then each frame probe the ground without teleporting (a teleport every
+// frame keeps V mid-teleport: position reads 0 and nothing streams in). StableProbes agreeing hits land (on the water
+// surface when water lies above); after SettleTimeoutMs V goes back to the start.
 public class NMTeleportDriver {
     private let target: ref<NMTeleportTarget>;
     private let mover: ref<NMMover>;
@@ -71,7 +72,7 @@ public class NMTeleportDriver {
         }
         this.elapsedMs += dtMs;
         // A vehicle may follow the lift a few frames late; only one still down after RefuseWindowMs was refused, and
-        // then everything goes back to the start (a late lift must not strand it up there).
+        // then everything goes back to the start (a late lift must not strand it up there). No re-lift meanwhile.
         if this.inVehicle && !this.lifted {
             if this.mover.Position().Z >= NMTeleport.LiftZ() - NMTeleport.RefuseDrop() {
                 this.lifted = true;
@@ -80,7 +81,6 @@ public class NMTeleportDriver {
                     this.mover.Move(this.start);
                     return this.Finish("refused|vehicle");
                 }
-                this.mover.Move(new Vector4(t.x, t.y, NMTeleport.LiftZ(), 1.0));
                 return 0;
             }
         }
@@ -111,7 +111,6 @@ public class NMTeleportDriver {
             }
             return this.Finish("failed|no ground");
         }
-        this.mover.Move(new Vector4(t.x, t.y, NMTeleport.LiftZ(), 1.0));
         return 0;
     }
 

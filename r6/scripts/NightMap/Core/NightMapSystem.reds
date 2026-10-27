@@ -335,6 +335,8 @@ public class NightMapSystem extends ScriptableSystem {
             NMLog.Info("teleport|refused|outside map");
             return false;
         }
+        NMLog.Info("teleport|start|" + FloatToStringPrec(t.x, 1) + "," + FloatToStringPrec(t.y, 1) + "|exact=" + ToString(t.exact)
+            + "|vehicle=" + ToString(inVehicle));
         let obj: ref<GameObject> = inVehicle ? vehicle : player;
         this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), inVehicle);
         this.Close();

@@ -5,7 +5,8 @@ public class NMFakeMover extends NMMover {
     public let moves: array<Vector4>;
     public let start: Vector4;
     public let moving: Bool;
-    public let movesAfter: Int32;     // Position() follows moves only once this many were made (a late vehicle); 0 = at once
+    public let positionAfter: Int32;  // Position() follows moves only from this many calls on (a late vehicle); 0 = at once
+    public let positionCalls: Int32;
     public let invalidAfter: Int32;   // Valid() turns false once this many moves were made; 0 = never
 
     public static func Create(start: Vector4) -> ref<NMFakeMover> {
@@ -18,8 +19,9 @@ public class NMFakeMover extends NMMover {
     public func Valid() -> Bool { return this.invalidAfter <= 0 || ArraySize(this.moves) < this.invalidAfter; }
 
     public func Position() -> Vector4 {
+        this.positionCalls += 1;
         let n = ArraySize(this.moves);
-        return this.moving && n > 0 && n >= this.movesAfter ? this.moves[n - 1] : this.start;
+        return this.moving && n > 0 && this.positionCalls >= this.positionAfter ? this.moves[n - 1] : this.start;
     }
 
     public func Move(p: Vector4) { ArrayPush(this.moves, p); }
@@ -126,6 +128,9 @@ public abstract class NMTeleportTests {
             i += 1;
         }
         t.Check("teleport.driver_holds", held, ToString(ArraySize(m2.moves)) + " moves");
+        // One lift, then no teleports while waiting: a teleport every frame keeps V mid-teleport (position reads 0
+        // and nothing streams in; in-game trace 2026-10-27).
+        t.Check("teleport.driver_single_lift", ArraySize(m2.moves) == 2, ToString(ArraySize(m2.moves)) + " moves");
 
         let m3 = NMFakeMover.Create(start);
         let d3 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m3, NMFakeGround.Create(1, -10.0, true, 0.0), false);
@@ -149,7 +154,7 @@ public abstract class NMTeleportTests {
 
         // A vehicle that follows the teleport a few frames late is not a refusal; it lands with the vehicle offset.
         let m7 = NMFakeMover.Create(new Vector4(7.0, 8.0, 20.0, 1.0));
-        m7.movesAfter = 4;
+        m7.positionAfter = 4;
         let d7 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m7, NMFakeGround.Create(1, 40.0, false, 0.0), true);
         NMTeleportTests.Drive(d7);
         t.Check("teleport.driver_vehicle_late", StrBeginsWith(d7.result, "ok|ground") && t.Near(NMTeleportTests.Last(m7).Z, 41.0, 0.001), d7.result);
