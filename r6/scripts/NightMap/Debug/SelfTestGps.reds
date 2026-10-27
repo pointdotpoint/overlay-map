@@ -5,6 +5,15 @@ public abstract class NMGpsTests {
     public static func Run(t: ref<NMSelfTest>) {
         NMGpsTests.MathCases(t);
         NMGpsTests.GeomCases(t);
+        NMGpsTests.LiveCases(t);
+    }
+
+    private static func LiveCases(t: ref<NMSelfTest>) {
+        let gi = GetGameInstance();
+        let sys = NightMapSystem.Get(gi);
+        let r = IsDefined(sys) ? sys.Gps().Read(GetPlayer(gi)) : null;
+        let ok = IsDefined(r) && (ArraySize(r.quest) == 0 || ArraySize(r.quest) >= 2) && (ArraySize(r.tracked) == 0 || ArraySize(r.tracked) >= 2);
+        t.Check("gps.read_safe", ok, IsDefined(r) ? "quest " + ToString(ArraySize(r.quest)) + " tracked " + ToString(ArraySize(r.tracked)) : "null");
     }
 
     // [(0,0), (0,10), (0,20), (0,30), (40,30)]: 70 m, a corner at (0,30).

@@ -1,8 +1,101 @@
 module NightMap
 
+// One read of both routes, world space. An empty array means no route.
+public class NMGpsReading {
+    public let quest: array<Vector2>;
+    public let tracked: array<Vector2>;
+}
+
 // The HUD minimap's GPS routes in world space. Transform measured in the spike (2026-10-27-gps-route-spike/FINDINGS.md):
 // v[0] = s * (P.y, P.x) and v[i] - v[0] = s * R(c) * flipY(W[i] - P), with c the camera yaw (never the player yaw).
-public abstract class NMGps {
+// The minimap controller registers itself through the wraps below; nothing runs while NightMap is closed.
+public class NMGps {
+    private let ctrl: wref<MinimapContainerController>;
+    private let lastScale: Float;          // last accepted s this open; 0 = none
+    private let lastQuest: array<Vector2>;
+    private let lastTracked: array<Vector2>;
+    private let loggedNoMinimap: Bool;
+    private let loggedReject: Bool;
+    public let readMsLast: Float;
+    public let readMsMax: Float;
+
+    public func SetMinimap(c: ref<MinimapContainerController>) { this.ctrl = c; }
+
+    public func ClearMinimap(c: ref<MinimapContainerController>) {
+        let cur: ref<MinimapContainerController> = this.ctrl;
+        if Equals(cur, c) { this.ctrl = null; }
+    }
+
+    // Per-open state: a fresh scale fallback, fresh routes and the log-once flags.
+    public func BeginOpen() {
+        this.lastScale = 0.0;
+        ArrayClear(this.lastQuest);
+        ArrayClear(this.lastTracked);
+        this.loggedNoMinimap = false;
+        this.loggedReject = false;
+    }
+
+    public func ResetReadStats() {
+        this.readMsLast = 0.0;
+        this.readMsMax = 0.0;
+    }
+
+    // Both routes in world space; never null. A path the minimap does not show comes back empty.
+    public func Read(player: ref<GameObject>) -> ref<NMGpsReading> {
+        let t0 = NMClock.NowMs();
+        let r = new NMGpsReading();
+        if !IsDefined(this.ctrl) || !IsDefined(player) {
+            if !IsDefined(this.ctrl) && !this.loggedNoMinimap {
+                this.loggedNoMinimap = true;
+                NMLog.Info("gps|no minimap");
+            }
+            return r;
+        }
+        let pos = player.GetWorldPosition();
+        let camYaw = NMGps.CameraYaw(GameInstance.GetCameraSystem(player.GetGame()).GetActiveCameraForward());
+        r.quest = this.Path(this.ctrl.gpsQuestPathWidget.widget, pos.X, pos.Y, camYaw, this.lastQuest);
+        this.lastQuest = r.quest;
+        r.tracked = this.Path(this.ctrl.gpsPlayerTrackedPathWidget.widget, pos.X, pos.Y, camYaw, this.lastTracked);
+        this.lastTracked = r.tracked;
+        this.readMsLast = NMClock.NowMs() - t0;
+        this.readMsMax = MaxF(this.readMsMax, this.readMsLast);
+        return r;
+    }
+
+    // One path widget to world space; a rejected reading keeps the previous accepted polyline.
+    private func Path(w: wref<inkWidget>, px: Float, py: Float, camYaw: Float, previous: array<Vector2>) -> array<Vector2> {
+        let out: array<Vector2>;
+        let lp = w as inkLinePattern;
+        if !IsDefined(lp) || !lp.IsVisible() || ArraySize(lp.vertexList) < 2 { return out; }
+        let vs = lp.vertexList;
+        let v0 = vs[0].int;
+        let s = NMGps.Scale(v0, px, py);
+        if s < 0.0 {
+            if this.lastScale <= 0.0 {
+                this.LogReject("near_origin");
+                return previous;
+            }
+            s = this.lastScale;
+        }
+        let first = NMGps.ToWorld(v0, v0, px, py, camYaw, s);
+        let why = NMGps.Reject(v0, px, py, s, first);
+        if StrLen(why) > 0 {
+            this.LogReject(why);
+            return previous;
+        }
+        this.lastScale = s;
+        for v in vs {
+            ArrayPush(out, NMGps.ToWorld(v.int, v0, px, py, camYaw, s));
+        }
+        return out;
+    }
+
+    private func LogReject(why: String) {
+        if !this.loggedReject {
+            this.loggedReject = true;
+            NMLog.Info("gps|reject|" + why);
+        }
+    }
     // Camera yaw in degrees, the GetWorldYaw convention: 0 = +Y, positive = counter-clockwise.
     public static func CameraYaw(fwd: Vector4) -> Float {
         return Rad2Deg(AtanF(-fwd.X, fwd.Y));
@@ -40,4 +133,19 @@ public abstract class NMGps {
         if dx * dx + dy * dy > 225.0 { return "first_far"; }
         return "";
     }
+}
+
+@wrapMethod(MinimapContainerController)
+protected cb func OnPlayerAttach(player: ref<GameObject>) -> Bool {
+    let r = wrappedMethod(player);
+    let sys = NightMapSystem.Get(player.GetGame());
+    if IsDefined(sys) { sys.Gps().SetMinimap(this); }
+    return r;
+}
+
+@wrapMethod(MinimapContainerController)
+protected cb func OnPlayerDetach(player: ref<GameObject>) -> Bool {
+    let sys = NightMapSystem.Get(player.GetGame());
+    if IsDefined(sys) { sys.Gps().ClearMinimap(this); }
+    return wrappedMethod(player);
 }

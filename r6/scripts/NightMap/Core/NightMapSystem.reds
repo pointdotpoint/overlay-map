@@ -42,6 +42,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let imageRetries: Int32;
     private let imageRev: Int32;
     private let vanilla: ref<NMVanilla>;
+    private let gps: ref<NMGps>;
     private let filterView: Int32;
     // Header change-cache: SetText / tint only when the value changed (reset in OnOpened).
     private let hdrSubtitle: String;
@@ -69,8 +70,18 @@ public class NightMapSystem extends ScriptableSystem {
         this.Close();
     }
 
+    public static func Get(gi: GameInstance) -> ref<NightMapSystem> {
+        return GameInstance.GetScriptableSystemsContainer(gi).Get(n"NightMap.NightMapSystem") as NightMapSystem;
+    }
+
     public func Api() -> ref<NightMap> { return this.api; }
     public func Vanilla() -> ref<NMVanilla> { return this.vanilla; }
+
+    // Created on first use: the minimap may attach before this system's OnAttach.
+    public func Gps() -> ref<NMGps> {
+        if !IsDefined(this.gps) { this.gps = new NMGps(); }
+        return this.gps;
+    }
     public func SetVanillaEnabled(on: Bool) { this.vanilla.SetEnabled(on); }
     public func IsOpen() -> Bool { return this.isOpen; }
     public func Camera() -> ref<NMCamera> { return this.camera; }
