@@ -447,6 +447,13 @@ public class NightMapSystem extends ScriptableSystem {
         let r = this.Gps().Read(GetPlayer(gi));
         let hdr = NMQuestHeader.Read(gi);
         let color = IsDefined(hdr) && !hdr.isQuest ? NMTheme.VanillaStateColor(n"Gigs") : NMTheme.VanillaStateColor(n"Quest");
+        if !this.routes.HasStyle() {
+            let st = this.Gps().PathStyle();
+            if IsDefined(st) {
+                NMLog.Info("gps|style|" + st.Describe());
+                this.routes.SetStyle(st);
+            }
+        }
         this.routes.SetRoutes(r.quest, color, r.tracked);
         this.lastRouteReadMs = NMClock.NowMs();
     }

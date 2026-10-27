@@ -62,6 +62,14 @@ public class NMGps {
         return r;
     }
 
+    // The look of the minimap's GPS path widget (quest path, else the tracked path); null without a minimap.
+    public func PathStyle() -> ref<NMRouteStyle> {
+        if !IsDefined(this.ctrl) { return null; }
+        let lp = this.ctrl.gpsQuestPathWidget.widget as inkLinePattern;
+        if !IsDefined(lp) { lp = this.ctrl.gpsPlayerTrackedPathWidget.widget as inkLinePattern; }
+        return IsDefined(lp) ? NMRouteStyle.From(lp) : null;
+    }
+
     // One path widget to world space; a rejected reading keeps the previous accepted polyline.
     private func Path(w: wref<inkWidget>, px: Float, py: Float, camYaw: Float, previous: array<Vector2>) -> array<Vector2> {
         let out: array<Vector2>;
