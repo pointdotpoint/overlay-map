@@ -87,14 +87,18 @@ public class NMPanel {
         p.hints = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(34.0 * s), NMTheme.HoloHighlight(green));
         p.hints.SetTranslation(new Vector2(58.0 * s, layout.mapH + 34.0 * s));
 
-        // Header over the map area.
-        p.subtitle = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(34.0 * s), NMTheme.HoloHighlight(green));
-        p.subtitle.SetTranslation(new Vector2(67.0 * s, 46.0 * s));
-        p.questTitle = NMUi.Text(p.root, NMTheme.BodyFont(), n"Bold", Cast<Int32>(34.0 * s), NMTheme.VanillaStateColor(n"Quest"));
-        p.questTitle.SetTranslation(new Vector2(67.0 * s, 100.0 * s));
+        // Header (district, tracked quest, objective) in the bottom-right corner of the map area, right-aligned. A
+        // vertical panel stacks it from the bottom, so a hidden quest or a two-line objective leaves no gap.
+        let header = new inkVerticalPanel();
+        header.SetAnchor(inkEAnchor.TopLeft);
+        header.SetAnchorPoint(new Vector2(1.0, 1.0));
+        header.SetTranslation(new Vector2(layout.mapW - 67.0 * s, layout.mapH - 40.0 * s));
+        header.SetInteractive(false);
+        header.Reparent(p.root);
+        p.subtitle = NMPanel.HeaderLine(header, n"Medium", 34.0 * s, NMTheme.HoloHighlight(green), 0.0);
+        p.questTitle = NMPanel.HeaderLine(header, n"Bold", 34.0 * s, NMTheme.VanillaStateColor(n"Quest"), 8.0 * s);
         p.questTitle.SetVisible(false);
-        p.questObjective = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Text());
-        p.questObjective.SetTranslation(new Vector2(67.0 * s, 146.0 * s));
+        p.questObjective = NMPanel.HeaderLine(header, n"Medium", 30.0 * s, NMTheme.Text(), 6.0 * s);
         p.questObjective.SetWrappingAtPosition(layout.mapW * 0.6);   // two lines at most (see NMQuestHeader.Clip)
         p.questObjective.SetVisible(false);
         p.warning = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(32.0 * s), NMTheme.Pink());
@@ -122,6 +126,14 @@ public class NMPanel {
         NMUi.Image(p.root, n"bracket_br", layout.w - b, layout.h - b, b, bc, false);
         p.holo.Play(p.mapContent);
         return p;
+    }
+
+    private static func HeaderLine(parent: ref<inkVerticalPanel>, style: CName, size: Float, color: HDRColor, top: Float) -> ref<inkText> {
+        let t = NMUi.Text(parent, NMTheme.BodyFont(), style, Cast<Int32>(size), color);
+        t.SetHAlign(inkEHorizontalAlign.Right);
+        t.SetHorizontalAlignment(textHorizontalAlignment.Right);
+        t.SetMargin(new inkMargin(0.0, top, 0.0, 0.0));
+        return t;
     }
 
     public func Destroy() {
