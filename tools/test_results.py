@@ -91,10 +91,12 @@ def _row(name, avg, p95, script_avg=0.1, script_p95=0.2, extra=""):
 
 
 def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=(), open_avg=None, open_p95=None, end_avg=20.0, vanilla_avg=None, vanilla_p95=None,
-           open_script=(0.4, 1.0), van_script=(0.8, 2.0), poll=0.5, poll_field=True, van_script_fields=True):
+           open_script=(0.4, 1.0), van_script=(0.8, 2.0), poll=0.5, poll_field=True, van_script_fields=True,
+           route_avg=None, route_p95=None, route_drawn=1, route_read=0.1):
     rows = {"idle_0p5": (idle_avg, idle_p95), "idle_2": (idle_avg, idle_p95), "idle_8": (idle_avg, idle_p95),
             "open_empty": (open_avg or sweep_avg, open_p95 or sweep_p95),
-            "vanilla_open": (vanilla_avg or open_avg or sweep_avg, vanilla_p95 or open_p95 or sweep_p95), "panzoom_0p5_16": (sweep_avg, sweep_p95),
+            "vanilla_open": (vanilla_avg or open_avg or sweep_avg, vanilla_p95 or open_p95 or sweep_p95),
+            "route_open": (route_avg or sweep_avg, route_p95 or sweep_p95), "panzoom_0p5_16": (sweep_avg, sweep_p95),
             "closed_end": (end_avg, 29.0)}
     def row(n, a, p):
         if n == "open_empty":
@@ -102,6 +104,8 @@ def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=()
         if n == "vanilla_open":
             line = _row(n, a, p, *van_script, extra=f"|poll_ms_max={poll}" if poll_field else "")
             return line if van_script_fields else line.replace(f"|script_avg={van_script[0]}", "")
+        if n == "route_open":
+            return _row(n, a, p, extra=f"|route_drawn={route_drawn}|route_read_ms_max={route_read}")
         return _row(n, a, p)
     body = "".join(row(n, a, p) for n, (a, p) in rows.items() if n not in skip)
     return LOG.replace("[t] [1] [NightMap] PERF|SUITE|done", body + "[t] [1] [NightMap] PERF|SUITE|done")
@@ -295,3 +299,30 @@ def test_script_gate_compares_against_open_empty_of_the_same_run():
     assert ok, msg
     ok, msg = results.verdict(results.parse(_tiles(open_script=(2.0, 5.0), van_script=(2.6, 6.4))))
     assert not ok
+
+
+def test_route_open_is_gated_with_the_sweep_budget():
+    ok, msg = results.verdict(results.parse(_tiles(route_avg=21.6)))
+    assert not ok and "route_open: avg +1.60" in msg and "OVER" in msg
+
+
+def test_route_open_without_route_is_skipped():
+    ok, msg = results.verdict(results.parse(_tiles(route_avg=30.0, route_drawn=0)))
+    assert ok, msg
+    assert "route_open: skipped: no route" in msg
+    status, msg = results.judge(_suites(_tiles(route_drawn=0), _tiles(route_drawn=0), _tiles(route_drawn=0)), 3)
+    assert status == "PASS" and "route_open: skipped: no route" in msg
+
+
+def test_missing_route_row_fails():
+    status, msg = results.judge(_suites(_tiles(), _tiles(skip=("route_open",)), _tiles()), 3)
+    assert status == "FAIL" and "route_open: row missing" in msg
+
+
+def test_route_read_ms_is_reported_not_gated(tmp_path):
+    import subprocess, sys
+    log = tmp_path / "r.log"
+    log.write_text(_tiles(route_read=2.0) * 3)
+    r = subprocess.run([sys.executable, str(Path(__file__).with_name("results.py")), str(log)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout
+    assert "route_read_ms_max 2.000 ms (target 0.5)" in r.stdout

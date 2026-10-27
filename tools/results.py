@@ -15,7 +15,11 @@ IDLE_P95_BUDGET_MS = 2.0
 SWEEP_AVG_BUDGET_MS = 1.5
 SWEEP_P95_BUDGET_MS = 3.0
 IDLE_ROWS = ("idle_0p5", "idle_2", "idle_8")
-SWEEP_ROWS = ("open_empty", "vanilla_open", "panzoom_0p5_16")   # open_empty: cold sweep, no markers; vanilla_open: real markers
+SWEEP_ROWS = ("open_empty", "vanilla_open", "route_open", "panzoom_0p5_16")   # open_empty: cold sweep, no markers; vanilla_open: real markers
+# route_open: the sweep with the GPS routes on. Gated only when a route was drawn (route_drawn=1); otherwise
+# "skipped: no route", neither pass nor fail. route_read_ms_max (one minimap read) is reported, never gated.
+ROUTE_ROW = "route_open"
+ROUTE_READ_TARGET_MS = 0.5
 # vanilla_open script cost (the CPU-bound proxy; frame deltas hide it on GPU-bound machines), within the same run:
 SCRIPT_ROW, SCRIPT_REF_ROW = "vanilla_open", "open_empty"
 SCRIPT_AVG_MARGIN_MS = 0.5     # vanilla_open.script_avg <= open_empty.script_avg + this
@@ -85,8 +89,10 @@ def drift(rows: list[dict]) -> float | None:
         return None
 
 
-def deltas(rows: list[dict]) -> tuple[dict[str, tuple[float, float]], list[str]]:
-    """Per-scenario (avg, p95) deltas against this run's own closed_baseline, plus problems (missing/truncated rows)."""
+def deltas(rows: list[dict]) -> tuple[dict[str, tuple[float, float] | None], list[str]]:
+    """Per-scenario (avg, p95) deltas against this run's own closed_baseline, plus problems (missing/truncated rows).
+
+    A route_open row that drew no route maps to None: skipped, not gated."""
     by = {r["name"]: r for r in rows}
     base = by.get("closed_baseline")
     if base is None or "frame_avg" not in base or "frame_p95" not in base:
@@ -98,6 +104,8 @@ def deltas(rows: list[dict]) -> tuple[dict[str, tuple[float, float]], list[str]]
             problems.append(f"{name}: row missing")
         elif "frame_avg" not in r or "frame_p95" not in r:
             problems.append(f"{name}: lacks frame_avg/frame_p95")
+        elif name == ROUTE_ROW and r.get("route_drawn", 1) == 0:
+            out[name] = None
         else:
             out[name] = (r["frame_avg"] - base["frame_avg"], r["frame_p95"] - base["frame_p95"])
     return out, problems
@@ -136,6 +144,9 @@ def _gate(d: dict[str, tuple[float, float]], problems: list[str], sv: tuple[floa
     ok, parts = not problems, list(problems)
     for name, avg_b, p95_b in GATES:
         if name not in d:
+            continue
+        if d[name] is None:
+            parts.append(f"{name}: skipped: no route")
             continue
         va, vp = d[name]
         good = va <= avg_b and vp <= p95_b
@@ -188,8 +199,10 @@ def judge(suites: list[list[dict]], n: int = 3) -> tuple[str, str]:
         return "FAIL", "; ".join(problems + ([note] if note else []))
     if len(valid) < n:
         return "INCONCLUSIVE", f"{len(valid)} of {n} valid runs" + (f" ({note})" if note else "")
-    med = {name: (statistics.median(d[name][0] for d, _ in per), statistics.median(d[name][1] for d, _ in per))
-           for name, _, _ in GATES}
+    med = {}
+    for name, _, _ in GATES:
+        vals = [d[name] for d, _ in per if d[name] is not None]
+        med[name] = (statistics.median(v[0] for v in vals), statistics.median(v[1] for v in vals)) if vals else None
     sv_med = tuple(statistics.median(v[i] for v, _ in svs) for i in range(3)) if all(v is not None for v, _ in svs) else None
     ok, msg = _gate(med, [], sv_med)
     return ("PASS" if ok else "FAIL"), f"median of {n} runs: {msg}" + (f"; {note}" if note else "")
@@ -230,13 +243,17 @@ def main() -> int:
     print(f"\nmedians over {len(per)} valid run(s) of {len(suites)} in this {'log' if args.all_sessions else 'session'} (delta vs own closed_baseline):")
     print(f"{'scenario':22} {'avg':>7} {'p95':>7}")
     for name, _, _ in GATES:
-        vals = [d[name] for d, _ in per if name in d]
+        vals = [d[name] for d, _ in per if d.get(name) is not None]
         if vals:
             print(f"{name:22} {statistics.median(v[0] for v in vals):>+7.2f} {statistics.median(v[1] for v in vals):>+7.2f}")
     svs = [sv for sv, _ in (script_vals(r) for r in select_valid(suites, args.runs)[0]) if sv is not None]
     if svs:
         print(f"{SCRIPT_ROW} script vs {SCRIPT_REF_ROW}: avg {statistics.median(v[0] for v in svs):+.2f} ms, "
               f"p95 {statistics.median(v[1] for v in svs):+.2f} ms, poll_ms_max {statistics.median(v[2] for v in svs):.2f} ms")
+    route = next((r for r in rows if r["name"] == ROUTE_ROW and "route_read_ms_max" in r), None)
+    if route is not None:
+        print(f"{ROUTE_ROW} route_read_ms_max {route['route_read_ms_max']:.3f} ms (target {ROUTE_READ_TARGET_MS})"
+              + ("" if route.get("route_drawn", 1) else " (no route drawn)"))
     status, msg = judge(suites, args.runs)
     print(f"{status}: {msg}")
     return {"PASS": 0, "FAIL": 1}.get(status, 2)

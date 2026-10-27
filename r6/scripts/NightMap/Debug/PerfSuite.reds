@@ -11,6 +11,8 @@ public class NMPerfSuite {
     private let modes: array<Int32>;      // 0 = circle + 1..16 sweep, 1 = fixed downtown view, 2 = circle + 0.5..16 sweep
     private let mpps: array<Float>;
     private let vanillas: array<Bool>;   // vanilla map markers enabled during the scenario
+    private let routeRows: array<Bool>;  // GPS routes enabled during the scenario (route_open only)
+    private let routeDrawn: Bool;        // a route was on screen at the first measured frame
     private let idx: Int32;
     private let phase: Int32;
     private let frames: Int32;
@@ -23,13 +25,14 @@ public class NMPerfSuite {
     private let savedY: Float;
     private let saved: Bool;
 
-    private func Add(name: String, count: Int32, show: Bool, mode: Int32, mpp: Float, vanilla: Bool) {
+    private func Add(name: String, count: Int32, show: Bool, mode: Int32, mpp: Float, vanilla: Bool, routes: Bool) {
         ArrayPush(this.names, name);
         ArrayPush(this.counts, count);
         ArrayPush(this.shows, show);
         ArrayPush(this.modes, mode);
         ArrayPush(this.mpps, mpp);
         ArrayPush(this.vanillas, vanilla);
+        ArrayPush(this.routeRows, routes);
     }
 
     public func Start() {
@@ -39,17 +42,19 @@ public class NMPerfSuite {
         ArrayClear(this.modes);
         ArrayClear(this.mpps);
         ArrayClear(this.vanillas);
-        this.Add("closed_baseline", 0, false, 0, 0.0, false);
-        this.Add("open_empty", 0, true, 0, 0.0, false);
-        this.Add("vanilla_open", 0, true, 0, 0.0, true);
-        this.Add("items_5000", 5000, true, 0, 0.0, false);
-        this.Add("items_20000", 20000, true, 0, 0.0, false);
-        this.Add("items_50000", 50000, true, 0, 0.0, false);
-        this.Add("idle_0p5", 0, true, 1, 0.5, false);
-        this.Add("idle_2", 0, true, 1, 2.0, false);
-        this.Add("idle_8", 0, true, 1, 8.0, false);
-        this.Add("panzoom_0p5_16", 0, true, 2, 0.0, false);
-        this.Add("closed_end", 0, false, 0, 0.0, false);
+        ArrayClear(this.routeRows);
+        this.Add("closed_baseline", 0, false, 0, 0.0, false, false);
+        this.Add("open_empty", 0, true, 0, 0.0, false, false);
+        this.Add("vanilla_open", 0, true, 0, 0.0, true, false);
+        this.Add("route_open", 0, true, 0, 0.0, false, true);   // track a quest ~700 m away before starting the suite
+        this.Add("items_5000", 5000, true, 0, 0.0, false, false);
+        this.Add("items_20000", 20000, true, 0, 0.0, false, false);
+        this.Add("items_50000", 50000, true, 0, 0.0, false, false);
+        this.Add("idle_0p5", 0, true, 1, 0.5, false, false);
+        this.Add("idle_2", 0, true, 1, 2.0, false, false);
+        this.Add("idle_8", 0, true, 1, 8.0, false, false);
+        this.Add("panzoom_0p5_16", 0, true, 2, 0.0, false, false);
+        this.Add("closed_end", 0, false, 0, 0.0, false, false);
         this.idx = 0;
         this.phase = 0;
         this.saved = false;
@@ -76,6 +81,7 @@ public class NMPerfSuite {
             this.setupMs = NMClock.NowMs() - t0;
             sys.SetPerfHidden(!this.shows[this.idx]);
             sys.SetVanillaEnabled(this.vanillas[this.idx]);
+            sys.SetRoutesEnabled(this.routeRows[this.idx]);
             this.phase = 1;
             this.frames = 0;
             return;
@@ -95,6 +101,8 @@ public class NMPerfSuite {
                 ArrayClear(this.samples);
                 ArrayClear(this.script);
                 sys.Vanilla().ResetPollStats();   // poll_ms_max covers the measured frames only
+                sys.Gps().ResetReadStats();       // route_read_ms_max likewise
+                this.routeDrawn = this.routeRows[this.idx] && IsDefined(sys.Routes()) && sys.Routes().HasRoute();
             }
             return;
         }
@@ -124,6 +132,7 @@ public class NMPerfSuite {
                 NMDebugLayer.Remove(sys.Api());
                 sys.SetPerfHidden(false);
                 sys.SetVanillaEnabled(true);
+                sys.SetRoutesEnabled(true);
                 cam.SetMpp(this.savedMpp);
                 cam.SetCenter(this.savedX, this.savedY);
                 cam.follow = this.savedFollow;
@@ -136,7 +145,9 @@ public class NMPerfSuite {
         NMLog.Info("RESULT|" + this.names[this.idx] + "|items=" + ToString(this.counts[this.idx]) + "|frames=" + ToString(ArraySize(this.samples))
             + "|setup_ms=" + FloatToStringPrec(this.setupMs, 1) + "|" + NMPerfSuite.Stats("frame", this.samples, true) + "|" + NMPerfSuite.Stats("script", this.script, false)
             + "|script_max=" + FloatToStringPrec(NMPerfSuite.MaxOf(this.script), 3)
-            + "|poll_ms_max=" + FloatToStringPrec(this.vanillas[this.idx] ? sys.Vanilla().pollMsMax : 0.0, 3));
+            + "|poll_ms_max=" + FloatToStringPrec(this.vanillas[this.idx] ? sys.Vanilla().pollMsMax : 0.0, 3)
+            + "|route_drawn=" + (this.routeDrawn ? "1" : "0")
+            + "|route_read_ms_max=" + FloatToStringPrec(this.routeRows[this.idx] ? sys.Gps().readMsMax : 0.0, 3));
     }
 
     private static func MaxOf(values: array<Float>) -> Float {
