@@ -10,6 +10,8 @@ public class NMGroundHit {
 // Seam: finds the ground below (x, y). The base finds nothing; NMWorldGround asks the game, tests use a fake.
 public class NMGround {
     public func Probe(x: Float, y: Float) -> ref<NMGroundHit> { return null; }
+    // Diagnostics for the last probe; empty = nothing to log.
+    public func Describe() -> String { return ""; }
 }
 
 // Seam: the object being teleported (V, or V's vehicle). The base is never valid; NMGameMover moves the real object
@@ -34,6 +36,9 @@ public class NMTeleportDriver {
     private let lifted: Bool;              // vehicle seen at the lift height
     private let stable: Int32;             // agreeing hits in a row
     private let lastHitZ: Float;
+    private let probes: Int32;             // diagnostics (teleport|trace lines)
+    private let hits: Int32;
+    private let nextTraceMs: Float;
     private let done: Bool;
     public let result: String;
 
@@ -81,6 +86,13 @@ public class NMTeleportDriver {
         }
         // Collision streams in piece by piece: land only once StableProbes() hits in a row agree.
         let hit = this.ground.Probe(t.x, t.y);
+        this.probes += 1;
+        if IsDefined(hit) { this.hits += 1; }
+        let info = this.ground.Describe();
+        if StrLen(info) > 0 && this.elapsedMs >= this.nextTraceMs {
+            this.nextTraceMs = this.elapsedMs + 500.0;
+            NMLog.Info("teleport|trace|t=" + FloatToStringPrec(this.elapsedMs, 0) + "|vz=" + FloatToStringPrec(this.mover.Position().Z, 1) + "|" + info);
+        }
         if IsDefined(hit) {
             this.stable = this.stable > 0 && AbsF(hit.z - this.lastHitZ) <= NMTeleport.StableTolerance() ? this.stable + 1 : 1;
             this.lastHitZ = hit.z;
@@ -94,6 +106,9 @@ public class NMTeleportDriver {
         }
         if this.elapsedMs >= NMTeleport.SettleTimeoutMs() {
             this.mover.Move(this.start);
+            if StrLen(info) > 0 {
+                NMLog.Info("teleport|trace|end|probes=" + ToString(this.probes) + "|hits=" + ToString(this.hits) + "|stable=" + ToString(this.stable));
+            }
             return this.Finish("failed|no ground");
         }
         this.mover.Move(new Vector4(t.x, t.y, NMTeleport.LiftZ(), 1.0));
