@@ -133,8 +133,9 @@ public class NMRouteLayer {
         }
     }
 
-    // Dashes every `period` along the screen polyline, offset by the flow phase; one rectangle per dash, centred on the
-    // dash midpoint and turned to its segment. Clipped to the map area plus a margin; at most `budget` dashes.
+    // Dashes every `period` along the screen polyline, counted back from the destination and offset by the flow phase;
+    // one rectangle per dash, centred on the dash midpoint and turned to its segment. Clipped to the map area plus a
+    // margin; at most `budget` dashes.
     private func Layout(l: ref<NMRouteLine>, period: Float, mapW: Float, mapH: Float, budget: Int32) {
         let n = ArraySize(l.screen);
         let used = 0;
@@ -143,8 +144,12 @@ public class NMRouteLayer {
             let dash = NMRouteLayer.DashLen() * this.s;
             let m = NMRouteLayer.ClipMargin() * this.s;
             let seg = 0;
-            let d = this.phase - period + dash * 0.5;   // midpoint of the first (possibly partial) dash
-            while d <= total && used < budget {
+            // Midpoints sit at fixed distances back from the destination (period - phase + k * period), so the dashes
+            // are pinned to the road while V moves and only the flow phase moves them. They end half a dash short of
+            // the destination and never overshoot the pin.
+            let back = total - (period - this.phase);
+            let d = back - Cast<Float>(FloorF(back / period)) * period;
+            while d <= total - dash * 0.5 && used < budget {
                 if d >= 0.0 {
                     while seg < n - 2 && l.cum[seg + 1] < d { seg += 1; }
                     let a = l.screen[seg];

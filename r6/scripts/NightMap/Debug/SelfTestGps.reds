@@ -18,6 +18,20 @@ public abstract class NMGpsTests {
         return -1;
     }
 
+    // Screen Y of the visible waypoint-route dash nearest the top of the map (the destination, for a route north).
+    private static func LastDashY(L: ref<NMRouteLayer>) -> Float {
+        let line = L.Root().GetWidget(NMGpsTests.ChildIndex(L.Root(), n"tracked")) as inkCompoundWidget;
+        let core = line.GetWidget(1) as inkCompoundWidget;   // children: glow canvas, core canvas
+        let best = 100000.0;
+        let i = 0;
+        while i < core.GetNumChildren() {
+            let w = core.GetWidget(i);
+            if w.IsVisible() { best = MinF(best, w.GetTranslation().Y); }
+            i += 1;
+        }
+        return best;
+    }
+
     private static func RouteCases(t: ref<NMSelfTest>) {
         let yellow = NMTheme.VanillaStateColor(n"Quest");
         let none: array<Vector2>;
@@ -38,6 +52,22 @@ public abstract class NMGpsTests {
         L.SetRoutes(long, yellow, long);
         L.Update(cam, 0.0, 0.0, 16.0, 20000.0, 20000.0);
         t.Check("route.dash_cap", L.DashesShown() > 0 && L.DashesShown() <= NMRouteLayer.DashCap(), ToString(L.DashesShown()));
+
+        // Dashes are pinned to the road: V moving 5 m along the route (no time passing) leaves the dash nearest the
+        // destination where it was. Straight 100 m route north, 1 m/px.
+        let north: array<Vector2>;
+        ArrayPush(north, new Vector2(0.0, 0.0));
+        ArrayPush(north, new Vector2(0.0, 100.0));
+        let P = NMRouteLayer.Create(new inkCanvas(), 1.0, false);
+        let cam2 = NMCamera.Create(400.0, 400.0, NMRect.Create(-1000.0, -1000.0, 1000.0, 1000.0), 0.25, 64.0);
+        cam2.SetCenter(0.0, 50.0);
+        cam2.SetMpp(1.0);
+        P.SetRoutes(none, yellow, north);
+        P.Update(cam2, 0.0, 0.0, 0.0, 400.0, 400.0);
+        let y0 = NMGpsTests.LastDashY(P);
+        P.Update(cam2, 0.0, 5.0, 0.0, 400.0, 400.0);
+        let y1 = NMGpsTests.LastDashY(P);
+        t.Check("route.dashes_pinned", t.Near(y0, y1, 0.01), t.F(y0) + " -> " + t.F(y1));
 
         let qi = NMGpsTests.ChildIndex(L.Root(), n"quest");
         let ti = NMGpsTests.ChildIndex(L.Root(), n"tracked");
