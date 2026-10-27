@@ -18,10 +18,18 @@ public abstract class NMGpsTests {
         return -1;
     }
 
-    // Distance from the destination back to the nearest pattern element, modulo the pitch.
-    private static func HeadGap(L: ref<NMRouteLayer>) -> Float {
-        let w = L.CoreWidget(true);
-        return NMRouteLayer.Wrap(L.LineLength(true) - w.startOffset, L.Pitch());
+    // Screen Y of the visible waypoint-route dot nearest the top of the map (the destination, for a route north).
+    private static func LastDotY(L: ref<NMRouteLayer>) -> Float {
+        let line = L.Root().GetWidget(NMGpsTests.ChildIndex(L.Root(), n"tracked")) as inkCompoundWidget;
+        let core = line.GetWidget(1) as inkCompoundWidget;   // children: glow canvas, core canvas
+        let best = 100000.0;
+        let i = 0;
+        while i < core.GetNumChildren() {
+            let w = core.GetWidget(i);
+            if w.IsVisible() { best = MinF(best, w.GetTranslation().Y); }
+            i += 1;
+        }
+        return best;
     }
 
     private static func RouteCases(t: ref<NMSelfTest>) {
@@ -42,31 +50,42 @@ public abstract class NMGpsTests {
         cam.SetCenter(0.0, 50.0);
         cam.SetMpp(1.0);
 
-        // Before the minimap's style is known there are no line widgets, and updating is harmless.
+        // Before the minimap's style is known nothing is drawn, and updating is harmless.
         let P = NMRouteLayer.Create(new inkCanvas(), 1.0, false);
         P.SetRoutes(none, yellow, north);
         P.Update(cam, 0.0, 0.0, 16.0, 400.0, 400.0);
-        t.Check("route.no_style_safe", P.HasRoute() && !IsDefined(P.CoreWidget(true)), "");
+        t.Check("route.no_style_safe", P.HasRoute() && P.DotsShown() == 0, ToString(P.DotsShown()));
 
+        // 100 m at 1 px/m with a 9 px pitch: about 11 dots.
         P.SetStyle(NMRouteStyle.Test());
-        t.Check("route.make_widget", IsDefined(P.CoreWidget(true)) && IsDefined(P.CoreWidget(false)), "");
-        if !IsDefined(P.CoreWidget(true)) { return; }
         P.Update(cam, 0.0, 0.0, 0.0, 400.0, 400.0);
-        t.Check("route.vertices", ArraySize(P.CoreWidget(true).vertexList) == 2, ToString(ArraySize(P.CoreWidget(true).vertexList)));
-        t.Check("route.length", t.Near(P.LineLength(true), 100.0, 0.01), t.F(P.LineLength(true)));
+        let want = Cast<Int32>(100.0 / P.Pitch());
+        t.Check("route.dots", P.DotsShown() >= want && P.DotsShown() <= want + 1, ToString(P.DotsShown()) + " pitch " + t.F(P.Pitch()));
 
-        // Pinned to the road: V moving 5 m along the route (no time passing) keeps the elements where they were,
-        // counted back from the destination.
-        let g0 = NMGpsTests.HeadGap(P);
+        // Pinned to the road: V moving 5 m along the route (no time passing) leaves the dot nearest the destination
+        // where it was.
+        let y0 = NMGpsTests.LastDotY(P);
         P.Update(cam, 0.0, 5.0, 0.0, 400.0, 400.0);
-        let g1 = NMGpsTests.HeadGap(P);
-        t.Check("route.pinned", t.Near(g0, g1, 0.01), t.F(g0) + " -> " + t.F(g1));
+        let y1 = NMGpsTests.LastDotY(P);
+        t.Check("route.pinned", t.Near(y0, y1, 0.01), t.F(y0) + " -> " + t.F(y1));
 
-        // Flow runs toward the destination: 100 ms moves every element FlowSpeed * 0.1 closer to it.
+        // Flow runs toward the destination (up the screen): 100 ms moves every dot FlowSpeed * 0.1 closer to it.
         P.Update(cam, 0.0, 5.0, 100.0, 400.0, 400.0);
-        let g2 = NMGpsTests.HeadGap(P);
-        let step = NMRouteLayer.Wrap(g1 - g2, P.Pitch());
+        let y2 = NMGpsTests.LastDotY(P);
+        let step = NMRouteLayer.Wrap(y1 - y2, P.Pitch());
         t.Check("route.flow_toward_dest", t.Near(step, NMRouteLayer.FlowSpeed() * 0.1, 0.01), t.F(step));
+
+        // 10 km straight route on a 20000 px view at 0.5 m/px: about 2200 dots wanted, capped.
+        let long: array<Vector2>;
+        ArrayPush(long, new Vector2(0.0, 0.0));
+        ArrayPush(long, new Vector2(10000.0, 0.0));
+        let camL = NMCamera.Create(20000.0, 20000.0, NMRect.Create(-20000.0, -20000.0, 20000.0, 20000.0), 0.25, 64.0);
+        camL.SetCenter(5000.0, 0.0);
+        camL.SetMpp(0.5);
+        L.SetStyle(NMRouteStyle.Test());
+        L.SetRoutes(long, yellow, long);
+        L.Update(camL, 0.0, 0.0, 16.0, 20000.0, 20000.0);
+        t.Check("route.dot_cap", L.DotsShown() == NMRouteLayer.DotCap(), ToString(L.DotsShown()));
 
         t.Check("route.wrap", t.Near(NMRouteLayer.Wrap(-3.0, 24.0), 21.0, 0.001) && t.Near(NMRouteLayer.Wrap(50.0, 24.0), 2.0, 0.001), "");
 
