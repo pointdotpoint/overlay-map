@@ -23,6 +23,7 @@ public class NMSelfTest {
         this.VersionCases();
         NMHoloTests.Run(this);
         NMVanillaTests.Run(this);
+        NMGpsTests.Run(this);
         NMPerfTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
