@@ -106,6 +106,7 @@ public class NMRouteLayer {
     public func Root() -> ref<inkCanvas> { return this.root; }
     public func DotsShown() -> Int32 { return this.shown; }
     public func DotsUsed(tracked: Bool) -> Int32 { return tracked ? this.tracked.used : this.quest.used; }
+    public func Phase() -> Float { return this.phase; }
     public func SetVisible(on: Bool) { this.root.SetVisible(on); }
     public func HasStyle() -> Bool { return IsDefined(this.style); }
 

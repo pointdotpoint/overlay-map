@@ -73,7 +73,8 @@ public abstract class NMGpsTests {
         P.Update(cam, 0.0, 5.0, 100.0, 400.0, 400.0);
         let y2 = NMGpsTests.LastDotY(P);
         let step = NMRouteLayer.Wrap(y1 - y2, P.Pitch());
-        t.Check("route.flow_toward_dest", t.Near(step, NMRouteLayer.FlowSpeed() * 0.1, 0.01), t.F(step));
+        t.Check("route.flow_toward_dest", t.Near(step, NMRouteLayer.FlowSpeed() * 0.1, 0.01), "step " + t.F(step) + " y1 " + t.F(y1)
+            + " y2 " + t.F(y2) + " pitch " + t.F(P.Pitch()) + " phase " + t.F(P.Phase()) + " used " + ToString(P.DotsUsed(true)));
 
         // 10 km straight route on a 20000 px view at 0.5 m/px: about 2200 dots wanted, capped.
         let long: array<Vector2>;
