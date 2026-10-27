@@ -37,6 +37,7 @@ public class NMPanel {
     public let root: ref<inkCanvas>;
     public let mapContent: ref<inkCanvas>;
     public let tiles: ref<inkCanvas>;
+    public let routes: ref<inkCanvas>;
     public let items: ref<inkCanvas>;
     public let overlay: ref<inkCanvas>;
     public let subtitle: ref<inkText>;
@@ -76,6 +77,7 @@ public class NMPanel {
         p.holo.AddGrid(p.mapContent);                                                      // under the glow
         p.tiles = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
         p.holo.AddScan(p.mapContent);                                                      // over the tiles, under the markers
+        p.routes = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);           // GPS routes, under the markers
         p.items = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
         p.holo.AddBar(p.mapContent);                                                       // over the markers, under the player arrow
         p.overlay = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);

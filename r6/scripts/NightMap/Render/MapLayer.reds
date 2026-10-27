@@ -16,6 +16,7 @@ public class NMMapLayer {
 //      then [effects on] scanlines and noise (NMHolo), still under the markers.
 //   2. [future] photos: the user's photo pins / imagery. Add one more NMMapLayer after the last tile set in
 //      NMLayerStack.Create; a generic NMTileLayer bound to a new manifest set already does it.
+//   2b. GPS routes (NMPanel.routes, drawn by NMRouteLayer): the minimap's waypoint and quest routes, under the markers.
 //   3. Items and markers (NMPanel.items, drawn by NMItemRenderer). Never assumes live game pins only.
 //   4. Overlay and widgets (NMPanel.overlay: player marker, tooltip).
 public class NMLayerStack {

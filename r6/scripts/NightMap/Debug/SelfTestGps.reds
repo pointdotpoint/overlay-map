@@ -6,6 +6,42 @@ public abstract class NMGpsTests {
         NMGpsTests.MathCases(t);
         NMGpsTests.GeomCases(t);
         NMGpsTests.LiveCases(t);
+        NMGpsTests.RouteCases(t);
+    }
+
+    private static func ChildIndex(root: ref<inkCompoundWidget>, name: CName) -> Int32 {
+        let i = 0;
+        while i < root.GetNumChildren() {
+            if Equals(root.GetWidget(i).GetName(), name) { return i; }
+            i += 1;
+        }
+        return -1;
+    }
+
+    private static func RouteCases(t: ref<NMSelfTest>) {
+        let yellow = NMTheme.VanillaStateColor(n"Quest");
+        let none: array<Vector2>;
+        let L = NMRouteLayer.Create(new inkCanvas(), 1.0, true);
+        L.SetRoutes(NMGpsTests.Route(), yellow, none);
+        t.Check("route.has_route", L.HasRoute(), "");
+        L.SetRoutes(NMGpsTests.Route(), yellow, NMGpsTests.Route());
+        L.SetRoutes(none, yellow, none);
+        t.Check("route.clear_on_empty", !L.HasRoute(), "");
+
+        // 10 km straight route on a 20000 px view at 0.5 m/px: about 830 dashes wanted, capped.
+        let long: array<Vector2>;
+        ArrayPush(long, new Vector2(0.0, 0.0));
+        ArrayPush(long, new Vector2(10000.0, 0.0));
+        let cam = NMCamera.Create(20000.0, 20000.0, NMRect.Create(-20000.0, -20000.0, 20000.0, 20000.0), 0.25, 64.0);
+        cam.SetCenter(5000.0, 0.0);
+        cam.SetMpp(0.5);
+        L.SetRoutes(long, yellow, long);
+        L.Update(cam, 0.0, 0.0, 16.0, 20000.0, 20000.0);
+        t.Check("route.dash_cap", L.DashesShown() > 0 && L.DashesShown() <= NMRouteLayer.DashCap(), ToString(L.DashesShown()));
+
+        let qi = NMGpsTests.ChildIndex(L.Root(), n"quest");
+        let ti = NMGpsTests.ChildIndex(L.Root(), n"tracked");
+        t.Check("route.order", qi >= 0 && ti > qi, ToString(qi) + " " + ToString(ti));
     }
 
     private static func LiveCases(t: ref<NMSelfTest>) {
