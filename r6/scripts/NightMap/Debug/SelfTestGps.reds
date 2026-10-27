@@ -163,12 +163,14 @@ public abstract class NMGpsTests {
         t.Check("gps.cameraYaw_west", t.Near(NMGps.CameraYaw(new Vector4(-1.0, 0.0, 0.0, 0.0)), 90.0, 0.01), "");
 
         let v0 = new Vector2(3.18 * py, 3.18 * px);
-        let near = new Vector2(px + 3.0, py);
-        t.Check("gps.reject_ok", Equals(NMGps.Reject(v0, px, py, 3.18, near), ""), NMGps.Reject(v0, px, py, 3.18, near));
-        t.Check("gps.reject_scale", Equals(NMGps.Reject(v0, px, py, 12.0, near), "scale_range"), NMGps.Reject(v0, px, py, 12.0, near));
+        t.Check("gps.reject_ok", Equals(NMGps.Reject(v0, px, py, 3.18), ""), NMGps.Reject(v0, px, py, 3.18));
+        t.Check("gps.reject_scale", Equals(NMGps.Reject(v0, px, py, 12.0), "scale_range"), NMGps.Reject(v0, px, py, 12.0));
         let skew = new Vector2(3.18 * py * 1.08, 3.18 * px);
-        t.Check("gps.reject_axis", Equals(NMGps.Reject(skew, px, py, 3.18, near), "axis_mismatch"), NMGps.Reject(skew, px, py, 3.18, near));
-        let far = new Vector2(px + 20.0, py);
-        t.Check("gps.reject_first_far", Equals(NMGps.Reject(v0, px, py, 3.18, far), "first_far"), NMGps.Reject(v0, px, py, 3.18, far));
+        t.Check("gps.reject_axis", Equals(NMGps.Reject(skew, px, py, 3.18), "axis_mismatch"), NMGps.Reject(skew, px, py, 3.18));
+        // The player's own vertex decodes 20 m away from the player (a stale reading): the axis ratios still agree.
+        let stale = new Vector2(3.18 * py, 3.18 * (px + 20.0));
+        t.Check("gps.reject_first_far", Equals(NMGps.Reject(stale, px, py, 3.18), "first_far"), NMGps.Reject(stale, px, py, 3.18));
+        let mirrored = new Vector2(-3.18 * py, -3.18 * px);
+        t.Check("gps.reject_mirrored", Equals(NMGps.Reject(mirrored, px, py, 3.18), "first_far"), NMGps.Reject(mirrored, px, py, 3.18));
     }
 }

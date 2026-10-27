@@ -77,8 +77,7 @@ public class NMGps {
             }
             s = this.lastScale;
         }
-        let first = NMGps.ToWorld(v0, v0, px, py, camYaw, s);
-        let why = NMGps.Reject(v0, px, py, s, first);
+        let why = NMGps.Reject(v0, px, py, s);
         if StrLen(why) > 0 {
             this.LogReject(why);
             return previous;
@@ -121,15 +120,17 @@ public class NMGps {
     }
 
     // "" accepts the reading; otherwise the first failed rule: scale_range, axis_mismatch, first_far.
-    public static func Reject(v0: Vector2, px: Float, py: Float, s: Float, first: Vector2) -> String {
+    // first_far: the player's own vertex, decoded with s (v0 / s = (P.y, P.x)), lands more than 15 m from the player:
+    // a stale or foreign reading (e.g. right after fast travel, or a mirrored v0 whose axis ratios still agree).
+    public static func Reject(v0: Vector2, px: Float, py: Float, s: Float) -> String {
         if s < 0.2 || s > 10.0 { return "scale_range"; }
         if AbsF(px) >= 50.0 && AbsF(py) >= 50.0 {
             let ax = v0.X / py;
             let ay = v0.Y / px;
             if AbsF(ax - ay) > 0.05 * MaxF(AbsF(ax), AbsF(ay)) { return "axis_mismatch"; }
         }
-        let dx = first.X - px;
-        let dy = first.Y - py;
+        let dx = v0.Y / s - px;
+        let dy = v0.X / s - py;
         if dx * dx + dy * dy > 225.0 { return "first_far"; }
         return "";
     }
