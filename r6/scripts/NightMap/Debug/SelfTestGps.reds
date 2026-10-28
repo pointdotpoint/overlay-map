@@ -18,7 +18,7 @@ public abstract class NMGpsTests {
         return -1;
     }
 
-    // Screen Y of every placed waypoint-route dash centre (core canvas children up to DashesUsed).
+    // Screen Y of every placed waypoint-route piece centre (core canvas children up to DashesUsed).
     private static func DashYs(L: ref<NMRouteLayer>) -> array<Float> {
         let out: array<Float>;
         let line = L.Root().GetWidget(NMGpsTests.ChildIndex(L.Root(), n"tracked")) as inkCompoundWidget;
@@ -37,19 +37,19 @@ public abstract class NMGpsTests {
         return best;
     }
 
-    // How far up the screen the dash pattern moved (each dash moves the same amount, modulo the period).
-    private static func SharedShift(a: array<Float>, b: array<Float>, period: Float) -> Float {
-        if ArraySize(a) == 0 || ArraySize(b) == 0 { return -1.0; }
-        let ta = 100000.0;
-        for y in a { ta = MinF(ta, y); }
-        let best = 100000.0;
-        for y in b {
-            let d = ta - y;   // upward motion
-            while d < 0.0 { d += period; }
-            while d >= period { d -= period; }
-            best = MinF(best, d);
+    // Largest distance between neighbouring piece centres (sorted).
+    private static func MaxGap(ys: array<Float>) -> Float {
+        let v = ys;
+        let i = 1;
+        while i < ArraySize(v) {
+            let j = i;
+            while j > 0 && v[j - 1] > v[j] { let tmp = v[j]; v[j] = v[j - 1]; v[j - 1] = tmp; j -= 1; }
+            i += 1;
         }
-        return best;
+        let m = 0.0;
+        i = 1;
+        while i < ArraySize(v) { m = MaxF(m, v[i] - v[i - 1]); i += 1; }
+        return m;
     }
 
     private static func MaxTurn(p: array<Vector2>) -> Float {
@@ -84,29 +84,31 @@ public abstract class NMGpsTests {
         cam.SetCenter(0.0, 50.0);
         cam.SetMpp(1.0);
 
-        // GPS dashes along the smoothed screen route: short dashes, a gap, flowing toward the destination.
+        // A thin solid line like the vanilla map: overlapping pieces along the smoothed screen route, end to end.
         let P = NMRouteLayer.Create(new inkCanvas(), 1.0, false);
         P.SetRoutes(none, yellow, north);
-        cam.SetMpp(0.25);   // 100 m -> 400 px
+        cam.SetMpp(0.25);   // 100 m -> 400 px, destination at the top (y 0), V at the bottom (y 400)
         cam.SetCenter(0.0, 50.0);
         P.Update(cam, 0.0, 0.0, 0.0, 400.0, 400.0);
-        let period = (NMRouteLayer.DashLen() + NMRouteLayer.DashGap()) * NMRouteLayer.LineWidth();
-        let want = Cast<Int32>(400.0 / period);
-        t.Check("route.dashes", P.DashesShown() >= want && P.DashesShown() <= want + 1, ToString(P.DashesShown()) + " want " + ToString(want));
-        t.Check("route.wider", NMRouteLayer.LineWidth() >= 24.0 && NMRouteLayer.DashLen() >= 1.0, "");
+        let len = NMRouteLayer.PieceLen() * NMRouteLayer.LineWidth();
+        let ys = NMGpsTests.DashYs(P);
+        let top = 100000.0;
+        let bottom = -100000.0;
+        for y in ys { top = MinF(top, y); bottom = MaxF(bottom, y); }
+        t.Check("route.line_ends", ArraySize(ys) > 0 && t.Near(top - len * 0.5, 0.0, 1.0) && t.Near(bottom + len * 0.5, 400.0, 1.0),
+            t.F(top - len * 0.5) + " .. " + t.F(bottom + len * 0.5));
+        t.Check("route.line_no_gaps", NMGpsTests.MaxGap(ys) <= len - 0.5, t.F(NMGpsTests.MaxGap(ys)) + " len " + t.F(len));
+        t.Check("route.thin", NMRouteLayer.LineWidth() <= 12.0 && NMRouteLayer.PieceStep() < NMRouteLayer.PieceLen(), "");
 
-        // Pinned to the road: V moving 5 m along the route (no time passing) leaves the dash nearest the destination.
+        // Pinned to the road: V moving 5 m along the route leaves the piece at the destination where it was.
         let y0 = NMGpsTests.TopDashY(P);
         P.Update(cam, 0.0, 5.0, 0.0, 400.0, 400.0);
         let y1 = NMGpsTests.TopDashY(P);
         t.Check("route.pinned", y0 < 1000.0 && t.Near(y0, y1, 0.5), t.F(y0) + " -> " + t.F(y1));
 
-        // Flow toward the destination (up the screen): 100 ms moves the dashes FlowSpeed * 0.1 along the route.
-        let fy0 = NMGpsTests.DashYs(P);
+        // Time alone moves nothing: a solid line has no flow.
         P.Update(cam, 0.0, 5.0, 100.0, 400.0, 400.0);
-        let fy1 = NMGpsTests.DashYs(P);
-        let moved = NMGpsTests.SharedShift(fy0, fy1, period);
-        t.Check("route.flow_toward_dest", t.Near(moved, NMRouteLayer.FlowSpeed() * 0.1, 0.5), "moved " + t.F(moved));
+        t.Check("route.static", t.Near(NMGpsTests.TopDashY(P), y1, 0.01), t.F(NMGpsTests.TopDashY(P)));
 
         // Corners are rounded before dashes are placed: a 90 degree turn becomes several gentle ones.
         let ell: array<Vector2>;

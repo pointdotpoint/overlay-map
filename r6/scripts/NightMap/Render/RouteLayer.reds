@@ -10,9 +10,8 @@ public class NMRouteLine {
     public let dirty: Bool;                // world changed since the last projection
     public let cursor: Int32;              // last matched world segment (the trim search starts here)
     public let canvas: ref<inkCanvas>;
-    public let glowCanvas: ref<inkCanvas>;
+    public let glowCanvas: ref<inkCanvas>;   // empty; kept so the core canvas stays child 1
     public let coreCanvas: ref<inkCanvas>;
-    public let dashGlow: array<ref<inkRectangle>>;
     public let dashCore: array<ref<inkRectangle>>;
     public let used: Int32;                // dashes shown in the last layout
 }
@@ -50,38 +49,32 @@ public class NMRouteStyle {
     }
 }
 
-// GPS routes as dashes: the screen route is rounded off (corner cutting), then short dashes are laid along it at a
-// fixed spacing measured back from the destination, so they stay pinned to the road while V moves and only the flow
-// phase moves them toward the destination. Pooled rectangles, at most DashCap() for both routes; the waypoint route
-// claims the cap first and is drawn over the quest route. Projection reruns only when the camera, the player or a
-// route changed; each frame only advances the flow.
+// GPS routes as a thin solid line, like the vanilla map: the screen route is rounded off (corner cutting), then
+// short overlapping pieces are laid along it every PieceStep() back from the destination, so the line stays pinned to
+// the road while V moves. Pooled opaque rectangles (no glow: overlapping translucent pieces would band), at most
+// DashCap() for both routes; the waypoint route claims the cap first and is drawn over the quest route. Projection
+// and layout rerun only when the camera, the player or a route changed.
 public class NMRouteLayer {
     private let root: ref<inkCanvas>;
     private let s: Float;
-    private let effects: Bool;
     private let style: ref<NMRouteStyle>;
     private let quest: ref<NMRouteLine>;
     private let tracked: ref<NMRouteLine>;
     private let camRev: Int32;
-    private let phase: Float;
     private let lastPx: Float;
     private let lastPy: Float;
     private let shown: Int32;
 
-    public static func DashCap() -> Int32 { return 400; }       // shared by both routes; the waypoint route first
-    public static func LineWidth() -> Float { return 24.0; }    // dash width, 4K units (before the UI scale)
-    public static func DashLen() -> Float { return 1.5; }       // dash length, times the width
-    public static func DashGap() -> Float { return 1.0; }       // gap between dashes, times the width
-    public static func FlowSpeed() -> Float { return 30.0; }    // 4K units per second, toward the destination
-    public static func GlowSize() -> Float { return 2.2; }      // glow width, times the dash's
-    public static func GlowOpacity() -> Float { return 0.25; }
+    public static func DashCap() -> Int32 { return 500; }       // pieces, shared by both routes; the waypoint route first
+    public static func LineWidth() -> Float { return 10.0; }    // line width, 4K units (before the UI scale)
+    public static func PieceLen() -> Float { return 3.0; }      // piece length, times the width
+    public static func PieceStep() -> Float { return 2.5; }     // piece spacing, times the width; < PieceLen so they overlap
     public static func ClipMargin() -> Float { return 64.0; }
     public static func WaypointColor() -> HDRColor { return new HDRColor(1.0, 1.0, 1.0, 1.0); }
 
     public static func Create(parent: ref<inkCanvas>, scale: Float, effects: Bool) -> ref<NMRouteLayer> {
         let L = new NMRouteLayer();
         L.s = scale;
-        L.effects = effects;
         L.camRev = -1;
         L.root = NMUi.Canvas(parent, 0.0, 0.0, 1.0, 1.0);
         L.quest = L.NewLine(n"quest");
@@ -134,9 +127,6 @@ public class NMRouteLayer {
     }
 
     public func Update(cam: ref<NMCamera>, px: Float, py: Float, dtMs: Float, mapW: Float, mapH: Float) {
-        let period = this.Period();
-        this.phase = this.phase + NMRouteLayer.FlowSpeed() * this.s * MaxF(dtMs, 0.0) / 1000.0;
-        this.phase -= Cast<Float>(FloorF(this.phase / period)) * period;
         let moved = (px - this.lastPx) * (px - this.lastPx) + (py - this.lastPy) * (py - this.lastPy) > 0.0625;
         let reproject = moved || cam.revision != this.camRev;
         if reproject {
@@ -144,6 +134,7 @@ public class NMRouteLayer {
             this.lastPx = px;
             this.lastPy = py;
         }
+        if !reproject && !this.tracked.dirty && !this.quest.dirty && !this.tracked.tintDirty && !this.quest.tintDirty { return; }
         this.Project(this.tracked, cam, px, py, reproject);
         this.Project(this.quest, cam, px, py, reproject);
         let budget = NMRouteLayer.DashCap();
@@ -154,7 +145,7 @@ public class NMRouteLayer {
     }
 
     private func W() -> Float { return NMRouteLayer.LineWidth() * this.s; }
-    private func Period() -> Float { return (NMRouteLayer.DashLen() + NMRouteLayer.DashGap()) * this.W(); }
+    private func Step() -> Float { return NMRouteLayer.PieceStep() * this.W(); }
 
     // Trim the passed part (world metres), project, simplify at 1 px, round the corners and cache cumulative lengths.
     private func Project(l: ref<NMRouteLine>, cam: ref<NMCamera>, px: Float, py: Float, force: Bool) {
@@ -217,79 +208,53 @@ public class NMRouteLayer {
         return s;
     }
 
-    // Whole dashes only, every Period() back from the destination, shifted by the flow phase; clipped to the map area
-    // plus a margin; at most `budget`.
+    // Pieces end every Step() back from the destination (so they stay pinned to it); the first piece starts at V.
+    // Clipped to the map area plus a margin; at most `budget`.
     private func Layout(l: ref<NMRouteLine>, mapW: Float, mapH: Float, budget: Int32) {
         let n = ArraySize(l.screen);
         let used = 0;
         if n >= 2 && budget > 0 {
             let total = l.cum[n - 1];
-            let w = this.W();
-            let len = NMRouteLayer.DashLen() * w;
-            let period = this.Period();
+            let len = NMRouteLayer.PieceLen() * this.W();
+            let step = this.Step();
             let m = NMRouteLayer.ClipMargin() * this.s;
-            // Dash ends sit at total - (period - phase) - k * period (k = 0, 1, ...): pinned to the destination, and a
-            // growing phase moves them toward it.
-            let first = total - (period - this.phase);
-            while first - period >= 0.0 { first -= period; }   // the dash end nearest the start
+            let e = total - Cast<Float>(FloorF(total / step)) * step;   // the piece end nearest V, in [0, step)
+            if e <= 0.0 { e += step; }
             let seg = 0;
-            let e = first;
-            while e <= total && used < budget {
-                let st = e - len;
-                if st >= 0.0 {
-                    seg = this.SegAt(l, st, seg);
-                    let a = this.At(l, st, seg);
-                    let seg2 = this.SegAt(l, e, seg);
-                    let b = this.At(l, e, seg2);
-                    if MaxF(a.X, b.X) >= -m && MinF(a.X, b.X) <= mapW + m && MaxF(a.Y, b.Y) >= -m && MinF(a.Y, b.Y) <= mapH + m {
-                        this.PlaceDash(l, used, a, b);
-                        used += 1;
-                    }
+            while e <= total + 0.01 && used < budget {
+                let st = MaxF(e - len, 0.0);
+                let en = MinF(MaxF(e, st + len), total);   // the first piece keeps its full length from V
+                seg = this.SegAt(l, st, seg);
+                let a = this.At(l, st, seg);
+                let b = this.At(l, en, this.SegAt(l, en, seg));
+                if MaxF(a.X, b.X) >= -m && MinF(a.X, b.X) <= mapW + m && MaxF(a.Y, b.Y) >= -m && MinF(a.Y, b.Y) <= mapH + m {
+                    this.PlacePiece(l, used, a, b);
+                    used += 1;
                 }
-                e += period;
+                e += step;
             }
         }
         let k = used;
         while k < l.used {
             l.dashCore[k].SetVisible(false);
-            if this.effects { l.dashGlow[k].SetVisible(false); }
             k += 1;
         }
         if l.tintDirty {
             l.tintDirty = false;
-            let j = 0;
-            while j < ArraySize(l.dashCore) {
-                l.dashCore[j].SetTintColor(l.color);
-                if this.effects { l.dashGlow[j].SetTintColor(l.color); }
-                j += 1;
-            }
+            for r in l.dashCore { r.SetTintColor(l.color); }
         }
         l.used = used;
     }
 
-    private func PlaceDash(l: ref<NMRouteLine>, i: Int32, a: Vector2, b: Vector2) {
+    private func PlacePiece(l: ref<NMRouteLine>, i: Int32, a: Vector2, b: Vector2) {
         if i >= ArraySize(l.dashCore) {
-            if this.effects {
-                ArrayPush(l.dashGlow, this.Bar(l.glowCanvas, l.color, NMRouteLayer.GlowOpacity()));
-            }
             ArrayPush(l.dashCore, this.Bar(l.coreCanvas, l.color, 1.0));
         }
-        let mid = new Vector2((a.X + b.X) * 0.5, (a.Y + b.Y) * 0.5);
-        let len = SqrtF(NMRouteGeom.Dist2(a, b));
-        let ang = Rad2Deg(AtanF(b.Y - a.Y, b.X - a.X));
-        let w = this.W();
         let c = l.dashCore[i];
-        c.SetTranslation(mid);
-        c.SetSize(new Vector2(len, w));
-        c.SetRotation(ang);
+        c.SetTranslation(new Vector2((a.X + b.X) * 0.5, (a.Y + b.Y) * 0.5));
+        c.SetSize(new Vector2(SqrtF(NMRouteGeom.Dist2(a, b)), this.W()));
+        c.SetRotation(Rad2Deg(AtanF(b.Y - a.Y, b.X - a.X)));
         c.SetVisible(true);
-        if this.effects {
-            let g = l.dashGlow[i];
-            g.SetTranslation(mid);
-            g.SetSize(new Vector2(len + w * (NMRouteLayer.GlowSize() - 1.0), w * NMRouteLayer.GlowSize()));
-            g.SetRotation(ang);
-            g.SetVisible(true);
-        }
     }
 
     private func Bar(parent: ref<inkCanvas>, color: HDRColor, opacity: Float) -> ref<inkRectangle> {
