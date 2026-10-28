@@ -84,3 +84,8 @@ Build: `feat/gps-route`. Game 2.5 under Proton, at 2560×1440 (tiles built for 2
 | 4. Self-test | `passed=241 failed=9`. All `gps.*`, `geom.*`, `hud.*` and route tests pass except `route.flow_toward_dest` (reports 0). The user sees the flow working, so this is a test problem; 97ced85 makes the test log its numbers. The other 8 failures (`grow.*` ×5, `perf.wide_layer_exceeds_old_cap`, `vanilla.catalog_twelve` = 13, `tracking.live_accepted_are_quest_objectives`) are in code this branch does not touch and are left for a separate fix. |
 
 Checkpoint B (perf suite with a route tracked, `route_open`) not run yet.
+
+## Fast travel (feat/teleport), merged 2026-10-28 untested in game
+- The free teleport was replaced by fast travel to fast travel markers (spec 2026-10-27-nightmap-teleport-design.md §12).
+- Merged at the user's request before any in-game run of the fast travel build (`c5dd34c`). Still to check: the 8
+  `ft.*` self-tests, a fast travel from NightMap, the refusals (non-point marker, in a vehicle), and the last-used dataterm.
