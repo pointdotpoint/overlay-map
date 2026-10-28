@@ -439,7 +439,7 @@ public class NMSelfTest {
         NMLog.Info("TEST|INFO|tiles.set_level_counts|" + counts);
         this.Check("tiles.no_empty_set_levels", Equals(emptyDetail, ""), emptyDetail);
         // Read through locals: field access on a call temporary reads 0 in redscript.
-        let roadTint: HDRColor = NMTheme.TileTint("road", false);
+        let roadTint: HDRColor = NMTheme.TileTint("road", 0);
         let roadOp: Float = NMTheme.TileOpacity("road");
         let outlineOp: Float = NMTheme.TileOpacity("outline");
         this.Check("tiles.theme_defaults", this.Near(roadOp, 0.55, 0.0001) && this.Near(outlineOp, 0.9, 0.0001) && this.Near(roadTint.Red, 0.118, 0.001),

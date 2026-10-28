@@ -23,7 +23,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let savedMpp: Float = 0.0;   // 0 = not opened yet this session: start fully zoomed in
     private let frameNo: Int32;
     private let layers: ref<NMLayerStack>;
-    private let holoGreen: Bool;       // NightMapSettings.holoColor == Green, read once per open
+    private let holoTheme: Int32;      // NMTheme.ThemeIndex(NightMapSettings.holoColor), read once per open
     private let holoEffects: Bool;     // NightMapSettings.hologramEffects, read once per open
     private let renderer: ref<NMItemRenderer>;
     private let crosshair: ref<NMCrosshair>;
@@ -126,7 +126,7 @@ public class NightMapSystem extends ScriptableSystem {
     // Re-applies NMTheme to the open map's tile layers (a no-op while closed).
     public func ApplyTheme() {
         if IsDefined(this.layers) {
-            this.layers.ApplyTheme(this.holoGreen);
+            this.layers.ApplyTheme(this.holoTheme);
         }
     }
 
@@ -218,9 +218,9 @@ public class NightMapSystem extends ScriptableSystem {
         }
         let s = this.Settings();
         let layout = NMPanelLayout.Compute(size.X, size.Y);
-        this.holoGreen = IsDefined(s) ? Equals(s.holoColor, NightMapHoloColor.Green) : false;
+        this.holoTheme = IsDefined(s) ? NMTheme.ThemeIndex(s.holoColor) : 0;
         this.holoEffects = IsDefined(s) ? s.hologramEffects : true;
-        this.panel = NMPanel.Build(window, layout, IsDefined(s) ? s.panelOpacity : NMTheme.DefaultPanelOpacity(), this.holoGreen, this.holoEffects);
+        this.panel = NMPanel.Build(window, layout, IsDefined(s) ? s.panelOpacity : NMTheme.DefaultPanelOpacity(), this.holoTheme, this.holoEffects);
         if !IsDefined(s) || s.hideHud {
             this.hud = NMHudHider.Hide(window, this.panel.root);
         }
@@ -516,7 +516,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.imageRev = this.api.revision;
         this.layerEpoch = this.api.layerEpoch;
         let l = this.panel.layout;
-        this.layers = NMLayerStack.Create(this.panel.tiles, this.holoGreen, this.holoEffects);
+        this.layers = NMLayerStack.Create(this.panel.tiles, this.holoTheme, this.holoEffects);
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, l.scale);
         this.renderer.SetHalo(this.holoEffects);
         this.renderer.SetShotHandler(this.Photos().Handler());
@@ -524,7 +524,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
         this.crosshair = NMCrosshair.Create();
         // The sidebar is always visible; marker details dock in it. The focus point is the middle of the map left of it.
-        this.drawer = NMPhotoDrawer.Create(this.panel.overlay, l);
+        this.drawer = NMPhotoDrawer.Create(this.panel.overlay, l, this.holoTheme);
         this.tooltip = NMTooltip.CreateDocked(this.drawer.Root(), 40.0 * l.scale, 40.0 * l.scale, l.sideW - 80.0 * l.scale, l.scale);
         this.drawerShift = NMPhotoDrawer.FocusShift(l);
         this.camera.SetScreenShift(this.drawerShift);

@@ -32,7 +32,7 @@ public class NMLayerStack {
         return Equals(name, "glow") ? NMTheme.GlowLevelOffset() : 0;
     }
 
-    public static func Create(parent: ref<inkCanvas>, green: Bool, effects: Bool) -> ref<NMLayerStack> {
+    public static func Create(parent: ref<inkCanvas>, theme: Int32, effects: Bool) -> ref<NMLayerStack> {
         let st = new NMLayerStack();
         st.available = NMTileLayer.ArchiveAvailable();
         if st.available {
@@ -47,16 +47,16 @@ public class NMLayerStack {
         } else {
             ArrayPush(st.layers, NMGridLayer.Create(parent));
         }
-        st.ApplyTheme(green);
+        st.ApplyTheme(theme);
         return st;
     }
 
     public func LayerCount() -> Int32 { return ArraySize(this.layers); }
 
     // Re-reads every layer's tint and opacity from NMTheme. Call after the theme changes.
-    public func ApplyTheme(green: Bool) {
+    public func ApplyTheme(theme: Int32) {
         for l in this.layers {
-            l.SetTint(NMTheme.TileTint(l.Name(), green), NMTheme.TileOpacity(l.Name()));
+            l.SetTint(NMTheme.TileTint(l.Name(), theme), NMTheme.TileOpacityFor(l.Name(), theme));
         }
     }
 

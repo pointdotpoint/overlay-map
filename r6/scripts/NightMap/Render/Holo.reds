@@ -12,7 +12,7 @@ module NightMap
 // The edge glow sits on the panel root, under the corner brackets.
 public class NMHolo {
     public let effects: Bool;
-    public let green: Bool;
+    public let theme: Int32;
     public let grid: ref<inkImage>;
     public let scan: ref<inkImage>;
     public let noise: ref<inkImage>;
@@ -23,10 +23,10 @@ public class NMHolo {
     private let mapH: Float;
     private let scale: Float;
 
-    public static func Create(effects: Bool, green: Bool, mapW: Float, mapH: Float, scale: Float) -> ref<NMHolo> {
+    public static func Create(effects: Bool, theme: Int32, mapW: Float, mapH: Float, scale: Float) -> ref<NMHolo> {
         let h = new NMHolo();
         h.effects = effects;
-        h.green = green;
+        h.theme = theme;
         h.mapW = mapW;
         h.mapH = mapH;
         h.scale = scale;
@@ -42,7 +42,7 @@ public class NMHolo {
         if !this.effects {
             return;
         }
-        this.grid = NMUi.HoloImage(parent, n"holo_grid", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloAccent(this.green), NMTheme.HoloGridOpacity(), inkBrushTileType.Both);
+        this.grid = NMUi.HoloImage(parent, n"holo_grid", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloAccent(this.theme), NMTheme.HoloGridOpacity(), inkBrushTileType.Both);
     }
 
     // Scanlines (black) and noise (accent), over the tiles, under the markers. The scanline image is one period taller
@@ -53,7 +53,7 @@ public class NMHolo {
         }
         let p = this.ScanPeriod();
         this.scan = NMUi.HoloImage(parent, n"holo_scan", 0.0, 0.0 - p, this.mapW, this.mapH + p, NMTheme.HoloScanColor(), NMTheme.HoloScanOpacity(), inkBrushTileType.Both);
-        this.noise = NMUi.HoloImage(parent, n"holo_noise", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloAccent(this.green), NMTheme.HoloNoiseOpacity(), inkBrushTileType.Both);
+        this.noise = NMUi.HoloImage(parent, n"holo_noise", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloAccent(this.theme), NMTheme.HoloNoiseOpacity(), inkBrushTileType.Both);
     }
 
     // Starts invisible above the map; its loop fades it in while it sweeps down.
@@ -61,7 +61,7 @@ public class NMHolo {
         if !this.effects {
             return;
         }
-        this.bar = NMUi.HoloImage(parent, n"holo_bar", 0.0, 0.0 - this.BarHeight(), this.mapW, this.BarHeight(), NMTheme.HoloAccent(this.green), 0.0, inkBrushTileType.NoTile);
+        this.bar = NMUi.HoloImage(parent, n"holo_bar", 0.0, 0.0 - this.BarHeight(), this.mapW, this.BarHeight(), NMTheme.HoloAccent(this.theme), 0.0, inkBrushTileType.NoTile);
     }
 
     // Soft glowing line along the inside of the frame: four stretched strips, bright on the frame side.
@@ -70,7 +70,7 @@ public class NMHolo {
             return;
         }
         let t = 40.0 * this.scale;
-        let c = NMTheme.HoloAccent(this.green);
+        let c = NMTheme.HoloAccent(this.theme);
         let o = NMTheme.HoloEdgeOpacity();
         ArrayPush(this.edges, NMUi.HoloImage(parent, n"holo_edge_t", 0.0, 0.0, w, t, c, o, inkBrushTileType.NoTile));
         ArrayPush(this.edges, NMUi.HoloImage(parent, n"holo_edge_b", 0.0, h - t, w, t, c, o, inkBrushTileType.NoTile));

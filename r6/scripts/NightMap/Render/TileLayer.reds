@@ -97,7 +97,7 @@ public class NMTileLayer extends NMMapLayer {
         t.lastRev = -1;
         t.cur = -1;
         t.prev = -1;
-        t.tint = NMTheme.TileTint(t.setName, false);
+        t.tint = NMTheme.TileTint(t.setName, 0);
         t.opacity = NMTheme.TileOpacity(t.setName);
         t.box = NMTileLayer.MakeContainer(parent);
         let base = 0;

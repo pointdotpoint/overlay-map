@@ -50,18 +50,18 @@ public class NMPanel {
     public let hints: ref<inkText>;
     public let holo: ref<NMHolo>;
 
-    // green / effects: NightMapSettings.holoColor == Green / hologramEffects, passed in so the layout stays testable.
-    public static func Build(window: wref<inkCompoundWidget>, layout: ref<NMPanelLayout>, opacity: Float, green: Bool, effects: Bool) -> ref<NMPanel> {
+    // theme / effects: NMTheme.ThemeIndex(NightMapSettings.holoColor) / hologramEffects, passed in so the layout stays testable.
+    public static func Build(window: wref<inkCompoundWidget>, layout: ref<NMPanelLayout>, opacity: Float, theme: Int32, effects: Bool) -> ref<NMPanel> {
         let p = new NMPanel();
         p.layout = layout;
         let s = layout.scale;
         p.root = NMUi.Canvas(window, layout.x, layout.y, layout.w, layout.h);
         p.root.SetName(n"NightMapPanel");
-        p.holo = NMHolo.Create(effects, green, layout.mapW, layout.mapH, s);
+        p.holo = NMHolo.Create(effects, theme, layout.mapW, layout.mapH, s);
         // One background layer per region (the panel fill only under the hint bar): stacking the panel fill under the map
         // fill would compound the opacity (0.45 over 0.45 reads as 0.70) and the world would not show through.
         NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.PanelBg(), opacity);
-        NMUi.Rect(p.root, 0.0, 0.0, layout.mapW, layout.mapH, NMTheme.HoloBackground(green), opacity);
+        NMUi.Rect(p.root, 0.0, 0.0, layout.mapW, layout.mapH, NMTheme.HoloBackground(theme), opacity);
 
         // Clipped viewport (inkScrollArea's internal mask), same pattern as Codeware's text input viewport.
         let area = new inkScrollArea();
@@ -85,7 +85,7 @@ public class NMPanel {
 
         // Hint bar.
         NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.CardBg(), 0.6);
-        p.hints = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(34.0 * s), NMTheme.HoloHighlight(green));
+        p.hints = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(34.0 * s), NMTheme.HoloHighlight(theme));
         p.hints.SetTranslation(new Vector2(58.0 * s, layout.mapH + 34.0 * s));
 
         // Header (district, tracked quest, objective) in the bottom-right corner of the map area, right-aligned. A
@@ -96,7 +96,7 @@ public class NMPanel {
         header.SetTranslation(new Vector2(layout.mapW - 67.0 * s, layout.mapH - 40.0 * s));
         header.SetInteractive(false);
         header.Reparent(p.root);
-        p.subtitle = NMPanel.HeaderLine(header, n"Medium", 34.0 * s, NMTheme.HoloHighlight(green), 0.0);
+        p.subtitle = NMPanel.HeaderLine(header, n"Medium", 34.0 * s, NMTheme.HoloHighlight(theme), 0.0);
         p.questTitle = NMPanel.HeaderLine(header, n"Bold", 34.0 * s, NMTheme.VanillaStateColor(n"Quest"), 8.0 * s);
         p.questTitle.SetVisible(false);
         p.questObjective = NMPanel.HeaderLine(header, n"Medium", 30.0 * s, NMTheme.Text(), 6.0 * s);
@@ -113,13 +113,13 @@ public class NMPanel {
 
         // Frame outline, edge glow and glowing corner brackets (brightened with HDR gain when effects are on).
         let t = 2.0 * s;
-        let hi = NMTheme.HoloHighlight(green);
+        let hi = NMTheme.HoloHighlight(theme);
         NMUi.Rect(p.root, 0.0, 0.0, layout.w, t, hi, 0.35);
         NMUi.Rect(p.root, 0.0, layout.h - t, layout.w, t, hi, 0.35);
         NMUi.Rect(p.root, 0.0, 0.0, t, layout.h, hi, 0.35);
         NMUi.Rect(p.root, layout.w - t, 0.0, t, layout.h, hi, 0.35);
         p.holo.AddEdges(p.root, layout.w, layout.h);
-        let bc = NMTheme.BracketColor(green, effects);
+        let bc = NMTheme.BracketColor(theme, effects);
         let b = NMTheme.BracketSize() * s;
         NMUi.Image(p.root, n"bracket_tl", 0.0, 0.0, b, bc, false);
         NMUi.Image(p.root, n"bracket_tr", layout.w - b, 0.0, b, bc, false);

@@ -53,24 +53,24 @@ public abstract class NMHoloTests {
             ToString(near.CurrentLevel()) + "/" + ToString(far.CurrentLevel()));
         t.Check("holo.glow_has_no_l0_tiles", !near.Has(0, 0, 0) && !near.Has(1, 0, 0), "");
         t.Check("holo.set_offsets", NMLayerStack.WantsSet("glow", true) && NMLayerStack.SetOffset("glow") == 2 && NMLayerStack.SetOffset("road") == 0, "");
-        let stack = NMLayerStack.Create(canvas, false, false);
-        let withFx = NMLayerStack.Create(canvas, false, true);
+        let stack = NMLayerStack.Create(canvas, 0, false);
+        let withFx = NMLayerStack.Create(canvas, 0, true);
         t.Check("holo.effects_off_drops_glow_layer", !IsDefined(stack.Layer("glow")) && stack.LayerCount() == 3 && IsDefined(withFx.Layer("glow")) && withFx.LayerCount() == 4,
             ToString(stack.LayerCount()) + "/" + ToString(withFx.LayerCount()));
     }
 
     private static func ThemeCases(t: ref<NMSelfTest>) {
         // Read through locals: field access on a call temporary reads 0 in redscript.
-        let accC: HDRColor = NMTheme.HoloAccent(false);
-        let accG: HDRColor = NMTheme.HoloAccent(true);
-        let roadC: HDRColor = NMTheme.TileTint("road", false);
-        let roadG: HDRColor = NMTheme.TileTint("road", true);
-        let fillC: HDRColor = NMTheme.TileTint("bfill", false);
-        let outG: HDRColor = NMTheme.TileTint("outline", true);
-        let glowC: HDRColor = NMTheme.TileTint("glow", false);
-        let glowG: HDRColor = NMTheme.TileTint("glow", true);
-        let bgC: HDRColor = NMTheme.HoloBackground(false);
-        let bgG: HDRColor = NMTheme.HoloBackground(true);
+        let accC: HDRColor = NMTheme.HoloAccent(0);
+        let accG: HDRColor = NMTheme.HoloAccent(1);
+        let roadC: HDRColor = NMTheme.TileTint("road", 0);
+        let roadG: HDRColor = NMTheme.TileTint("road", 1);
+        let fillC: HDRColor = NMTheme.TileTint("bfill", 0);
+        let outG: HDRColor = NMTheme.TileTint("outline", 1);
+        let glowC: HDRColor = NMTheme.TileTint("glow", 0);
+        let glowG: HDRColor = NMTheme.TileTint("glow", 1);
+        let bgC: HDRColor = NMTheme.HoloBackground(0);
+        let bgG: HDRColor = NMTheme.HoloBackground(1);
         t.Check("holo.accent_cyan_vs_green", t.Near(accC.Red, 0.310, 0.002) && t.Near(accC.Green, 0.890, 0.002) && t.Near(accC.Blue, 1.0, 0.002)
             && t.Near(accG.Red, 0.365, 0.002) && t.Near(accG.Green, 1.0, 0.002) && t.Near(accG.Blue, 0.541, 0.002), "");
         t.Check("holo.road_tint_cyan_vs_green", t.Near(roadC.Red, 0.118, 0.002) && t.Near(roadC.Green, 0.549, 0.002) && t.Near(roadG.Red, 0.122, 0.002) && t.Near(roadG.Green, 0.604, 0.002) && t.Near(roadG.Blue, 0.322, 0.002), "");
@@ -79,14 +79,26 @@ public abstract class NMHoloTests {
         t.Check("holo.background_cyan_vs_green", t.Near(bgC.Red, 0.031, 0.002) && t.Near(bgG.Green, 0.078, 0.002) && t.Near(bgG.Blue, 0.051, 0.002) && t.Near(bgG.Red, 0.027, 0.002), "");
         t.Check("holo.glow_opacity", t.Near(NMTheme.TileOpacity("glow"), 0.45, 0.0001), "");
         t.Check("holo.panel_opacity_default", t.Near(NMTheme.DefaultPanelOpacity(), 0.45, 0.0001), "");
-        let brC: HDRColor = NMTheme.BracketColor(false, true);
-        let brOff: HDRColor = NMTheme.BracketColor(false, false);
+        // Topographic theme (index 2): near-black ground, teal linework, pale contour outlines, orange frame.
+        let bgT: HDRColor = NMTheme.HoloBackground(2);
+        let hiT: HDRColor = NMTheme.HoloHighlight(2);
+        let accT: HDRColor = NMTheme.HoloAccent(2);
+        let outT: HDRColor = NMTheme.TileTint("outline", 2);
+        t.Check("holo.topo_palette", bgT.Red < 0.03 && bgT.Green < 0.04 && bgT.Blue < 0.05 && hiT.Red > 0.9 && hiT.Blue < 0.3
+            && accT.Green > 0.7 && accT.Red < 0.3 && outT.Red > 0.75 && outT.Blue > 0.85, "");
+        t.Check("holo.theme_index", NMTheme.ThemeIndex(NightMapHoloColor.Cyan) == 0 && NMTheme.ThemeIndex(NightMapHoloColor.Green) == 1
+            && NMTheme.ThemeIndex(NightMapHoloColor.Topographic) == 2, "");
+        t.Check("holo.topo_tile_strengths", NMTheme.TileOpacityFor("bfill", 2) < NMTheme.TileOpacity("bfill")
+            && NMTheme.TileOpacityFor("glow", 2) > NMTheme.TileOpacity("glow") && NMTheme.TileOpacityFor("road", 0) == NMTheme.TileOpacity("road"), "");
+        t.Check("holo.sidebar_bg_topo", NMTheme.SidebarBg(2).Red < 0.03 && NMTheme.SidebarBg(0).Green > 0.1, "");
+        let brC: HDRColor = NMTheme.BracketColor(0, true);
+        let brOff: HDRColor = NMTheme.BracketColor(0, false);
         t.Check("holo.brackets_brighter_with_effects", brC.Red > brOff.Red && t.Near(brOff.Red, 0.478, 0.002), t.F(brC.Red));
     }
 
     private static func EffectsCases(t: ref<NMSelfTest>) {
         let canvas = new inkCanvas();
-        let off = NMHolo.Create(false, false, 1880.0, 1480.0, 1.0);
+        let off = NMHolo.Create(false, 0, 1880.0, 1480.0, 1.0);
         off.AddGrid(canvas);
         off.AddScan(canvas);
         off.AddBar(canvas);
@@ -94,7 +106,7 @@ public abstract class NMHoloTests {
         off.Play(null);
         t.Check("holo.effects_off_builds_nothing", !IsDefined(off.grid) && !IsDefined(off.scan) && !IsDefined(off.noise) && !IsDefined(off.bar)
             && ArraySize(off.edges) == 0 && off.ProxyCount() == 0, "");
-        let on = NMHolo.Create(true, true, 1880.0, 1480.0, 2.0);
+        let on = NMHolo.Create(true, 1, 1880.0, 1480.0, 2.0);
         on.AddGrid(canvas);
         on.AddScan(canvas);
         on.AddBar(canvas);
@@ -106,7 +118,7 @@ public abstract class NMHoloTests {
         // A whole panel with effects off: the Part 1 look, no overlay widgets, no animations, the see-through default opacity.
         let host = new inkCanvas();
         let layout = NMPanelLayout.Compute(3840.0, 2160.0);
-        let panel = NMPanel.Build(host, layout, NMTheme.DefaultPanelOpacity(), false, false);
+        let panel = NMPanel.Build(host, layout, NMTheme.DefaultPanelOpacity(), 0, false);
         t.Check("holo.panel_effects_off_hides_overlays", IsDefined(panel.holo) && !panel.holo.effects && !IsDefined(panel.holo.grid)
             && !IsDefined(panel.holo.scan) && !IsDefined(panel.holo.bar) && ArraySize(panel.holo.edges) == 0 && panel.holo.ProxyCount() == 0, "");
         panel.Destroy();

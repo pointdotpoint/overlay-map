@@ -48,7 +48,7 @@ public class NMPhotoDrawer {
             + StrMid(d, 9, 2) + ":" + StrMid(d, 11, 2);
     }
 
-    public static func Create(parent: ref<inkCanvas>, l: ref<NMPanelLayout>) -> ref<NMPhotoDrawer> {
+    public static func Create(parent: ref<inkCanvas>, l: ref<NMPanelLayout>, theme: Int32) -> ref<NMPhotoDrawer> {
         let dr = new NMPhotoDrawer();
         let s = l.scale;
         dr.s = s;
@@ -56,8 +56,8 @@ public class NMPhotoDrawer {
         let h = l.mapH;
         let pad = 40.0 * s;
         dr.root = NMUi.Canvas(parent, l.viewW, 0.0, w, h);
-        NMUi.Rect(dr.root, 0.0, 0.0, w, h, NMTheme.CardBg(), 0.95);
-        NMUi.Rect(dr.root, 0.0, 0.0, 6.0 * s, h, NMTheme.Cyan(), 1.0);
+        NMUi.Rect(dr.root, 0.0, 0.0, w, h, NMTheme.SidebarBg(theme), 0.95);
+        NMUi.Rect(dr.root, 0.0, 0.0, 6.0 * s, h, NMTheme.HoloHighlight(theme), 1.0);
         dr.empty = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Muted());
         dr.empty.SetTranslation(new Vector2(pad, pad));
         dr.empty.SetText("POINT AT A MARKER");
@@ -109,7 +109,7 @@ public class NMPhotoDrawer {
 
     // Test seam: a drawer on a canvas of its own (not on screen).
     public static func CreateDetached() -> ref<NMPhotoDrawer> {
-        return NMPhotoDrawer.Create(new inkCanvas(), NMPanelLayout.Compute(3840.0, 2160.0));
+        return NMPhotoDrawer.Create(new inkCanvas(), NMPanelLayout.Compute(3840.0, 2160.0), 0);
     }
 
     public func Show(spot: ref<NMPhotoSpot>, distance: String, district: String, keyName: String, h: wref<inkISystemRequestsHandler>) {
