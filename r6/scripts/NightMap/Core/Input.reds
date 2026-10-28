@@ -140,7 +140,7 @@ public class NMInput {
             + "   ·   " + NMInput.KeyName(s.keyZoomIn) + " " + NMInput.KeyName(s.keyZoomOut) + " ZOOM"
             + "   ·   " + NMInput.KeyName(s.keyRecenter) + " FOLLOW"
             + "   ·   " + NMInput.KeyName(s.keyAct) + " ACT"
-            + (s.teleportEnabled ? "   ·   " + NMInput.KeyName(s.keyTeleport) + " TELEPORT" : "")
+            + (s.teleportEnabled ? "   ·   " + NMInput.KeyName(s.keyTeleport) + " FAST TRAVEL" : "")
             + "   ·   " + NMInput.KeyName(s.keyFilter) + " FILTER: " + view
             + "   ·   " + NMInput.KeyName(s.keyToggle) + " CLOSE";
     }

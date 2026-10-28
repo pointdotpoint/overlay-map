@@ -1,6 +1,6 @@
 # NightMap: teleport to the map point
 
-**Status:** design agreed in conversation on 2026-10-27, builder-checked. Awaits user review.
+**Status:** superseded on 2026-10-28 by §12 (fast travel points only). §1-§11 describe the free teleport that was built and dropped.
 **Branch:** `feat/teleport`, from `main` at be791aa (GPS routes merged).
 
 ## 1. Intent and user decisions
@@ -144,3 +144,26 @@ adds a small teleport driver that keeps ticking until it lands or times out.
 2. Landing inside geometry: a raycast that hits a surface V cannot stand on (glass, a sign, a bridge underside).
 3. The vehicle path: V dismounted, car left behind, or car flipped.
 4. Teleporting during a scripted scene or mission area: allowed by design, but it must not crash.
+
+## 12. Outcome: fast travel points only (2026-10-28)
+
+The free teleport was built, but in-game it never landed reliably, and in the last test V fell and died:
+- **Ground not found.** The ground search cast its ray against `Static` collision only. The game's own teleport-spot
+  search (`aiFindTeleportPositionForTakedown.script:126`) uses `Static` + `Terrain` (+ others). At (-2008, -2694),
+  `Static` hit nothing for 11 s, while a `PlayerBlocker` diagnostic ray found ground at 37 m.
+- **Streaming range.** Collision only streamed in once V was about 110 m above it. It never loaded at 600, 400 or
+  250 m, whether or not V was being re-teleported each frame.
+- **Fall death.** With V not held, the locomotion state machine latches a death landing from vertical speed alone
+  (`locomotionTransitions.script:4624`) and applies `Attacks.DeathLanding` on touching the ground. The final step
+  down to an absolute 80 m put V 43 m above the ground.
+
+After three failed fixes the user chose to limit the feature to fast travel points. NightMap now sends the game's own
+`PerformFastTravelRequest` (the request the world map and dataterms send) for the selected `FastTravelMappin`:
+- **Refused** (logged as `fasttravel|refused|<why>`, map stays open): not a fast travel marker, undiscovered,
+  in a vehicle, or fast travel locked (`FastTravelSystem.IsFastTravelEnabled`).
+- **Stale start point:** the game skips a trip whose destination equals the blackboard's `StartingPoint` (the last
+  dataterm used), so NightMap clears it first.
+- **The vehicle stays behind**, as with vanilla fast travel. This reverses the user's "the car comes along".
+- The key (`Numpad .`) and its setting keep their names (`keyTeleport`, `teleportEnabled`) so saved settings carry
+  over. The hint bar reads FAST TRAVEL, and fast travel tooltips show the action.
+- Free teleport anywhere could return later with a baked height map (no runtime ground search).

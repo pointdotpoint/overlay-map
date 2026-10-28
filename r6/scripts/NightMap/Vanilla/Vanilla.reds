@@ -285,6 +285,9 @@ public class NMVanilla extends NMVanillaSink {
         } else if manual {
             d.AddRow("Status", "Tracked");
             d.AddAction(this.ActKey(), Equals(s.variant, gamedataMappinVariant.CustomPositionVariant) ? "Clear waypoint" : "Stop tracking");
+        } else if IsDefined(NMFastTravel.PointOf(m)) {
+            let st = NightMapSettings.Get(this.gi);
+            if IsDefined(st) && st.teleportEnabled { d.AddAction(NMInput.KeyName(st.keyTeleport), "Fast travel"); }
         } else {
             d.AddRow("Waypoint", "Coming with the native plugin");
         }

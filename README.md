@@ -47,6 +47,7 @@ Build options and caches:
 - The header (bottom right) shows the tracked quest and its current objective.
 - GPS routes: the route to your vanilla waypoint (white) and to the tracked quest (yellow, teal for gigs) are mirrored from the minimap as flowing dots. Mod Settings → NightMap → Display → GPS routes.
 - The game's HUD fades out while the map is open (Display → Hide HUD while open).
+- `Numpad .` on a selected fast travel marker fast travels there with the game's own fast travel (arrival at the dataterm, the game's own locks during some quests or combat). On foot only; your vehicle stays behind. Display → Fast travel key.
 - Mods can add their own items through the layer API.
 
 ### Debug tools
