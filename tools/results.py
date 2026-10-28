@@ -15,10 +15,13 @@ IDLE_P95_BUDGET_MS = 2.0
 SWEEP_AVG_BUDGET_MS = 1.5
 SWEEP_P95_BUDGET_MS = 3.0
 IDLE_ROWS = ("idle_0p5", "idle_2", "idle_8")
-SWEEP_ROWS = ("open_empty", "vanilla_open", "route_open", "panzoom_0p5_16")   # open_empty: cold sweep, no markers; vanilla_open: real markers
+SWEEP_ROWS = ("open_empty", "vanilla_open", "route_open", "photos_500", "panzoom_0p5_16")   # open_empty: cold sweep, no markers; vanilla_open: real markers
 # route_open: the sweep with the GPS routes on. Gated only when a route was drawn (route_drawn=1); otherwise
 # "skipped: no route", neither pass nor fail. route_read_ms_max (one minimap read) is reported, never gated.
 ROUTE_ROW = "route_open"
+# photos_500: the sweep with 500 seeded photo pins. Suites from builds before photo pins lack it: skipped, not failed.
+PHOTOS_ROW = "photos_500"
+SKIP_REASON = {ROUTE_ROW: "no route", PHOTOS_ROW: "not in this suite"}
 ROUTE_READ_TARGET_MS = 0.5
 # vanilla_open script cost (the CPU-bound proxy; frame deltas hide it on GPU-bound machines), within the same run:
 SCRIPT_ROW, SCRIPT_REF_ROW = "vanilla_open", "open_empty"
@@ -92,7 +95,7 @@ def drift(rows: list[dict]) -> float | None:
 def deltas(rows: list[dict]) -> tuple[dict[str, tuple[float, float] | None], list[str]]:
     """Per-scenario (avg, p95) deltas against this run's own closed_baseline, plus problems (missing/truncated rows).
 
-    A route_open row that drew no route maps to None: skipped, not gated."""
+    A route_open row that drew no route, or a missing photos_500 row, maps to None: skipped, not gated."""
     by = {r["name"]: r for r in rows}
     base = by.get("closed_baseline")
     if base is None or "frame_avg" not in base or "frame_p95" not in base:
@@ -100,7 +103,9 @@ def deltas(rows: list[dict]) -> tuple[dict[str, tuple[float, float] | None], lis
     out, problems = {}, []
     for name, _, _ in GATES:
         r = by.get(name)
-        if r is None:
+        if r is None and name == PHOTOS_ROW:
+            out[name] = None
+        elif r is None:
             problems.append(f"{name}: row missing")
         elif "frame_avg" not in r or "frame_p95" not in r:
             problems.append(f"{name}: lacks frame_avg/frame_p95")
@@ -146,7 +151,7 @@ def _gate(d: dict[str, tuple[float, float]], problems: list[str], sv: tuple[floa
         if name not in d:
             continue
         if d[name] is None:
-            parts.append(f"{name}: skipped: no route")
+            parts.append(f"{name}: skipped: {SKIP_REASON.get(name, 'no data')}")
             continue
         va, vp = d[name]
         good = va <= avg_b and vp <= p95_b

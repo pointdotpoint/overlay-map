@@ -13,6 +13,7 @@ public class NMPerfSuite {
     private let vanillas: array<Bool>;   // vanilla map markers enabled during the scenario
     private let routeRows: array<Bool>;  // GPS routes enabled during the scenario (route_open only)
     private let routeDrawn: Bool;        // a route was on screen at the first measured frame
+    private let photoCounts: array<Int32>;  // seeded photo spots during the scenario (photos_500 only; others none)
     private let idx: Int32;
     private let phase: Int32;
     private let frames: Int32;
@@ -33,6 +34,7 @@ public class NMPerfSuite {
         ArrayPush(this.mpps, mpp);
         ArrayPush(this.vanillas, vanilla);
         ArrayPush(this.routeRows, routes);
+        ArrayPush(this.photoCounts, 0);
     }
 
     public func Start() {
@@ -43,10 +45,13 @@ public class NMPerfSuite {
         ArrayClear(this.mpps);
         ArrayClear(this.vanillas);
         ArrayClear(this.routeRows);
+        ArrayClear(this.photoCounts);
         this.Add("closed_baseline", 0, false, 0, 0.0, false, false);
         this.Add("open_empty", 0, true, 0, 0.0, false, false);
         this.Add("vanilla_open", 0, true, 0, 0.0, true, false);
         this.Add("route_open", 0, true, 0, 0.0, false, true);   // track a quest ~700 m away before starting the suite
+        this.Add("photos_500", 0, true, 0, 0.0, false, false);  // 500 seeded photo spots, real shot hashes
+        this.photoCounts[ArraySize(this.photoCounts) - 1] = 500;
         this.Add("items_5000", 5000, true, 0, 0.0, false, false);
         this.Add("items_20000", 20000, true, 0, 0.0, false, false);
         this.Add("items_50000", 50000, true, 0, 0.0, false, false);
@@ -82,6 +87,7 @@ public class NMPerfSuite {
             sys.SetPerfHidden(!this.shows[this.idx]);
             sys.SetVanillaEnabled(this.vanillas[this.idx]);
             sys.SetRoutesEnabled(this.routeRows[this.idx]);
+            sys.Photos().SeedForPerf(this.photoCounts[this.idx]);   // 0: no photo pins, like suites before photo pins
             this.phase = 1;
             this.frames = 0;
             return;
@@ -133,6 +139,7 @@ public class NMPerfSuite {
                 sys.SetPerfHidden(false);
                 sys.SetVanillaEnabled(true);
                 sys.SetRoutesEnabled(true);
+                sys.Photos().EndPerfSeed();
                 cam.SetMpp(this.savedMpp);
                 cam.SetCenter(this.savedX, this.savedY);
                 cam.follow = this.savedFollow;

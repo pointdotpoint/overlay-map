@@ -92,11 +92,12 @@ def _row(name, avg, p95, script_avg=0.1, script_p95=0.2, extra=""):
 
 def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=(), open_avg=None, open_p95=None, end_avg=20.0, vanilla_avg=None, vanilla_p95=None,
            open_script=(0.4, 1.0), van_script=(0.8, 2.0), poll=0.5, poll_field=True, van_script_fields=True,
-           route_avg=None, route_p95=None, route_drawn=1, route_read=0.1):
+           route_avg=None, route_p95=None, route_drawn=1, route_read=0.1, photos_avg=None, photos_p95=None):
     rows = {"idle_0p5": (idle_avg, idle_p95), "idle_2": (idle_avg, idle_p95), "idle_8": (idle_avg, idle_p95),
             "open_empty": (open_avg or sweep_avg, open_p95 or sweep_p95),
             "vanilla_open": (vanilla_avg or open_avg or sweep_avg, vanilla_p95 or open_p95 or sweep_p95),
-            "route_open": (route_avg or sweep_avg, route_p95 or sweep_p95), "panzoom_0p5_16": (sweep_avg, sweep_p95),
+            "route_open": (route_avg or sweep_avg, route_p95 or sweep_p95),
+            "photos_500": (photos_avg or sweep_avg, photos_p95 or sweep_p95), "panzoom_0p5_16": (sweep_avg, sweep_p95),
             "closed_end": (end_avg, 29.0)}
     def row(n, a, p):
         if n == "open_empty":
@@ -326,3 +327,14 @@ def test_route_read_ms_is_reported_not_gated(tmp_path):
     r = subprocess.run([sys.executable, str(Path(__file__).with_name("results.py")), str(log)], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout
     assert "route_read_ms_max 2.000 ms (target 0.5)" in r.stdout
+
+
+def test_photos_500_gated():
+    ok, msg = results.verdict(results.parse(_tiles(photos_avg=21.6)))
+    assert not ok and "photos_500: avg +1.60" in msg and "OVER" in msg
+
+
+def test_photos_500_missing_is_skipped():
+    ok, msg = results.verdict(results.parse(_tiles(skip=("photos_500",))))
+    assert ok, msg
+    assert "photos_500: skipped: not in this suite" in msg

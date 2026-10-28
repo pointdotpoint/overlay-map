@@ -48,7 +48,6 @@ public class NightMapSystem extends ScriptableSystem {
     private let routes: ref<NMRouteLayer>;
     private let routesOff: Bool;          // perf suite override (SetRoutesEnabled)
     private let photos: ref<NMPhotos>;
-    private let photoProbe: ref<NMPhotoProbe>;  // SPIKE (photo pins Task 1); removed in Task 7
     private let hud: ref<NMHudHider>;     // set while the map is open with "Hide HUD while open" on
     private let lastRouteReadMs: Float;
     private let filterView: Int32;
@@ -90,10 +89,6 @@ public class NightMapSystem extends ScriptableSystem {
     public func Photos() -> ref<NMPhotos> {
         if !IsDefined(this.photos) { this.photos = new NMPhotos(); }
         return this.photos;
-    }
-    public func PhotoProbe() -> ref<NMPhotoProbe> {
-        if !IsDefined(this.photoProbe) { this.photoProbe = new NMPhotoProbe(); }
-        return this.photoProbe;
     }
     public func Gps() -> ref<NMGps> {
         if !IsDefined(this.gps) { this.gps = new NMGps(); }
@@ -154,10 +149,6 @@ public class NightMapSystem extends ScriptableSystem {
             }
         }
         this.HandleDebug(s);
-        // SPIKE (photo pins Task 1): Shift + teleport key, Debug tools on -> exact teleport to the last capture.
-        if s.debug && evt.IsShiftDown() && Equals(evt.GetKey(), s.keyTeleport) && Equals(evt.GetAction(), EInputAction.IACT_Press) {
-            this.PhotoProbe().TeleportBack(this.GetGameInstance());
-        }
     }
 
     // Debug chords: self-test, debug layer, perf suite, calibration dump.
@@ -499,7 +490,6 @@ public class NightMapSystem extends ScriptableSystem {
 
     private func OnOpened() {
         this.Photos().OnMapOpened();
-        if this.Settings().debug { this.PhotoProbe().OnMapOpened(this.panel.overlay); }   // SPIKE, Task 7 removes
         this.tipApiRev = -1;
         this.scaleRev = -1;
         this.hdrSubtitle = "\n";   // sentinels no real text equals: force the first header write

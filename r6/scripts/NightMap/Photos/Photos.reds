@@ -47,6 +47,10 @@ public class NMPhotos extends IScriptable {
     private let baseline: Uint64;
     private let itemSpot: array<Int32>;   // layer item id -> index into spots (-1 free)
     private let syncedRev: Int32;
+    private let lastHashes: array<Uint32>;   // hashes in the newest screenshot list
+    private let perfSaved: Bool;
+    private let perfSpots: array<ref<NMPhotoSpot>>;
+    private let perfExists: array<Bool>;
 
     public static func LayerId() -> CName { return n"NightMap.Photos"; }
     public static func Category() -> CName { return n"Photos"; }
@@ -72,6 +76,42 @@ public class NMPhotos extends IScriptable {
         this.loaded = true;
         this.spots = spots;
         this.exists = exists;
+        this.rev += 1;
+    }
+
+    // Perf suite: replaces the spots with n seeded ones spread over the city (cycling through the real shot hashes
+    // so thumbnails really load). EndPerfSeed() puts the saved spots back.
+    public func SeedForPerf(n: Int32) {
+        this.EnsureLoaded();
+        if !this.perfSaved {
+            this.perfSpots = this.spots;
+            this.perfExists = this.exists;
+            this.perfSaved = true;
+        }
+        let spots: array<ref<NMPhotoSpot>>;
+        let exists: array<Bool>;
+        let seed = 12345;
+        let i = 0;
+        while i < n {
+            seed = (seed * 1103515245 + 12345) & 2147483647;
+            let x = -2600.0 + 4200.0 * Cast<Float>(seed % 10000) / 10000.0;
+            seed = (seed * 1103515245 + 12345) & 2147483647;
+            let y = -3200.0 + 5400.0 * Cast<Float>(seed % 10000) / 10000.0;
+            let h = ArraySize(this.lastHashes) > 0 ? this.lastHashes[i % ArraySize(this.lastHashes)] : Cast<Uint32>(i + 1);
+            ArrayPush(spots, NMPhotoSpot.Create(h, "photomode_01012077_000000.png", new Vector4(x, y, 20.0, 1.0), 0.0, Cast<Uint64>(i + 1)));
+            ArrayPush(exists, true);
+            i += 1;
+        }
+        this.spots = spots;
+        this.exists = exists;
+        this.rev += 1;
+    }
+
+    public func EndPerfSeed() {
+        if !this.perfSaved { return; }
+        this.spots = this.perfSpots;
+        this.exists = this.perfExists;
+        this.perfSaved = false;
         this.rev += 1;
     }
 
@@ -190,6 +230,11 @@ public class NMPhotos extends IScriptable {
                 this.session = false;
                 NMLog.Info("photo|link|added " + ToString(added));
             }
+        }
+        this.lastHashes = hashes;
+        if this.perfSaved {
+            this.rev += 1;
+            return true;   // seeded perf spots: leave them alone
         }
         let i = 0;
         while i < ArraySize(this.spots) {
