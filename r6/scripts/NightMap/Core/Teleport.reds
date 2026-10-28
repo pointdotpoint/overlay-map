@@ -12,7 +12,11 @@ public class NMTeleportTarget {
 // Teleport target choice and landing maths (spec 2026-10-27-nightmap-teleport-design.md §4). Pure; no game calls.
 public abstract class NMTeleport {
     public static func LiftZ() -> Float { return 600.0; }            // above the tallest structure
-    public static func SettleTimeoutMs() -> Float { return 5000.0; }
+    // Collision only streams in near V: 600 m up, street-level ground never loads (in-game trace 2026-10-27). With
+    // no hit after LevelMs, V steps down to the next level. Game time crawls while streaming (a 533 m roof took ~2 s).
+    public static func LiftLevels() -> array<Float> { return [600.0, 400.0, 250.0, 150.0, 80.0]; }
+    public static func LevelMs() -> Float { return 2500.0; }
+    public static func SettleTimeoutMs() -> Float { return 15000.0; }
     public static func RayBottomZ() -> Float { return -200.0; }      // below the lowest ground and seabed
     public static func FootOffset() -> Float { return 0.5; }
     public static func VehicleOffset() -> Float { return 1.0; }

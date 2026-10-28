@@ -23,9 +23,10 @@ public class NMMover {
 }
 
 // One teleport, one decision per frame (spec 2026-10-27-nightmap-teleport-design.md §4.3-4.5). Exact targets land
-// in one move. Otherwise: lift to LiftZ once, then each frame probe the ground without teleporting (a teleport every
-// frame keeps V mid-teleport: position reads 0 and nothing streams in). StableProbes agreeing hits land (on the water
-// surface when water lies above); after SettleTimeoutMs V goes back to the start.
+// in one move. Otherwise: lift to LiftZ, then each frame probe the ground without teleporting (a teleport every
+// frame keeps V mid-teleport: position reads 0 and nothing streams in). With no hit for LevelMs, step down to the next
+// of LiftLevels so the ground below streams in. StableProbes agreeing hits land (on the water surface when water lies
+// above); after SettleTimeoutMs V goes back to the start.
 public class NMTeleportDriver {
     private let target: ref<NMTeleportTarget>;
     private let mover: ref<NMMover>;
@@ -37,7 +38,9 @@ public class NMTeleportDriver {
     private let lifted: Bool;              // vehicle seen at the lift height
     private let stable: Int32;             // agreeing hits in a row
     private let lastHitZ: Float;
-    private let probes: Int32;             // diagnostics (teleport|trace lines)
+    private let level: Int32;              // index into LiftLevels
+    private let levelMs: Float;
+    private let probes: Int32;            // diagnostics (teleport|trace lines)
     private let hits: Int32;
     private let nextTraceMs: Float;
     private let done: Bool;
@@ -71,10 +74,13 @@ public class NMTeleportDriver {
             return 0;
         }
         this.elapsedMs += dtMs;
-        // A vehicle may follow the lift a few frames late; only one still down after RefuseWindowMs was refused, and
-        // then everything goes back to the start (a late lift must not strand it up there). No re-lift meanwhile.
+        this.levelMs += dtMs;
+        // A vehicle may follow the lift a few frames late; only one still where it started after RefuseWindowMs was
+        // refused, and then everything goes back to the start (a late lift must not strand it up there). No re-lift
+        // meanwhile. Height reads 0 while the teleport is pending, so moving off the start also counts as lifted.
         if this.inVehicle && !this.lifted {
-            if this.mover.Position().Z >= NMTeleport.LiftZ() - NMTeleport.RefuseDrop() {
+            let p = this.mover.Position();
+            if p.Z >= NMTeleport.LiftZ() - NMTeleport.RefuseDrop() || Vector4.Distance(p, this.start) > NMTeleport.RefuseDrop() {
                 this.lifted = true;
             } else {
                 if this.elapsedMs >= NMTeleport.RefuseWindowMs() {
@@ -103,6 +109,13 @@ public class NMTeleportDriver {
             }
         } else {
             this.stable = 0;
+            let levels = NMTeleport.LiftLevels();
+            if this.levelMs >= NMTeleport.LevelMs() && this.level + 1 < ArraySize(levels) {
+                this.level += 1;
+                this.levelMs = 0.0;
+                this.mover.Move(new Vector4(t.x, t.y, levels[this.level], 1.0));
+                NMLog.Info("teleport|trace|level|" + FloatToStringPrec(levels[this.level], 0));
+            }
         }
         if this.elapsedMs >= NMTeleport.SettleTimeoutMs() {
             this.mover.Move(this.start);

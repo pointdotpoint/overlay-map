@@ -8,6 +8,7 @@ public class NMFakeMover extends NMMover {
     public let positionAfter: Int32;  // Position() follows moves only from this many calls on (a late vehicle); 0 = at once
     public let positionCalls: Int32;
     public let invalidAfter: Int32;   // Valid() turns false once this many moves were made; 0 = never
+    public let zeroZ: Bool;           // Position().Z reads 0 after the first move (a pending teleport, as in game)
 
     public static func Create(start: Vector4) -> ref<NMFakeMover> {
         let m = new NMFakeMover();
@@ -21,7 +22,9 @@ public class NMFakeMover extends NMMover {
     public func Position() -> Vector4 {
         this.positionCalls += 1;
         let n = ArraySize(this.moves);
-        return this.moving && n > 0 && this.positionCalls >= this.positionAfter ? this.moves[n - 1] : this.start;
+        let p = this.moving && n > 0 && this.positionCalls >= this.positionAfter ? this.moves[n - 1] : this.start;
+        if this.zeroZ && n > 0 { p.Z = 0.0; }
+        return p;
     }
 
     public func Move(p: Vector4) { ArrayPush(this.moves, p); }
@@ -35,6 +38,8 @@ public class NMFakeGround extends NMGround {
     public let z: Float;
     public let hasWater: Bool;
     public let waterZ: Float;
+    public let mover: ref<NMFakeMover>;  // when set: no hit while the last move is above streamZ (collision streams near V)
+    public let streamZ: Float;
 
     public static func Create(hitOn: Int32, z: Float, hasWater: Bool, waterZ: Float) -> ref<NMFakeGround> {
         let g = new NMFakeGround();
@@ -46,6 +51,9 @@ public class NMFakeGround extends NMGround {
     }
 
     public func Probe(x: Float, y: Float) -> ref<NMGroundHit> {
+        if IsDefined(this.mover) && ArraySize(this.mover.moves) > 0 && this.mover.moves[ArraySize(this.mover.moves) - 1].Z > this.streamZ {
+            return null;
+        }
         this.calls += 1;
         if this.hitOn <= 0 || this.calls < this.hitOn { return null; }
         let h = new NMGroundHit();
@@ -169,6 +177,30 @@ public abstract class NMTeleportTests {
         NMTeleportTests.Drive(d8);
         t.Check("teleport.driver_stable", t.Near(NMTeleportTests.Last(m8).Z, 40.5, 0.001) && g8.calls >= 2 + NMTeleport.StableProbes(),
             d8.result + " calls " + ToString(g8.calls));
+
+        // Ground 600 m below V never streams in (in-game trace 2026-10-27): step down through LiftLevels() until it
+        // does, never below the level where it was found.
+        let m9 = NMFakeMover.Create(start);
+        let g9 = NMFakeGround.Create(1, 40.0, false, 0.0);
+        g9.mover = m9;
+        g9.streamZ = 150.0;
+        let d9 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m9, g9, false);
+        NMTeleportTests.Drive(d9);
+        let desc = ArraySize(m9.moves) >= 3;
+        let j = 1;
+        while j < ArraySize(m9.moves) - 1 {
+            if m9.moves[j].Z >= m9.moves[j - 1].Z || m9.moves[j].Z < 150.0 { desc = false; }
+            j += 1;
+        }
+        t.Check("teleport.driver_descends", desc && StrBeginsWith(d9.result, "ok|ground") && t.Near(NMTeleportTests.Last(m9).Z, 40.5, 0.001),
+            d9.result + " " + ToString(ArraySize(m9.moves)) + " moves");
+
+        // Height reads 0 while a teleport is pending (in-game trace): a vehicle that moved off its start counts as lifted.
+        let m10 = NMFakeMover.Create(new Vector4(500.0, 8.0, 20.0, 1.0));
+        m10.zeroZ = true;
+        let d10 = NMTeleportDriver.Create(NMTeleportTests.Target(1.0, 2.0, 0.0, false), m10, NMFakeGround.Create(1, 40.0, false, 0.0), true);
+        NMTeleportTests.Drive(d10);
+        t.Check("teleport.driver_vehicle_zero_z", StrBeginsWith(d10.result, "ok|ground"), d10.result);
 
         let m6 = NMFakeMover.Create(start);
         m6.invalidAfter = 1;
