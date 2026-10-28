@@ -57,6 +57,7 @@ public abstract class NMTheme {
     public static func SelectRadius() -> Float { return 100.0; }
     public static func ClusterSpacing() -> Float { return 192.0; }
     public static func ChipBudget() -> Int32 { return 300; }
+    public static func SnapMs() -> Float { return 150.0; }   // ease onto the focused marker when panning stops
     public static func ClusterBudget() -> Int32 { return 80; }
     public static func MaxGlobalCategories() -> Int32 { return 64; }
 

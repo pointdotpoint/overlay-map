@@ -18,20 +18,6 @@ public abstract class NMGpsTests {
         return -1;
     }
 
-    // Screen Y of the placed waypoint-route dot nearest the top of the map (the destination, for a route north).
-    // Reads the first DotsUsed() dots, not IsVisible(), which is false for a canvas that is not on screen.
-    private static func LastDotY(L: ref<NMRouteLayer>) -> Float {
-        let line = L.Root().GetWidget(NMGpsTests.ChildIndex(L.Root(), n"tracked")) as inkCompoundWidget;
-        let core = line.GetWidget(1) as inkCompoundWidget;   // children: glow canvas, core canvas
-        let best = 100000.0;
-        let i = 0;
-        while i < L.DotsUsed(true) {
-            best = MinF(best, core.GetWidget(i).GetTranslation().Y);
-            i += 1;
-        }
-        return best;
-    }
-
     private static func RouteCases(t: ref<NMSelfTest>) {
         let yellow = NMTheme.VanillaStateColor(n"Quest");
         let none: array<Vector2>;
@@ -50,45 +36,44 @@ public abstract class NMGpsTests {
         cam.SetCenter(0.0, 50.0);
         cam.SetMpp(1.0);
 
-        // Before the minimap's style is known nothing is drawn, and updating is harmless.
+        // Traced line: one segment per screen polyline segment, a round joint at each point, wider than the old dots.
         let P = NMRouteLayer.Create(new inkCanvas(), 1.0, false);
         P.SetRoutes(none, yellow, north);
         P.Update(cam, 0.0, 0.0, 16.0, 400.0, 400.0);
-        t.Check("route.no_style_safe", P.HasRoute() && P.DotsShown() == 0, ToString(P.DotsShown()));
-
-        // 100 m at 1 px/m with a 9 px pitch: about 11 dots.
+        t.Check("route.no_style_safe", P.HasRoute() && P.SegmentsShown() == 1, ToString(P.SegmentsShown()));
         P.SetStyle(NMRouteStyle.Test());
         P.Update(cam, 0.0, 0.0, 0.0, 400.0, 400.0);
-        let want = Cast<Int32>(100.0 / P.Pitch());
-        t.Check("route.dots", P.DotsShown() >= want && P.DotsShown() <= want + 1, ToString(P.DotsShown()) + " pitch " + t.F(P.Pitch()));
+        t.Check("route.traced_one_segment", P.SegmentsShown() == 1 && P.JointsShown() == 2, ToString(P.SegmentsShown()) + "/" + ToString(P.JointsShown()));
+        t.Check("route.wider", NMRouteLayer.LineWidth() >= 24.0, "");
 
-        // Pinned to the road: V moving 5 m along the route (no time passing) leaves the dot nearest the destination
-        // where it was.
-        let y0 = NMGpsTests.LastDotY(P);
-        P.Update(cam, 0.0, 5.0, 0.0, 400.0, 400.0);
-        let y1 = NMGpsTests.LastDotY(P);
-        t.Check("route.pinned", y0 < 1000.0 && t.Near(y0, y1, 0.01), t.F(y0) + " -> " + t.F(y1));
+        // An L-shaped route: two segments meeting at a joint.
+        let ell: array<Vector2>;
+        ArrayPush(ell, new Vector2(0.0, 0.0));
+        ArrayPush(ell, new Vector2(0.0, 80.0));
+        ArrayPush(ell, new Vector2(80.0, 80.0));
+        P.SetRoutes(none, yellow, ell);
+        P.Update(cam, 0.0, 0.0, 0.0, 400.0, 400.0);
+        t.Check("route.traced_corner", P.SegmentsShown() == 2 && P.JointsShown() == 3, ToString(P.SegmentsShown()) + "/" + ToString(P.JointsShown()));
 
-        // Flow runs toward the destination (up the screen): 100 ms moves every dot FlowSpeed * 0.1 closer to it.
-        P.Update(cam, 0.0, 5.0, 100.0, 400.0, 400.0);
-        let y2 = NMGpsTests.LastDotY(P);
-        let step = NMRouteLayer.Wrap(y1 - y2, P.Pitch());
-        t.Check("route.flow_toward_dest", t.Near(step, NMRouteLayer.FlowSpeed() * 0.1, 0.01), "step " + t.F(step) + " y1 " + t.F(y1)
-            + " y2 " + t.F(y2) + " pitch " + t.F(P.Pitch()) + " phase " + t.F(P.Phase()) + " used " + ToString(P.DotsUsed(true)));
+        // A route entirely off screen draws nothing.
+        let far: array<Vector2>;
+        ArrayPush(far, new Vector2(900.0, 900.0));
+        ArrayPush(far, new Vector2(950.0, 900.0));
+        P.SetRoutes(none, yellow, far);
+        P.Update(cam, 900.0, 900.0, 0.0, 400.0, 400.0);
+        t.Check("route.clipped", P.SegmentsShown() == 0, ToString(P.SegmentsShown()));
 
-        // 10 km straight route on a 20000 px view at 0.5 m/px: about 2200 dots wanted, capped.
-        let long: array<Vector2>;
-        ArrayPush(long, new Vector2(0.0, 0.0));
-        ArrayPush(long, new Vector2(10000.0, 0.0));
-        let camL = NMCamera.Create(20000.0, 20000.0, NMRect.Create(-20000.0, -20000.0, 20000.0, 20000.0), 0.25, 64.0);
-        camL.SetCenter(5000.0, 0.0);
-        camL.SetMpp(0.5);
+        // A zigzag with more segments than the cap is capped.
+        let zig: array<Vector2>;
+        let k = 0;
+        while k <= 900 {
+            ArrayPush(zig, new Vector2(Cast<Float>(k % 2) * 40.0 - 20.0, Cast<Float>(k) * 0.1));
+            k += 1;
+        }
         L.SetStyle(NMRouteStyle.Test());
-        L.SetRoutes(long, yellow, long);
-        L.Update(camL, 0.0, 0.0, 16.0, 20000.0, 20000.0);
-        t.Check("route.dot_cap", L.DotsShown() == NMRouteLayer.DotCap(), ToString(L.DotsShown()));
-
-        t.Check("route.wrap", t.Near(NMRouteLayer.Wrap(-3.0, 24.0), 21.0, 0.001) && t.Near(NMRouteLayer.Wrap(50.0, 24.0), 2.0, 0.001), "");
+        L.SetRoutes(zig, yellow, zig);
+        L.Update(cam, -20.0, 0.0, 16.0, 400.0, 400.0);
+        t.Check("route.segment_cap", L.SegmentsShown() == NMRouteLayer.SegmentCap(), ToString(L.SegmentsShown()));
 
         let qi = NMGpsTests.ChildIndex(L.Root(), n"quest");
         let ti = NMGpsTests.ChildIndex(L.Root(), n"tracked");

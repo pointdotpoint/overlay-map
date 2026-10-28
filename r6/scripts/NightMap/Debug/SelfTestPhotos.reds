@@ -121,6 +121,11 @@ public abstract class NMPhotoTests {
         // The focus point is the centre of the map area left of the always-visible sidebar.
         let l = NMPanelLayout.Compute(3840.0, 2160.0);
         t.Check("photo.focus_shift", AbsF(NMPhotoDrawer.FocusShift(l) - l.sideW * 0.5) < 0.01, ToString(NMPhotoDrawer.FocusShift(l)));
+        // Snap: letting go of the pan keys eases the focused marker under the focus point.
+        t.Check("snap.on_release", NMInput.SnapOnRelease(true, false, true), "");
+        t.Check("snap.not_while_panning", !NMInput.SnapOnRelease(true, true, true), "");
+        t.Check("snap.needs_selection", !NMInput.SnapOnRelease(true, false, false), "");
+        t.Check("snap.only_after_pan", !NMInput.SnapOnRelease(false, false, true), "");
         t.Check("photo.thumb_bigger", NMItemRenderer.ThumbW() == 108.0 && AbsF(NMItemRenderer.ThumbH() - 61.5) < 0.01, "");
 
         let xs: array<Float>;

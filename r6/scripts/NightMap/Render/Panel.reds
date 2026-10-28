@@ -12,7 +12,7 @@ public class NMPanelLayout {
     public let mapW: Float;
     public let mapH: Float;
     public let hintH: Float;
-    public let sideW: Float;   // the always-visible sidebar on the right of the map area (30% of mapW)
+    public let sideW: Float;   // the always-visible sidebar on the right of the map area (25% of mapW)
     public let viewW: Float;   // map visible left of the sidebar
 
     public static func Compute(winW: Float, winH: Float) -> ref<NMPanelLayout> {
@@ -27,7 +27,7 @@ public class NMPanelLayout {
         l.hintH = NMTheme.HintHeight() * l.scale;
         l.mapW = l.w;
         l.mapH = l.h - l.hintH;
-        l.sideW = l.mapW * 0.30;
+        l.sideW = l.mapW * 0.25;
         l.viewW = l.mapW - l.sideW;
         return l;
     }

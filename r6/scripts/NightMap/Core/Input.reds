@@ -85,6 +85,11 @@ public class NMInput {
         return false;
     }
 
+    // Snap: when the pan keys are let go and a marker is in focus range, the map eases it under the focus point.
+    public static func SnapOnRelease(wasPanning: Bool, panning: Bool, hasSelection: Bool) -> Bool {
+        return wasPanning && !panning && hasSelection;
+    }
+
     // Unit pan direction in screen space (+Y = down/south).
     public func PanVector() -> Vector2 {
         let x = 0.0;

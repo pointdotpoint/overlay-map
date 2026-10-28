@@ -29,6 +29,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let crosshair: ref<NMCrosshair>;
     private let tooltip: ref<NMTooltip>;
     private let drawer: ref<NMPhotoDrawer>;
+    private let wasPanning: Bool;
     private let drawerShift: Float;   // px the focus point sits left of the map-area centre (middle of the map left of the sidebar)
     private let marker: ref<NMPlayerMarker>;
     private let tipApiRev: Int32;
@@ -467,7 +468,15 @@ public class NightMapSystem extends ScriptableSystem {
 
     private func DriveCamera(dt: Float) {
         let pan = this.input.PanVector();
-        if pan.X != 0.0 || pan.Y != 0.0 {
+        let panning = pan.X != 0.0 || pan.Y != 0.0;
+        let c = this.crosshair;
+        if NMInput.SnapOnRelease(this.wasPanning, panning, IsDefined(c) && c.selKind >= 0) {
+            let w = this.camera.MapToWorld(c.selX, c.selY);
+            this.camera.follow = false;
+            this.camera.EaseTo(w.X, w.Y, this.camera.mpp, NMTheme.SnapMs());
+        }
+        this.wasPanning = panning;
+        if panning {
             this.holdMs += dt;
             let accel = this.holdMs > 500.0 ? MinF(1.0 + (this.holdMs - 500.0) / 1000.0, 3.0) : 1.0;
             let step = 1500.0 * accel * dt / 1000.0;

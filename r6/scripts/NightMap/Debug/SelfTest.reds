@@ -329,7 +329,7 @@ public class NMSelfTest {
         let full = NMPanelLayout.Compute(3840.0, 2160.0);
         this.Check("layout.full_width_map", full.mapW == full.w, this.F(full.mapW) + "/" + this.F(full.w));
         this.Check("layout.ninety_percent_wide", this.Near(full.w, 3840.0 * 0.9, 0.5), this.F(full.w));
-        this.Check("layout.sidebar_thirty_percent", this.Near(full.sideW, full.mapW * 0.3, 0.5) && this.Near(full.viewW, full.mapW - full.sideW, 0.5),
+        this.Check("layout.sidebar_quarter", this.Near(full.sideW, full.mapW * 0.25, 0.5) && this.Near(full.viewW, full.mapW - full.sideW, 0.5),
             this.F(full.sideW) + " " + this.F(full.viewW));
     }
 
