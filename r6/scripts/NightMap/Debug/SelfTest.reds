@@ -328,6 +328,9 @@ public class NMSelfTest {
         this.Check("layout.fits_all_aspects", ok, detail);
         let full = NMPanelLayout.Compute(3840.0, 2160.0);
         this.Check("layout.full_width_map", full.mapW == full.w, this.F(full.mapW) + "/" + this.F(full.w));
+        this.Check("layout.ninety_percent_wide", this.Near(full.w, 3840.0 * 0.9, 0.5), this.F(full.w));
+        this.Check("layout.sidebar_thirty_percent", this.Near(full.sideW, full.mapW * 0.3, 0.5) && this.Near(full.viewW, full.mapW - full.sideW, 0.5),
+            this.F(full.sideW) + " " + this.F(full.viewW));
     }
 
     private func TileCases() {
@@ -503,6 +506,10 @@ public class NMSelfTest {
         let bot = NMTooltip.Place(1000.0, 1490.0, 620.0, 200.0, 3000.0, 1500.0, 1.0);
         this.Check("tooltip.clamp_vertical", this.Near(top.Y, 0.0, 0.01) && this.Near(bot.Y, 1300.0, 0.01), this.F(top.Y) + "/" + this.F(bot.Y));
         let canvas = new inkCanvas();   // detached: widgets exist but are never drawn
+        let dk = NMTooltip.CreateDocked(canvas, 40.0, 60.0, 900.0, 1.0);
+        dk.Reposition(1500.0, 700.0);
+        this.Check("tooltip.docked_stays", this.Near(dk.Origin().X, 40.0, 0.01) && this.Near(dk.Origin().Y, 60.0, 0.01) && this.Near(dk.CurrentWidth(), 900.0, 0.01),
+            this.F(dk.Origin().X) + "," + this.F(dk.Origin().Y));
         let t = NMTooltip.Create(canvas, 3000.0, 1500.0, 1.0);
         this.Check("tooltip.hidden_when_nothing_selected", !t.IsShown(), "");
         let d = NightMapDetails.Create("cat", "A very long title that must be truncated with an ellipsis");

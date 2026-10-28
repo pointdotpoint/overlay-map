@@ -211,10 +211,10 @@ public class NMItemRenderer {
         return id >= 0 && id < ArraySize(L.atlasKey) ? L.atlasKey[id] : "";
     }
 
-    public static func ThumbW() -> Float { return 72.0; }   // 16:9, 4K units (about 36x20 px at 1080p)
-    public static func ThumbH() -> Float { return 41.0; }
-    public static func PhotoEdge() -> Float { return 3.0; }
-    public static func PhotoPtr() -> Float { return 14.0; }
+    public static func ThumbW() -> Float { return 108.0; }   // 16:9, 4K units (about 54x31 px at 1080p)
+    public static func ThumbH() -> Float { return 61.5; }
+    public static func PhotoEdge() -> Float { return 4.5; }
+    public static func PhotoPtr() -> Float { return 21.0; }
 
     public func OnThumb(hash: Uint32, size: Vector2, err: Int32) {
         this.thumbLoading = null;

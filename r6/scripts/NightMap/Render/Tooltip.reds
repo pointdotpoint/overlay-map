@@ -19,6 +19,8 @@ public class NMTooltip {
     private let actBox: ref<inkRectangle>;
     private let actKey: ref<inkText>;
     private let actLabel: ref<inkText>;
+    private let docked: Bool;   // lives at a fixed spot in the sidebar instead of following the marker
+    private let dock: Vector2;
 
     public static func MaxRows() -> Int32 { return 3; }
     public static func Width() -> Float { return 620.0; }
@@ -75,6 +77,21 @@ public class NMTooltip {
         t.Hide();
         return t;
     }
+
+    // A tooltip at a fixed spot of w wide (the sidebar's marker details).
+    public static func CreateDocked(parent: ref<inkCanvas>, x: Float, y: Float, w: Float, scale: Float) -> ref<NMTooltip> {
+        let t = NMTooltip.Create(parent, w, 100000.0, scale);
+        t.w = w;
+        t.docked = true;
+        t.dock = new Vector2(x, y);
+        t.root.SetTranslation(t.dock);
+        t.root.SetSize(new Vector2(w, 100.0 * scale));
+        t.bg.SetSize(new Vector2(w, 100.0 * scale));
+        return t;
+    }
+
+    public func Origin() -> Vector2 { return this.root.GetTranslation(); }
+    public func CurrentWidth() -> Float { return this.w; }
 
     public func IsShown() -> Bool { return this.shown; }
     public func Height() -> Float { return this.h; }
@@ -178,7 +195,7 @@ public class NMTooltip {
 
     // Moves the box next to the marker at (mx, my) in map-area coordinates.
     public func Reposition(mx: Float, my: Float) {
-        if !this.shown {
+        if !this.shown || this.docked {
             return;
         }
         this.root.SetTranslation(NMTooltip.Place(mx, my, this.w, this.h, this.mapW, this.mapH, this.s));

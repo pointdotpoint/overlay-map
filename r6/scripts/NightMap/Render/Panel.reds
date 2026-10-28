@@ -12,22 +12,23 @@ public class NMPanelLayout {
     public let mapW: Float;
     public let mapH: Float;
     public let hintH: Float;
+    public let sideW: Float;   // the always-visible sidebar on the right of the map area (30% of mapW)
+    public let viewW: Float;   // map visible left of the sidebar
 
     public static func Compute(winW: Float, winH: Float) -> ref<NMPanelLayout> {
         let l = new NMPanelLayout();
         l.winW = winW;
         l.winH = winH;
         l.scale = MinF(winW / 3840.0, winH / 2160.0);
-        l.w = winW * 0.70;
+        l.w = winW * 0.90;
         l.h = winH * 0.711;
-        if l.w > l.h * 1.75 {
-            l.w = l.h * 1.75;   // keep the approved 1120x640 proportions on ultra-wide screens
-        }
         l.x = (winW - l.w) * 0.5;
         l.y = (winH - l.h) * 0.5;
         l.hintH = NMTheme.HintHeight() * l.scale;
         l.mapW = l.w;
         l.mapH = l.h - l.hintH;
+        l.sideW = l.mapW * 0.30;
+        l.viewW = l.mapW - l.sideW;
         return l;
     }
 }
@@ -99,16 +100,16 @@ public class NMPanel {
         p.questTitle = NMPanel.HeaderLine(header, n"Bold", 34.0 * s, NMTheme.VanillaStateColor(n"Quest"), 8.0 * s);
         p.questTitle.SetVisible(false);
         p.questObjective = NMPanel.HeaderLine(header, n"Medium", 30.0 * s, NMTheme.Text(), 6.0 * s);
-        p.questObjective.SetWrappingAtPosition(layout.mapW * 0.6);   // two lines at most (see NMQuestHeader.Clip)
+        p.questObjective.SetWrappingAtPosition(layout.sideW - 120.0 * s);   // inside the sidebar; two lines at most (NMQuestHeader.Clip)
         p.questObjective.SetVisible(false);
         p.warning = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(32.0 * s), NMTheme.Pink());
         p.warning.SetTranslation(new Vector2(67.0 * s, 240.0 * s));
         p.warning.SetVisible(false);
 
         // Scale bar (top-right of the map area).
-        p.scaleBar = NMUi.Rect(p.root, layout.mapW - 400.0 * s, 96.0 * s, 336.0 * s, 5.0 * s, NMTheme.Text(), 1.0);
+        p.scaleBar = NMUi.Rect(p.root, layout.viewW - 400.0 * s, 96.0 * s, 336.0 * s, 5.0 * s, NMTheme.Text(), 1.0);
         p.scaleLabel = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(32.0 * s), NMTheme.Text());
-        p.scaleLabel.SetTranslation(new Vector2(layout.mapW - 300.0 * s, 108.0 * s));
+        p.scaleLabel.SetTranslation(new Vector2(layout.viewW - 300.0 * s, 108.0 * s));
 
         // Frame outline, edge glow and glowing corner brackets (brightened with HDR gain when effects are on).
         let t = 2.0 * s;

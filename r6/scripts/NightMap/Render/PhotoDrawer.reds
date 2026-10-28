@@ -4,7 +4,9 @@ module NightMap
 // photo pins; the shot loads by hash into the drawer's own image.
 public class NMPhotoDrawer {
     private let s: Float;
-    private let root: ref<inkCanvas>;
+    private let root: ref<inkCanvas>;     // always visible: the sidebar
+    private let photo: ref<inkCanvas>;    // the photo preview, shown while a photo pin is focused
+    private let empty: ref<inkText>;
     private let img: ref<inkImage>;
     private let imgFill: ref<inkRectangle>;
     private let category: ref<inkText>;
@@ -18,23 +20,10 @@ public class NMPhotoDrawer {
     private let shownHash: Uint32;
     private let listener: ref<NMDrawerListener>;
 
-    // The view and the focus point shift left by this much while the drawer is open (spec §6.5).
-    public static func ShiftTarget(open: Bool, mapW: Float) -> Float {
-        return open ? mapW * 0.25 : 0.0;
-    }
-
-    // Linear ease: covers the larger of |cur| and |target| in 150 ms.
-    public static func EaseShift(cur: Float, target: Float, dtMs: Float) -> Float {
-        let span = MaxF(AbsF(cur), AbsF(target));
-        if span <= 0.0 { return target; }
-        let step = span * MaxF(dtMs, 0.0) / 150.0;
-        if AbsF(target - cur) <= step { return target; }
-        return cur + (target > cur ? step : -step);
-    }
-
-    // Opening the drawer stops follow mode, which would re-centre and undo the shift every frame.
-    public static func OnOpen(cam: ref<NMCamera>) {
-        cam.follow = false;
+    // The camera draws its centre (the focus point) this far left of the map-area centre: the middle of the map
+    // visible left of the always-visible sidebar.
+    public static func FocusShift(l: ref<NMPanelLayout>) -> Float {
+        return l.sideW * 0.5;
     }
 
     // "photomode_DDMMYYYY_HHMMSS.png" -> "DD MON YYYY · HH:MM"; "" when the name does not match.
@@ -63,33 +52,38 @@ public class NMPhotoDrawer {
         let dr = new NMPhotoDrawer();
         let s = l.scale;
         dr.s = s;
-        let w = l.mapW * 0.5;
+        let w = l.sideW;
         let h = l.mapH;
         let pad = 40.0 * s;
-        dr.root = NMUi.Canvas(parent, l.mapW - w, 0.0, w, h);
-        NMUi.Rect(dr.root, 0.0, 0.0, w, h, NMTheme.CardBg(), 0.92);
+        dr.root = NMUi.Canvas(parent, l.viewW, 0.0, w, h);
+        NMUi.Rect(dr.root, 0.0, 0.0, w, h, NMTheme.CardBg(), 0.95);
         NMUi.Rect(dr.root, 0.0, 0.0, 6.0 * s, h, NMTheme.Cyan(), 1.0);
+        dr.empty = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Muted());
+        dr.empty.SetTranslation(new Vector2(pad, pad));
+        dr.empty.SetText("POINT AT A MARKER");
+        dr.photo = NMUi.Canvas(dr.root, 0.0, 0.0, w, h);
+        dr.photo.SetVisible(false);
         let iw = w - pad * 2.0;
         let ih = iw * 9.0 / 16.0;
-        dr.imgFill = NMUi.Rect(dr.root, pad, pad, iw, ih, NMTheme.PanelBg(), 1.0);
+        dr.imgFill = NMUi.Rect(dr.photo, pad, pad, iw, ih, NMTheme.PanelBg(), 1.0);
         dr.img = new inkImage();
         dr.img.SetAnchor(inkEAnchor.TopLeft);
         dr.img.SetSize(new Vector2(iw, ih));
         dr.img.SetTranslation(new Vector2(pad, pad));
         dr.img.SetInteractive(false);
         dr.img.SetVisible(false);
-        dr.img.Reparent(dr.root);
+        dr.img.Reparent(dr.photo);
         let y = pad + ih + 30.0 * s;
-        dr.category = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.Pink());
+        dr.category = NMUi.Text(dr.photo, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.Pink());
         dr.category.SetTranslation(new Vector2(pad, y));
         dr.category.SetText("PHOTO");
-        dr.title = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Bold", Cast<Int32>(44.0 * s), NMTheme.Text());
+        dr.title = NMUi.Text(dr.photo, NMTheme.BodyFont(), n"Bold", Cast<Int32>(44.0 * s), NMTheme.Text());
         dr.title.SetTranslation(new Vector2(pad, y + 36.0 * s));
         let ry = y + 100.0 * s;
         let i = 0;
         while i < 2 {
-            let k = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.Muted());
-            let v = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Text());
+            let k = NMUi.Text(dr.photo, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.Muted());
+            let v = NMUi.Text(dr.photo, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Text());
             k.SetTranslation(new Vector2(pad, ry));
             v.SetTranslation(new Vector2(pad + 220.0 * s, ry));
             ArrayPush(dr.rowKey, k);
@@ -100,15 +94,16 @@ public class NMPhotoDrawer {
         dr.rowKey[0].SetText("DISTANCE");
         dr.rowKey[1].SetText("DISTRICT");
         let ay = ry + 20.0 * s;
-        dr.actBox = NMUi.Rect(dr.root, pad, ay, 10.0 * s, 46.0 * s, NMTheme.Cyan(), 0.15);
-        dr.actKey = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(26.0 * s), NMTheme.Cyan());
+        dr.actBox = NMUi.Rect(dr.photo, pad, ay, 10.0 * s, 46.0 * s, NMTheme.Cyan(), 0.15);
+        dr.actKey = NMUi.Text(dr.photo, NMTheme.BodyFont(), n"Medium", Cast<Int32>(26.0 * s), NMTheme.Cyan());
         dr.actKey.SetTranslation(new Vector2(pad + 12.0 * s, ay + 8.0 * s));
-        dr.actLabel = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.Text());
-        dr.root.SetVisible(false);
+        dr.actLabel = NMUi.Text(dr.photo, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.Text());
         return dr;
     }
 
     public func IsShown() -> Bool { return this.shown; }
+    public func Root() -> ref<inkCanvas> { return this.root; }
+    public func SetEmpty(on: Bool) { this.empty.SetVisible(on); }
     public func ImageShown() -> Bool { return this.img.IsVisible(); }
     public func LastListener() -> ref<NMDrawerListener> { return this.listener; }
 
@@ -142,7 +137,7 @@ public class NMPhotoDrawer {
             }
         }
         if !this.shown {
-            this.root.SetVisible(true);
+            this.photo.SetVisible(true);
             this.shown = true;
         }
     }
@@ -155,7 +150,7 @@ public class NMPhotoDrawer {
 
     public func Hide() {
         if this.shown {
-            this.root.SetVisible(false);
+            this.photo.SetVisible(false);
             this.shown = false;
         }
     }

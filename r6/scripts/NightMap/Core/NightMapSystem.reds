@@ -29,7 +29,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let crosshair: ref<NMCrosshair>;
     private let tooltip: ref<NMTooltip>;
     private let drawer: ref<NMPhotoDrawer>;
-    private let drawerShift: Float;   // px the view and focus point are shifted left while the drawer is open
+    private let drawerShift: Float;   // px the focus point sits left of the map-area centre (middle of the map left of the sidebar)
     private let marker: ref<NMPlayerMarker>;
     private let tipApiRev: Int32;
     private let scaleRev: Int32;
@@ -514,9 +514,11 @@ public class NightMapSystem extends ScriptableSystem {
         this.Photos().SyncLayer(this.api, this.PhotosVisible());
         this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
         this.crosshair = NMCrosshair.Create();
-        this.tooltip = NMTooltip.Create(this.panel.overlay, l.mapW, l.mapH, l.scale);
+        // The sidebar is always visible; marker details dock in it. The focus point is the middle of the map left of it.
         this.drawer = NMPhotoDrawer.Create(this.panel.overlay, l);
-        this.drawerShift = 0.0;
+        this.tooltip = NMTooltip.CreateDocked(this.drawer.Root(), 40.0 * l.scale, 40.0 * l.scale, l.sideW - 80.0 * l.scale, l.scale);
+        this.drawerShift = NMPhotoDrawer.FocusShift(l);
+        this.camera.SetScreenShift(this.drawerShift);
         this.UpdateHeader();
         this.vanilla.ApplyFilters(this.filterView, this.Settings());
         this.vanilla.Tick(NMClock.NowMs(), true);
@@ -615,12 +617,6 @@ public class NightMapSystem extends ScriptableSystem {
         if this.Photos().Revision() != this.Photos().SyncedRevision() {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
         }
-        // The view and the focus point move left together while the photo drawer is open (spec §6.5).
-        let shift = NMPhotoDrawer.EaseShift(this.drawerShift, NMPhotoDrawer.ShiftTarget(this.drawer.IsShown(), l.mapW), dt);
-        if shift != this.drawerShift {
-            this.camera.SetScreenShift(shift);
-            this.drawerShift = shift;
-        }
         let relaid = this.renderer.Update(this.camera, l.mapW, l.mapH);
         if relaid {
             let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale, this.drawerShift);
@@ -695,6 +691,11 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private func RefreshTooltip(changed: Bool) {
+        this.RefreshSidebar(changed);
+        this.drawer.SetEmpty(!this.tooltip.IsShown() && !this.drawer.IsShown());
+    }
+
+    private func RefreshSidebar(changed: Bool) {
         let c = this.crosshair;
         if changed {
             this.UpdateHeader();   // the hint's teleport label follows the selection
@@ -750,9 +751,6 @@ public class NightMapSystem extends ScriptableSystem {
 
     private func ShowDrawer(spot: ref<NMPhotoSpot>) {
         this.tooltip.Hide();
-        if !this.drawer.IsShown() {
-            NMPhotoDrawer.OnOpen(this.camera);
-        }
         let dist = "";
         let player = GetPlayer(this.GetGameInstance());
         if IsDefined(player) {

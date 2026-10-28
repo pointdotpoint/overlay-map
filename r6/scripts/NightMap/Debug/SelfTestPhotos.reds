@@ -118,10 +118,10 @@ public abstract class NMPhotoTests {
     }
 
     private static func Drawer(t: ref<NMSelfTest>) {
-        t.Check("photo.shift_target", NMPhotoDrawer.ShiftTarget(true, 1600.0) == 400.0 && NMPhotoDrawer.ShiftTarget(false, 1600.0) == 0.0, "");
-        let half = NMPhotoDrawer.EaseShift(0.0, 400.0, 75.0);
-        t.Check("photo.shift_ease", half >= 150.0 && half <= 250.0 && NMPhotoDrawer.EaseShift(0.0, 400.0, 150.0) == 400.0
-            && NMPhotoDrawer.EaseShift(400.0, 0.0, 1000.0) == 0.0, ToString(half));
+        // The focus point is the centre of the map area left of the always-visible sidebar.
+        let l = NMPanelLayout.Compute(3840.0, 2160.0);
+        t.Check("photo.focus_shift", AbsF(NMPhotoDrawer.FocusShift(l) - l.sideW * 0.5) < 0.01, ToString(NMPhotoDrawer.FocusShift(l)));
+        t.Check("photo.thumb_bigger", NMItemRenderer.ThumbW() == 108.0 && AbsF(NMItemRenderer.ThumbH() - 61.5) < 0.01, "");
 
         let xs: array<Float>;
         let ys: array<Float>;
@@ -132,10 +132,6 @@ public abstract class NMPhotoTests {
         ArrayPush(xs, 500.0); ArrayPush(ys, 100.0); ArrayPush(kinds, 0); ArrayPush(layers, 0); ArrayPush(items, 2);
         t.Check("photo.pick_shifted", NMCrosshair.Pick(xs, ys, kinds, layers, items, 500.0 - 400.0, 100.0, 50.0, -1, -1, -1) == 0, "");
 
-        let cam = NMCamera.Create(1600.0, 900.0, NMRect.Create(-5000.0, -5000.0, 5000.0, 5000.0), 0.5, 16.0);
-        cam.follow = true;
-        NMPhotoDrawer.OnOpen(cam);
-        t.Check("photo.drawer_stops_follow", !cam.follow, "");
 
         t.Check("photo.date_from_path", Equals(NMPhotoDrawer.DateFromPath("C:\\users\\steamuser\\Pictures\\Cyberpunk 2077\\photomode_28102026_110520.png"), "28 OCT 2026 · 11:05")
             && Equals(NMPhotoDrawer.DateFromPath("collage_column.png"), ""), NMPhotoDrawer.DateFromPath("photomode_28102026_110520.png"));
