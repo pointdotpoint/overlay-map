@@ -8,6 +8,19 @@ public abstract class NMPhotoTests {
         NMPhotoTests.Link(t);
         NMPhotoTests.Layer(t);
         NMPhotoTests.Drawer(t);
+        NMPhotoTests.Teleport(t);
+    }
+
+    private static func Teleport(t: ref<NMSelfTest>) {
+        // Refusal(isPhoto, inVehicle, playerReady)
+        t.Check("photo.tp_ok", Equals(NMPhotoTeleport.Refusal(true, false, true), ""), "");
+        t.Check("photo.tp_vehicle", Equals(NMPhotoTeleport.Refusal(true, true, true), "in vehicle"), "");
+        t.Check("photo.tp_not_photo", Equals(NMPhotoTeleport.Refusal(false, false, true), "not a photo"), "");
+        t.Check("photo.tp_not_ready_first", Equals(NMPhotoTeleport.Refusal(false, true, false), "not ready"), "");
+        let s = new NightMapSettings();
+        s.teleportEnabled = true;
+        t.Check("photo.hint_teleport", StrContains(NMInput.HintText(s, "ALL", "TELEPORT"), "TELEPORT")
+            && !StrContains(NMInput.HintText(s, "ALL", "TELEPORT"), "FAST TRAVEL"), "");
     }
 
     private static func Drawer(t: ref<NMSelfTest>) {

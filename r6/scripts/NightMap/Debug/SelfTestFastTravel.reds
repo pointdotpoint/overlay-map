@@ -14,8 +14,8 @@ public abstract class NMFastTravelTests {
 
         let s = new NightMapSettings();
         s.teleportEnabled = true;
-        t.Check("ft.hint_on", StrContains(NMInput.HintText(s, "ALL"), "FAST TRAVEL"), "");
+        t.Check("ft.hint_on", StrContains(NMInput.HintText(s, "ALL", "FAST TRAVEL"), "FAST TRAVEL"), "");
         s.teleportEnabled = false;
-        t.Check("ft.hint_off", !StrContains(NMInput.HintText(s, "ALL"), "FAST TRAVEL"), "");
+        t.Check("ft.hint_off", !StrContains(NMInput.HintText(s, "ALL", "FAST TRAVEL"), "FAST TRAVEL"), "");
     }
 }

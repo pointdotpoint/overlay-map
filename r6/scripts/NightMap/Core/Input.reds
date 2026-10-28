@@ -135,12 +135,13 @@ public class NMInput {
         return StrUpper(s);
     }
 
-    public static func HintText(s: ref<NightMapSettings>, view: String) -> String {
+    // teleportLabel: what the teleport key does for the current selection ("FAST TRAVEL" or "TELEPORT").
+    public static func HintText(s: ref<NightMapSettings>, view: String, teleportLabel: String) -> String {
         return NMInput.KeyName(s.keyPanUp) + "/" + NMInput.KeyName(s.keyPanLeft) + "/" + NMInput.KeyName(s.keyPanRight) + "/" + NMInput.KeyName(s.keyPanDown) + " PAN"
             + "   ·   " + NMInput.KeyName(s.keyZoomIn) + " " + NMInput.KeyName(s.keyZoomOut) + " ZOOM"
             + "   ·   " + NMInput.KeyName(s.keyRecenter) + " FOLLOW"
             + "   ·   " + NMInput.KeyName(s.keyAct) + " ACT"
-            + (s.teleportEnabled ? "   ·   " + NMInput.KeyName(s.keyTeleport) + " FAST TRAVEL" : "")
+            + (s.teleportEnabled ? "   ·   " + NMInput.KeyName(s.keyTeleport) + " " + teleportLabel : "")
             + "   ·   " + NMInput.KeyName(s.keyFilter) + " FILTER: " + view
             + "   ·   " + NMInput.KeyName(s.keyToggle) + " CLOSE";
     }

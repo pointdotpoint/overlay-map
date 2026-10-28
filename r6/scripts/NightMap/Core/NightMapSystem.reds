@@ -234,7 +234,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.camera.SetMpp(this.savedMpp > 0.0 ? this.savedMpp : NightMapSystem.MinMpp());
         this.CenterOnPlayer(true);
         if IsDefined(s) {
-            this.panel.hints.SetText(NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView)));
+            this.panel.hints.SetText(NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView), "FAST TRAVEL"));
         }
         this.isOpen = true;
         this.input.ResetHeld();
@@ -339,6 +339,39 @@ public class NightMapSystem extends ScriptableSystem {
         NMLog.Info("fasttravel|start|" + NMVanillaText.Title(m, m.GetVariant()));
         this.Close();
         NMFastTravel.Travel(gi, m, player);
+        return true;
+    }
+
+    // The photo spot behind the crosshair's selected item, when it is a photo pin; else null.
+    private func SelectedPhoto() -> ref<NMPhotoSpot> {
+        let c = this.crosshair;
+        if !IsDefined(c) || c.selKind != 0 || c.selLayer < 0 || c.selLayer >= ArraySize(this.api.layers) {
+            return null;
+        }
+        let L = this.api.layers[c.selLayer];
+        if !Equals(L.id, NMPhotos.LayerId()) || !L.IsAlive(c.selItem) {
+            return null;
+        }
+        return this.Photos().SpotOf(c.selItem);
+    }
+
+    private func TeleportLabel() -> String {
+        return this.SelectedPhoto() != null ? "TELEPORT" : "FAST TRAVEL";
+    }
+
+    // Teleports V on foot to the selected photo's spot; closes the map. Refusals are logged and keep the map open.
+    public func StartPhotoTeleport() -> Bool {
+        let gi = this.GetGameInstance();
+        let player = GetPlayer(gi);
+        let spot = this.SelectedPhoto();
+        let why = NMPhotoTeleport.Refusal(spot != null, IsDefined(player) && IsDefined(GetMountedVehicle(player)), IsDefined(player));
+        if StrLen(why) > 0 {
+            NMLog.Info("photo|teleport|refused|" + why);
+            return false;
+        }
+        NMLog.Info("photo|teleport|start|" + ToString(spot.hash));
+        this.Close();
+        NMPhotoTeleport.Go(gi, player, spot);
         return true;
     }
 
@@ -553,7 +586,11 @@ public class NightMapSystem extends ScriptableSystem {
         // First: a started fast travel closes the map, and nothing below may run on the destroyed panel.
         if this.input.teleport {
             this.input.teleport = false;
-            if this.StartFastTravel() {
+            if this.SelectedPhoto() != null {
+                if this.StartPhotoTeleport() {
+                    return;
+                }
+            } else if this.StartFastTravel() {
                 return;
             }
         }
@@ -662,6 +699,9 @@ public class NightMapSystem extends ScriptableSystem {
 
     private func RefreshTooltip(changed: Bool) {
         let c = this.crosshair;
+        if changed {
+            this.UpdateHeader();   // the hint's teleport label follows the selection
+        }
         if c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers) {
             let L = this.api.layers[c.selLayer];
             if !L.IsAlive(c.selItem) {
@@ -806,7 +846,7 @@ public class NightMapSystem extends ScriptableSystem {
         }
         this.UpdateScale();
         if IsDefined(s) {
-            let hint = NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView));
+            let hint = NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView), this.TeleportLabel());
             if this.input.arrowSeen {
                 hint += "   ·   ARROW KEYS IGNORED - TURN NUMLOCK ON";
             }
