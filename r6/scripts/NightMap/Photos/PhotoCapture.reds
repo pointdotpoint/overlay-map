@@ -7,7 +7,7 @@ protected cb func OnInitialize() -> Bool {
     let sys = NightMapSystem.Get(GetGameInstance());
     let player = GetPlayer(GetGameInstance());
     if IsDefined(sys) && IsDefined(player) {
-        sys.Photos().OnPhotoModeOpened(player.GetWorldPosition(), player.GetWorldYaw());
+        sys.Photos().OnPhotoModeOpened(player.GetWorldPosition(), player.GetWorldYaw(), sys.DistrictName());
     }
     return r;
 }

@@ -42,6 +42,7 @@ public class NMPhotos extends IScriptable {
     private let sessClosed: Bool;
     private let sessPos: Vector4;
     private let sessYaw: Float;
+    private let sessDistrict: String;
     private let hasBaseline: Bool;
     private let baseline: Uint64;
     private let itemSpot: array<Int32>;   // layer item id -> index into spots (-1 free)
@@ -112,7 +113,7 @@ public class NMPhotos extends IScriptable {
         NMLog.Info("photo|store|loaded " + ToString(ArraySize(this.spots)));
     }
 
-    public func OnPhotoModeOpened(pos: Vector4, yaw: Float) {
+    public func OnPhotoModeOpened(pos: Vector4, yaw: Float, district: String) {
         this.EnsureLoaded();
         if this.session {
             NMLog.Info("photo|link|dropped unresolved session");
@@ -121,6 +122,7 @@ public class NMPhotos extends IScriptable {
         this.sessClosed = false;
         this.sessPos = pos;
         this.sessYaw = yaw;
+        this.sessDistrict = district;
         this.hasBaseline = false;
         this.RequestList();
     }
@@ -177,6 +179,7 @@ public class NMPhotos extends IScriptable {
                 let added = 0;
                 for i in NMPhotoLink.NewSince(hashes, created, this.baseline, known) {
                     let s = NMPhotoSpot.Create(hashes[i], infos[i].path, this.sessPos, this.sessYaw, created[i]);
+                    s.district = this.sessDistrict;
                     ArrayPush(this.spots, s);
                     ArrayPush(this.exists, true);
                     if !NMPhotoStore.Append(s) {

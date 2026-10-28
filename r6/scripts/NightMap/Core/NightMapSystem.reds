@@ -28,6 +28,8 @@ public class NightMapSystem extends ScriptableSystem {
     private let renderer: ref<NMItemRenderer>;
     private let crosshair: ref<NMCrosshair>;
     private let tooltip: ref<NMTooltip>;
+    private let drawer: ref<NMPhotoDrawer>;
+    private let drawerShift: Float;   // px the view and focus point are shifted left while the drawer is open
     private let marker: ref<NMPlayerMarker>;
     private let tipApiRev: Int32;
     private let scaleRev: Int32;
@@ -487,6 +489,8 @@ public class NightMapSystem extends ScriptableSystem {
         this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
         this.crosshair = NMCrosshair.Create();
         this.tooltip = NMTooltip.Create(this.panel.overlay, l.mapW, l.mapH, l.scale);
+        this.drawer = NMPhotoDrawer.Create(this.panel.overlay, l);
+        this.drawerShift = 0.0;
         this.UpdateHeader();
         this.vanilla.ApplyFilters(this.filterView, this.Settings());
         this.vanilla.Tick(NMClock.NowMs(), true);
@@ -540,6 +544,8 @@ public class NightMapSystem extends ScriptableSystem {
         this.marker = null;
         this.crosshair = null;
         this.tooltip = null;
+        this.drawer = null;
+        this.drawerShift = 0.0;
         this.routes = null;
     }
 
@@ -575,9 +581,15 @@ public class NightMapSystem extends ScriptableSystem {
         if this.Photos().Revision() != this.Photos().SyncedRevision() {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
         }
+        // The view and the focus point move left together while the photo drawer is open (spec §6.5).
+        let shift = NMPhotoDrawer.EaseShift(this.drawerShift, NMPhotoDrawer.ShiftTarget(this.drawer.IsShown(), l.mapW), dt);
+        if shift != this.drawerShift {
+            this.camera.PanPixels(shift - this.drawerShift, 0.0);
+            this.drawerShift = shift;
+        }
         let relaid = this.renderer.Update(this.camera, l.mapW, l.mapH);
         if relaid {
-            let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale);
+            let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale, this.drawerShift);
             // Re-query tooltip content only when the selection or the data changed, not on every pan frame.
             if changed || this.api.revision != this.tipApiRev || this.ClusterStale() {
                 this.tipApiRev = this.api.revision;
@@ -654,8 +666,17 @@ public class NightMapSystem extends ScriptableSystem {
             let L = this.api.layers[c.selLayer];
             if !L.IsAlive(c.selItem) {
                 this.tooltip.Hide();
+                this.drawer.Hide();
                 return;
             }
+            if Equals(L.id, NMPhotos.LayerId()) {
+                let spot = this.Photos().SpotOf(c.selItem);
+                if IsDefined(spot) {
+                    this.ShowDrawer(spot);
+                    return;
+                }
+            }
+            this.drawer.Hide();
             let d: ref<NightMapDetails>;
             if IsDefined(L.listener) {
                 if changed {
@@ -683,9 +704,28 @@ public class NightMapSystem extends ScriptableSystem {
             this.cacheCounts = counts;
             let s = this.Settings();
             this.tooltip.ShowCluster(this.renderer.clTotal[slot], IsDefined(s) ? NMInput.KeyName(s.keyAct) : "ACT");
+            this.drawer.Hide();
         } else {
             this.tooltip.Hide();
+            this.drawer.Hide();
         }
+    }
+
+    private func ShowDrawer(spot: ref<NMPhotoSpot>) {
+        this.tooltip.Hide();
+        if !this.drawer.IsShown() {
+            NMPhotoDrawer.OnOpen(this.camera);
+        }
+        let dist = "";
+        let player = GetPlayer(this.GetGameInstance());
+        if IsDefined(player) {
+            let p = player.GetWorldPosition();
+            let dx = spot.x - p.X;
+            let dy = spot.y - p.Y;
+            dist = NMMath.FormatMeters(SqrtF(dx * dx + dy * dy));
+        }
+        let s = this.Settings();
+        this.drawer.Show(spot, dist, spot.district, IsDefined(s) ? NMInput.KeyName(s.keyTeleport) : "TELEPORT", this.Photos().Handler());
     }
 
     private func DefaultDetails(L: ref<NightMapLayer>, id: Int32) -> ref<NightMapDetails> {
@@ -777,7 +817,7 @@ public class NightMapSystem extends ScriptableSystem {
         }
     }
 
-    private func DistrictName() -> String {
+    public func DistrictName() -> String {
         let ps = GameInstance.GetScriptableSystemsContainer(this.GetGameInstance()).Get(n"PreventionSystem") as PreventionSystem;
         if !IsDefined(ps) {
             return "";

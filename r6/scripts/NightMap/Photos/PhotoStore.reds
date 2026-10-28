@@ -11,6 +11,7 @@ public class NMPhotoSpot {
     public let z: Float;
     public let yaw: Float;
     public let created: Uint64;
+    public let district: String;   // where V stood when photo mode opened ("" when unknown)
 
     public static func Create(hash: Uint32, path: String, pos: Vector4, yaw: Float, created: Uint64) -> ref<NMPhotoSpot> {
         let s = new NMPhotoSpot();
@@ -30,20 +31,20 @@ public class NMPhotoSpot {
 }
 
 // Spots live in NightMap's own RedFileSystem storage (not the save game), one per line:
-// hash;x;y;z;yaw;created;path. The path is last so it may contain ';'.
+// hash;x;y;z;yaw;created;district;path. The path is last so it may contain ';'.
 public abstract class NMPhotoStore {
     public static func FileName() -> String { return "photos.txt"; }
 
     public static func ToLine(s: ref<NMPhotoSpot>) -> String {
         return ToString(s.hash) + ";" + FloatToStringPrec(s.x, 2) + ";" + FloatToStringPrec(s.y, 2) + ";"
-            + FloatToStringPrec(s.z, 2) + ";" + FloatToStringPrec(s.yaw, 2) + ";" + ToString(s.created) + ";" + s.path;
+            + FloatToStringPrec(s.z, 2) + ";" + FloatToStringPrec(s.yaw, 2) + ";" + ToString(s.created) + ";" + s.district + ";" + s.path;
     }
 
-    // Null when the line does not have 7 fields or a number does not parse.
+    // Null when the line does not have 8 fields or a number does not parse.
     public static func FromLine(line: String) -> ref<NMPhotoSpot> {
         let f: array<String>;
         let rest = line;
-        while ArraySize(f) < 6 {
+        while ArraySize(f) < 7 {
             let i = StrFindFirst(rest, ";");
             if i < 0 {
                 return null;
@@ -68,6 +69,7 @@ public abstract class NMPhotoStore {
         s.z = StringToFloat(f[3]);
         s.yaw = StringToFloat(f[4]);
         s.created = StringToUint64(f[5]);
+        s.district = f[6];
         s.path = rest;
         return s;
     }

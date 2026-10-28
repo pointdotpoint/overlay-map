@@ -7,6 +7,31 @@ public abstract class NMPhotoTests {
         NMPhotoTests.Groups(t);
         NMPhotoTests.Link(t);
         NMPhotoTests.Layer(t);
+        NMPhotoTests.Drawer(t);
+    }
+
+    private static func Drawer(t: ref<NMSelfTest>) {
+        t.Check("photo.shift_target", NMPhotoDrawer.ShiftTarget(true, 1600.0) == 400.0 && NMPhotoDrawer.ShiftTarget(false, 1600.0) == 0.0, "");
+        let half = NMPhotoDrawer.EaseShift(0.0, 400.0, 75.0);
+        t.Check("photo.shift_ease", half >= 150.0 && half <= 250.0 && NMPhotoDrawer.EaseShift(0.0, 400.0, 150.0) == 400.0
+            && NMPhotoDrawer.EaseShift(400.0, 0.0, 1000.0) == 0.0, ToString(half));
+
+        let xs: array<Float>;
+        let ys: array<Float>;
+        let kinds: array<Int32>;
+        let layers: array<Int32>;
+        let items: array<Int32>;
+        ArrayPush(xs, 100.0); ArrayPush(ys, 100.0); ArrayPush(kinds, 0); ArrayPush(layers, 0); ArrayPush(items, 1);
+        ArrayPush(xs, 500.0); ArrayPush(ys, 100.0); ArrayPush(kinds, 0); ArrayPush(layers, 0); ArrayPush(items, 2);
+        t.Check("photo.pick_shifted", NMCrosshair.Pick(xs, ys, kinds, layers, items, 500.0 - 400.0, 100.0, 50.0, -1, -1, -1) == 0, "");
+
+        let cam = NMCamera.Create(1600.0, 900.0, NMRect.Create(-5000.0, -5000.0, 5000.0, 5000.0), 0.5, 16.0);
+        cam.follow = true;
+        NMPhotoDrawer.OnOpen(cam);
+        t.Check("photo.drawer_stops_follow", !cam.follow, "");
+
+        t.Check("photo.date_from_path", Equals(NMPhotoDrawer.DateFromPath("C:\\users\\steamuser\\Pictures\\Cyberpunk 2077\\photomode_28102026_110520.png"), "28 OCT 2026 · 11:05")
+            && Equals(NMPhotoDrawer.DateFromPath("collage_column.png"), ""), NMPhotoDrawer.DateFromPath("photomode_28102026_110520.png"));
     }
 
     private static func Layer(t: ref<NMSelfTest>) {
@@ -106,8 +131,9 @@ public abstract class NMPhotoTests {
     private static func Store(t: ref<NMSelfTest>) {
         let s = NMPhotoSpot.Create(4000000000u, "C:\\Pictures\\photomode_27102026_225854.png",
             new Vector4(-1624.257, -387.004, 33.1, 1.0), -135.5, 133432000000000000ul);
+        s.district = "WEST WIND ESTATE";
         let r = NMPhotoStore.FromLine(NMPhotoStore.ToLine(s));
-        t.Check("photo.line_roundtrip", IsDefined(r) && r.hash == s.hash && Equals(r.path, s.path) && r.created == s.created
+        t.Check("photo.line_roundtrip", IsDefined(r) && r.hash == s.hash && Equals(r.path, s.path) && r.created == s.created && Equals(r.district, s.district)
             && AbsF(r.x - s.x) <= 0.01 && AbsF(r.y - s.y) <= 0.01 && AbsF(r.z - s.z) <= 0.01 && AbsF(r.yaw - s.yaw) <= 0.01,
             IsDefined(r) ? NMPhotoStore.ToLine(r) : "null");
 
