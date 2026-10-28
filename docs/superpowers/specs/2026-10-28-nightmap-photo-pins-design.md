@@ -1,6 +1,6 @@
 # NightMap photo pins — design
 
-Status: approved pending user read (2026-10-28); builder check done
+Status: draft awaiting user approval (2026-10-28); builder check done
 
 ## 1. Intent
 
