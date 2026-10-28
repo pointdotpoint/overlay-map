@@ -10,6 +10,24 @@ public abstract class NMPhotoTests {
         NMPhotoTests.Drawer(t);
         NMPhotoTests.Teleport(t);
         NMPhotoTests.Review(t);
+        NMPhotoTests.Reticle(t);
+    }
+
+    // The focus reticle: four corner brackets that lock around the focused marker, and a plus on the focus point.
+    private static func Reticle(t: ref<NMSelfTest>) {
+        let r = NMReticle.Corners(100.0, 200.0, 80.0, 60.0, 20.0, 4.0);
+        let inside = ArraySize(r) == 8;
+        for q in r {   // (centre x, centre y, w, h)
+            inside = inside && q.X - q.Z * 0.5 >= 59.99 && q.X + q.Z * 0.5 <= 140.01 && q.Y - q.W * 0.5 >= 169.99 && q.Y + q.W * 0.5 <= 230.01;
+        }
+        t.Check("reticle.corners_inside_box", inside, ToString(ArraySize(r)));
+        t.Check("reticle.corner_touches", AbsF(r[0].X - r[0].Z * 0.5 - 60.0) < 0.01 && AbsF(r[0].Y - r[0].W * 0.5 - 170.0) < 0.01, "");
+        let half = NMReticle.Ease(0.0, 100.0, 60.0);
+        t.Check("reticle.ease", half > 30.0 && half < 70.0 && NMReticle.Ease(0.0, 100.0, NMReticle.EaseMs()) == 100.0, ToString(half));
+        let idle = NMReticle.BoxFor(false, false);
+        let chip = NMReticle.BoxFor(true, false);
+        let photo = NMReticle.BoxFor(true, true);
+        t.Check("reticle.box_sizes", idle.X > chip.X && photo.X > photo.Y && photo.X > NMItemRenderer.ThumbW(), "");
     }
 
     // Final review fixes.

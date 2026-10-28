@@ -29,6 +29,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let crosshair: ref<NMCrosshair>;
     private let tooltip: ref<NMTooltip>;
     private let drawer: ref<NMPhotoDrawer>;
+    private let reticle: ref<NMReticle>;
     private let wasPanning: Bool;
     private let drawerShift: Float;   // px the focus point sits left of the map-area centre (middle of the map left of the sidebar)
     private let marker: ref<NMPlayerMarker>;
@@ -524,6 +525,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
         this.crosshair = NMCrosshair.Create();
         // The sidebar is always visible; marker details dock in it. The focus point is the middle of the map left of it.
+        this.reticle = NMReticle.Create(this.panel.overlay, l.scale, this.holoTheme);   // under the sidebar
         this.drawer = NMPhotoDrawer.Create(this.panel.overlay, l, this.holoTheme);
         this.tooltip = NMTooltip.CreateDocked(this.drawer.Root(), 40.0 * l.scale, 40.0 * l.scale, l.sideW - 80.0 * l.scale, l.scale);
         this.drawerShift = NMPhotoDrawer.FocusShift(l);
@@ -586,6 +588,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.crosshair = null;
         this.tooltip = null;
         this.drawer = null;
+        this.reticle = null;
         this.drawerShift = 0.0;
         this.routes = null;
     }
@@ -638,6 +641,10 @@ public class NightMapSystem extends ScriptableSystem {
             this.tooltip.Reposition(this.crosshair.selX, this.crosshair.selY);
         }
         this.renderer.ApplySelection(this.crosshair.sel, this.crosshair.selKind, dt);
+        let c = this.crosshair;
+        let isPhoto = c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers)
+            && Equals(this.api.layers[c.selLayer].id, NMPhotos.LayerId());
+        this.reticle.Update(l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5, c.selKind >= 0, c.selX, c.selY, isPhoto, dt);
         if this.input.act {
             this.input.act = false;
             this.Activate();
