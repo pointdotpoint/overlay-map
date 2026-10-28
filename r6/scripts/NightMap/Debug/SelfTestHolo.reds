@@ -90,6 +90,12 @@ public abstract class NMHoloTests {
             && NMTheme.ThemeIndex(NightMapHoloColor.Topographic) == 2, "");
         t.Check("holo.topo_opaque_ground", NMTheme.PanelOpacityFor(2, 0.45) >= 0.9 && NMTheme.PanelOpacityFor(0, 0.45) == 0.45, "");
         t.Check("holo.topo_faint_roads", NMTheme.TileOpacityFor("road", 2) <= 0.25, "");
+        let roadT: HDRColor = NMTheme.TileTint("road", 2);
+        t.Check("holo.topo_slate_roads", AbsF(roadT.Green - roadT.Red) < 0.08 && roadT.Green < 0.3, "");
+        t.Check("holo.topo_glow_nearly_off", NMTheme.TileOpacityFor("glow", 2) <= 0.1, "");
+        let gT: HDRColor = NMTheme.GridColor(2);
+        let gC: HDRColor = NMTheme.GridColor(0);
+        t.Check("holo.topo_orange_grid", gT.Red > 0.9 && gT.Blue < 0.3 && t.Near(gC.Green, NMTheme.HoloAccent(0).Green, 0.001), "");
         t.Check("holo.topo_tile_strengths", NMTheme.TileOpacityFor("bfill", 2) < NMTheme.TileOpacity("bfill")
             && NMTheme.TileOpacityFor("glow", 2) > NMTheme.TileOpacity("glow") && NMTheme.TileOpacityFor("road", 0) == NMTheme.TileOpacity("road"), "");
         t.Check("holo.sidebar_bg_topo", NMTheme.SidebarBg(2).Red < 0.03 && NMTheme.SidebarBg(0).Green > 0.1, "");

@@ -42,7 +42,7 @@ public class NMHolo {
         if !this.effects {
             return;
         }
-        this.grid = NMUi.HoloImage(parent, n"holo_grid", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloAccent(this.theme), NMTheme.HoloGridOpacity(), inkBrushTileType.Both);
+        this.grid = NMUi.HoloImage(parent, n"holo_grid", 0.0, 0.0, this.mapW, this.mapH, NMTheme.GridColor(this.theme), NMTheme.HoloGridOpacity(), inkBrushTileType.Both);
     }
 
     // Scanlines (black) and noise (accent), over the tiles, under the markers. The scanline image is one period taller

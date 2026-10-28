@@ -88,6 +88,11 @@ public abstract class NMTheme {
         if theme == 2 { return new HDRColor(0.016, 0.024, 0.031, 1.0); } // #040608 near-black
         return NMTheme.MapBackground();                                  // #08121a
     }
+    // The overlay grid: the accent, except the topographic map's faint orange survey grid.
+    public static func GridColor(theme: Int32) -> HDRColor {
+        if theme == 2 { return NMTheme.HoloHighlight(2); }
+        return NMTheme.HoloAccent(theme);
+    }
     // The map ground's opacity: the topographic theme is an opaque black survey map whatever the see-through setting.
     public static func PanelOpacityFor(theme: Int32, opacity: Float) -> Float {
         return theme == 2 ? MaxF(opacity, 0.92) : opacity;
@@ -126,7 +131,7 @@ public abstract class NMTheme {
         if Equals(set, "glow") { return NMTheme.HoloAccent(theme); }
         if Equals(set, "road") {
             if theme == 1 { return new HDRColor(0.122, 0.604, 0.322, 1.0); }   // #1f9a52
-            if theme == 2 { return new HDRColor(0.086, 0.400, 0.447, 1.0); }   // #166672 dim teal
+            if theme == 2 { return new HDRColor(0.180, 0.220, 0.240, 1.0); }   // #2e383d dark slate lanes
             return new HDRColor(0.118, 0.549, 0.588, 1.0);                     // #1e8c96
         }
         if theme == 1 { return new HDRColor(0.659, 1.0, 0.749, 1.0); }         // #a8ffbf (bfill, outline)
@@ -137,8 +142,8 @@ public abstract class NMTheme {
     // a soft teal glow.
     public static func TileOpacityFor(set: String, theme: Int32) -> Float {
         if theme == 2 {
-            if Equals(set, "glow") { return 0.35; }
-            if Equals(set, "road") { return 0.18; }
+            if Equals(set, "glow") { return 0.08; }   // the blurred road glow made wide teal bands
+            if Equals(set, "road") { return 0.22; }
             if Equals(set, "bfill") { return 0.04; }
             if Equals(set, "outline") { return 0.95; }
         }
