@@ -135,28 +135,32 @@ Answers spec §6.2 questions 1–5. Nothing here ships; the probe file is delete
 **Interfaces:**
 - Consumes: Task 2 `NMPhotoSpot`, `NMPhotoStore.Append/Load`; Task 1 §10 (which controller's handler delivers the
   list, the `creationDate` unit).
-- Produces:
-  - `NMPhotoLink.Assign(pending: Int32, hashes: array<Uint32>, created: array<Uint64>, known: array<Uint32>) ->
-    array<Int32>`: indices into the list for the `pending` captures, oldest capture first. Takes the `pending`
-    newest entries whose hash is not in `known`, returned oldest-first. Fewer available → shorter result; the
-    unmatched captures stay pending.
-  - `class NMPhotos`: `OnCapture(pos: Vector4, yaw: Float)`, `RequestList(h: wref<inkISystemRequestsHandler>)`,
-    `cb func OnList(infos: array<GameScreenshotInfo>)`, `Spots() -> array<ref<NMPhotoSpot>>`,
-    `Exists(i: Int32) -> Bool`, `Revision() -> Int32` (bumped on any change).
-- Behaviour: `OnCapture` only appends to a pending array (no I/O, no list request) so the shot is untouched.
-  The list is requested when photo mode closes and on every map open (source per §10); `OnList` assigns pending
-  captures, appends each new spot to the file, and rebuilds `exists[]` from the list (a saved hash not in the list
-  → `false`). Pending captures older than 10 minutes unmatched are dropped with a log line.
+- Produces (amended after the spike, spec §10 — linking is per photo mode session, not per capture):
+  - `NMPhotoLink.NewSince(hashes: array<Uint32>, created: array<Uint64>, baseline: Uint64, known: array<Uint32>) ->
+    array<Int32>`: indices of entries with `created > baseline` whose hash is not in `known`, oldest first.
+  - `NMPhotoLink.Baseline(created: array<Uint64>) -> Uint64`: the newest `created` (0 for an empty list).
+  - `class NMPhotos`: `OnPhotoModeOpened(pos: Vector4, yaw: Float)`, `OnPhotoModeClosed()`, `OnMapOpened()`,
+    `cb func OnList(infos: array<GameScreenshotInfo>)`, `SetHandlerSource(m: wref<MinimapContainerController>)`,
+    `Spots() -> array<ref<NMPhotoSpot>>`, `Exists(i: Int32) -> Bool`, `Revision() -> Int32` (bumped on any change).
+- Behaviour: photo mode open records the session (V position, yaw) and requests the list for its baseline; the
+  capture hook is not needed (it fires twice per shot). Photo mode close and every map open request the list while a
+  session is unresolved. `OnList`: no baseline yet → set it; else every `NewSince` entry becomes a spot at the
+  session position, is appended to the file, and the session closes. A session whose baseline never arrived is
+  dropped with `photo|link|no baseline`. Every list also rebuilds `exists[]` (a saved hash not in the list →
+  `false`). The list always comes from the HUD minimap controller's handler (§10).
 
 - [ ] **Step 1: Write failing tests:**
-  - `photo.link_one`: pending 1, list hashes `[5,7,9]` created `[1,3,2]`, known `[]` → `[1]`.
-  - `photo.link_skips_known`: same list, known `[7]` → `[2]`.
-  - `photo.link_burst`: pending 3, list `[5,7,9,11]` created `[1,2,3,4]`, known `[5]` → `[1,2,3]` (oldest first).
-  - `photo.link_short`: pending 2, only one unknown entry → length 1.
+  - `photo.link_session`: hashes `[5,7,9]`, created `[90,101,105]`, baseline `100`, known `[]` → `[1,2]`.
+  - `photo.link_skips_known`: same, known `[9]` → `[1]`.
+  - `photo.link_burst`: 5 entries created `101..105` (shuffled order `[103,101,105,102,104]`), baseline `100` →
+    indices ordered by created (`[1,3,0,4,2]`).
+  - `photo.link_none`: baseline `105` → empty.
+  - `photo.baseline`: `Baseline([3,9,4]) == 9`, `Baseline([]) == 0`.
 - [ ] **Step 2: Compile** → fails on missing `NMPhotoLink`.
-- [ ] **Step 3: Implement** `NMPhotoLink`, `NMPhotos`, and the wraps: `OnHideForScreenshot` → `wrappedMethod()`
-  then `NightMapSystem.Get(gi).Photos().OnCapture(player.GetWorldPosition(), player.GetWorldYaw())`; the close
-  wrap (`OnUninitialize`, or the hook §10 names) → `wrappedMethod()` then `RequestList(this.GetSystemRequestsHandler())`.
+- [ ] **Step 3: Implement** `NMPhotoLink`, `NMPhotos`, and the wraps on `gameuiPhotoModeMenuController`:
+  `OnInitialize` → `wrappedMethod()` then `Photos().OnPhotoModeOpened(player.GetWorldPosition(),
+  player.GetWorldYaw())`; `OnUninitialize` → `wrappedMethod()` then `Photos().OnPhotoModeClosed()`. The minimap
+  controller wrap in `Gps.reds` also calls `Photos().SetHandlerSource(this)`.
 - [ ] **Step 4: Compile** → `COMPILE OK`.
 - [ ] **Step 5: Commit** `feat(photos): capture hook and screenshot linking`.
 
@@ -182,7 +186,9 @@ Answers spec §6.2 questions 1–5. Nothing here ships; the probe file is delete
   the filter view is ALL. In the renderer, a photo chip whose `chipIconKey` differs from `IconKeyFor` calls
   `GetSystemRequestsHandler().RequestGameScreenshotByHash(hash, ic, ...)` (handler per §10) once; until its callback
   reports a non-zero size the icon is hidden and the frame shows. Frame and pointer art: builder's choice from the
-  existing atlases.
+  existing atlases. At most `NMPhotos.ThumbCap()` = 24 photo chips request or keep a thumbnail at once (spec §10:
+  shots load at 2560×1440); further chips show the frame only. Test `photo.thumb_cap`: `NMPhotos.ThumbAllowed(23, 24)`
+  true, `ThumbAllowed(24, 24)` false.
 
 - [ ] **Step 1: Write failing tests:**
   - `photo.item_shot`: `NightMapItem.Shot(pos, n"Photos", 42u).shotHash == 42u` and `hasAtlas == false`.
@@ -214,7 +220,10 @@ Answers spec §6.2 questions 1–5. Nothing here ships; the probe file is delete
 - Behaviour: each frame the system eases `shift` toward `ShiftTarget`, pans the camera by the change
   (`camera.PanPixels(delta, 0.0)`) and passes `shift` to the crosshair, so the pin and the focus point move
   together. Opening the drawer sets `camera.follow = false`. The drawer's image loads by hash into its own
-  `inkImage` (16:9, width = half the map minus padding). Date row from `created` (format per §10).
+  `inkImage` (16:9, width = half the map minus padding). Date row from the file name (§10):
+  `NMPhotoDrawer.DateFromPath(path: String) -> String`, test `photo.date_from_path`:
+  `DateFromPath("C:\\...\\photomode_28102026_110520.png") == "28 OCT 2026 · 11:05"`, and `""` for a name that
+  does not match.
 
 - [ ] **Step 1: Write failing tests:**
   - `photo.shift_target`: `ShiftTarget(true, 1600.0) == 400.0`, `ShiftTarget(false, 1600.0) == 0.0`.
@@ -243,7 +252,8 @@ Answers spec §6.2 questions 1–5. Nothing here ships; the probe file is delete
 - Produces: `NMPhotoTeleport.Refusal(isPhoto: Bool, inVehicle: Bool, playerReady: Bool) -> String` (`""`,
   `"not ready"`, `"not a photo"`, `"in vehicle"`, checked in that order); `NMPhotoTeleport.Go(gi, player, spot)`.
 - Behaviour: on success log `photo|teleport|start|<hash>`, close the map, then `Teleport(player, pos, yaw)`. The
-  hint label is `"TELEPORT"` on a photo pin, `"FAST TRAVEL"` otherwise. **If §10 says V fell:** `Go` also applies
+  hint label is `"TELEPORT"` on a photo pin, `"FAST TRAVEL"` otherwise. (§10: V did not fall, so the hold below
+  is **not** built.) ~~If §10 says V fell:~~ `Go` also applies
   `BaseStatusEffect.Invulnerable`, then re-teleports V to the spot every frame until a `Static`+`Terrain` ray finds
   ground within 2 m below the spot or 5 s pass (timeout → back to start), then removes the effect; add the test
   `photo.hold_lands` with fake mover/ground seams as in the removed `TeleportDriver` (commit `465d684`).
