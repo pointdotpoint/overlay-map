@@ -6,6 +6,47 @@ public abstract class NMPhotoTests {
         NMPhotoTests.Store(t);
         NMPhotoTests.Groups(t);
         NMPhotoTests.Link(t);
+        NMPhotoTests.Layer(t);
+    }
+
+    private static func Layer(t: ref<NMSelfTest>) {
+        let pos = new Vector4(100.0, 200.0, 10.0, 1.0);
+        let it = NightMapItem.Shot(pos, n"Photos", 42u);
+        t.Check("photo.item_shot", it.shotHash == 42u && !it.hasAtlas, "");
+
+        let api = NightMap.Create();
+        let L = api.CreateLayer(n"Test.Photos", "Photos", 10);
+        let a = L.Add(NightMapItem.Shot(pos, n"Photos", 1u));
+        let b = L.Add(NightMapItem.Shot(new Vector4(300.0, 200.0, 10.0, 1.0), n"Photos", 2u));
+        let k1 = NMItemRenderer.IconKeyFor(L, a);
+        let k2 = NMItemRenderer.IconKeyFor(L, b);
+        L.Update(a, NightMapItem.Shot(pos, n"Photos", 3u));
+        t.Check("photo.icon_key_changes", Equals(k1, "shot:1") && Equals(k2, "shot:2") && Equals(NMItemRenderer.IconKeyFor(L, a), "shot:3"),
+            k1 + " " + k2 + " " + NMItemRenderer.IconKeyFor(L, a));
+
+        let spots: array<ref<NMPhotoSpot>>;
+        ArrayPush(spots, NMPhotoTests.Spot(11u, 0.0, 0.0, 1ul));
+        ArrayPush(spots, NMPhotoTests.Spot(12u, 2.0, 1.0, 3ul));
+        ArrayPush(spots, NMPhotoTests.Spot(13u, 1.0, 2.0, 2ul));
+        ArrayPush(spots, NMPhotoTests.Spot(14u, 500.0, 0.0, 4ul));
+        let ph = new NMPhotos();
+        ph.SetSpotsForTest(spots, NMPhotoTests.AllExist(4));
+        let api2 = NightMap.Create();
+        ph.SyncLayer(api2, true);
+        let PL = api2.GetLayer(NMPhotos.LayerId());
+        let alive = 0;
+        let hasNewest = false;
+        let i = 0;
+        while IsDefined(PL) && i < ArraySize(PL.alive) {
+            if PL.alive[i] {
+                alive += 1;
+                if PL.shot[i] == 12u && ph.SpotOf(i).hash == 12u { hasNewest = true; }
+            }
+            i += 1;
+        }
+        t.Check("photo.sync_newest", alive == 2 && hasNewest, ToString(alive) + " alive");
+
+        t.Check("photo.thumb_cap", NMPhotos.ThumbCap() == 24 && NMPhotos.ThumbAllowed(23, 24) && !NMPhotos.ThumbAllowed(24, 24), "");
     }
 
     private static func U32(a: Int32, b: Int32, c: Int32) -> array<Uint32> {

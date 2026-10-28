@@ -10,6 +10,7 @@ public class NightMapItem {
     public let atlas: ResRef;
     public let part: CName;
     public let imageKey: String;
+    public let shotHash: Uint32;
     public let hasTint: Bool;
     public let tint: HDRColor;
     public let label: String;
@@ -37,6 +38,17 @@ public class NightMapItem {
         it.z = pos.Z;
         it.category = category;
         it.imageKey = imageKey;
+        return it;
+    }
+
+    // An item whose icon is a photo mode shot, loaded by the game's screenshot hash (photo pins).
+    public static func Shot(pos: Vector4, category: CName, hash: Uint32) -> ref<NightMapItem> {
+        let it = new NightMapItem();
+        it.x = pos.X;
+        it.y = pos.Y;
+        it.z = pos.Z;
+        it.category = category;
+        it.shotHash = hash;
         return it;
     }
 

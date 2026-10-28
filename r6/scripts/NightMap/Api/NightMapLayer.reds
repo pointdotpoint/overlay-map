@@ -39,6 +39,7 @@ public class NightMapLayer {
     public let part: array<CName>;
     public let image: array<String>;
     public let imageResolved: array<String>;
+    public let shot: array<Uint32>;       // photo mode shot hash (0 = not a photo)
     public let hasTint: array<Bool>;
     public let tint: array<HDRColor>;
     public let label: array<String>;
@@ -137,6 +138,7 @@ public class NightMapLayer {
             this.image[id] = item.imageKey;
             this.imageResolved[id] = "";   // only a different image needs resolving again
         }
+        this.shot[id] = item.shotHash;
         this.hasTint[id] = item.hasTint;
         this.tint[id] = item.tint;
         this.label[id] = item.label;
@@ -334,6 +336,7 @@ public class NightMapLayer {
         ArrayPush(this.part, n"");
         ArrayPush(this.image, "");
         ArrayPush(this.imageResolved, "");
+        ArrayPush(this.shot, 0u);
         ArrayPush(this.hasTint, false);
         ArrayPush(this.tint, new HDRColor(1.0, 1.0, 1.0, 1.0));
         ArrayPush(this.label, "");

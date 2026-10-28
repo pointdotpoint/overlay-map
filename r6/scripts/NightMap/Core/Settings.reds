@@ -203,6 +203,13 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Photo pins")
+    @runtimeProperty("ModSettings.description", "Show a thumbnail pin where each photo mode shot was taken (shows in the ALL filter view).")
+    public let showPhotos: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "1")
     @runtimeProperty("ModSettings.displayName", "Hide HUD while open")
     @runtimeProperty("ModSettings.description", "Fade out the game's HUD (minimap, quest tracker, hotkeys, prompts) while the map is open.")
     public let hideHud: Bool = true;

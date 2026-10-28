@@ -482,6 +482,8 @@ public class NightMapSystem extends ScriptableSystem {
         this.layers = NMLayerStack.Create(this.panel.tiles, this.holoGreen, this.holoEffects);
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, l.scale);
         this.renderer.SetHalo(this.holoEffects);
+        this.renderer.SetShotHandler(this.Photos().Handler());
+        this.Photos().SyncLayer(this.api, this.PhotosVisible());
         this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
         this.crosshair = NMCrosshair.Create();
         this.tooltip = NMTooltip.Create(this.panel.overlay, l.mapW, l.mapH, l.scale);
@@ -494,6 +496,12 @@ public class NightMapSystem extends ScriptableSystem {
         if this.RoutesWanted() {
             this.ReadRoutes();   // routes on the first frame, not 500 ms later
         }
+    }
+
+    // Photo pins show in the ALL filter view only, unless switched off in Mod Settings.
+    private func PhotosVisible() -> Bool {
+        let s = this.Settings();
+        return this.filterView == 0 && (!IsDefined(s) || s.showPhotos);
     }
 
     private func RoutesWanted() -> Bool {
@@ -564,6 +572,9 @@ public class NightMapSystem extends ScriptableSystem {
             this.tipApiRev = -1;
         }
         this.UpdateRoutes(dt);
+        if this.Photos().Revision() != this.Photos().SyncedRevision() {
+            this.Photos().SyncLayer(this.api, this.PhotosVisible());
+        }
         let relaid = this.renderer.Update(this.camera, l.mapW, l.mapH);
         if relaid {
             let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale);
@@ -587,6 +598,7 @@ public class NightMapSystem extends ScriptableSystem {
             this.input.filter = false;
             this.filterView = (this.filterView + 1) % NMVanillaFilters.ViewCount();
             this.vanilla.ApplyFilters(this.filterView, this.Settings());
+            this.Photos().SyncLayer(this.api, this.PhotosVisible());
             this.UpdateHeader();
         }
         this.marker.Update(this.camera, GetPlayer(this.GetGameInstance()), l.mapW, l.mapH);

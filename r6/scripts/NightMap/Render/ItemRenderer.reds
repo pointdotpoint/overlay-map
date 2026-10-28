@@ -1,5 +1,19 @@
 module NightMap
 
+// Callback target for one by-hash screenshot load into a photo chip's icon.
+public class NMThumbListener extends IScriptable {
+    public let r: wref<NMItemRenderer>;
+    public let slot: Int32;
+    public let key: String;
+
+    protected cb func OnLoaded(size: Vector2, err: Int32) -> Bool {
+        if IsDefined(this.r) {
+            this.r.OnThumb(this.slot, this.key, size, err);
+        }
+        return true;
+    }
+}
+
 public class NMIconRef {
     public let atlas: ResRef;
     public let part: CName;
@@ -25,7 +39,19 @@ public class NMItemRenderer {
     private let chipTintBg: array<HDRColor>;
     private let chipTintIc: array<HDRColor>;
     public let chipAlpha: array<Float>;
-    public let chipStyle: array<Int32>;   // -1 unset, 0 hex, 1 icon idle, 2 icon emphasised
+    public let chipStyle: array<Int32>;   // -1 unset, 0 hex, 1 icon idle, 2 icon emphasised, 3 photo pin
+    // Photo pins (style 3): a thumbnail in the slot's icon image, plus rectangles created on the slot's first photo:
+    // a dark fill shown until the thumbnail loads, a 4-sided border, and a 45-degree point touching the spot.
+    private let parent: wref<inkCanvas>;
+    private let photoFill: array<ref<inkRectangle>>;
+    private let photoEdge: array<ref<inkRectangle>>;   // [slot * 4 + side]
+    private let photoPtr: array<ref<inkRectangle>>;
+    private let photoOn: array<Bool>;
+    private let thumbReady: array<Bool>;
+    private let thumbsHeld: Int32;
+    private let photoSel: Int32;
+    private let photoColor: array<HDRColor>;
+    private let shotHandler: wref<inkISystemRequestsHandler>;
     public let growSlot: Int32;           // slot currently growing/grown for the selection (icon idle pins), -1 none
     public let growT: Float;              // 0..1 progress of the selection grow
     private let growLayer: Int32;
@@ -73,6 +99,7 @@ public class NMItemRenderer {
     private let icon: ref<NMIconRef>;
     private let lastCamRev: Int32;
     private let lastApiRev: Int32;
+    private let thumbListeners: array<ref<NMThumbListener>>;
     public let chipsUsed: Int32;
     public let clustersUsed: Int32;
     public let pendingImages: Int32;
@@ -85,6 +112,8 @@ public class NMItemRenderer {
         r.icon = new NMIconRef();
         r.lastCamRev = -1;
         r.lastApiRev = -1;
+        r.parent = parent;
+        r.photoSel = -1;
         // z-order (back to front): selected-cluster rim, clusters, selected-chip rim, chips
         r.selCluster = NMUi.Image(parent, n"cluster_sel", 0.0, 0.0, NMTheme.ClusterSelSize() * scale, NMTheme.Cyan(), true);
         r.selCluster.SetVisible(false);
@@ -144,12 +173,154 @@ public class NMItemRenderer {
             ArrayPush(r.chipTintIc, NMTheme.Cyan());
             ArrayPush(r.chipAlpha, 1.0);
             ArrayPush(r.chipStyle, -1);
+            ArrayPush(r.photoFill, null);
+            ArrayPush(r.photoPtr, null);
+            ArrayPush(r.photoOn, false);
+            ArrayPush(r.thumbReady, false);
+            ArrayPush(r.thumbListeners, null);
+            ArrayPush(r.photoColor, NMTheme.Cyan());
+            let e = 0;
+            while e < 4 { ArrayPush(r.photoEdge, null); e += 1; }
             i += 1;
         }
         r.growSlot = -1;
         r.growLayer = -1;
         r.growItem = -1;
         return r;
+    }
+
+    // The request handler photo thumbnails load through (NMPhotos.Handler()); set on map open.
+    public func SetShotHandler(h: wref<inkISystemRequestsHandler>) { this.shotHandler = h; }
+
+    // Identity of an item's icon for the pooled-widget change check: "shot:<hash>" for photo items.
+    public static func IconKeyFor(L: ref<NightMapLayer>, id: Int32) -> String {
+        if id >= 0 && id < ArraySize(L.shot) && L.shot[id] != 0u {
+            return "shot:" + ToString(L.shot[id]);
+        }
+        return id >= 0 && id < ArraySize(L.atlasKey) ? L.atlasKey[id] : "";
+    }
+
+    public static func ThumbW() -> Float { return 72.0; }   // 16:9, 4K units (about 36x20 px at 1080p)
+    public static func ThumbH() -> Float { return 41.0; }
+    public static func PhotoEdge() -> Float { return 3.0; }
+    public static func PhotoPtr() -> Float { return 14.0; }
+
+    public func OnThumb(slot: Int32, key: String, size: Vector2, err: Int32) {
+        if slot < 0 || slot >= ArraySize(this.chipIconKey) || NotEquals(this.chipIconKey[slot], key) {
+            return;   // the slot moved on to another item
+        }
+        if size.X <= 0.0 || err != 0 {
+            return;   // keep the plain frame
+        }
+        this.thumbReady[slot] = true;
+        if this.photoOn[slot] {
+            this.chipIcon[slot].SetVisible(true);
+            this.photoFill[slot].SetVisible(false);
+        }
+    }
+
+    private func EnsurePhotoWidgets(slot: Int32) {
+        if IsDefined(this.photoFill[slot]) { return; }
+        let fill = NMUi.Rect(this.parent, 0.0, 0.0, NMItemRenderer.ThumbW() * this.scale, NMItemRenderer.ThumbH() * this.scale, NMTheme.PanelBg(), 0.85);
+        fill.SetAnchorPoint(new Vector2(0.5, 0.5));
+        fill.SetVisible(false);
+        this.photoFill[slot] = fill;
+        let e = 0;
+        while e < 4 {
+            let r = NMUi.Rect(this.parent, 0.0, 0.0, 1.0, 1.0, NMTheme.Cyan(), 1.0);
+            r.SetAnchorPoint(new Vector2(0.5, 0.5));
+            r.SetVisible(false);
+            this.photoEdge[slot * 4 + e] = r;
+            e += 1;
+        }
+        let k = NMItemRenderer.PhotoPtr() * this.scale;
+        let ptr = NMUi.Rect(this.parent, 0.0, 0.0, k, k, NMTheme.Cyan(), 1.0);
+        ptr.SetAnchorPoint(new Vector2(0.5, 0.5));
+        ptr.SetRotation(45.0);
+        ptr.SetVisible(false);
+        this.photoPtr[slot] = ptr;
+    }
+
+    private func PaintPhoto(slot: Int32, color: HDRColor) {
+        if !IsDefined(this.photoPtr[slot]) { return; }
+        let e = 0;
+        while e < 4 { this.photoEdge[slot * 4 + e].SetTintColor(color); e += 1; }
+        this.photoPtr[slot].SetTintColor(color);
+    }
+
+    private func SetPhotoVisible(slot: Int32, on: Bool) {
+        if !IsDefined(this.photoFill[slot]) { return; }
+        this.photoFill[slot].SetVisible(on && !this.thumbReady[slot]);
+        let e = 0;
+        while e < 4 { this.photoEdge[slot * 4 + e].SetVisible(on); e += 1; }
+        this.photoPtr[slot].SetVisible(on);
+        this.chipIcon[slot].SetVisible(on && this.thumbReady[slot]);
+        this.photoOn[slot] = on;
+    }
+
+    // Drops the slot's thumbnail (frees the full-size texture) so another pin can hold one.
+    private func ReleaseThumb(slot: Int32) {
+        if StrBeginsWith(this.chipIconKey[slot], "shot:") {
+            this.thumbsHeld -= 1;
+            let ic = this.chipIcon[slot];
+            ic.SetAtlasResource(NMTheme.UiAtlas());
+            ic.SetTexturePart(n"icon_dot");
+            this.chipIconKey[slot] = "";
+            this.chipIconPart[slot] = n"";
+        }
+        this.thumbReady[slot] = false;
+    }
+
+    private func PlacePhoto(L: ref<NightMapLayer>, id: Int32, slot: Int32, p: Vector2, color: HDRColor) -> Vector2 {
+        this.EnsurePhotoWidgets(slot);
+        let key = NMItemRenderer.IconKeyFor(L, id);
+        if NotEquals(this.chipIconKey[slot], key) {
+            this.ReleaseThumb(slot);
+            if NMPhotos.ThumbAllowed(this.thumbsHeld, NMPhotos.ThumbCap()) && IsDefined(this.shotHandler) {
+                let lst = new NMThumbListener();
+                lst.r = this;
+                lst.slot = slot;
+                lst.key = key;
+                this.chipIcon[slot].SetVisible(false);
+                if this.shotHandler.RequestGameScreenshotByHash(L.shot[id], this.chipIcon[slot], lst, n"OnLoaded") {
+                    this.chipIconKey[slot] = key;
+                    this.thumbsHeld += 1;
+                    this.thumbListeners[slot] = lst;
+                }
+            }
+        }
+        let s = this.scale;
+        let tw = NMItemRenderer.ThumbW() * s;
+        let th = NMItemRenderer.ThumbH() * s;
+        let ed = NMItemRenderer.PhotoEdge() * s;
+        let half = NMItemRenderer.PhotoPtr() * s * 0.7071;
+        let c = new Vector2(p.X, p.Y - half - ed - th * 0.5);   // thumbnail centre; the point's tip sits on p
+        let ic = this.chipIcon[slot];
+        ic.SetSize(new Vector2(tw, th));
+        ic.SetTintColor(new HDRColor(1.0, 1.0, 1.0, 1.0));
+        ic.SetOpacity(L.opacity * L.alpha[id]);
+        ic.SetTranslation(c);
+        this.photoFill[slot].SetTranslation(c);
+        let edgeColor = slot == this.photoSel ? NMTheme.Yellow() : color;
+        let e = 0;
+        while e < 4 {
+            let r = this.photoEdge[slot * 4 + e];
+            if e < 2 {
+                r.SetSize(new Vector2(tw + ed * 2.0, ed));
+                r.SetTranslation(new Vector2(c.X, c.Y + (e == 0 ? -1.0 : 1.0) * (th + ed) * 0.5));
+            } else {
+                r.SetSize(new Vector2(ed, th + ed * 2.0));
+                r.SetTranslation(new Vector2(c.X + (e == 2 ? -1.0 : 1.0) * (tw + ed) * 0.5, c.Y));
+            }
+            e += 1;
+        }
+        this.photoPtr[slot].SetTranslation(new Vector2(p.X, p.Y - half));
+        this.photoColor[slot] = color;
+        this.PaintPhoto(slot, edgeColor);
+        if !this.photoOn[slot] {
+            this.SetPhotoVisible(slot, true);
+        }
+        return c;
     }
 
     public func Invalidate() {
@@ -383,6 +554,18 @@ public class NMItemRenderer {
     private func ApplyChipStyle(slot: Int32, style: Int32) {
         let bg = this.chipBg[slot];
         let ic = this.chipIcon[slot];
+        if this.chipStyle[slot] == 3 && style != 3 {
+            this.SetPhotoVisible(slot, false);
+            this.ReleaseThumb(slot);
+        }
+        if style == 3 {
+            bg.SetVisible(false);
+            bg.SetScale(new Vector2(1.0, 1.0));
+            ic.SetScale(new Vector2(1.0, 1.0));
+            if slot == this.growSlot { this.growSlot = -1; }
+            this.chipStyle[slot] = style;
+            return;
+        }
         if style == 0 {
             bg.SetAtlasResource(NMTheme.UiAtlas());
             bg.SetTexturePart(n"chip");
@@ -431,6 +614,16 @@ public class NMItemRenderer {
             slot = this.candSlot[cand];
             layer = this.candLayer[cand];
             item = this.candItem[cand];
+        }
+        let photo = slot >= 0 && this.chipStyle[slot] == 3 ? slot : -1;
+        if photo != this.photoSel {
+            if this.photoSel >= 0 && this.photoSel < ArraySize(this.photoColor) {
+                this.PaintPhoto(this.photoSel, this.photoColor[this.photoSel]);
+            }
+            this.photoSel = photo;
+            if photo >= 0 {
+                this.PaintPhoto(photo, NMTheme.Yellow());
+            }
         }
         let isIcon = slot >= 0 && this.chipStyle[slot] >= 1;
         if isIcon {
@@ -481,11 +674,22 @@ public class NMItemRenderer {
         }
         let g = L.catGlobal[L.cat[id]];
         let color = this.api.catColor[g];
-        let style = L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0;
+        let style = L.shot[id] != 0u ? 3 : (L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0);
         if this.chipStyle[slot] != style {
             this.ApplyChipStyle(slot, style);
             this.chipTintOk[slot] = false;  // force the tint refresh below
             this.chipAlpha[slot] = -1.0;    // force the opacity refresh below
+        }
+        if style == 3 {
+            let c = this.PlacePhoto(L, id, slot, p, color);
+            this.chipOn[slot] = true;
+            ArrayPush(this.candX, c.X);
+            ArrayPush(this.candY, c.Y);
+            ArrayPush(this.candKind, 0);
+            ArrayPush(this.candLayer, L.index);
+            ArrayPush(this.candItem, id);
+            ArrayPush(this.candSlot, slot);
+            return true;
         }
         let icTint = L.hasTint[id] ? L.tint[id] : color;
         let bgTint = style == 0 ? color : (this.halo ? icTint : NMTheme.ShadowColor());
@@ -787,6 +991,10 @@ public class NMItemRenderer {
             if this.chipOn[s] {
                 this.chipBg[s].SetVisible(false);
                 this.chipIcon[s].SetVisible(false);
+                if this.photoOn[s] {
+                    this.SetPhotoVisible(s, false);
+                    this.ReleaseThumb(s);
+                }
                 if s == this.growSlot {
                     this.SetGrow(s, 0.0);
                     this.growSlot = -1;

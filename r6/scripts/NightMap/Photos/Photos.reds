@@ -44,11 +44,63 @@ public class NMPhotos extends IScriptable {
     private let sessYaw: Float;
     private let hasBaseline: Bool;
     private let baseline: Uint64;
+    private let itemSpot: array<Int32>;   // layer item id -> index into spots (-1 free)
+    private let syncedRev: Int32;
+
+    public static func LayerId() -> CName { return n"NightMap.Photos"; }
+    public static func Category() -> CName { return n"Photos"; }
+    // Shots load at full size (2560x1440), so only this many pins hold a thumbnail at once (spec §10).
+    public static func ThumbCap() -> Int32 { return 24; }
+    public static func ThumbAllowed(held: Int32, cap: Int32) -> Bool { return held < cap; }
 
     public func SetHandlerSource(m: wref<MinimapContainerController>) { this.minimap = m; }
     public func Spots() -> array<ref<NMPhotoSpot>> { this.EnsureLoaded(); return this.spots; }
     public func Exists(i: Int32) -> Bool { return i >= 0 && i < ArraySize(this.exists) && this.exists[i]; }
     public func Revision() -> Int32 { return this.rev; }
+    public func SyncedRevision() -> Int32 { return this.syncedRev; }
+
+    public func Handler() -> wref<inkISystemRequestsHandler> {
+        if IsDefined(this.minimap) {
+            return this.minimap.GetSystemRequestsHandler();
+        }
+        return null;
+    }
+
+    // Test seam: replaces the loaded spots without touching the file.
+    public func SetSpotsForTest(spots: array<ref<NMPhotoSpot>>, exists: array<Bool>) {
+        this.loaded = true;
+        this.spots = spots;
+        this.exists = exists;
+        this.rev += 1;
+    }
+
+    // The spot behind a Photos layer item, or null.
+    public func SpotOf(itemId: Int32) -> ref<NMPhotoSpot> {
+        if itemId < 0 || itemId >= ArraySize(this.itemSpot) || this.itemSpot[itemId] < 0 {
+            return null;
+        }
+        return this.spots[this.itemSpot[itemId]];
+    }
+
+    // One item per place (the newest existing shot within NMPhotoGroups.Radius()).
+    public func SyncLayer(api: ref<NightMap>, visible: Bool) {
+        this.EnsureLoaded();
+        let L = api.CreateLayer(NMPhotos.LayerId(), "Photos", 60);
+        L.SetClustering(false);
+        L.SetCategory(NMPhotos.Category(), "PHOTO", NMTheme.Cyan());
+        L.Clear();
+        ArrayClear(this.itemSpot);
+        for idx in NMPhotoGroups.Newest(this.spots, this.exists, NMPhotoGroups.Radius()) {
+            let s = this.spots[idx];
+            let id = L.Add(NightMapItem.Shot(s.Position(), NMPhotos.Category(), s.hash));
+            if id >= 0 {
+                while ArraySize(this.itemSpot) <= id { ArrayPush(this.itemSpot, -1); }
+                this.itemSpot[id] = idx;
+            }
+        }
+        L.SetVisible(visible);
+        this.syncedRev = this.rev;
+    }
 
     private func EnsureLoaded() {
         if this.loaded { return; }
