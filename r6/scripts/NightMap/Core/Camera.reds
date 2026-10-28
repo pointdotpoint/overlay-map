@@ -9,6 +9,7 @@ public class NMCamera {
     public let maxMpp: Float;
     public let viewW: Float;
     public let viewH: Float;
+    public let shiftX: Float;   // the centre (cx, cy) is drawn this far left of the view centre (photo drawer, spec §6.5)
     public let follow: Bool;
     public let revision: Int32;
     public let bounds: ref<NMRect>;
@@ -37,17 +38,18 @@ public class NMCamera {
     }
 
     public func WorldToMap(wx: Float, wy: Float) -> Vector2 {
-        return new Vector2((wx - this.cx) / this.mpp + this.viewW * 0.5, (this.cy - wy) / this.mpp + this.viewH * 0.5);
+        return new Vector2((wx - this.cx) / this.mpp + this.viewW * 0.5 - this.shiftX, (this.cy - wy) / this.mpp + this.viewH * 0.5);
     }
 
     public func MapToWorld(px: Float, py: Float) -> Vector2 {
-        return new Vector2(this.cx + (px - this.viewW * 0.5) * this.mpp, this.cy - (py - this.viewH * 0.5) * this.mpp);
+        return new Vector2(this.cx + (px - this.viewW * 0.5 + this.shiftX) * this.mpp, this.cy - (py - this.viewH * 0.5) * this.mpp);
     }
 
     public func VisibleRect(marginPx: Float) -> ref<NMRect> {
         let hw = (this.viewW * 0.5 + marginPx) * this.mpp;
         let hh = (this.viewH * 0.5 + marginPx) * this.mpp;
-        return NMRect.Create(this.cx - hw, this.cy - hh, this.cx + hw, this.cy + hh);
+        let mx = this.cx + this.shiftX * this.mpp;   // world x at the view centre
+        return NMRect.Create(mx - hw, this.cy - hh, mx + hw, this.cy + hh);
     }
 
     // The center stays inside the world bounds: at most half a view of empty space past the edge.
@@ -63,6 +65,13 @@ public class NMCamera {
         if nx != this.cx || ny != this.cy {
             this.cx = nx;
             this.cy = ny;
+            this.revision += 1;
+        }
+    }
+
+    public func SetScreenShift(px: Float) {
+        if px != this.shiftX {
+            this.shiftX = px;
             this.revision += 1;
         }
     }

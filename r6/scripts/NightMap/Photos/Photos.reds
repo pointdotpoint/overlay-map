@@ -20,12 +20,39 @@ public abstract class NMPhotoLink {
         return out;
     }
 
+    // A closed session stays open this long, so shots still being written when photo mode closed are claimed.
+    public static func SessionDone(closedAtMs: Float, nowMs: Float) -> Bool {
+        return nowMs - closedAtMs >= 10000.0;
+    }
+
     public static func Baseline(created: array<Uint64>) -> Uint64 {
         let b = 0ul;
         for c in created {
             if c > b { b = c; }
         }
         return b;
+    }
+}
+
+// One photo mode session: where V stood, and the newest screenshot date before it (its baseline).
+public class NMPhotoSession {
+    public let pos: Vector4;
+    public let yaw: Float;
+    public let district: String;
+    public let hasBaseline: Bool;
+    public let baseline: Uint64;
+    public let closed: Bool;
+    public let closedAtMs: Float;
+}
+
+// Re-reads the screenshot list once a closed session's window has passed.
+public class NMPhotoRelist extends DelayCallback {
+    public let photos: wref<NMPhotos>;
+
+    public func Call() {
+        if IsDefined(this.photos) {
+            this.photos.Relist();
+        }
     }
 }
 
@@ -38,15 +65,13 @@ public class NMPhotos extends IScriptable {
     private let rev: Int32;
     private let minimap: wref<MinimapContainerController>;
     private let registeredOn: wref<inkISystemRequestsHandler>;
-    private let session: Bool;        // a photo mode session not yet resolved
-    private let sessClosed: Bool;
-    private let sessPos: Vector4;
-    private let sessYaw: Float;
-    private let sessDistrict: String;
-    private let hasBaseline: Bool;
-    private let baseline: Uint64;
+    private let session: ref<NMPhotoSession>;   // not yet resolved; null when none
+    private let prev: ref<NMPhotoSession>;      // the session before, still inside its window
+    private let hasNewest: Bool;                // newest creationDate seen in any list (baseline fallback)
+    private let newest: Uint64;
     private let itemSpot: array<Int32>;   // layer item id -> index into spots (-1 free)
     private let syncedRev: Int32;
+    private let sessionFresh: Bool;   // the current session has not seen a list yet
     private let lastHashes: array<Uint32>;   // hashes in the newest screenshot list
     private let perfSaved: Bool;
     private let perfSpots: array<ref<NMPhotoSpot>>;
@@ -107,6 +132,8 @@ public class NMPhotos extends IScriptable {
         this.rev += 1;
     }
 
+    public func IsPerfSeeded() -> Bool { return this.perfSaved; }
+
     public func EndPerfSeed() {
         if !this.perfSaved { return; }
         this.spots = this.perfSpots;
@@ -155,21 +182,34 @@ public class NMPhotos extends IScriptable {
 
     public func OnPhotoModeOpened(pos: Vector4, yaw: Float, district: String) {
         this.EnsureLoaded();
-        if this.session {
-            NMLog.Info("photo|link|dropped unresolved session");
+        if IsDefined(this.session) {
+            if IsDefined(this.prev) {
+                NMLog.Info("photo|link|dropped unresolved session");
+            }
+            this.prev = this.session;   // still claims its late shots on the next list
         }
-        this.session = true;
-        this.sessClosed = false;
-        this.sessPos = pos;
-        this.sessYaw = yaw;
-        this.sessDistrict = district;
-        this.hasBaseline = false;
+        let ss = new NMPhotoSession();
+        ss.pos = pos;
+        ss.yaw = yaw;
+        ss.district = district;
+        ss.hasBaseline = this.hasNewest;   // fallback; the first list after open replaces it
+        ss.baseline = this.newest;
+        this.session = ss;
+        this.sessionFresh = true;
         this.RequestList();
     }
 
     public func OnPhotoModeClosed() {
-        if !this.session { return; }
-        this.sessClosed = true;
+        if !IsDefined(this.session) { return; }
+        this.session.closed = true;
+        this.session.closedAtMs = NMClock.NowMs();
+        this.RequestList();
+        let cb = new NMPhotoRelist();
+        cb.photos = this;
+        GameInstance.GetDelaySystem(GetGameInstance()).DelayCallback(cb, 11.0, false);
+    }
+
+    public func Relist() {
         this.RequestList();
     }
 
@@ -196,6 +236,34 @@ public class NMPhotos extends IScriptable {
         h.RequestGameScreenshotsForLoad();
     }
 
+    // Every new shot since the session's baseline becomes a spot at the session's position.
+    private func Claim(ss: ref<NMPhotoSession>, infos: array<GameScreenshotInfo>, hashes: array<Uint32>, created: array<Uint64>) {
+        let known: array<Uint32>;
+        for s in this.spots { ArrayPush(known, s.hash); }
+        if this.perfSaved {
+            for s in this.perfSpots { ArrayPush(known, s.hash); }
+        }
+        let added = 0;
+        for i in NMPhotoLink.NewSince(hashes, created, ss.baseline, known) {
+            let s = NMPhotoSpot.Create(hashes[i], infos[i].path, ss.pos, ss.yaw, created[i]);
+            s.district = ss.district;
+            if this.perfSaved {
+                ArrayPush(this.perfSpots, s);
+                ArrayPush(this.perfExists, true);
+            } else {
+                ArrayPush(this.spots, s);
+                ArrayPush(this.exists, true);
+            }
+            if !NMPhotoStore.Append(s) {
+                NMLog.Error("photo|store|append failed " + ToString(s.hash));
+            }
+            added += 1;
+        }
+        if added > 0 {
+            NMLog.Info("photo|link|added " + ToString(added));
+        }
+    }
+
     protected cb func OnList(infos: array<GameScreenshotInfo>) -> Bool {
         this.EnsureLoaded();
         let hashes: array<Uint32>;
@@ -204,32 +272,28 @@ public class NMPhotos extends IScriptable {
             ArrayPush(hashes, inf.pathHash);
             ArrayPush(created, inf.creationDate);
         }
-        if this.session {
-            if !this.hasBaseline {
-                if this.sessClosed {
-                    this.session = false;
-                    NMLog.Info("photo|link|no baseline");
-                } else {
-                    this.baseline = NMPhotoLink.Baseline(created);
-                    this.hasBaseline = true;
-                }
-            } else if this.sessClosed {
-                let known: array<Uint32>;
-                for s in this.spots { ArrayPush(known, s.hash); }
-                let added = 0;
-                for i in NMPhotoLink.NewSince(hashes, created, this.baseline, known) {
-                    let s = NMPhotoSpot.Create(hashes[i], infos[i].path, this.sessPos, this.sessYaw, created[i]);
-                    s.district = this.sessDistrict;
-                    ArrayPush(this.spots, s);
-                    ArrayPush(this.exists, true);
-                    if !NMPhotoStore.Append(s) {
-                        NMLog.Error("photo|store|append failed " + ToString(s.hash));
-                    }
-                    added += 1;
-                }
-                this.session = false;
-                NMLog.Info("photo|link|added " + ToString(added));
+        let now = NMClock.NowMs();
+        if IsDefined(this.prev) {
+            this.Claim(this.prev, infos, hashes, created);
+            if NMPhotoLink.SessionDone(this.prev.closedAtMs, now) { this.prev = null; }
+        }
+        if IsDefined(this.session) {
+            let ss = this.session;
+            if this.sessionFresh && !ss.closed {
+                ss.baseline = NMPhotoLink.Baseline(created);   // after prev claimed its late shots above
+                ss.hasBaseline = true;
+            } else if !ss.hasBaseline {
+                this.session = null;
+                NMLog.Info("photo|link|no baseline");
+            } else if ss.closed {
+                this.Claim(ss, infos, hashes, created);
+                if NMPhotoLink.SessionDone(ss.closedAtMs, now) { this.session = null; }
             }
+            this.sessionFresh = false;
+        }
+        if ArraySize(created) > 0 {
+            this.newest = NMPhotoLink.Baseline(created);
+            this.hasNewest = true;
         }
         this.lastHashes = hashes;
         if this.perfSaved {

@@ -149,10 +149,46 @@ public class NMPhotoStoreState extends ScriptableSystem {
     }
 }
 
+// RedFileSystem revokes a storage that is requested twice, so the storage is requested exactly once per game
+// process, when this service loads, and kept.
+public class NMPhotoStorage extends ScriptableService {
+    private let requests: Int32;
+    private let handle: ref<IScriptable>;
+
+    private cb func OnLoad() {
+        this.handle = NMPhotoStorageOpen();
+        this.requests += 1;
+    }
+
+    public static func Get() -> ref<NMPhotoStorage> {
+        return GameInstance.GetScriptableServiceContainer().GetService(n"NightMap.NMPhotoStorage") as NMPhotoStorage;
+    }
+
+    public static func Requests() -> Int32 {
+        let st = NMPhotoStorage.Get();
+        return IsDefined(st) ? st.requests : 0;
+    }
+
+    public static func Handle() -> ref<IScriptable> {
+        let st = NMPhotoStorage.Get();
+        return IsDefined(st) ? st.handle : null;
+    }
+}
+
+@if(ModuleExists("RedFileSystem"))
+public func NMPhotoStorageOpen() -> ref<IScriptable> {
+    return FileSystem.GetStorage("NightMap");
+}
+
+@if(!ModuleExists("RedFileSystem"))
+public func NMPhotoStorageOpen() -> ref<IScriptable> {
+    return null;
+}
+
 @if(ModuleExists("RedFileSystem"))
 public func NMPhotoStoreLoad() -> array<ref<NMPhotoSpot>> {
     let none: array<ref<NMPhotoSpot>>;
-    let st = FileSystem.GetStorage("NightMap");
+    let st = NMPhotoStorage.Handle() as FileSystemStorage;
     if !IsDefined(st) {
         NMLog.Error("photo|store|no storage");
         return none;
@@ -177,7 +213,7 @@ public func NMPhotoStoreLoad() -> array<ref<NMPhotoSpot>> {
 
 @if(ModuleExists("RedFileSystem"))
 public func NMPhotoStoreAppend(line: String) -> Bool {
-    let st = FileSystem.GetStorage("NightMap");
+    let st = NMPhotoStorage.Handle() as FileSystemStorage;
     if !IsDefined(st) {
         NMLog.Error("photo|store|no storage");
         return false;

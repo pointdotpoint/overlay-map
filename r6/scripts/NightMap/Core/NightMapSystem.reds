@@ -99,7 +99,10 @@ public class NightMapSystem extends ScriptableSystem {
     public func RoutesOn() -> Bool { return !this.routesOff; }
 
     // Perf-suite overrides never outlive the map: a suite closed mid-run must not leave routes off for the session.
-    public func ClearPerfOverrides() { this.routesOff = false; }
+    public func ClearPerfOverrides() {
+        this.routesOff = false;
+        this.Photos().EndPerfSeed();   // never leave seeded spots (teleport targets) behind
+    }
     public func Routes() -> ref<NMRouteLayer> { return this.routes; }
     public func IsOpen() -> Bool { return this.isOpen; }
     public func Camera() -> ref<NMCamera> { return this.camera; }
@@ -560,6 +563,10 @@ public class NightMapSystem extends ScriptableSystem {
         // Perf suite may have vanilla markers off; never leave them disabled. Flag only, no poll while closed.
         this.vanilla.MarkEnabled();
         this.ClearPerfOverrides();
+        let h = this.Photos().Handler();
+        if IsDefined(h) {
+            h.CancelGameScreenshotRequests();   // pending thumbnail and drawer loads
+        }
         this.perf = null;
         this.perfHidden = false;
         this.layers = null;
@@ -611,7 +618,7 @@ public class NightMapSystem extends ScriptableSystem {
         // The view and the focus point move left together while the photo drawer is open (spec §6.5).
         let shift = NMPhotoDrawer.EaseShift(this.drawerShift, NMPhotoDrawer.ShiftTarget(this.drawer.IsShown(), l.mapW), dt);
         if shift != this.drawerShift {
-            this.camera.PanPixels(shift - this.drawerShift, 0.0);
+            this.camera.SetScreenShift(shift);
             this.drawerShift = shift;
         }
         let relaid = this.renderer.Update(this.camera, l.mapW, l.mapH);

@@ -9,6 +9,87 @@ public abstract class NMPhotoTests {
         NMPhotoTests.Layer(t);
         NMPhotoTests.Drawer(t);
         NMPhotoTests.Teleport(t);
+        NMPhotoTests.Review(t);
+    }
+
+    // Final review fixes.
+    private static func Review(t: ref<NMSelfTest>) {
+        // RedFileSystem revokes a storage requested twice: loads and appends must share one request.
+        NMPhotoStore.Load();
+        NMPhotoStore.Load();
+        t.Check("photo.storage_once", NMPhotoStorage.Requests() <= 1, ToString(NMPhotoStorage.Requests()));
+
+        // Thumbnails are cached by shot hash, one load in flight, off-screen wants dropped.
+        let p = NMThumbPlan.Create(2);
+        p.BeginLayout();
+        let w0 = p.Want(5u);
+        p.EndLayout();
+        let r0 = p.NextRequest();
+        let s5 = p.SlotOf(5u);
+        p.Loaded(5u, true);
+        p.BeginLayout();
+        let again = p.Want(5u);
+        p.EndLayout();
+        t.Check("photo.thumb_keyed", w0 == -1 && r0 == 5u && s5 >= 0 && again == s5 && p.IsReady(s5) && p.NextRequest() == 0u,
+            ToString(w0) + " " + ToString(r0) + " " + ToString(again));
+
+        let q = NMThumbPlan.Create(2);
+        q.BeginLayout();
+        q.Want(1u);
+        q.Want(2u);
+        q.EndLayout();
+        let a1 = q.NextRequest();
+        let busy = q.NextRequest();
+        q.Loaded(1u, true);
+        t.Check("photo.thumb_one_in_flight", a1 == 1u && busy == 0u && q.NextRequest() == 2u, "");
+
+        let d = NMThumbPlan.Create(2);
+        d.BeginLayout();
+        d.Want(1u);
+        d.Want(2u);
+        d.EndLayout();
+        d.NextRequest();
+        d.BeginLayout();
+        d.Want(3u);
+        d.EndLayout();
+        d.Loaded(1u, true);
+        t.Check("photo.thumb_drop_offscreen", d.NextRequest() == 3u && d.SlotOf(2u) < 0, "");
+
+        let e = NMThumbPlan.Create(2);
+        e.BeginLayout(); e.Want(1u); e.Want(2u); e.EndLayout();
+        e.NextRequest(); e.Loaded(1u, true);
+        e.NextRequest(); e.Loaded(2u, true);
+        e.BeginLayout(); e.Want(3u); e.EndLayout();
+        t.Check("photo.thumb_evict", e.NextRequest() == 3u && (e.SlotOf(1u) < 0 || e.SlotOf(2u) < 0), "");
+
+        // A late image from the previous pin never shows under the next pin's details.
+        let dr = NMPhotoDrawer.CreateDetached();
+        dr.Show(NMPhotoTests.Spot(21u, 0.0, 0.0, 1ul), "1 M", "", "NUM .", null);
+        let la = dr.LastListener();
+        dr.Show(NMPhotoTests.Spot(22u, 0.0, 0.0, 2ul), "1 M", "", "NUM .", null);
+        la.OnLoaded(new Vector2(2560.0, 1440.0), 0);
+        t.Check("photo.drawer_stale_image", !dr.ImageShown(), "");
+
+        // A session stays open 10 s after photo mode closes (shots finish writing ~5 s after capture).
+        t.Check("photo.session_window", !NMPhotoLink.SessionDone(1000.0, 10999.0) && NMPhotoLink.SessionDone(1000.0, 11000.0), "");
+
+        // The drawer shift is a screen offset of the camera, not a pan.
+        let cam = NMCamera.Create(1600.0, 900.0, NMRect.Create(-5000.0, -5000.0, 5000.0, 5000.0), 0.5, 16.0);
+        cam.SetCenter(4999.0, 0.0);
+        cam.SetScreenShift(400.0);
+        let c = cam.WorldToMap(cam.cx, cam.cy);
+        let back = cam.MapToWorld(300.0, 200.0);
+        let fwd = cam.WorldToMap(back.X, back.Y);
+        t.Check("photo.camera_offset", AbsF(c.X - 400.0) < 0.01 && AbsF(fwd.X - 300.0) < 0.01 && AbsF(fwd.Y - 200.0) < 0.01 && cam.cx == 4999.0,
+            ToString(c.X));
+
+        // Closing the map mid-suite never leaves seeded perf spots behind.
+        let sys = NightMapSystem.Get(GetGameInstance());
+        if IsDefined(sys) {
+            sys.Photos().SeedForPerf(3);
+            sys.ClearPerfOverrides();
+            t.Check("photo.perf_seed_cleared", !sys.Photos().IsPerfSeeded(), "");
+        }
     }
 
     private static func Teleport(t: ref<NMSelfTest>) {

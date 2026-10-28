@@ -1,14 +1,13 @@
 module NightMap
 
-// Callback target for one by-hash screenshot load into a photo chip's icon.
+// Callback target for one by-hash screenshot load into a thumbnail cache image.
 public class NMThumbListener extends IScriptable {
     public let r: wref<NMItemRenderer>;
-    public let slot: Int32;
-    public let key: String;
+    public let hash: Uint32;
 
     protected cb func OnLoaded(size: Vector2, err: Int32) -> Bool {
         if IsDefined(this.r) {
-            this.r.OnThumb(this.slot, this.key, size, err);
+            this.r.OnThumb(this.hash, size, err);
         }
         return true;
     }
@@ -47,8 +46,10 @@ public class NMItemRenderer {
     private let photoEdge: array<ref<inkRectangle>>;   // [slot * 4 + side]
     private let photoPtr: array<ref<inkRectangle>>;
     private let photoOn: array<Bool>;
-    private let thumbReady: array<Bool>;
-    private let thumbsHeld: Int32;
+    // Thumbnails are held by shot hash in NMThumbPlan slots, each with its own image (never a chip's icon).
+    private let thumbPlan: ref<NMThumbPlan>;
+    private let thumbImg: array<ref<inkImage>>;
+    private let thumbLoading: ref<NMThumbListener>;
     private let photoSel: Int32;
     private let photoColor: array<HDRColor>;
     private let shotHandler: wref<inkISystemRequestsHandler>;
@@ -99,7 +100,6 @@ public class NMItemRenderer {
     private let icon: ref<NMIconRef>;
     private let lastCamRev: Int32;
     private let lastApiRev: Int32;
-    private let thumbListeners: array<ref<NMThumbListener>>;
     public let chipsUsed: Int32;
     public let clustersUsed: Int32;
     public let pendingImages: Int32;
@@ -176,8 +176,6 @@ public class NMItemRenderer {
             ArrayPush(r.photoFill, null);
             ArrayPush(r.photoPtr, null);
             ArrayPush(r.photoOn, false);
-            ArrayPush(r.thumbReady, false);
-            ArrayPush(r.thumbListeners, null);
             ArrayPush(r.photoColor, NMTheme.Cyan());
             let e = 0;
             while e < 4 { ArrayPush(r.photoEdge, null); e += 1; }
@@ -186,6 +184,19 @@ public class NMItemRenderer {
         r.growSlot = -1;
         r.growLayer = -1;
         r.growItem = -1;
+        r.thumbPlan = NMThumbPlan.Create(NMPhotos.ThumbCap());
+        i = 0;
+        while i < NMPhotos.ThumbCap() {
+            let im = new inkImage();
+            im.SetAnchor(inkEAnchor.TopLeft);
+            im.SetAnchorPoint(new Vector2(0.5, 0.5));
+            im.SetSize(new Vector2(NMItemRenderer.ThumbW() * scale, NMItemRenderer.ThumbH() * scale));
+            im.SetInteractive(false);
+            im.SetVisible(false);
+            im.Reparent(parent);
+            ArrayPush(r.thumbImg, im);
+            i += 1;
+        }
         return r;
     }
 
@@ -205,17 +216,41 @@ public class NMItemRenderer {
     public static func PhotoEdge() -> Float { return 3.0; }
     public static func PhotoPtr() -> Float { return 14.0; }
 
-    public func OnThumb(slot: Int32, key: String, size: Vector2, err: Int32) {
-        if slot < 0 || slot >= ArraySize(this.chipIconKey) || NotEquals(this.chipIconKey[slot], key) {
-            return;   // the slot moved on to another item
+    public func OnThumb(hash: Uint32, size: Vector2, err: Int32) {
+        this.thumbLoading = null;
+        this.thumbPlan.Loaded(hash, size.X > 0.0 && err == 0);
+        this.lastCamRev = -1;   // relayout: show it, and start the next load
+    }
+
+    // After a layout: hide thumbnails no pin used, then start the next wanted load (one at a time).
+    private func FinishThumbs() {
+        let p = this.thumbPlan;
+        p.EndLayout();
+        let i = 0;
+        while i < p.Cap() {
+            if !p.IsUsed(i) || !p.IsReady(i) {
+                this.thumbImg[i].SetVisible(false);
+            }
+            i += 1;
         }
-        if size.X <= 0.0 || err != 0 {
-            return;   // keep the plain frame
+        if !IsDefined(this.shotHandler) || IsDefined(this.thumbLoading) {
+            return;
         }
-        this.thumbReady[slot] = true;
-        if this.photoOn[slot] {
-            this.chipIcon[slot].SetVisible(true);
-            this.photoFill[slot].SetVisible(false);
+        let tries = 0;
+        while tries < p.Cap() {
+            let h = p.NextRequest();
+            if h == 0u { return; }
+            let lst = new NMThumbListener();
+            lst.r = this;
+            lst.hash = h;
+            let img = this.thumbImg[p.SlotOf(h)];
+            img.SetVisible(false);
+            if this.shotHandler.RequestGameScreenshotByHash(h, img, lst, n"OnLoaded") {
+                this.thumbLoading = lst;
+                return;
+            }
+            p.Loaded(h, false);
+            tries += 1;
         }
     }
 
@@ -250,57 +285,32 @@ public class NMItemRenderer {
 
     private func SetPhotoVisible(slot: Int32, on: Bool) {
         if !IsDefined(this.photoFill[slot]) { return; }
-        this.photoFill[slot].SetVisible(on && !this.thumbReady[slot]);
+        if !on { this.photoFill[slot].SetVisible(false); }
         let e = 0;
         while e < 4 { this.photoEdge[slot * 4 + e].SetVisible(on); e += 1; }
         this.photoPtr[slot].SetVisible(on);
-        this.chipIcon[slot].SetVisible(on && this.thumbReady[slot]);
+        this.chipIcon[slot].SetVisible(false);
         this.photoOn[slot] = on;
-    }
-
-    // Drops the slot's thumbnail (frees the full-size texture) so another pin can hold one.
-    private func ReleaseThumb(slot: Int32) {
-        if StrBeginsWith(this.chipIconKey[slot], "shot:") {
-            this.thumbsHeld -= 1;
-            let ic = this.chipIcon[slot];
-            ic.SetAtlasResource(NMTheme.UiAtlas());
-            ic.SetTexturePart(n"icon_dot");
-            this.chipIconKey[slot] = "";
-            this.chipIconPart[slot] = n"";
-        }
-        this.thumbReady[slot] = false;
     }
 
     private func PlacePhoto(L: ref<NightMapLayer>, id: Int32, slot: Int32, p: Vector2, color: HDRColor) -> Vector2 {
         this.EnsurePhotoWidgets(slot);
-        let key = NMItemRenderer.IconKeyFor(L, id);
-        if NotEquals(this.chipIconKey[slot], key) {
-            this.ReleaseThumb(slot);
-            if NMPhotos.ThumbAllowed(this.thumbsHeld, NMPhotos.ThumbCap()) && IsDefined(this.shotHandler) {
-                let lst = new NMThumbListener();
-                lst.r = this;
-                lst.slot = slot;
-                lst.key = key;
-                this.chipIcon[slot].SetVisible(false);
-                if this.shotHandler.RequestGameScreenshotByHash(L.shot[id], this.chipIcon[slot], lst, n"OnLoaded") {
-                    this.chipIconKey[slot] = key;
-                    this.thumbsHeld += 1;
-                    this.thumbListeners[slot] = lst;
-                }
-            }
-        }
+        let ts = this.thumbPlan.Want(L.shot[id]);
         let s = this.scale;
         let tw = NMItemRenderer.ThumbW() * s;
         let th = NMItemRenderer.ThumbH() * s;
         let ed = NMItemRenderer.PhotoEdge() * s;
         let half = NMItemRenderer.PhotoPtr() * s * 0.7071;
         let c = new Vector2(p.X, p.Y - half - ed - th * 0.5);   // thumbnail centre; the point's tip sits on p
-        let ic = this.chipIcon[slot];
-        ic.SetSize(new Vector2(tw, th));
-        ic.SetTintColor(new HDRColor(1.0, 1.0, 1.0, 1.0));
-        ic.SetOpacity(L.opacity * L.alpha[id]);
-        ic.SetTranslation(c);
+        let ready = this.thumbPlan.IsReady(ts);
+        if ready {
+            let im = this.thumbImg[ts];
+            im.SetOpacity(L.opacity * L.alpha[id]);
+            im.SetTranslation(c);
+            im.SetVisible(true);
+        }
         this.photoFill[slot].SetTranslation(c);
+        this.photoFill[slot].SetVisible(!ready);
         let edgeColor = slot == this.photoSel ? NMTheme.Yellow() : color;
         let e = 0;
         while e < 4 {
@@ -335,6 +345,7 @@ public class NMItemRenderer {
         this.lastCamRev = cam.revision;
         this.lastApiRev = api.revision;
         this.relayouts += 1;
+        this.thumbPlan.BeginLayout();
         ArrayClear(this.candX);
         ArrayClear(this.candY);
         ArrayClear(this.candKind);
@@ -369,6 +380,7 @@ public class NMItemRenderer {
             this.PlaceClusters(clusterLayers, cam, viewW, viewH, individual);
         }
         this.HideUnused();
+        this.FinishThumbs();
         return true;
     }
 
@@ -556,7 +568,6 @@ public class NMItemRenderer {
         let ic = this.chipIcon[slot];
         if this.chipStyle[slot] == 3 && style != 3 {
             this.SetPhotoVisible(slot, false);
-            this.ReleaseThumb(slot);
         }
         if style == 3 {
             bg.SetVisible(false);
@@ -993,7 +1004,6 @@ public class NMItemRenderer {
                 this.chipIcon[s].SetVisible(false);
                 if this.photoOn[s] {
                     this.SetPhotoVisible(s, false);
-                    this.ReleaseThumb(s);
                 }
                 if s == this.growSlot {
                     this.SetGrow(s, 0.0);

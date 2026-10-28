@@ -104,12 +104,18 @@ public class NMPhotoDrawer {
         dr.actKey = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(26.0 * s), NMTheme.Cyan());
         dr.actKey.SetTranslation(new Vector2(pad + 12.0 * s, ay + 8.0 * s));
         dr.actLabel = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.Text());
-        dr.listener = new NMDrawerListener();
         dr.root.SetVisible(false);
         return dr;
     }
 
     public func IsShown() -> Bool { return this.shown; }
+    public func ImageShown() -> Bool { return this.img.IsVisible(); }
+    public func LastListener() -> ref<NMDrawerListener> { return this.listener; }
+
+    // Test seam: a drawer on a canvas of its own (not on screen).
+    public static func CreateDetached() -> ref<NMPhotoDrawer> {
+        return NMPhotoDrawer.Create(new inkCanvas(), NMPanelLayout.Compute(3840.0, 2160.0));
+    }
 
     public func Show(spot: ref<NMPhotoSpot>, distance: String, district: String, keyName: String, h: wref<inkISystemRequestsHandler>) {
         let date = NMPhotoDrawer.DateFromPath(spot.path);
@@ -127,6 +133,8 @@ public class NMPhotoDrawer {
             this.shownHash = spot.hash;
             this.img.SetVisible(false);
             this.imgFill.SetVisible(true);
+            // A fresh listener per request: a late image from the previous pin carries its own hash and is ignored.
+            this.listener = new NMDrawerListener();
             this.listener.drawer = this;
             this.listener.hash = spot.hash;
             if IsDefined(h) {
