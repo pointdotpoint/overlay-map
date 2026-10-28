@@ -17,6 +17,11 @@ if [ -d "$GAME/r6/scripts/RedIMGRetriever" ]; then
   cp "$GAME"/r6/scripts/RedIMGRetriever/*.reds "$SANDBOX/r6/scripts/RedIMGRetriever/"
 fi
 cp "$GAME"/red4ext/plugins/mod_settings/*.reds "$SANDBOX/r6/scripts/ModSettings/"
+# RedFileSystem is optional (photo spot storage); NightMap compiles either way through @if(ModuleExists).
+if [ -d "$GAME/r6/scripts/RedFileSystem" ]; then
+  mkdir -p "$SANDBOX/r6/scripts/RedFileSystem"
+  cp "$GAME"/r6/scripts/RedFileSystem/*.reds "$SANDBOX/r6/scripts/RedFileSystem/"
+fi
 cp -r "$HERE/r6/scripts/NightMap" "$SANDBOX/r6/scripts/NightMap"
 
 # scc only scans the scripts dir reliably when given a path relative to its own tree.
