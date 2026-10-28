@@ -5,6 +5,57 @@ public abstract class NMPhotoTests {
     public static func Run(t: ref<NMSelfTest>) {
         NMPhotoTests.Store(t);
         NMPhotoTests.Groups(t);
+        NMPhotoTests.Link(t);
+    }
+
+    private static func U32(a: Int32, b: Int32, c: Int32) -> array<Uint32> {
+        let r: array<Uint32>;
+        ArrayPush(r, Cast<Uint32>(a));
+        ArrayPush(r, Cast<Uint32>(b));
+        ArrayPush(r, Cast<Uint32>(c));
+        return r;
+    }
+
+    private static func IdxStr(r: array<Int32>) -> String {
+        let s = "[";
+        for i in r { s += ToString(i) + ","; }
+        return s + "]";
+    }
+
+    private static func Link(t: ref<NMSelfTest>) {
+        let hashes = NMPhotoTests.U32(5, 7, 9);
+        let created: array<Uint64>;
+        ArrayPush(created, 90ul);
+        ArrayPush(created, 101ul);
+        ArrayPush(created, 105ul);
+        let none: array<Uint32>;
+        let r1 = NMPhotoLink.NewSince(hashes, created, 100ul, none);
+        t.Check("photo.link_session", ArraySize(r1) == 2 && r1[0] == 1 && r1[1] == 2, NMPhotoTests.IdxStr(r1));
+
+        let known: array<Uint32>;
+        ArrayPush(known, 9u);
+        let r2 = NMPhotoLink.NewSince(hashes, created, 100ul, known);
+        t.Check("photo.link_skips_known", ArraySize(r2) == 1 && r2[0] == 1, NMPhotoTests.IdxStr(r2));
+
+        let h5: array<Uint32>;
+        let c5: array<Uint64>;
+        ArrayPush(h5, 1u); ArrayPush(c5, 103ul);
+        ArrayPush(h5, 2u); ArrayPush(c5, 101ul);
+        ArrayPush(h5, 3u); ArrayPush(c5, 105ul);
+        ArrayPush(h5, 4u); ArrayPush(c5, 102ul);
+        ArrayPush(h5, 6u); ArrayPush(c5, 104ul);
+        let r3 = NMPhotoLink.NewSince(h5, c5, 100ul, none);
+        t.Check("photo.link_burst", ArraySize(r3) == 5 && r3[0] == 1 && r3[1] == 3 && r3[2] == 0 && r3[3] == 4 && r3[4] == 2,
+            NMPhotoTests.IdxStr(r3));
+
+        t.Check("photo.link_none", ArraySize(NMPhotoLink.NewSince(hashes, created, 105ul, none)) == 0, "");
+
+        let b: array<Uint64>;
+        ArrayPush(b, 3ul);
+        ArrayPush(b, 9ul);
+        ArrayPush(b, 4ul);
+        let empty: array<Uint64>;
+        t.Check("photo.baseline", NMPhotoLink.Baseline(b) == 9ul && NMPhotoLink.Baseline(empty) == 0ul, "");
     }
 
     private static func Spot(hash: Uint32, x: Float, y: Float, created: Uint64) -> ref<NMPhotoSpot> {

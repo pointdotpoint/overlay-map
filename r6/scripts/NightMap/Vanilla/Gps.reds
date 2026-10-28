@@ -148,7 +148,10 @@ public class NMGps {
 protected cb func OnPlayerAttach(player: ref<GameObject>) -> Bool {
     let r = wrappedMethod(player);
     let sys = NightMapSystem.Get(player.GetGame());
-    if IsDefined(sys) { sys.Gps().SetMinimap(this); }
+    if IsDefined(sys) {
+        sys.Gps().SetMinimap(this);
+        sys.Photos().SetHandlerSource(this);
+    }
     return r;
 }
 

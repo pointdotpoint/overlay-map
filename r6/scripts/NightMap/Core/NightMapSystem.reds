@@ -45,6 +45,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let gps: ref<NMGps>;
     private let routes: ref<NMRouteLayer>;
     private let routesOff: Bool;          // perf suite override (SetRoutesEnabled)
+    private let photos: ref<NMPhotos>;
     private let photoProbe: ref<NMPhotoProbe>;  // SPIKE (photo pins Task 1); removed in Task 7
     private let hud: ref<NMHudHider>;     // set while the map is open with "Hide HUD while open" on
     private let lastRouteReadMs: Float;
@@ -83,6 +84,11 @@ public class NightMapSystem extends ScriptableSystem {
     public func Vanilla() -> ref<NMVanilla> { return this.vanilla; }
 
     // Created on first use: the minimap may attach before this system's OnAttach.
+    // Created on first use: photo mode and the minimap may call in before this system's OnAttach.
+    public func Photos() -> ref<NMPhotos> {
+        if !IsDefined(this.photos) { this.photos = new NMPhotos(); }
+        return this.photos;
+    }
     public func PhotoProbe() -> ref<NMPhotoProbe> {
         if !IsDefined(this.photoProbe) { this.photoProbe = new NMPhotoProbe(); }
         return this.photoProbe;
@@ -457,6 +463,7 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private func OnOpened() {
+        this.Photos().OnMapOpened();
         if this.Settings().debug { this.PhotoProbe().OnMapOpened(this.panel.overlay); }   // SPIKE, Task 7 removes
         this.tipApiRev = -1;
         this.scaleRev = -1;
