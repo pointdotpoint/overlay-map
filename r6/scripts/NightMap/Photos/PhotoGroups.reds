@@ -22,20 +22,21 @@ public abstract class NMPhotoGroups {
         }
         let r2 = radius * radius;
         let chosen: array<Int32>;
-        for idx in order {
-            let s = spots[idx];
+        let o = 0;
+        while o < ArraySize(order) {
+            let idx = order[o];
             let taken = false;
-            for c in chosen {
-                let dx = spots[c].x - s.x;
-                let dy = spots[c].y - s.y;
-                if dx * dx + dy * dy <= r2 {
-                    taken = true;
-                    break;
-                }
+            let c = 0;
+            while c < ArraySize(chosen) && !taken {
+                let dx = spots[chosen[c]].x - spots[idx].x;
+                let dy = spots[chosen[c]].y - spots[idx].y;
+                taken = dx * dx + dy * dy <= r2;
+                c += 1;
             }
             if !taken {
                 ArrayPush(chosen, idx);
             }
+            o += 1;
         }
         return chosen;
     }

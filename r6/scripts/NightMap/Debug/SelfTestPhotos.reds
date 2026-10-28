@@ -70,6 +70,19 @@ public abstract class NMPhotoTests {
         la.OnLoaded(new Vector2(2560.0, 1440.0), 0);
         t.Check("photo.drawer_stale_image", !dr.ImageShown(), "");
 
+        // A session without a baseline never claims shots (it would claim every older screenshot).
+        let nb0 = new NMPhotoSession();
+        t.Check("photo.no_baseline_claims_nothing", !NMPhotoLink.CanClaim(nb0), "");
+        nb0.hasBaseline = true;
+        t.Check("photo.baseline_claims", NMPhotoLink.CanClaim(nb0), "");
+
+        // A load that finds no file reports no skipped lines left over from an earlier parse.
+        let bad: array<String>;
+        ArrayPush(bad, "garbage");
+        NMPhotoStore.Parse(bad);
+        NMPhotoStore.Load();
+        t.Check("photo.load_resets_skipped", NMPhotoStore.Skipped() == 0, ToString(NMPhotoStore.Skipped()));
+
         // A session stays open 10 s after photo mode closes (shots finish writing ~5 s after capture).
         t.Check("photo.session_window", !NMPhotoLink.SessionDone(1000.0, 10999.0) && NMPhotoLink.SessionDone(1000.0, 11000.0), "");
 
@@ -268,8 +281,9 @@ public abstract class NMPhotoTests {
         let b: array<ref<NMPhotoSpot>>;
         ArrayPush(b, NMPhotoTests.Spot(1u, 0.0, 0.0, 1ul));
         ArrayPush(b, NMPhotoTests.Spot(2u, 10.1, 0.0, 2ul));
-        t.Check("photo.group_edge", ArraySize(NMPhotoGroups.Newest(a, NMPhotoTests.AllExist(2), r)) == 1
-            && ArraySize(NMPhotoGroups.Newest(b, NMPhotoTests.AllExist(2), r)) == 2, "");
+        let na = ArraySize(NMPhotoGroups.Newest(a, NMPhotoTests.AllExist(2), r));
+        let nb = ArraySize(NMPhotoGroups.Newest(b, NMPhotoTests.AllExist(2), r));
+        t.Check("photo.group_edge", na == 1 && nb == 2, "9.9 m -> " + ToString(na) + ", 10.1 m -> " + ToString(nb) + ", r " + ToString(r));
 
         let gone = NMPhotoTests.AllExist(3);
         gone[1] = false;   // the newest (created 3) was deleted
@@ -280,6 +294,7 @@ public abstract class NMPhotoTests {
         ArrayPush(none, false);
         ArrayPush(none, false);
         ArrayPush(none, false);
-        t.Check("photo.group_all_deleted", ArraySize(NMPhotoGroups.Newest(near, none, r)) == 0, "");
+        let all = NMPhotoGroups.Newest(near, none, r);
+        t.Check("photo.group_all_deleted", ArraySize(all) == 0, ToString(ArraySize(all)) + " shown, exists " + ToString(ArraySize(none)));
     }
 }

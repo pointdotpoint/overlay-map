@@ -25,6 +25,11 @@ public abstract class NMPhotoLink {
         return nowMs - closedAtMs >= 10000.0;
     }
 
+    // Without a baseline every older screenshot would look new, so such a session claims nothing.
+    public static func CanClaim(ss: ref<NMPhotoSession>) -> Bool {
+        return IsDefined(ss) && ss.hasBaseline;
+    }
+
     public static func Baseline(created: array<Uint64>) -> Uint64 {
         let b = 0ul;
         for c in created {
@@ -64,7 +69,6 @@ public class NMPhotos extends IScriptable {
     private let loaded: Bool;
     private let rev: Int32;
     private let minimap: wref<MinimapContainerController>;
-    private let registeredOn: wref<inkISystemRequestsHandler>;
     private let session: ref<NMPhotoSession>;   // not yet resolved; null when none
     private let prev: ref<NMPhotoSession>;      // the session before, still inside its window
     private let hasNewest: Bool;                // newest creationDate seen in any list (baseline fallback)
@@ -83,7 +87,13 @@ public class NMPhotos extends IScriptable {
     public static func ThumbCap() -> Int32 { return 24; }
     public static func ThumbAllowed(held: Int32, cap: Int32) -> Bool { return held < cap; }
 
-    public func SetHandlerSource(m: wref<MinimapContainerController>) { this.minimap = m; }
+    // The HUD minimap attached: read the list once now, so photo mode always has a baseline to fall back on.
+    public func SetHandlerSource(m: wref<MinimapContainerController>) {
+        this.minimap = m;
+        if !this.hasNewest {
+            this.RequestList("attach");
+        }
+    }
     public func Spots() -> array<ref<NMPhotoSpot>> { this.EnsureLoaded(); return this.spots; }
     public func Exists(i: Int32) -> Bool { return i >= 0 && i < ArraySize(this.exists) && this.exists[i]; }
     public func Revision() -> Int32 { return this.rev; }
@@ -196,44 +206,44 @@ public class NMPhotos extends IScriptable {
         ss.baseline = this.newest;
         this.session = ss;
         this.sessionFresh = true;
-        this.RequestList();
+        NMLog.Info("photo|session|open|baseline " + (ss.hasBaseline ? ToString(ss.baseline) : "none"));
+        this.RequestList("photomode open");
     }
 
     public func OnPhotoModeClosed() {
         if !IsDefined(this.session) { return; }
         this.session.closed = true;
         this.session.closedAtMs = NMClock.NowMs();
-        this.RequestList();
+        NMLog.Info("photo|session|close");
+        this.RequestList("photomode close");
         let cb = new NMPhotoRelist();
         cb.photos = this;
         GameInstance.GetDelaySystem(GetGameInstance()).DelayCallback(cb, 11.0, false);
     }
 
     public func Relist() {
-        this.RequestList();
+        this.RequestList("window");
     }
 
     public func OnMapOpened() {
         this.EnsureLoaded();
-        this.RequestList();
+        this.RequestList("map open");
     }
 
-    private func RequestList() {
+    // Registers before every request, like the spike probe that received every list (a registration may be used up).
+    private func RequestList(why: String) {
         let h: wref<inkISystemRequestsHandler>;
         if IsDefined(this.minimap) {
             h = this.minimap.GetSystemRequestsHandler();
         }
         if !IsDefined(h) {
-            NMLog.Info("photo|list|no handler");
+            NMLog.Info("photo|list|no handler|" + why);
             return;
         }
-        let cur: ref<inkISystemRequestsHandler> = this.registeredOn;
-        let hs: ref<inkISystemRequestsHandler> = h;
-        if cur != hs {
-            h.RegisterToCallback(n"OnScreenshotsForLoadReady", this, n"OnList");
-            this.registeredOn = h;
-        }
+        h.UnregisterFromCallback(n"OnScreenshotsForLoadReady", this, n"OnList");
+        h.RegisterToCallback(n"OnScreenshotsForLoadReady", this, n"OnList");
         h.RequestGameScreenshotsForLoad();
+        NMLog.Info("photo|list|requested|" + why);
     }
 
     // Every new shot since the session's baseline becomes a spot at the session's position.
@@ -273,8 +283,11 @@ public class NMPhotos extends IScriptable {
             ArrayPush(created, inf.creationDate);
         }
         let now = NMClock.NowMs();
+        NMLog.Info("photo|list|ready|" + ToString(ArraySize(infos)));
         if IsDefined(this.prev) {
-            this.Claim(this.prev, infos, hashes, created);
+            if NMPhotoLink.CanClaim(this.prev) {
+                this.Claim(this.prev, infos, hashes, created);
+            }
             if NMPhotoLink.SessionDone(this.prev.closedAtMs, now) { this.prev = null; }
         }
         if IsDefined(this.session) {
@@ -285,7 +298,7 @@ public class NMPhotos extends IScriptable {
             } else if !ss.hasBaseline {
                 this.session = null;
                 NMLog.Info("photo|link|no baseline");
-            } else if ss.closed {
+            } else if ss.closed && NMPhotoLink.CanClaim(ss) {
                 this.Claim(ss, infos, hashes, created);
                 if NMPhotoLink.SessionDone(ss.closedAtMs, now) { this.session = null; }
             }

@@ -128,6 +128,7 @@ public abstract class NMPhotoStore {
     }
 
     public static func Load() -> array<ref<NMPhotoSpot>> {
+        NMPhotoStoreState.Get().skipped = 0;   // a missing file parses nothing
         let out = NMPhotoStoreLoad();
         if NMPhotoStore.Skipped() > 0 {
             NMLog.Info("photo|store|skipped " + ToString(NMPhotoStore.Skipped()) + " bad lines");
