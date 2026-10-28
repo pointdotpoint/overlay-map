@@ -88,6 +88,8 @@ public abstract class NMHoloTests {
             && accT.Green > 0.7 && accT.Red < 0.3 && outT.Red > 0.75 && outT.Blue > 0.85, "");
         t.Check("holo.theme_index", NMTheme.ThemeIndex(NightMapHoloColor.Cyan) == 0 && NMTheme.ThemeIndex(NightMapHoloColor.Green) == 1
             && NMTheme.ThemeIndex(NightMapHoloColor.Topographic) == 2, "");
+        t.Check("holo.topo_opaque_ground", NMTheme.PanelOpacityFor(2, 0.45) >= 0.9 && NMTheme.PanelOpacityFor(0, 0.45) == 0.45, "");
+        t.Check("holo.topo_faint_roads", NMTheme.TileOpacityFor("road", 2) <= 0.25, "");
         t.Check("holo.topo_tile_strengths", NMTheme.TileOpacityFor("bfill", 2) < NMTheme.TileOpacity("bfill")
             && NMTheme.TileOpacityFor("glow", 2) > NMTheme.TileOpacity("glow") && NMTheme.TileOpacityFor("road", 0) == NMTheme.TileOpacity("road"), "");
         t.Check("holo.sidebar_bg_topo", NMTheme.SidebarBg(2).Red < 0.03 && NMTheme.SidebarBg(0).Green > 0.1, "");

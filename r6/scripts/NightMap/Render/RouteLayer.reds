@@ -168,8 +168,29 @@ public class NMRouteLayer {
         for w in NMRouteGeom.TrimAt(l.world, px, py, l.cursor) {
             ArrayPush(proj, cam.WorldToMap(w.X, w.Y));
         }
-        l.screen = NMRouteGeom.Simplify(proj, 1.0);
+        // Points about a line width apart: short segments much narrower than the line stagger their square ends
+        // into a sawtooth edge on curves.
+        let w = this.W();
+        l.screen = NMRouteLayer.Thin(NMRouteGeom.Simplify(proj, MaxF(1.0, w * 0.25)), w * 0.75);
         return true;
+    }
+
+    // Keeps the first and last point and every point at least minLen from the previous kept one.
+    public static func Thin(pts: array<Vector2>, minLen: Float) -> array<Vector2> {
+        let n = ArraySize(pts);
+        if n <= 2 { return pts; }
+        let out: array<Vector2>;
+        ArrayPush(out, pts[0]);
+        let m2 = minLen * minLen;
+        let i = 1;
+        while i < n - 1 {
+            if NMRouteGeom.Dist2(out[ArraySize(out) - 1], pts[i]) >= m2 {
+                ArrayPush(out, pts[i]);
+            }
+            i += 1;
+        }
+        ArrayPush(out, pts[n - 1]);
+        return out;
     }
 
     // One rotated rectangle per screen segment that touches the view (plus a margin), and a round joint at each of

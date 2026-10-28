@@ -55,6 +55,18 @@ public abstract class NMGpsTests {
         P.Update(cam, 0.0, 0.0, 0.0, 400.0, 400.0);
         t.Check("route.traced_corner", P.SegmentsShown() == 2 && P.JointsShown() == 3, ToString(P.SegmentsShown()) + "/" + ToString(P.JointsShown()));
 
+        // A gentle curve sampled every ~1 px is thinned to points about a line width apart (no sawtooth edge).
+        let arc: array<Vector2>;
+        let a = 0;
+        while a <= 200 {
+            let th = 1.5708 * Cast<Float>(a) / 200.0;
+            ArrayPush(arc, new Vector2(100.0 * CosF(th) - 100.0, 100.0 * SinF(th)));
+            a += 1;
+        }
+        P.SetRoutes(none, yellow, arc);
+        P.Update(cam, 0.0, 0.0, 0.0, 400.0, 400.0);
+        t.Check("route.min_segment", P.SegmentsShown() >= 3 && P.SegmentsShown() <= 10, ToString(P.SegmentsShown()));
+
         // A route entirely off screen draws nothing.
         let far: array<Vector2>;
         ArrayPush(far, new Vector2(900.0, 900.0));

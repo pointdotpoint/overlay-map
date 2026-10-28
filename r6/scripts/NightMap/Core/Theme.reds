@@ -88,6 +88,10 @@ public abstract class NMTheme {
         if theme == 2 { return new HDRColor(0.016, 0.024, 0.031, 1.0); } // #040608 near-black
         return NMTheme.MapBackground();                                  // #08121a
     }
+    // The map ground's opacity: the topographic theme is an opaque black survey map whatever the see-through setting.
+    public static func PanelOpacityFor(theme: Int32, opacity: Float) -> Float {
+        return theme == 2 ? MaxF(opacity, 0.92) : opacity;
+    }
     // The always-visible sidebar behind marker details and photo previews.
     public static func SidebarBg(theme: Int32) -> HDRColor {
         if theme == 2 { return new HDRColor(0.012, 0.016, 0.020, 1.0); }
@@ -129,12 +133,13 @@ public abstract class NMTheme {
         if theme == 2 { return new HDRColor(0.800, 0.910, 0.937, 1.0); }       // #cce8ef pale contour line
         return new HDRColor(0.624, 0.953, 1.0, 1.0);                           // #9ff3ff
     }
-    // Per theme: the topographic map has darker building fills, crisper outlines and a stronger glow.
+    // Per theme: the topographic map is linework on black: faint road fills and building fills, crisp pale outlines,
+    // a soft teal glow.
     public static func TileOpacityFor(set: String, theme: Int32) -> Float {
         if theme == 2 {
-            if Equals(set, "glow") { return 0.6; }
-            if Equals(set, "road") { return 0.5; }
-            if Equals(set, "bfill") { return 0.05; }
+            if Equals(set, "glow") { return 0.35; }
+            if Equals(set, "road") { return 0.18; }
+            if Equals(set, "bfill") { return 0.04; }
             if Equals(set, "outline") { return 0.95; }
         }
         return NMTheme.TileOpacity(set);
