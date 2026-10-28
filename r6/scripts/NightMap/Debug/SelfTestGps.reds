@@ -18,6 +18,54 @@ public abstract class NMGpsTests {
         return -1;
     }
 
+    // Screen Y of every placed waypoint-route dash centre (core canvas children up to DashesUsed).
+    private static func DashYs(L: ref<NMRouteLayer>) -> array<Float> {
+        let out: array<Float>;
+        let line = L.Root().GetWidget(NMGpsTests.ChildIndex(L.Root(), n"tracked")) as inkCompoundWidget;
+        let core = line.GetWidget(1) as inkCompoundWidget;   // children: glow canvas, core canvas
+        let i = 0;
+        while i < L.DashesUsed(true) {
+            ArrayPush(out, core.GetWidget(i).GetTranslation().Y);
+            i += 1;
+        }
+        return out;
+    }
+
+    private static func TopDashY(L: ref<NMRouteLayer>) -> Float {
+        let best = 100000.0;
+        for y in NMGpsTests.DashYs(L) { best = MinF(best, y); }
+        return best;
+    }
+
+    // How far up the screen the dash pattern moved (each dash moves the same amount, modulo the period).
+    private static func SharedShift(a: array<Float>, b: array<Float>, period: Float) -> Float {
+        if ArraySize(a) == 0 || ArraySize(b) == 0 { return -1.0; }
+        let ta = 100000.0;
+        for y in a { ta = MinF(ta, y); }
+        let best = 100000.0;
+        for y in b {
+            let d = ta - y;   // upward motion
+            while d < 0.0 { d += period; }
+            while d >= period { d -= period; }
+            best = MinF(best, d);
+        }
+        return best;
+    }
+
+    private static func MaxTurn(p: array<Vector2>) -> Float {
+        let m = 0.0;
+        let i = 1;
+        while i < ArraySize(p) - 1 {
+            let a1 = AtanF(p[i].Y - p[i - 1].Y, p[i].X - p[i - 1].X);
+            let a2 = AtanF(p[i + 1].Y - p[i].Y, p[i + 1].X - p[i].X);
+            let d = AbsF(Rad2Deg(a2 - a1));
+            if d > 180.0 { d = 360.0 - d; }
+            m = MaxF(m, d);
+            i += 1;
+        }
+        return m;
+    }
+
     private static func RouteCases(t: ref<NMSelfTest>) {
         let yellow = NMTheme.VanillaStateColor(n"Quest");
         let none: array<Vector2>;
@@ -36,39 +84,38 @@ public abstract class NMGpsTests {
         cam.SetCenter(0.0, 50.0);
         cam.SetMpp(1.0);
 
-        // Traced line: one segment per screen polyline segment, a round joint at each point, wider than the old dots.
+        // GPS dashes along the smoothed screen route: short dashes, a gap, flowing toward the destination.
         let P = NMRouteLayer.Create(new inkCanvas(), 1.0, false);
         P.SetRoutes(none, yellow, north);
-        P.Update(cam, 0.0, 0.0, 16.0, 400.0, 400.0);
-        t.Check("route.no_style_safe", P.HasRoute() && P.SegmentsShown() == 1, ToString(P.SegmentsShown()));
-        P.SetStyle(NMRouteStyle.Test());
+        cam.SetMpp(0.25);   // 100 m -> 400 px
+        cam.SetCenter(0.0, 50.0);
         P.Update(cam, 0.0, 0.0, 0.0, 400.0, 400.0);
-        t.Check("route.traced_one_segment", P.SegmentsShown() == 1 && P.JointsShown() == 2, ToString(P.SegmentsShown()) + "/" + ToString(P.JointsShown()));
-        t.Check("route.wider", NMRouteLayer.LineWidth() >= 24.0, "");
-        // Joints are drawn larger than the line: the path dot image has a soft border, so a same-size joint leaves the
-        // segments' square corners showing as steps on sharp bends.
-        t.Check("route.joint_covers_corners", NMRouteLayer.JointScale() >= 1.2, "");
+        let period = (NMRouteLayer.DashLen() + NMRouteLayer.DashGap()) * NMRouteLayer.LineWidth();
+        let want = Cast<Int32>(400.0 / period);
+        t.Check("route.dashes", P.DashesShown() >= want && P.DashesShown() <= want + 1, ToString(P.DashesShown()) + " want " + ToString(want));
+        t.Check("route.wider", NMRouteLayer.LineWidth() >= 24.0 && NMRouteLayer.DashLen() >= 1.0, "");
 
-        // An L-shaped route: two segments meeting at a joint.
+        // Pinned to the road: V moving 5 m along the route (no time passing) leaves the dash nearest the destination.
+        let y0 = NMGpsTests.TopDashY(P);
+        P.Update(cam, 0.0, 5.0, 0.0, 400.0, 400.0);
+        let y1 = NMGpsTests.TopDashY(P);
+        t.Check("route.pinned", y0 < 1000.0 && t.Near(y0, y1, 0.5), t.F(y0) + " -> " + t.F(y1));
+
+        // Flow toward the destination (up the screen): 100 ms moves the dashes FlowSpeed * 0.1 along the route.
+        let fy0 = NMGpsTests.DashYs(P);
+        P.Update(cam, 0.0, 5.0, 100.0, 400.0, 400.0);
+        let fy1 = NMGpsTests.DashYs(P);
+        let moved = NMGpsTests.SharedShift(fy0, fy1, period);
+        t.Check("route.flow_toward_dest", t.Near(moved, NMRouteLayer.FlowSpeed() * 0.1, 0.5), "moved " + t.F(moved));
+
+        // Corners are rounded before dashes are placed: a 90 degree turn becomes several gentle ones.
         let ell: array<Vector2>;
         ArrayPush(ell, new Vector2(0.0, 0.0));
-        ArrayPush(ell, new Vector2(0.0, 80.0));
-        ArrayPush(ell, new Vector2(80.0, 80.0));
-        P.SetRoutes(none, yellow, ell);
-        P.Update(cam, 0.0, 0.0, 0.0, 400.0, 400.0);
-        t.Check("route.traced_corner", P.SegmentsShown() == 2 && P.JointsShown() == 3, ToString(P.SegmentsShown()) + "/" + ToString(P.JointsShown()));
-
-        // A gentle curve sampled every ~1 px is thinned to points about a line width apart (no sawtooth edge).
-        let arc: array<Vector2>;
-        let a = 0;
-        while a <= 200 {
-            let th = 1.5708 * Cast<Float>(a) / 200.0;
-            ArrayPush(arc, new Vector2(100.0 * CosF(th) - 100.0, 100.0 * SinF(th)));
-            a += 1;
-        }
-        P.SetRoutes(none, yellow, arc);
-        P.Update(cam, 0.0, 0.0, 0.0, 400.0, 400.0);
-        t.Check("route.min_segment", P.SegmentsShown() >= 3 && P.SegmentsShown() <= 10, ToString(P.SegmentsShown()));
+        ArrayPush(ell, new Vector2(0.0, 100.0));
+        ArrayPush(ell, new Vector2(100.0, 100.0));
+        let sm = NMRouteLayer.Smooth(ell, 2);
+        t.Check("route.smooth_corner", NMGpsTests.MaxTurn(sm) <= 46.0 && sm[0].X == 0.0 && sm[0].Y == 0.0
+            && sm[ArraySize(sm) - 1].X == 100.0, t.F(NMGpsTests.MaxTurn(sm)));
 
         // A route entirely off screen draws nothing.
         let far: array<Vector2>;
@@ -76,19 +123,18 @@ public abstract class NMGpsTests {
         ArrayPush(far, new Vector2(950.0, 900.0));
         P.SetRoutes(none, yellow, far);
         P.Update(cam, 900.0, 900.0, 0.0, 400.0, 400.0);
-        t.Check("route.clipped", P.SegmentsShown() == 0, ToString(P.SegmentsShown()));
+        t.Check("route.clipped", P.DashesShown() == 0, ToString(P.DashesShown()));
 
-        // A zigzag with more segments than the cap is capped.
-        let zig: array<Vector2>;
-        let k = 0;
-        while k <= 900 {
-            ArrayPush(zig, new Vector2(Cast<Float>(k % 2) * 40.0 - 20.0, Cast<Float>(k) * 0.1));
-            k += 1;
-        }
-        L.SetStyle(NMRouteStyle.Test());
-        L.SetRoutes(zig, yellow, zig);
-        L.Update(cam, -20.0, 0.0, 16.0, 400.0, 400.0);
-        t.Check("route.segment_cap", L.SegmentsShown() == NMRouteLayer.SegmentCap(), ToString(L.SegmentsShown()));
+        // A very long route on a huge view is capped.
+        let long: array<Vector2>;
+        ArrayPush(long, new Vector2(0.0, 0.0));
+        ArrayPush(long, new Vector2(10000.0, 0.0));
+        let camL = NMCamera.Create(40000.0, 40000.0, NMRect.Create(-20000.0, -20000.0, 20000.0, 20000.0), 0.25, 64.0);
+        camL.SetCenter(5000.0, 0.0);
+        camL.SetMpp(0.25);
+        L.SetRoutes(long, yellow, long);
+        L.Update(camL, 0.0, 0.0, 16.0, 40000.0, 40000.0);
+        t.Check("route.dash_cap", L.DashesShown() == NMRouteLayer.DashCap(), ToString(L.DashesShown()));
 
         let qi = NMGpsTests.ChildIndex(L.Root(), n"quest");
         let ti = NMGpsTests.ChildIndex(L.Root(), n"tracked");

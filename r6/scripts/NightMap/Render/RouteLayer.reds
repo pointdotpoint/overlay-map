@@ -1,6 +1,6 @@
 module NightMap
 
-// One route on the map: cached world polyline, its projected screen polyline and its traced-line pools.
+// One route on the map: cached world polyline, its smoothed screen polyline and its dash pools.
 public class NMRouteLine {
     public let world: array<Vector2>;
     public let screen: array<Vector2>;
@@ -12,12 +12,9 @@ public class NMRouteLine {
     public let canvas: ref<inkCanvas>;
     public let glowCanvas: ref<inkCanvas>;
     public let coreCanvas: ref<inkCanvas>;
-    public let segGlow: array<ref<inkRectangle>>;
-    public let segCore: array<ref<inkRectangle>>;
-    public let jointGlow: array<ref<inkImage>>;
-    public let jointCore: array<ref<inkImage>>;
-    public let used: Int32;                // segments shown in the last layout
-    public let joints: Int32;              // round joints shown in the last layout
+    public let dashGlow: array<ref<inkRectangle>>;
+    public let dashCore: array<ref<inkRectangle>>;
+    public let used: Int32;                // dashes shown in the last layout
 }
 
 // The look of the HUD minimap's GPS path widget (an inkLinePattern of unrotated `pathCircle` dots), copied so
@@ -53,10 +50,11 @@ public class NMRouteStyle {
     }
 }
 
-// GPS routes as a traced line: a rotated rectangle per screen segment and a round joint (the minimap's own path dot)
-// at each end, so bends read smooth (the native line-pattern widget cannot be created from script). Pooled widgets,
-// at most SegmentCap() segments for both routes; the waypoint route claims the cap first and is drawn over the quest
-// route. Joints wait for the minimap's style. Layout reruns only when the camera, the player or a route changed.
+// GPS routes as dashes: the screen route is rounded off (corner cutting), then short dashes are laid along it at a
+// fixed spacing measured back from the destination, so they stay pinned to the road while V moves and only the flow
+// phase moves them toward the destination. Pooled rectangles, at most DashCap() for both routes; the waypoint route
+// claims the cap first and is drawn over the quest route. Projection reruns only when the camera, the player or a
+// route changed; each frame only advances the flow.
 public class NMRouteLayer {
     private let root: ref<inkCanvas>;
     private let s: Float;
@@ -65,14 +63,17 @@ public class NMRouteLayer {
     private let quest: ref<NMRouteLine>;
     private let tracked: ref<NMRouteLine>;
     private let camRev: Int32;
+    private let phase: Float;
     private let lastPx: Float;
     private let lastPy: Float;
     private let shown: Int32;
 
-    public static func SegmentCap() -> Int32 { return 400; }   // shared by both routes; the waypoint route first
-    public static func LineWidth() -> Float { return 24.0; }    // traced line width, 4K units (before the UI scale)
-    public static func GlowSize() -> Float { return 2.2; }      // glow width, times the line's
-    public static func JointScale() -> Float { return 1.25; }   // joint dot size, times the line width (soft-edged image)
+    public static func DashCap() -> Int32 { return 400; }       // shared by both routes; the waypoint route first
+    public static func LineWidth() -> Float { return 24.0; }    // dash width, 4K units (before the UI scale)
+    public static func DashLen() -> Float { return 1.5; }       // dash length, times the width
+    public static func DashGap() -> Float { return 1.0; }       // gap between dashes, times the width
+    public static func FlowSpeed() -> Float { return 30.0; }    // 4K units per second, toward the destination
+    public static func GlowSize() -> Float { return 2.2; }      // glow width, times the dash's
     public static func GlowOpacity() -> Float { return 0.25; }
     public static func ClipMargin() -> Float { return 64.0; }
     public static func WaypointColor() -> HDRColor { return new HDRColor(1.0, 1.0, 1.0, 1.0); }
@@ -99,21 +100,15 @@ public class NMRouteLayer {
     }
 
     public func Root() -> ref<inkCanvas> { return this.root; }
-    public func SegmentsShown() -> Int32 { return this.shown; }
-    public func JointsShown() -> Int32 { return this.tracked.joints + this.quest.joints; }
+    public func DashesShown() -> Int32 { return this.shown; }
+    public func DashesUsed(tracked: Bool) -> Int32 { return tracked ? this.tracked.used : this.quest.used; }
     public func SetVisible(on: Bool) { this.root.SetVisible(on); }
     public func HasStyle() -> Bool { return IsDefined(this.style); }
 
-    // Once per layer: the round joints use the minimap's path dot image.
+    // Kept for the minimap style log; dashes are plain rectangles and do not need it.
     public func SetStyle(st: ref<NMRouteStyle>) {
-        if !IsDefined(this.style) {
-            this.style = st;
-            this.tracked.dirty = true;   // lay out again with joints
-            this.quest.dirty = true;
-        }
+        if !IsDefined(this.style) { this.style = st; }
     }
-
-    private func W() -> Float { return NMRouteLayer.LineWidth() * this.s; }
 
     public func HasRoute() -> Bool {
         return ArraySize(this.quest.world) >= 2 || ArraySize(this.tracked.world) >= 2;
@@ -139,6 +134,9 @@ public class NMRouteLayer {
     }
 
     public func Update(cam: ref<NMCamera>, px: Float, py: Float, dtMs: Float, mapW: Float, mapH: Float) {
+        let period = this.Period();
+        this.phase = this.phase + NMRouteLayer.FlowSpeed() * this.s * MaxF(dtMs, 0.0) / 1000.0;
+        this.phase -= Cast<Float>(FloorF(this.phase / period)) * period;
         let moved = (px - this.lastPx) * (px - this.lastPx) + (py - this.lastPy) * (py - this.lastPy) > 0.0625;
         let reproject = moved || cam.revision != this.camRev;
         if reproject {
@@ -146,150 +144,151 @@ public class NMRouteLayer {
             this.lastPx = px;
             this.lastPy = py;
         }
-        let drawT = this.Project(this.tracked, cam, px, py, reproject);
-        let drawQ = this.Project(this.quest, cam, px, py, reproject);
-        if !drawT && !drawQ && !this.tracked.tintDirty && !this.quest.tintDirty {
-            return;   // nothing moved: the traced line stays as laid out
-        }
-        let budget = NMRouteLayer.SegmentCap();
+        this.Project(this.tracked, cam, px, py, reproject);
+        this.Project(this.quest, cam, px, py, reproject);
+        let budget = NMRouteLayer.DashCap();
         this.Layout(this.tracked, mapW, mapH, budget);
         budget -= this.tracked.used;
         this.Layout(this.quest, mapW, mapH, budget);
         this.shown = this.tracked.used + this.quest.used;
     }
 
-    // Trim the passed part (world metres), project and simplify at 1 px. True when the screen polyline changed.
-    private func Project(l: ref<NMRouteLine>, cam: ref<NMCamera>, px: Float, py: Float, force: Bool) -> Bool {
-        if !force && !l.dirty { return false; }
+    private func W() -> Float { return NMRouteLayer.LineWidth() * this.s; }
+    private func Period() -> Float { return (NMRouteLayer.DashLen() + NMRouteLayer.DashGap()) * this.W(); }
+
+    // Trim the passed part (world metres), project, simplify at 1 px, round the corners and cache cumulative lengths.
+    private func Project(l: ref<NMRouteLine>, cam: ref<NMCamera>, px: Float, py: Float, force: Bool) {
+        if !force && !l.dirty { return; }
         l.dirty = false;
         ArrayClear(l.screen);
-        if ArraySize(l.world) < 2 { return true; }
+        ArrayClear(l.cum);
+        if ArraySize(l.world) < 2 { return; }
         let proj: array<Vector2>;
         l.cursor = Max(NMRouteGeom.Closest(l.world, px, py, l.cursor), 0);
         for w in NMRouteGeom.TrimAt(l.world, px, py, l.cursor) {
             ArrayPush(proj, cam.WorldToMap(w.X, w.Y));
         }
-        // Points about a line width apart: short segments much narrower than the line stagger their square ends
-        // into a sawtooth edge on curves.
-        let w = this.W();
-        l.screen = NMRouteLayer.Thin(NMRouteGeom.Simplify(proj, MaxF(1.0, w * 0.25)), w * 0.75);
-        return true;
-    }
-
-    // Keeps the first and last point and every point at least minLen from the previous kept one.
-    public static func Thin(pts: array<Vector2>, minLen: Float) -> array<Vector2> {
-        let n = ArraySize(pts);
-        if n <= 2 { return pts; }
-        let out: array<Vector2>;
-        ArrayPush(out, pts[0]);
-        let m2 = minLen * minLen;
-        let i = 1;
-        while i < n - 1 {
-            if NMRouteGeom.Dist2(out[ArraySize(out) - 1], pts[i]) >= m2 {
-                ArrayPush(out, pts[i]);
-            }
+        l.screen = NMRouteLayer.Smooth(NMRouteGeom.Simplify(proj, 1.0), 2);
+        let acc = 0.0;
+        let i = 0;
+        while i < ArraySize(l.screen) {
+            if i > 0 { acc += SqrtF(NMRouteGeom.Dist2(l.screen[i - 1], l.screen[i])); }
+            ArrayPush(l.cum, acc);
             i += 1;
         }
-        ArrayPush(out, pts[n - 1]);
-        return out;
     }
 
-    // One rotated rectangle per screen segment that touches the view (plus a margin), and a round joint at each of
-    // their ends so bends stay smooth. At most `budget` segments.
+    // Chaikin corner cutting, `passes` times; the end points stay where they are.
+    public static func Smooth(pts: array<Vector2>, passes: Int32) -> array<Vector2> {
+        let cur = pts;
+        let k = 0;
+        while k < passes && ArraySize(cur) > 2 {
+            let out: array<Vector2>;
+            ArrayPush(out, cur[0]);
+            let i = 0;
+            while i < ArraySize(cur) - 1 {
+                let a = cur[i];
+                let b = cur[i + 1];
+                ArrayPush(out, new Vector2(a.X * 0.75 + b.X * 0.25, a.Y * 0.75 + b.Y * 0.25));
+                ArrayPush(out, new Vector2(a.X * 0.25 + b.X * 0.75, a.Y * 0.25 + b.Y * 0.75));
+                i += 1;
+            }
+            ArrayPush(out, cur[ArraySize(cur) - 1]);
+            cur = out;
+            k += 1;
+        }
+        return cur;
+    }
+
+    // The point at screen distance d along the line, from the segment search position seg (advanced in place).
+    private func At(l: ref<NMRouteLine>, d: Float, seg: Int32) -> Vector2 {
+        let n = ArraySize(l.screen);
+        let a = l.screen[seg];
+        let b = l.screen[Min(seg + 1, n - 1)];
+        let segLen = l.cum[Min(seg + 1, n - 1)] - l.cum[seg];
+        let u = segLen > 0.0 ? (d - l.cum[seg]) / segLen : 0.0;
+        return new Vector2(a.X + (b.X - a.X) * u, a.Y + (b.Y - a.Y) * u);
+    }
+
+    private func SegAt(l: ref<NMRouteLine>, d: Float, seg: Int32) -> Int32 {
+        let n = ArraySize(l.screen);
+        let s = seg;
+        while s < n - 2 && l.cum[s + 1] < d { s += 1; }
+        return s;
+    }
+
+    // Whole dashes only, every Period() back from the destination, shifted by the flow phase; clipped to the map area
+    // plus a margin; at most `budget`.
     private func Layout(l: ref<NMRouteLine>, mapW: Float, mapH: Float, budget: Int32) {
         let n = ArraySize(l.screen);
         let used = 0;
-        let joints = 0;
-        let m = NMRouteLayer.ClipMargin() * this.s;
-        let prevDrawn = false;
-        let i = 0;
-        while i < n - 1 && used < budget {
-            let a = l.screen[i];
-            let b = l.screen[i + 1];
-            let on = MaxF(a.X, b.X) >= -m && MinF(a.X, b.X) <= mapW + m && MaxF(a.Y, b.Y) >= -m && MinF(a.Y, b.Y) <= mapH + m;
-            if on {
-                this.PlaceSegment(l, used, a, b);
-                used += 1;
-                if IsDefined(this.style) {
-                    if !prevDrawn {
-                        this.PlaceJoint(l, joints, a);
-                        joints += 1;
+        if n >= 2 && budget > 0 {
+            let total = l.cum[n - 1];
+            let w = this.W();
+            let len = NMRouteLayer.DashLen() * w;
+            let period = this.Period();
+            let m = NMRouteLayer.ClipMargin() * this.s;
+            // Dash ends sit at total - (period - phase) - k * period (k = 0, 1, ...): pinned to the destination, and a
+            // growing phase moves them toward it.
+            let first = total - (period - this.phase);
+            while first - period >= 0.0 { first -= period; }   // the dash end nearest the start
+            let seg = 0;
+            let e = first;
+            while e <= total && used < budget {
+                let st = e - len;
+                if st >= 0.0 {
+                    seg = this.SegAt(l, st, seg);
+                    let a = this.At(l, st, seg);
+                    let seg2 = this.SegAt(l, e, seg);
+                    let b = this.At(l, e, seg2);
+                    if MaxF(a.X, b.X) >= -m && MinF(a.X, b.X) <= mapW + m && MaxF(a.Y, b.Y) >= -m && MinF(a.Y, b.Y) <= mapH + m {
+                        this.PlaceDash(l, used, a, b);
+                        used += 1;
                     }
-                    this.PlaceJoint(l, joints, b);
-                    joints += 1;
                 }
+                e += period;
             }
-            prevDrawn = on;
-            i += 1;
         }
         let k = used;
         while k < l.used {
-            l.segCore[k].SetVisible(false);
-            if this.effects { l.segGlow[k].SetVisible(false); }
-            k += 1;
-        }
-        k = joints;
-        while k < l.joints {
-            l.jointCore[k].SetVisible(false);
-            if this.effects { l.jointGlow[k].SetVisible(false); }
+            l.dashCore[k].SetVisible(false);
+            if this.effects { l.dashGlow[k].SetVisible(false); }
             k += 1;
         }
         if l.tintDirty {
             l.tintDirty = false;
             let j = 0;
-            while j < ArraySize(l.segCore) {
-                l.segCore[j].SetTintColor(l.color);
-                if this.effects { l.segGlow[j].SetTintColor(l.color); }
-                j += 1;
-            }
-            j = 0;
-            while j < ArraySize(l.jointCore) {
-                l.jointCore[j].SetTintColor(l.color);
-                if this.effects { l.jointGlow[j].SetTintColor(l.color); }
+            while j < ArraySize(l.dashCore) {
+                l.dashCore[j].SetTintColor(l.color);
+                if this.effects { l.dashGlow[j].SetTintColor(l.color); }
                 j += 1;
             }
         }
         l.used = used;
-        l.joints = joints;
     }
 
-    private func PlaceSegment(l: ref<NMRouteLine>, i: Int32, a: Vector2, b: Vector2) {
-        if i >= ArraySize(l.segCore) {
+    private func PlaceDash(l: ref<NMRouteLine>, i: Int32, a: Vector2, b: Vector2) {
+        if i >= ArraySize(l.dashCore) {
             if this.effects {
-                ArrayPush(l.segGlow, this.Bar(l.glowCanvas, l.color, NMRouteLayer.GlowOpacity()));
+                ArrayPush(l.dashGlow, this.Bar(l.glowCanvas, l.color, NMRouteLayer.GlowOpacity()));
             }
-            ArrayPush(l.segCore, this.Bar(l.coreCanvas, l.color, 1.0));
+            ArrayPush(l.dashCore, this.Bar(l.coreCanvas, l.color, 1.0));
         }
         let mid = new Vector2((a.X + b.X) * 0.5, (a.Y + b.Y) * 0.5);
         let len = SqrtF(NMRouteGeom.Dist2(a, b));
         let ang = Rad2Deg(AtanF(b.Y - a.Y, b.X - a.X));
         let w = this.W();
-        let c = l.segCore[i];
+        let c = l.dashCore[i];
         c.SetTranslation(mid);
         c.SetSize(new Vector2(len, w));
         c.SetRotation(ang);
         c.SetVisible(true);
         if this.effects {
-            let g = l.segGlow[i];
+            let g = l.dashGlow[i];
             g.SetTranslation(mid);
-            g.SetSize(new Vector2(len, w * NMRouteLayer.GlowSize()));
+            g.SetSize(new Vector2(len + w * (NMRouteLayer.GlowSize() - 1.0), w * NMRouteLayer.GlowSize()));
             g.SetRotation(ang);
             g.SetVisible(true);
-        }
-    }
-
-    private func PlaceJoint(l: ref<NMRouteLine>, i: Int32, p: Vector2) {
-        if i >= ArraySize(l.jointCore) {
-            if this.effects {
-                ArrayPush(l.jointGlow, this.Dot(l.glowCanvas, NMRouteLayer.GlowSize(), l.color, NMRouteLayer.GlowOpacity()));
-            }
-            ArrayPush(l.jointCore, this.Dot(l.coreCanvas, 1.0, l.color, 1.0));
-        }
-        l.jointCore[i].SetTranslation(p);
-        l.jointCore[i].SetVisible(true);
-        if this.effects {
-            l.jointGlow[i].SetTranslation(p);
-            l.jointGlow[i].SetVisible(true);
         }
     }
 
@@ -303,22 +302,5 @@ public class NMRouteLayer {
         r.SetOpacity(opacity);
         r.Reparent(parent);
         return r;
-    }
-
-    // A round joint the line's width across (the minimap's path dot image).
-    private func Dot(parent: ref<inkCanvas>, sizeMul: Float, color: HDRColor, opacity: Float) -> ref<inkImage> {
-        let st = this.style;
-        let d = this.W() * sizeMul * NMRouteLayer.JointScale();
-        let img = new inkImage();
-        img.SetAnchor(inkEAnchor.TopLeft);
-        img.SetAnchorPoint(new Vector2(0.5, 0.5));
-        img.SetInteractive(false);
-        img.SetAtlasResource(st.atlas);
-        img.SetTexturePart(st.part);
-        img.SetSize(new Vector2(d, d));
-        img.SetTintColor(color);
-        img.SetOpacity(opacity);
-        img.Reparent(parent);
-        return img;
     }
 }
