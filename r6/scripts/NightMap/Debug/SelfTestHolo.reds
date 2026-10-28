@@ -79,26 +79,7 @@ public abstract class NMHoloTests {
         t.Check("holo.background_cyan_vs_green", t.Near(bgC.Red, 0.031, 0.002) && t.Near(bgG.Green, 0.078, 0.002) && t.Near(bgG.Blue, 0.051, 0.002) && t.Near(bgG.Red, 0.027, 0.002), "");
         t.Check("holo.glow_opacity", t.Near(NMTheme.TileOpacity("glow"), 0.45, 0.0001), "");
         t.Check("holo.panel_opacity_default", t.Near(NMTheme.DefaultPanelOpacity(), 0.45, 0.0001), "");
-        // Topographic theme (index 2): near-black ground, teal linework, pale contour outlines, orange frame.
-        let bgT: HDRColor = NMTheme.HoloBackground(2);
-        let hiT: HDRColor = NMTheme.HoloHighlight(2);
-        let accT: HDRColor = NMTheme.HoloAccent(2);
-        let outT: HDRColor = NMTheme.TileTint("outline", 2);
-        t.Check("holo.topo_palette", bgT.Red < 0.03 && bgT.Green < 0.04 && bgT.Blue < 0.05 && hiT.Red > 0.9 && hiT.Blue < 0.3
-            && accT.Green > 0.7 && accT.Red < 0.3 && outT.Red > 0.75 && outT.Blue > 0.85, "");
-        t.Check("holo.theme_index", NMTheme.ThemeIndex(NightMapHoloColor.Cyan) == 0 && NMTheme.ThemeIndex(NightMapHoloColor.Green) == 1
-            && NMTheme.ThemeIndex(NightMapHoloColor.Topographic) == 2, "");
-        t.Check("holo.topo_opaque_ground", NMTheme.PanelOpacityFor(2, 0.45) >= 0.9 && NMTheme.PanelOpacityFor(0, 0.45) == 0.45, "");
-        t.Check("holo.topo_faint_roads", NMTheme.TileOpacityFor("road", 2) <= 0.25, "");
-        let roadT: HDRColor = NMTheme.TileTint("road", 2);
-        t.Check("holo.topo_slate_roads", AbsF(roadT.Green - roadT.Red) < 0.08 && roadT.Green < 0.3, "");
-        t.Check("holo.topo_glow_nearly_off", NMTheme.TileOpacityFor("glow", 2) <= 0.1, "");
-        let gT: HDRColor = NMTheme.GridColor(2);
-        let gC: HDRColor = NMTheme.GridColor(0);
-        t.Check("holo.topo_orange_grid", gT.Red > 0.9 && gT.Blue < 0.3 && t.Near(gC.Green, NMTheme.HoloAccent(0).Green, 0.001), "");
-        t.Check("holo.topo_tile_strengths", NMTheme.TileOpacityFor("bfill", 2) < NMTheme.TileOpacity("bfill")
-            && NMTheme.TileOpacityFor("glow", 2) > NMTheme.TileOpacity("glow") && NMTheme.TileOpacityFor("road", 0) == NMTheme.TileOpacity("road"), "");
-        t.Check("holo.sidebar_bg_topo", NMTheme.SidebarBg(2).Red < 0.03 && NMTheme.SidebarBg(0).Green > 0.1, "");
+        t.Check("holo.theme_index", NMTheme.ThemeIndex(NightMapHoloColor.Cyan) == 0 && NMTheme.ThemeIndex(NightMapHoloColor.Green) == 1, "");
         let brC: HDRColor = NMTheme.BracketColor(0, true);
         let brOff: HDRColor = NMTheme.BracketColor(0, false);
         t.Check("holo.brackets_brighter_with_effects", brC.Red > brOff.Red && t.Near(brOff.Red, 0.478, 0.002), t.F(brC.Red));

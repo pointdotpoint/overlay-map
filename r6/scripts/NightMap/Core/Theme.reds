@@ -64,43 +64,24 @@ public abstract class NMTheme {
     // 1.0 if ink rotates clockwise for positive angles; verified at Checkpoint 2.
     public static func PlayerRotationSign() -> Float { return 1.0; }
 
-    // ---- map themes: 0 cyan hologram (default), 1 green hologram, 2 topographic (near-black survey map: teal
-    // linework, pale contour outlines, orange frame). Every function takes the theme index; nothing here reads settings,
-    // so the look is testable. The system passes ThemeIndex(NightMapSettings.holoColor) on open.
+    // ---- hologram themes: 0 cyan (default), 1 green. Every function takes the theme index; nothing here reads
+    // settings, so the look is testable. The system passes ThemeIndex(NightMapSettings.holoColor) on open.
     // Accent: glow tiles and overlays (grid, noise, scan bar, edge glow). Highlight: frame, brackets, hint/header text.
     public static func ThemeIndex(c: NightMapHoloColor) -> Int32 {
         if Equals(c, NightMapHoloColor.Green) { return 1; }
-        if Equals(c, NightMapHoloColor.Topographic) { return 2; }
         return 0;
     }
     public static func HoloAccent(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.365, 1.0, 0.541, 1.0); }   // #5dff8a
-        if theme == 2 { return new HDRColor(0.180, 0.820, 0.860, 1.0); } // #2ed1db teal
         return new HDRColor(0.310, 0.890, 1.0, 1.0);                     // #4fe3ff
     }
     public static func HoloHighlight(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.553, 1.0, 0.659, 1.0); }   // #8dffa8
-        if theme == 2 { return new HDRColor(1.0, 0.553, 0.180, 1.0); }   // #ff8d2e orange
         return NMTheme.Cyan();
     }
     public static func HoloBackground(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.027, 0.078, 0.051, 1.0); } // #07140d
-        if theme == 2 { return new HDRColor(0.016, 0.024, 0.031, 1.0); } // #040608 near-black
         return NMTheme.MapBackground();                                  // #08121a
-    }
-    // The overlay grid: the accent, except the topographic map's faint orange survey grid.
-    public static func GridColor(theme: Int32) -> HDRColor {
-        if theme == 2 { return NMTheme.HoloHighlight(2); }
-        return NMTheme.HoloAccent(theme);
-    }
-    // The map ground's opacity: the topographic theme is an opaque black survey map whatever the see-through setting.
-    public static func PanelOpacityFor(theme: Int32, opacity: Float) -> Float {
-        return theme == 2 ? MaxF(opacity, 0.92) : opacity;
-    }
-    // The always-visible sidebar behind marker details and photo previews.
-    public static func SidebarBg(theme: Int32) -> HDRColor {
-        if theme == 2 { return new HDRColor(0.012, 0.016, 0.020, 1.0); }
-        return NMTheme.CardBg();
     }
     // Corner brackets: the highlight colour; with effects on it gets HDR gain so it reads brighter than the frame.
     public static func BracketColor(theme: Int32, effects: Bool) -> HDRColor {
@@ -131,23 +112,10 @@ public abstract class NMTheme {
         if Equals(set, "glow") { return NMTheme.HoloAccent(theme); }
         if Equals(set, "road") {
             if theme == 1 { return new HDRColor(0.122, 0.604, 0.322, 1.0); }   // #1f9a52
-            if theme == 2 { return new HDRColor(0.180, 0.220, 0.240, 1.0); }   // #2e383d dark slate lanes
-            return new HDRColor(0.118, 0.549, 0.588, 1.0);                     // #1e8c96
+                return new HDRColor(0.118, 0.549, 0.588, 1.0);                     // #1e8c96
         }
         if theme == 1 { return new HDRColor(0.659, 1.0, 0.749, 1.0); }         // #a8ffbf (bfill, outline)
-        if theme == 2 { return new HDRColor(0.800, 0.910, 0.937, 1.0); }       // #cce8ef pale contour line
         return new HDRColor(0.624, 0.953, 1.0, 1.0);                           // #9ff3ff
-    }
-    // Per theme: the topographic map is linework on black: faint road fills and building fills, crisp pale outlines,
-    // a soft teal glow.
-    public static func TileOpacityFor(set: String, theme: Int32) -> Float {
-        if theme == 2 {
-            if Equals(set, "glow") { return 0.08; }   // the blurred road glow made wide teal bands
-            if Equals(set, "road") { return 0.22; }
-            if Equals(set, "bfill") { return 0.04; }
-            if Equals(set, "outline") { return 0.95; }
-        }
-        return NMTheme.TileOpacity(set);
     }
     public static func TileOpacity(set: String) -> Float {
         if Equals(set, "glow") { return 0.45; }

@@ -56,7 +56,7 @@ public class NMLayerStack {
     // Re-reads every layer's tint and opacity from NMTheme. Call after the theme changes.
     public func ApplyTheme(theme: Int32) {
         for l in this.layers {
-            l.SetTint(NMTheme.TileTint(l.Name(), theme), NMTheme.TileOpacityFor(l.Name(), theme));
+            l.SetTint(NMTheme.TileTint(l.Name(), theme), NMTheme.TileOpacity(l.Name()));
         }
     }
 

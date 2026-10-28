@@ -72,6 +72,7 @@ public class NMRouteLayer {
     public static func SegmentCap() -> Int32 { return 400; }   // shared by both routes; the waypoint route first
     public static func LineWidth() -> Float { return 24.0; }    // traced line width, 4K units (before the UI scale)
     public static func GlowSize() -> Float { return 2.2; }      // glow width, times the line's
+    public static func JointScale() -> Float { return 1.25; }   // joint dot size, times the line width (soft-edged image)
     public static func GlowOpacity() -> Float { return 0.25; }
     public static func ClipMargin() -> Float { return 64.0; }
     public static func WaypointColor() -> HDRColor { return new HDRColor(1.0, 1.0, 1.0, 1.0); }
@@ -307,7 +308,7 @@ public class NMRouteLayer {
     // A round joint the line's width across (the minimap's path dot image).
     private func Dot(parent: ref<inkCanvas>, sizeMul: Float, color: HDRColor, opacity: Float) -> ref<inkImage> {
         let st = this.style;
-        let d = this.W() * sizeMul;
+        let d = this.W() * sizeMul * NMRouteLayer.JointScale();
         let img = new inkImage();
         img.SetAnchor(inkEAnchor.TopLeft);
         img.SetAnchorPoint(new Vector2(0.5, 0.5));

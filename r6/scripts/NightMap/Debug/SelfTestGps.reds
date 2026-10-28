@@ -45,6 +45,9 @@ public abstract class NMGpsTests {
         P.Update(cam, 0.0, 0.0, 0.0, 400.0, 400.0);
         t.Check("route.traced_one_segment", P.SegmentsShown() == 1 && P.JointsShown() == 2, ToString(P.SegmentsShown()) + "/" + ToString(P.JointsShown()));
         t.Check("route.wider", NMRouteLayer.LineWidth() >= 24.0, "");
+        // Joints are drawn larger than the line: the path dot image has a soft border, so a same-size joint leaves the
+        // segments' square corners showing as steps on sharp bends.
+        t.Check("route.joint_covers_corners", NMRouteLayer.JointScale() >= 1.2, "");
 
         // An L-shaped route: two segments meeting at a joint.
         let ell: array<Vector2>;

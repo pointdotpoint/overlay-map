@@ -56,7 +56,7 @@ public class NMPhotoDrawer {
         let h = l.mapH;
         let pad = 40.0 * s;
         dr.root = NMUi.Canvas(parent, l.viewW, 0.0, w, h);
-        NMUi.Rect(dr.root, 0.0, 0.0, w, h, NMTheme.SidebarBg(theme), 0.95);
+        NMUi.Rect(dr.root, 0.0, 0.0, w, h, NMTheme.CardBg(), 0.95);
         NMUi.Rect(dr.root, 0.0, 0.0, 6.0 * s, h, NMTheme.HoloHighlight(theme), 1.0);
         dr.empty = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Muted());
         dr.empty.SetTranslation(new Vector2(pad, pad));

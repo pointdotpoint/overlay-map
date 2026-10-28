@@ -61,7 +61,7 @@ public class NMPanel {
         // One background layer per region (the panel fill only under the hint bar): stacking the panel fill under the map
         // fill would compound the opacity (0.45 over 0.45 reads as 0.70) and the world would not show through.
         NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.PanelBg(), opacity);
-        NMUi.Rect(p.root, 0.0, 0.0, layout.mapW, layout.mapH, NMTheme.HoloBackground(theme), NMTheme.PanelOpacityFor(theme, opacity));
+        NMUi.Rect(p.root, 0.0, 0.0, layout.mapW, layout.mapH, NMTheme.HoloBackground(theme), opacity);
 
         // Clipped viewport (inkScrollArea's internal mask), same pattern as Codeware's text input viewport.
         let area = new inkScrollArea();

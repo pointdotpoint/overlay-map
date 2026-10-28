@@ -2,8 +2,7 @@ module NightMap
 
 public enum NightMapHoloColor {
     Cyan = 0,
-    Green = 1,
-    Topographic = 2
+    Green = 1
 }
 
 public class NightMapSettings extends ScriptableSystem {
@@ -181,11 +180,10 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "1")
-    @runtimeProperty("ModSettings.displayName", "Map theme")
-    @runtimeProperty("ModSettings.description", "Cyan or green hologram, or Topographic: a near-black survey map with teal linework and an orange frame (applies on next open).")
+    @runtimeProperty("ModSettings.displayName", "Hologram colour")
+    @runtimeProperty("ModSettings.description", "Tints the map tiles, overlays, frame and header text (applies on next open).")
     @runtimeProperty("ModSettings.displayValues.Cyan", "Cyan")
     @runtimeProperty("ModSettings.displayValues.Green", "Green")
-    @runtimeProperty("ModSettings.displayValues.Topographic", "Topographic")
     public let holoColor: NightMapHoloColor = NightMapHoloColor.Cyan;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
