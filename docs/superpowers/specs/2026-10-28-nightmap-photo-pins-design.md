@@ -174,3 +174,27 @@ The chosen path is recorded in the spec as an addendum after the spike.
 6. Delete the newest shot in the in-game gallery, reopen the map: that place shows the previous shot.
 7. Load an older save: the pins are still there.
 8. Hide "Photos" with the filter: no photo pins.
+
+## 10. Addendum after the spike (2026-10-28)
+
+Findings: `docs/superpowers/specs/2026-10-28-photo-pins-spike/FINDINGS.md`.
+
+- **Load path:** vanilla `RequestGameScreenshotByHash` into NightMap's own `inkImage`s. RedIMG is not used for
+  thumbnails.
+- **List source:** always the HUD minimap controller's `GetSystemRequestsHandler()`; the photo mode controller's
+  handler never delivered the list.
+- **Linking by session, not by count (replaces §6.1/§6.2 matching).** The capture hook fires twice per shot, but V
+  cannot move in photo mode, so every shot of one photo mode session shares V's spot. When photo mode opens,
+  NightMap records V's position and yaw and requests the list to get a baseline (the newest `creationDate`). When
+  photo mode closes, and again on every map open while a session is unresolved, it requests the list; every entry
+  newer than the baseline whose hash is not yet saved becomes a spot at that session's position. A session whose
+  baseline never arrived is dropped with a log line rather than guessed (so the 1,300 older shots are never
+  claimed). Sessions with no new files are dropped.
+- **Date shown in the drawer** comes from the file name (`photomode_DDMMYYYY_HHMMSS`), since `creationDate` is
+  Unix seconds and the scripts have no date formatting.
+- **Thumbnail cap (my call):** shots load full size (2560×1440), so at most 24 pins show a loaded thumbnail at once;
+  the rest show the plain frame. The drawer's image counts separately.
+- **Teleport:** a single exact teleport works (1335 m, 3 cm settle, no fall). No invulnerability or hold.
+- **RedIMGRetriever** works on 2.5 and stays installed for perf runs; the perf gate in Task 7 is the real suite.
+- **Storage format:** a `;`-separated line file (`photos.txt` in RedFileSystem storage `NightMap`) instead of JSON;
+  the layout was left to the builder.
