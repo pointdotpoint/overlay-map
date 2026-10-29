@@ -12,7 +12,7 @@ public class NMRouteLine {
     public let canvas: ref<inkCanvas>;
     public let glowCanvas: ref<inkCanvas>;   // empty; kept so the core canvas stays child 1
     public let coreCanvas: ref<inkCanvas>;
-    public let dashCore: array<ref<inkRectangle>>;
+    public let dashCore: array<ref<inkImage>>;
     public let used: Int32;                // dashes shown in the last layout
 }
 
@@ -51,7 +51,9 @@ public class NMRouteStyle {
 
 // GPS routes as a thin solid line, like the vanilla map: the screen route is rounded off (corner cutting), then
 // short overlapping pieces are laid along it every PieceStep() back from the destination, so the line stays pinned to
-// the road while V moves. Pooled opaque rectangles (no glow: overlapping translucent pieces would band), at most
+// the road while V moves. Pooled images of the atlas's holo_line part, whose alpha fades to 0 at its top and bottom
+// rows, so texture filtering antialiases the rotated edges (plain rectangles alias). No glow: overlapping translucent
+// pieces would band. At most
 // DashCap() for both routes; the waypoint route claims the cap first and is drawn over the quest route. Projection
 // and layout rerun only when the camera, the player or a route changed.
 public class NMRouteLayer {
@@ -69,6 +71,7 @@ public class NMRouteLayer {
     public static func LineWidth() -> Float { return 10.0; }    // line width, 4K units (before the UI scale)
     public static func PieceLen() -> Float { return 3.0; }      // piece length, times the width
     public static func PieceStep() -> Float { return 2.5; }     // piece spacing, times the width; < PieceLen so they overlap
+    public static func Feather() -> Float { return 16.0 / 12.0; } // holo_line is half opaque over 12 of its 16 rows
     public static func ClipMargin() -> Float { return 64.0; }
     public static func WaypointColor() -> HDRColor { return new HDRColor(1.0, 1.0, 1.0, 1.0); }
 
@@ -252,13 +255,15 @@ public class NMRouteLayer {
         }
         let c = l.dashCore[i];
         c.SetTranslation(new Vector2((a.X + b.X) * 0.5, (a.Y + b.Y) * 0.5));
-        c.SetSize(new Vector2(SqrtF(NMRouteGeom.Dist2(a, b)), this.W()));
+        c.SetSize(new Vector2(SqrtF(NMRouteGeom.Dist2(a, b)), this.W() * NMRouteLayer.Feather()));
         c.SetRotation(Rad2Deg(AtanF(b.Y - a.Y, b.X - a.X)));
         c.SetVisible(true);
     }
 
-    private func Bar(parent: ref<inkCanvas>, color: HDRColor, opacity: Float) -> ref<inkRectangle> {
-        let r = new inkRectangle();
+    private func Bar(parent: ref<inkCanvas>, color: HDRColor, opacity: Float) -> ref<inkImage> {
+        let r = new inkImage();
+        r.SetAtlasResource(NMTheme.HoloAtlas());
+        r.SetTexturePart(n"holo_line");
         r.SetAnchor(inkEAnchor.TopLeft);
         r.SetAnchorPoint(new Vector2(0.5, 0.5));
         r.SetRenderTransformPivot(new Vector2(0.5, 0.5));

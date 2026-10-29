@@ -11,6 +11,8 @@ Others:
   holo_edge_t/_b 16x64, holo_edge_l/_r 64x16  soft glowing frame line, bright on the outer pixel row, fading inward;
                        stretched along their length (they are uniform that way)
   holo_halo   128x128  radial soft glow for marker halos
+  holo_line   16x16    antialiased line: opaque core, alpha ramps to 0 on the top and bottom rows; uniform along x
+                       (GPS route pieces stretch it along their length, so their rotated edges are smooth)
 """
 from __future__ import annotations
 
@@ -20,7 +22,7 @@ from PIL import Image
 ATLAS_W, ATLAS_H = 1024, 512
 SIZES = {   # name -> (w, h)
     "holo_scan": (64, 64), "holo_grid": (256, 256), "holo_noise": (256, 256), "holo_bar": (512, 160),
-    "holo_halo": (128, 128),
+    "holo_halo": (128, 128), "holo_line": (16, 16),
     "holo_edge_t": (16, 64), "holo_edge_b": (16, 64), "holo_edge_l": (64, 16), "holo_edge_r": (64, 16),
 }
 TILEABLE = {"holo_scan": 4, "holo_grid": 64, "holo_noise": 256}     # name -> period in px (both axes)
@@ -28,7 +30,7 @@ TILEABLE = {"holo_scan": 4, "holo_grid": 64, "holo_noise": 256}     # name -> pe
 LAYOUT = {
     "holo_grid": (0, 0), "holo_noise": (260, 0), "holo_halo": (520, 0), "holo_scan": (652, 0),
     "holo_edge_t": (720, 0), "holo_edge_b": (740, 0), "holo_edge_l": (760, 0), "holo_edge_r": (760, 20),
-    "holo_bar": (0, 260),
+    "holo_bar": (0, 260), "holo_line": (840, 0),
 }
 NOISE_SEED = 20261015
 
@@ -98,6 +100,14 @@ def _edge(w: int, h: int, side: str) -> Image.Image:
     return _white(np.tile(row[None, :], (h, 1)))
 
 
+def _line() -> Image.Image:
+    n = 16
+    d = np.minimum(np.arange(n) + 0.5, n - (np.arange(n) + 0.5))    # distance of each row centre from the edge
+    u = np.clip((d - 0.5) / 4.0, 0.0, 1.0)
+    prof = u * u * (3.0 - 2.0 * u) * 255.0                           # smoothstep: 0 on the outer rows, 255 from row 4
+    return _white(np.tile(prof[:, None], (1, n)))
+
+
 def _render(name: str) -> Image.Image:
     if name == "holo_scan":
         return _scan()
@@ -109,6 +119,8 @@ def _render(name: str) -> Image.Image:
         return _bar()
     if name == "holo_halo":
         return _halo()
+    if name == "holo_line":
+        return _line()
     return _edge(*SIZES[name], name[-1])
 
 

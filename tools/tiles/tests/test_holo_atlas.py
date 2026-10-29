@@ -108,3 +108,15 @@ def test_edge_strips_are_bright_on_the_frame_side_and_fade_inward():
     r = part(img, parts, "holo_edge_r")[..., 3][0, :].astype(int)
     assert t[0] == 255 and t[-1] < 10 and (np.diff(t) <= 0).all()
     assert np.array_equal(b, t[::-1]) and np.array_equal(l, t) and np.array_equal(r, t[::-1])
+
+
+def test_line_is_opaque_in_the_middle_and_fades_to_zero_on_both_sides():
+    img, parts = build_holo_atlas()
+    assert SIZES["holo_line"] == (16, 16)
+    a = part(img, parts, "holo_line")[..., 3].astype(int)
+    assert (a == a[:, :1]).all()                              # uniform along the length (x): pieces stretch along it
+    col = a[:, 0]
+    assert col[0] == 0 and col[-1] == 0                       # transparent outer rows: the quad's edge is invisible
+    assert (col[5:11] == 255).all()                           # opaque core
+    assert np.array_equal(col, col[::-1])                     # symmetric
+    assert (np.diff(col[:8]) >= 0).all() and 0 < col[1] < 255 # a ramp, not a step
