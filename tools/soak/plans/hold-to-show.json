@@ -15,6 +15,9 @@
      "wait": 8
     },
     {
+     "cmd": "watch_keys"
+    },
+    {
      "cmd": "selftest",
      "timeout": 60
     },
@@ -26,7 +29,7 @@
      "expect": "^closed"
     },
     {
-     "key": "apostrophe"
+     "key": "48"
     },
     {
      "wait": 2
@@ -36,7 +39,7 @@
      "expect": "^open"
     },
     {
-     "key": "apostrophe"
+     "key": "48"
     },
     {
      "wait": 2
@@ -49,7 +52,7 @@
      "cmd": "hold_mode"
     },
     {
-     "keydown": "apostrophe"
+     "keydown": "48"
     },
     {
      "wait": 2
@@ -69,7 +72,10 @@
      "expect": "^open"
     },
     {
-     "keyup": "apostrophe"
+     "cmd": "last_keys"
+    },
+    {
+     "keyup": "48"
     },
     {
      "wait": 2
@@ -82,7 +88,7 @@
      "shot": "released"
     },
     {
-     "keydown": "apostrophe"
+     "keydown": "48"
     },
     {
      "wait": 1.5
@@ -92,7 +98,7 @@
      "expect": "^open"
     },
     {
-     "keyup": "apostrophe"
+     "keyup": "48"
     },
     {
      "wait": 1.5

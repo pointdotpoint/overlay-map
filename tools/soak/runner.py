@@ -3,7 +3,9 @@
 Steps, in order:
   {"cmd": "open"}                     a command for the in-game hooks; it must answer. "expect": regex on its answer
   {"key": "apostrophe"}               a real key press in the game's display
-  {"keydown": "apostrophe"}, {"keyup": "apostrophe"}   the same, held across the steps between them
+  {"keydown": "48"}, {"keyup": "48"}   the same, held across the steps between them. A key names an X keysym or a
+                                      keycode; the game's own keyboard follows the session's layout, so a keysym can land
+                                      on another key. 48 is the physical key the game calls IK_SingleQuote.
   {"wait": 2.0}                       seconds, still watching for crashes
   {"shot": "name"}                    a screenshot into the run's screens/; "min_luma" fails it as black_screen
   {"await_visible": 90, "min_luma": 0.02}   screenshots until the frame isn't black, else black_screen

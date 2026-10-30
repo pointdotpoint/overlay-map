@@ -21,6 +21,8 @@ public abstract class NMSoak {
         if Equals(command, "selected") { return sys.Soak_Selected(); }
         if Equals(command, "counts") { return sys.Soak_Counts(); }
         if Equals(command, "is_open") { return sys.Soak_IsOpen(); }
+        if Equals(command, "watch_keys") { return sys.Soak_WatchKeys(); }
+        if Equals(command, "last_keys") { return sys.Soak_LastKeys(); }
         if Equals(command, "hold_mode") { return sys.Soak_HoldMode(); }
         // Bind StrSplit to a local: indexing a call temporary reads garbage in-game.
         if StrBeginsWith(command, "focus_photo ") {

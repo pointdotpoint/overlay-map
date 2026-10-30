@@ -298,6 +298,24 @@
 
     public func Soak_IsOpen() -> String { return this.isOpen ? "open" : "closed"; }
 
+    // Which keys the game itself reports, for telling "the key never arrived" from "the map ignored it".
+    private let soakKeys: String;
+
+    public func Soak_WatchKeys() -> String {
+        GameInstance.GetCallbackSystem().RegisterCallback(n"Input/Key", this, n"Soak_OnKey");
+        return "watching";
+    }
+
+    private cb func Soak_OnKey(evt: ref<KeyInputEvent>) {
+        this.soakKeys += ToString(evt.GetKey()) + ":" + ToString(evt.GetAction()) + " ";
+    }
+
+    public func Soak_LastKeys() -> String {
+        let seen = this.soakKeys;
+        this.soakKeys = "";
+        return StrLen(seen) > 0 ? seen : "none";
+    }
+
     // For this launch only: the setting is not saved.
     public func Soak_HoldMode() -> String {
         this.Settings().holdToShow = true;
