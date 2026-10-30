@@ -296,6 +296,110 @@
         return "mpp " + FloatToStringPrec(this.camera.mpp, 2);
     }
 
+    // The tp probe: how long after a jump collision appears, per group, and what the ray then finds.
+    private let tpX: Float;
+    private let tpY: Float;
+    private let tpFrom: Float;
+    private let tpTo: Float;
+    private let tpStart: Float;
+    private let tpFrames: Int32;
+    private let tpLog: String;
+    private let tpLastStatic: Float;
+    private let tpHp: Float;
+    private let tpRunning: Bool;
+    private let tpStable: Int32;
+    private let tpLanded: Bool;
+    private let tpLandFrame: Int32;
+
+    private func Soak_Now() -> Float { return EngineTime.ToFloat(GameInstance.GetEngineTime(this.GetGameInstance())); }
+
+    private func Soak_Hp() -> Float {
+        let p = GetPlayer(this.GetGameInstance());
+        return GameInstance.GetStatPoolsSystem(this.GetGameInstance()).GetStatPoolValue(Cast<StatsObjectID>(p.GetEntityID()), gamedataStatPoolType.Health, true);
+    }
+
+    public func Soak_Tp(x: Float, y: Float, hop: Float, from: Float, to: Float) -> String {
+        let p = GetPlayer(this.GetGameInstance());
+        this.tpX = x; this.tpY = y; this.tpFrom = from; this.tpTo = to;
+        this.tpFrames = 0; this.tpLog = ""; this.tpStable = 0; this.tpLanded = false; this.tpLastStatic = -9999.0;
+        this.tpHp = this.Soak_Hp();
+        this.tpStart = this.Soak_Now();
+        let rot = new EulerAngles();
+        GameInstance.GetTeleportationFacility(this.GetGameInstance()).Teleport(p, new Vector4(x, y, hop, 1.0), rot);
+        if !this.tpRunning {
+            this.tpRunning = true;
+            this.Soak_TpArm();
+        }
+        return "sent";
+    }
+
+    private func Soak_TpArm() {
+        let cb = new NMSoakTpFrame();
+        cb.system = this;
+        GameInstance.GetDelaySystem(this.GetGameInstance()).DelayCallback(cb, 0.0, false);
+    }
+
+    private func Soak_TpRay(group: CName, out z: Float) -> Bool {
+        let t: TraceResult;
+        let ok = GameInstance.GetSpatialQueriesSystem(this.GetGameInstance()).SyncRaycastByCollisionGroup(new Vector4(this.tpX, this.tpY, this.tpFrom, 1.0), new Vector4(this.tpX, this.tpY, this.tpTo, 1.0), group, t, false, false) && TraceResult.IsValid(t);
+        if ok { z = t.position.Z; }
+        return ok;
+    }
+
+    public func Soak_TpTick() {
+        this.tpFrames += 1;
+        let ms = (this.Soak_Now() - this.tpStart) * 1000.0;
+        let at = "f" + IntToString(this.tpFrames) + "@" + FloatToStringPrec(ms, 0);
+        let pos = GetPlayer(this.GetGameInstance()).GetWorldPosition();
+        let vz = pos.Z;
+        let best = -9999.0;
+        let z: Float;
+        if this.Soak_TpRay(n"Static", z) { best = z; }
+        let st = best;
+        if this.Soak_TpRay(n"Terrain", z) { best = MaxF(best, z); }
+        if best > -9000.0 && AbsF(best - this.tpLastStatic) > 0.2 {
+            this.tpLog += " " + at + "=" + FloatToStringPrec(best, 1) + (st > -9000.0 ? "s" : "t") + "/v" + FloatToStringPrec(vz, 1);
+        }
+        if best > -9000.0 && AbsF(best - this.tpLastStatic) <= 0.2 { this.tpStable += 1; } else { this.tpStable = 0; }
+        this.tpLastStatic = best;
+        if !this.tpLanded && this.tpStable >= 2 {
+            this.tpLanded = true;
+            this.tpLandFrame = this.tpFrames;
+            let rot = new EulerAngles();
+            let p: ref<GameObject> = GetPlayer(this.GetGameInstance());
+            GameInstance.GetTeleportationFacility(this.GetGameInstance()).Teleport(p, new Vector4(this.tpX, this.tpY, best + 0.5, 1.0), rot);
+            this.tpLog += " LAND@" + at + "=" + FloatToStringPrec(best + 0.5, 1);
+        }
+        if this.tpLanded && this.tpFrames == this.tpLandFrame + 90 {
+            this.tpLog += " after=" + FloatToStringPrec(vz, 1);
+        }
+        if this.tpFrames < 420 { this.Soak_TpArm(); } else { this.tpRunning = false; }
+    }
+
+    // Point the open map at a spot, as panning there would.
+    public func Soak_Aim(x: Float, y: Float) -> String {
+        if !IsDefined(this.camera) { return "map closed"; }
+        this.camera.follow = false;
+        this.camera.SetCenter(x, y);
+        return "aimed";
+    }
+
+    public func Soak_VPos() -> String {
+        let pos = GetPlayer(this.GetGameInstance()).GetWorldPosition();
+        let x = pos.X; let y = pos.Y; let z = pos.Z;
+        return "v " + FloatToStringPrec(x, 1) + " " + FloatToStringPrec(y, 1) + " " + FloatToStringPrec(z, 1) + " hp " + FloatToStringPrec(this.Soak_Hp(), 0);
+    }
+
+    public func Soak_TpResult() -> String {
+        let w: Float; let w2: Float;
+        let water = AIScriptUtils.GetWaterLevel(this.GetGameInstance(), new Vector3(this.tpX, this.tpY, this.tpLastStatic), w);
+        let water2 = AIScriptUtils.GetWaterLevel(this.GetGameInstance(), new Vector3(this.tpX, this.tpY, 0.0), w2);
+        let pos = GetPlayer(this.GetGameInstance()).GetWorldPosition();
+        let vz = pos.Z;
+        return "frames " + IntToString(this.tpFrames) + " vz " + FloatToStringPrec(vz, 1) + " water " + (water ? FloatToStringPrec(w, 1) : "-") + "/" + (water2 ? FloatToStringPrec(w2, 1) : "-")
+            + " hp " + FloatToStringPrec(this.tpHp, 0) + ">" + FloatToStringPrec(this.Soak_Hp(), 0) + " |" + this.tpLog;
+    }
+
     public func Soak_IsOpen() -> String { return this.isOpen ? "open" : "closed"; }
 
     // Which keys the game itself reports, for telling "the key never arrived" from "the map ignored it".

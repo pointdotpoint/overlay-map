@@ -79,8 +79,8 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Keys")
     @runtimeProperty("ModSettings.category.order", "0")
-    @runtimeProperty("ModSettings.displayName", "Fast travel")
-    @runtimeProperty("ModSettings.description", "Fast travels to the selected fast travel marker.")
+    @runtimeProperty("ModSettings.displayName", "Teleport")
+    @runtimeProperty("ModSettings.description", "Fast travels on a fast travel marker, and teleports to the selected marker or the map centre anywhere else.")
     public let keyTeleport: EInputKey = EInputKey.IK_NumPeriod;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
@@ -224,8 +224,8 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "1")
-    @runtimeProperty("ModSettings.displayName", "Fast travel key")
-    @runtimeProperty("ModSettings.description", "Fast travel from NightMap to the selected fast travel marker.")
+    @runtimeProperty("ModSettings.displayName", "Teleport key")
+    @runtimeProperty("ModSettings.description", "Teleport from NightMap to any spot on the map: fast travels on a fast travel marker, teleports anywhere else.")
     public let teleportEnabled: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")

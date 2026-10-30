@@ -29,6 +29,17 @@ public abstract class NMSoak {
             let f = StrSplit(command, " ");
             return sys.Soak_FocusPhoto(StringToFloat(f[1]));
         }
+        // tp x y hop from to: send V to (x, y, hop), then watch rays from `from` down to `to` frame by frame.
+        if StrBeginsWith(command, "tp ") {
+            let a = StrSplit(command, " ");
+            return sys.Soak_Tp(StringToFloat(a[1]), StringToFloat(a[2]), StringToFloat(a[3]), StringToFloat(a[4]), StringToFloat(a[5]));
+        }
+        if Equals(command, "tp_result") { return sys.Soak_TpResult(); }
+        if Equals(command, "vpos") { return sys.Soak_VPos(); }
+        if StrBeginsWith(command, "aim ") {
+            let v = StrSplit(command, " ");
+            return sys.Soak_Aim(StringToFloat(v[1]), StringToFloat(v[2]));
+        }
         if StrBeginsWith(command, "zoom ") {
             let m = StrSplit(command, " ");
             return sys.Soak_SetZoom(StringToFloat(m[1]));
@@ -61,5 +72,13 @@ public abstract class NMSoak {
     public static func Report(state: String, detail: String) {
         let channel = SoakChannel.Get();
         if IsDefined(channel) { channel.State(state, detail); }
+    }
+}
+
+// One frame of the tp probe, re-armed from Soak_TpTick.
+public class NMSoakTpFrame extends DelayCallback {
+    public let system: wref<NightMapSystem>;
+    public func Call() {
+        if IsDefined(this.system) { this.system.Soak_TpTick(); }
     }
 }

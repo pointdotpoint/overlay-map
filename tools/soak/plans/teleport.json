@@ -1,0 +1,431 @@
+{
+ "name": "teleport",
+ "runs": [
+  {
+   "name": "anywhere",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 60
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -1800 2300"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t0"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim 2800 -1000"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t1"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -1456 112"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t2"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim 3500 500"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t3"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -2100 -2700"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t4"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -4500 -1000"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t5"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -600 1400"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t6"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -1212 -931"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t7"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim 1032 -1491"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t8"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -548 3764"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t9"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -1965 -766"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t10"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim 2132 -3605"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t11"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -2607 2727"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t12"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim 1189 -3229"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t13"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -205 774"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t14"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "aim -2725 3452"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t15"
+    }
+   ],
+   "forbid": [
+    "TEST\\|FAIL\\|teleport\\.",
+    "teleport\\|failed\\|lost"
+   ]
+  }
+ ]
+}

@@ -20,6 +20,8 @@ public class NightMapSystem extends ScriptableSystem {
     private let camera: ref<NMCamera>;
     private let lastMs: Float;
     private let holdMs: Float;
+    private let teleport: ref<NMTeleportDriver>;
+    private let teleportLastMs: Float;
     private let savedMpp: Float = 0.0;   // 0 = not opened yet this session: start fully zoomed in
     private let frameNo: Int32;
     private let layers: ref<NMLayerStack>;
@@ -356,7 +358,67 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private func TeleportLabel() -> String {
-        return this.SelectedPhoto() != null ? "TELEPORT" : "FAST TRAVEL";
+        return IsDefined(NMFastTravel.PointOf(this.SelectedMappin())) ? "FAST TRAVEL" : "TELEPORT";
+    }
+
+    // Teleports to the selected marker or, with none, the map centre; closes the map. V's vehicle comes along.
+    public func StartTeleport() -> Bool {
+        if IsDefined(this.teleport) {
+            NMLog.Info("teleport|refused|busy");
+            return false;
+        }
+        let gi = this.GetGameInstance();
+        let player = GetPlayer(gi);
+        if !IsDefined(player) || !IsDefined(this.camera) || !IsDefined(this.crosshair) {
+            NMLog.Info("teleport|refused|no player");
+            return false;
+        }
+        let vehicle: ref<VehicleObject> = GetMountedVehicle(player);
+        let inVehicle = IsDefined(vehicle);
+        let c = this.crosshair;
+        let kind = -1;
+        let layerId = n"";
+        let marker = new Vector4(0.0, 0.0, 0.0, 1.0);
+        if c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers) && this.api.layers[c.selLayer].IsAlive(c.selItem) {
+            let L = this.api.layers[c.selLayer];
+            kind = 0;
+            layerId = L.id;
+            marker = L.Position(c.selItem);
+        }
+        let t = NMTeleport.Choose(kind, layerId, marker, this.camera.cx, this.camera.cy, inVehicle);
+        if !NMTeleport.InBounds(t.x, t.y) {
+            NMLog.Info("teleport|refused|outside map");
+            return false;
+        }
+        NMLog.Info("teleport|start|" + FloatToStringPrec(t.x, 1) + "," + FloatToStringPrec(t.y, 1) + "|exact=" + ToString(t.exact)
+            + "|vehicle=" + ToString(inVehicle));
+        let obj: ref<GameObject> = inVehicle ? vehicle : player;
+        this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), inVehicle);
+        this.Close();
+        this.teleportLastMs = NMClock.NowMs();
+        this.ScheduleTeleport();
+        return true;
+    }
+
+    public func TeleportTick() {
+        if !IsDefined(this.teleport) {
+            return;
+        }
+        let now = NMClock.NowMs();
+        let dt = ClampF(now - this.teleportLastMs, 0.0, 100.0);
+        this.teleportLastMs = now;
+        if this.teleport.Step(dt) == 1 {
+            NMLog.Info("teleport|" + this.teleport.result);
+            this.teleport = null;
+            return;
+        }
+        this.ScheduleTeleport();
+    }
+
+    private func ScheduleTeleport() {
+        let cb = new NightMapTeleportFrame();
+        cb.system = this;
+        GameInstance.GetDelaySystem(this.GetGameInstance()).DelayCallback(cb, 0.0, false);
     }
 
     // Teleports V on foot to the selected photo's spot; closes the map. Refusals are logged and keep the map open.
@@ -598,14 +660,18 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private func UpdateModules(dt: Float) {
-        // First: a started fast travel closes the map, and nothing below may run on the destroyed panel.
+        // First: a started teleport or fast travel closes the map, and nothing below may run on the destroyed panel.
         if this.input.teleport {
             this.input.teleport = false;
             if this.SelectedPhoto() != null {
                 if this.StartPhotoTeleport() {
                     return;
                 }
-            } else if this.StartFastTravel() {
+            } else if IsDefined(NMFastTravel.PointOf(this.SelectedMappin())) {
+                if this.StartFastTravel() {
+                    return;
+                }
+            } else if this.StartTeleport() {
                 return;
             }
         }
