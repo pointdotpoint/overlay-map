@@ -76,6 +76,14 @@ class FakeGame:
     def hold(self, name, seconds):
         return True
 
+    def key_down(self, name):
+        self.keys.append("down " + name)
+        return True
+
+    def key_up(self, name):
+        self.keys.append("up " + name)
+        return True
+
     def screenshot(self, out):
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_bytes(b"png")
@@ -231,6 +239,12 @@ def test_a_flagged_moment_raised_before_the_step_begins_is_still_photographed(pa
 def test_await_state_timing_out_fails_the_run(paths):
     r = drive(paths, FakeGame(paths), [{"await_state": "ft_load_finished", "timeout": 5}])
     assert r.verdict == "coverage_fail" and "ft_load_finished" in r.detail
+
+
+def test_keydown_and_keyup_are_separate_steps(paths):
+    game = FakeGame(paths)
+    r = drive(paths, game, [{"keydown": "apostrophe"}, {"cmd": "is_open"}, {"keyup": "apostrophe"}])
+    assert r.verdict == "pass" and game.keys == ["down apostrophe", "up apostrophe"]
 
 
 def test_the_process_ending_is_a_crash(paths):

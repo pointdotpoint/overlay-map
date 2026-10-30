@@ -296,6 +296,14 @@
         return "mpp " + FloatToStringPrec(this.camera.mpp, 2);
     }
 
+    public func Soak_IsOpen() -> String { return this.isOpen ? "open" : "closed"; }
+
+    // For this launch only: the setting is not saved.
+    public func Soak_HoldMode() -> String {
+        this.Settings().holdToShow = true;
+        return "hold";
+    }
+
     public func Soak_Counts() -> String {
         if !IsDefined(this.renderer) { return "map closed"; }
         return "chips " + IntToString(this.renderer.chipsUsed) + "|clusters " + IntToString(this.renderer.clustersUsed)

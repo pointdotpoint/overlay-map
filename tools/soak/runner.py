@@ -3,6 +3,7 @@
 Steps, in order:
   {"cmd": "open"}                     a command for the in-game hooks; it must answer. "expect": regex on its answer
   {"key": "apostrophe"}               a real key press in the game's display
+  {"keydown": "apostrophe"}, {"keyup": "apostrophe"}   the same, held across the steps between them
   {"wait": 2.0}                       seconds, still watching for crashes
   {"shot": "name"}                    a screenshot into the run's screens/; "min_luma" fails it as black_screen
   {"await_visible": 90, "min_luma": 0.02}   screenshots until the frame isn't black, else black_screen
@@ -150,6 +151,12 @@ class Runner:
         elif "key" in step:
             if not self.game.key(step["key"]):
                 raise Verdict("infra_error", f"key {step['key']} didn't reach the game")
+        elif "keydown" in step:
+            if not self.game.key_down(step["keydown"]):
+                raise Verdict("infra_error", f"key {step['keydown']} didn't reach the game")
+        elif "keyup" in step:
+            if not self.game.key_up(step["keyup"]):
+                raise Verdict("infra_error", f"key {step['keyup']} didn't reach the game")
         elif "hold" in step:
             if not self.game.hold(step["hold"], step.get("seconds", 1.0)):
                 raise Verdict("infra_error", f"key {step['hold']} didn't reach the game")

@@ -41,9 +41,11 @@ public class NMInput {
                     this.debugPerf = true;
                 } else if alt {
                     this.debugCalib = true;
-                } else {
+                } else if !s.holdToShow || !mapOpen {
                     this.toggle = true;
                 }
+            } else if s.holdToShow && mapOpen {
+                this.toggle = true;
             }
             return true;
         }
@@ -148,6 +150,6 @@ public class NMInput {
             + "   ·   " + NMInput.KeyName(s.keyAct) + " ACT"
             + (s.teleportEnabled ? "   ·   " + NMInput.KeyName(s.keyTeleport) + " " + teleportLabel : "")
             + "   ·   " + NMInput.KeyName(s.keyFilter) + " FILTER: " + view
-            + "   ·   " + NMInput.KeyName(s.keyToggle) + " CLOSE";
+            + "   ·   " + (s.holdToShow ? "RELEASE " : "") + NMInput.KeyName(s.keyToggle) + " CLOSE";
     }
 }

@@ -293,6 +293,29 @@ public class NMSelfTest {
         inp.toggle = false;
         inp.Handle(s, EInputKey.IK_Backslash, press, false, true, false, false);
         this.Check("input.ctrl_toggle_is_selftest", inp.debugSelfTest && !inp.toggle, "");
+        // Hold to show: press opens, release closes, and a toggle key's release still does nothing.
+        let hs = new NightMapSettings();
+        hs.keyToggle = EInputKey.IK_Backslash;
+        let rel = EInputAction.IACT_Release;
+        let hi = new NMInput();
+        hi.Handle(hs, EInputKey.IK_Backslash, press, false, false, false, true);
+        hi.toggle = false;
+        hi.Handle(hs, EInputKey.IK_Backslash, rel, false, false, false, true);
+        this.Check("input.toggle_ignores_release", !hi.toggle, "");
+        hs.holdToShow = true;
+        hi.Handle(hs, EInputKey.IK_Backslash, press, false, false, false, false);
+        let holdOpens = hi.toggle;
+        hi.toggle = false;
+        hi.Handle(hs, EInputKey.IK_Backslash, press, false, false, false, true);
+        let heldStaysOpen = !hi.toggle;
+        hi.Handle(hs, EInputKey.IK_Backslash, rel, false, false, false, true);
+        let releaseCloses = hi.toggle;
+        hi.toggle = false;
+        hi.Handle(hs, EInputKey.IK_Backslash, rel, false, false, false, false);
+        let releaseClosedIgnored = !hi.toggle;
+        this.Check("input.hold_to_show", holdOpens && heldStaysOpen && releaseCloses && releaseClosedIgnored,
+            ToString(holdOpens) + ToString(heldStaysOpen) + ToString(releaseCloses) + ToString(releaseClosedIgnored));
+        this.Check("input.hold_hint", StrContains(NMInput.HintText(hs, "ALL", "TELEPORT"), "RELEASE") && !StrContains(NMInput.HintText(s, "ALL", "TELEPORT"), "RELEASE"), "");
         this.Check("input.ignored_when_closed", !inp.Handle(s, EInputKey.IK_NumPad8, press, false, false, false, false), "");
         let usedArrow = inp.Handle(s, EInputKey.IK_Up, press, false, false, false, true);
         let v0 = inp.PanVector();

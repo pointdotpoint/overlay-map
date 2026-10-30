@@ -20,6 +20,8 @@ public abstract class NMSoak {
         if Equals(command, "focus_ft far") { return sys.Soak_FocusFastTravel(); }
         if Equals(command, "selected") { return sys.Soak_Selected(); }
         if Equals(command, "counts") { return sys.Soak_Counts(); }
+        if Equals(command, "is_open") { return sys.Soak_IsOpen(); }
+        if Equals(command, "hold_mode") { return sys.Soak_HoldMode(); }
         // Bind StrSplit to a local: indexing a call temporary reads garbage in-game.
         if StrBeginsWith(command, "focus_photo ") {
             let f = StrSplit(command, " ");

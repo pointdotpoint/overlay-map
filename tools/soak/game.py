@@ -200,6 +200,16 @@ class GameControl:
             self.held.discard(name)
         return True
 
+    def key_down(self, name: str) -> bool:
+        if not self.focus():
+            return False
+        self.held.add(name)
+        return self._x(["xdotool", "keydown", name]).returncode == 0
+
+    def key_up(self, name: str) -> bool:
+        self.held.discard(name)
+        return self._x(["xdotool", "keyup", name]).returncode == 0
+
     def release_all(self) -> None:
         for name in sorted(self.held):
             self._x(["xdotool", "keyup", name])

@@ -217,6 +217,13 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Hold key to show")
+    @runtimeProperty("ModSettings.description", "Show the map only while the toggle key is held, instead of pressing it to open and again to close.")
+    public let holdToShow: Bool = false;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "1")
     @runtimeProperty("ModSettings.displayName", "Fast travel key")
     @runtimeProperty("ModSettings.description", "Fast travel from NightMap to the selected fast travel marker.")
     public let teleportEnabled: Bool = true;

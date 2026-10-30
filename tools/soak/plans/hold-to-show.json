@@ -1,0 +1,110 @@
+{
+ "name": "hold-to-show",
+ "runs": [
+  {
+   "name": "keys",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 60
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "key": "apostrophe"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "key": "apostrophe"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "cmd": "hold_mode"
+    },
+    {
+     "keydown": "apostrophe"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "shot": "held"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "keyup": "apostrophe"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "shot": "released"
+    },
+    {
+     "keydown": "apostrophe"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "keyup": "apostrophe"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    }
+   ],
+   "forbid": [
+    "TEST\\|FAIL\\|input\\."
+   ]
+  }
+ ]
+}
