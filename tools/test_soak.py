@@ -13,8 +13,9 @@ sys.path.insert(0, str(TOOLS))
 from soak.builds import stage_build  # noqa: E402
 from soak.campaign import validate_plan  # noqa: E402
 from soak.channel import read_states  # noqa: E402
+from soak.game import GameControl  # noqa: E402
 from soak.paths import Paths  # noqa: E402
-from soak.runner import Runner, Timeouts  # noqa: E402
+from soak.runner import Runner, Timeouts, image_luma  # noqa: E402
 
 
 class FakeGame:
@@ -98,6 +99,13 @@ def drive(paths, game, steps, luma=0.5):
 
     return Runner(paths, game, clock=lambda: clock["t"], sleep=sleep, luma=lambda _: luma,
                   timeouts=Timeouts(exit_settle=0.0, grace=0.0)).run("r-1", "b", "Save", steps, paths.soak / "shots")
+
+
+def test_a_black_frame_with_an_alpha_channel_measures_black(tmp_path):
+    # gamescopectl writes RGBA: a mean over all channels reads an all-black opaque frame as 0.5.
+    out = tmp_path / "black.png"
+    subprocess.run(["magick", "-size", "16x16", "xc:black", "-alpha", "on", "-define", "png:color-type=6", str(out)], check=True)
+    assert image_luma(out) == 0.0
 
 
 def test_a_clean_plan_passes_and_keeps_the_commands_answers(paths):
@@ -211,6 +219,8 @@ def test_validate_rejects_a_run_with_no_steps():
 
 @pytest.mark.parametrize("script", sorted((TOOLS / "soak/tests").glob("soak_*_test.py")), ids=lambda p: p.stem)
 def test_ported_supervisor_tests(script):
+    if script.stem == "soak_lock_test" and GameControl().running():
+        pytest.skip("install.sh refuses while the real game runs")
     env = dict(os.environ, PYTHONPATH=str(TOOLS))
     r = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=120, env=env)
     assert r.returncode == 0 and "RESULT: PASS" in r.stdout, r.stdout[-800:] + r.stderr[-1500:]

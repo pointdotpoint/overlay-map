@@ -60,7 +60,7 @@ class Verdict(Exception):
 
 def image_luma(path: Path) -> float | None:
     """Mean brightness 0..1 of a picture, None when it can't be read."""
-    r = subprocess.run(["magick", str(path), "-colorspace", "Gray", "-format", "%[fx:mean]", "info:"],
+    r = subprocess.run(["magick", str(path), "-alpha", "off", "-colorspace", "Gray", "-format", "%[fx:mean]", "info:"],
                        capture_output=True, text=True, timeout=30)
     try:
         return float(r.stdout.strip())
