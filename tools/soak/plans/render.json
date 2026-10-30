@@ -28,33 +28,13 @@
      "wait": 4
     },
     {
-     "cmd": "seed_photos 500"
-    },
-    {
-     "wait": 2
-    },
-    {
-     "cmd": "sweep a 1.0 20"
-    },
-    {
-     "await_state": "sweep_done_a",
-     "timeout": 60
-    },
-    {
-     "cmd": "sweep b 2.0 12"
-    },
-    {
-     "await_state": "sweep_done_b",
-     "timeout": 60
-    },
-    {
-     "cmd": "zoomloop z 120 8"
+     "cmd": "zoomloop z 150 6"
     },
     {
      "await_state": "mode_done_z",
-     "timeout": 240,
+     "timeout": 280,
      "shoot_on": "hold",
-     "shoot_gap": 4.0
+     "shoot_gap": 3.0
     }
    ]
   }

@@ -320,7 +320,7 @@
                 this.soakLevels += 1;
                 if this.soakHolds < this.soakHoldMax {   // the level just changed: stop here for a picture
                     this.soakHolds += 1;
-                    this.soakHoldLeft = 7.0;
+                    this.soakHoldLeft = 14.0;
                     NMSoak.Report("hold", IntToString(this.soakHolds) + "|L" + IntToString(this.soakLastLv));
                 }
             }

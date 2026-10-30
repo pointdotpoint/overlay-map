@@ -273,6 +273,14 @@ public abstract class NMPhotoTests {
         t.Check("photo.parse_skips_bad", ArraySize(parsed) == 2 && NMPhotoStore.Skipped() == 2,
             ToString(ArraySize(parsed)) + " parsed, " + ToString(NMPhotoStore.Skipped()) + " skipped");
 
+        // Older versions wrote every spot without a line break: the whole file reads as one line.
+        let glued: array<String>;
+        ArrayPush(glued, NMPhotoStore.ToLine(NMPhotoTests.Spot(7u, 1.0, 2.0, 5ul)) + NMPhotoStore.ToLine(NMPhotoTests.Spot(8u, 3.0, 4.0, 6ul))
+            + NMPhotoStore.ToLine(NMPhotoTests.Spot(9u, 5.0, 6.0, 7ul)));
+        let unglued = NMPhotoStore.Parse(glued);
+        t.Check("photo.parse_glued_spots", ArraySize(unglued) == 3 && NMPhotoStore.Skipped() == 0,
+            ToString(ArraySize(unglued)) + " parsed, " + ToString(NMPhotoStore.Skipped()) + " skipped");
+
         let semi = NMPhotoSpot.Create(9u, "odd;name;photo.png", new Vector4(0.0, 0.0, 0.0, 1.0), 0.0, 1ul);
         let rs = NMPhotoStore.FromLine(NMPhotoStore.ToLine(semi));
         t.Check("photo.path_with_semicolon", IsDefined(rs) && Equals(rs.path, "odd;name;photo.png"), IsDefined(rs) ? rs.path : "null");

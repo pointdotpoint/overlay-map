@@ -82,6 +82,7 @@ public abstract class NMPerfTests {
         NMPerfTests.OccupiedCases(t);
         NMPerfTests.EquivalenceCases(t);
         NMPerfTests.GrowReuseCases(t);
+        NMPerfTests.PhotoSlotReuseCases(t);
         NMPerfTests.ImageCacheCases(t);
     }
 
@@ -279,6 +280,25 @@ public abstract class NMPerfTests {
         r.Update(cam, 1880.0, 1480.0);
         r.ApplySelection(0, 0, 10000.0);   // candidate 0 is A; one big dt completes the grow
         return r;
+    }
+
+    // A slot goes from a photo pin to a normal marker: both of its widgets must come back, or the marker is placed
+    // but invisible (seen as markers vanishing at random while panning, since slots are handed out in placement order).
+    private static func PhotoSlotReuseCases(t: ref<NMSelfTest>) {
+        let api: ref<NightMap>;
+        let cam: ref<NMCamera>;
+        let L: ref<NightMapLayer>;
+        let ids: array<Int32>;
+        let top = NMTheme.ChipBudget() - 1;
+        let r = NMPerfTests.GrowSetup(api, cam, L, ids);
+        let photo = NightMapItem.Create(new Vector4(100.0, 100.0, 0.0, 1.0), n"test.g", NMTheme.UiAtlas(), n"icon_dot");
+        photo.shotHash = 5u;
+        L.Update(ids[0], photo);
+        r.Update(cam, 1880.0, 1480.0);
+        L.Update(ids[0], NightMapItem.Create(new Vector4(100.0, 100.0, 0.0, 1.0), n"test.g", NMTheme.UiAtlas(), n"icon_dot"));
+        r.Update(cam, 1880.0, 1480.0);
+        t.Check("chip.visible_after_photo_slot", r.candSlot[0] == top && r.chipIcon[top].IsVisible() && r.chipBg[top].IsVisible(),
+            "slot " + ToString(r.candSlot[0]) + " icon " + ToString(r.chipIcon[top].IsVisible()) + " bg " + ToString(r.chipBg[top].IsVisible()));
     }
 
     private static func GrowReuseCases(t: ref<NMSelfTest>) {
