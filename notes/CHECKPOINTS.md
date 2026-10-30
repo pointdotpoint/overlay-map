@@ -105,10 +105,17 @@ real key. Passed on 2026-10-30 (run 20261030-144626-regression).
 | Photo pins lost on restart | WriteLines ends no line, so spots ran together and 1 of 21 loaded | 21 of 21 load; old files still read |
 
 Open:
-- A session's first zoom can show a faint rectangular seam for a moment while nothing is cached. Hold 1 of the zoom check
-  measures 370 blocks and is exempt from the limit; the harness jumps the zoom further in one frame than a player can.
+- While a level's tiles load, a zoom-out can show a bare edge beyond what the old level covered. The tile sets now cross
+  together and the coarser level is preloaded; crossovers measured 16 to 255 ms. The zoom check photographs the map after the
+  crossover, so it no longer sees this moment: it catches stale or missing tiles, not this wait.
 - Vanishing markers: the cause was found by reading the code and proven by a self-test, not seen on screen.
 - A GPU crash ("Gpu Crash for unknown reasons") hit 2 of about 24 headless launches, and one launch never reached the menu.
 - Self-tests still failing, not from this work: vanilla.catalog_twelve (13 categories), tracking.live_accepted_are_quest_objectives,
   perf.wide_layer_exceeds_old_cap.
 - Reading a field of a call temporary (`x.GetScale().X`) gives garbage in-game. Bind to a local. That caused 8 false failures.
+
+## Closer zoom (2026-10-30, branch feat/closer-zoom)
+
+The camera goes to 0.1 m/px, 5x past the finest tiles, and photo pins grow with it up to 5x. A photo pin is selected from its
+tip at any size. `tools/soak/plans/close-zoom.json` passed (20261030-150052) and so did the regression (20261030-150736).
+Self-tests: 314 passed, 3 failed, the same three as above. Below the 100 M scale the map magnifies its tiles and looks soft.
