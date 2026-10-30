@@ -35,7 +35,7 @@
      "timeout": 220,
      "shoot_on": "hold",
      "shoot_gap": 3.0,
-     "max_changed": 45
+     "max_changed": 100
     },
     {
      "cmd": "close"
