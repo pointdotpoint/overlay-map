@@ -70,6 +70,7 @@ public class NMItemRenderer {
     public let selCluster: ref<inkImage>;
     public let candX: array<Float>;
     public let candY: array<Float>;
+    public let candReach: array<Float>;  // extra selection radius, parallel to the other cand arrays
     public let candKind: array<Int32>;
     public let candLayer: array<Int32>;
     public let candItem: array<Int32>;
@@ -357,6 +358,7 @@ public class NMItemRenderer {
         this.thumbPlan.BeginLayout();
         ArrayClear(this.candX);
         ArrayClear(this.candY);
+        ArrayClear(this.candReach);
         ArrayClear(this.candKind);
         ArrayClear(this.candLayer);
         ArrayClear(this.candItem);
@@ -711,6 +713,7 @@ public class NMItemRenderer {
             this.chipOn[slot] = true;
             ArrayPush(this.candX, c.X);
             ArrayPush(this.candY, c.Y);
+            ArrayPush(this.candReach, p.Y - c.Y);   // to the pin's tip
             ArrayPush(this.candKind, 0);
             ArrayPush(this.candLayer, L.index);
             ArrayPush(this.candItem, id);
@@ -760,6 +763,7 @@ public class NMItemRenderer {
         }
         ArrayPush(this.candX, p.X);
         ArrayPush(this.candY, p.Y);
+        ArrayPush(this.candReach, 0.0);
         ArrayPush(this.candKind, 0);
         ArrayPush(this.candLayer, L.index);
         ArrayPush(this.candItem, id);
@@ -1004,6 +1008,7 @@ public class NMItemRenderer {
         }
         ArrayPush(this.candX, p.X);
         ArrayPush(this.candY, p.Y);
+        ArrayPush(this.candReach, 0.0);
         ArrayPush(this.candKind, 1);
         ArrayPush(this.candLayer, -1);
         ArrayPush(this.candItem, this.clKey[slot]);

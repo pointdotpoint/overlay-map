@@ -20,8 +20,15 @@ public abstract class NMSoak {
         if Equals(command, "focus_ft far") { return sys.Soak_FocusFastTravel(); }
         if Equals(command, "selected") { return sys.Soak_Selected(); }
         if Equals(command, "counts") { return sys.Soak_Counts(); }
-        if StrBeginsWith(command, "focus_photo ") { return sys.Soak_FocusPhoto(StringToFloat(StrSplit(command, " ")[1])); }
-        if StrBeginsWith(command, "zoom ") { return sys.Soak_SetZoom(StringToFloat(StrSplit(command, " ")[1])); }
+        // Bind StrSplit to a local: indexing a call temporary reads garbage in-game.
+        if StrBeginsWith(command, "focus_photo ") {
+            let f = StrSplit(command, " ");
+            return sys.Soak_FocusPhoto(StringToFloat(f[1]));
+        }
+        if StrBeginsWith(command, "zoom ") {
+            let m = StrSplit(command, " ");
+            return sys.Soak_SetZoom(StringToFloat(m[1]));
+        }
         if Equals(command, "selftest") {
             let t = new NMSelfTest();
             t.Run();
@@ -31,7 +38,10 @@ public abstract class NMSoak {
             let a = StrSplit(command, " ");
             return sys.Soak_StartSweep(a[1], StringToFloat(a[2]), StringToFloat(a[3]), ArraySize(a) > 4 ? StringToInt(a[4]) : 0);
         }
-        if StrBeginsWith(command, "seed_photos ") { return sys.Soak_SeedPhotos(StringToInt(StrSplit(command, " ")[1])); }
+        if StrBeginsWith(command, "seed_photos ") {
+            let n = StrSplit(command, " ");
+            return sys.Soak_SeedPhotos(StringToInt(n[1]));
+        }
         if StrBeginsWith(command, "churn ") {
             let c = StrSplit(command, " ");
             return sys.Soak_StartChurn(c[1], StringToFloat(c[2]), StringToFloat(c[3]));

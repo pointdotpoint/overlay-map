@@ -81,7 +81,7 @@ public class NMSelfTest {
         cam.ZoomBy(100000.0);
         let zin = cam.mpp;
         cam.ZoomBy(0.000001);
-        this.Check("camera.zoom_clamp", zin == 0.5 && cam.mpp == 16.0, this.F(zin) + "/" + this.F(cam.mpp));
+        this.Check("camera.zoom_clamp", zin == 0.1 && cam.mpp == 16.0, this.F(zin) + "/" + this.F(cam.mpp));
         this.Check("camera.closer_than_tiles", NightMapSystem.MinMpp() == 0.1 && NightMapSystem.OpenMpp() == NMTileManifest.LevelMpp(0),
             this.F(NightMapSystem.MinMpp()) + " open " + this.F(NightMapSystem.OpenMpp()));
         this.Check("photo.thumb_zoom", NMItemRenderer.ThumbZoom(16.0) == 1.0 && NMItemRenderer.ThumbZoom(0.5) == 1.0
@@ -562,18 +562,24 @@ public class NMSelfTest {
         let kinds: array<Int32> = [0, 0, 1];
         let layers: array<Int32> = [0, 0, -1];
         let items: array<Int32> = [5, 6, -1];
-        this.Check("pick.nearest", NMCrosshair.Pick(xs, ys, kinds, layers, items, 114.0, 100.0, 50.0, -1, -1, -1) == 0, "");
-        this.Check("pick.sticky_within_4px", NMCrosshair.Pick(xs, ys, kinds, layers, items, 116.0, 100.0, 50.0, 0, 0, 5) == 0, "");
-        this.Check("pick.switches_beyond_4px", NMCrosshair.Pick(xs, ys, kinds, layers, items, 124.0, 100.0, 50.0, 0, 0, 5) == 1, "");
-        this.Check("pick.removed_selection_falls_back", NMCrosshair.Pick(xs, ys, kinds, layers, items, 116.0, 100.0, 50.0, 0, 0, 7) == 1, "");
-        this.Check("pick.none_in_radius", NMCrosshair.Pick(xs, ys, kinds, layers, items, 1000.0, 1000.0, 50.0, -1, -1, -1) == -1, "");
-        this.Check("pick.cluster", NMCrosshair.Pick(xs, ys, kinds, layers, items, 290.0, 100.0, 50.0, 1, -1, -1) == 2, "");
+        let noReach: array<Float>;
+        this.Check("pick.nearest", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 114.0, 100.0, 50.0, -1, -1, -1) == 0, "");
+        this.Check("pick.sticky_within_4px", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 116.0, 100.0, 50.0, 0, 0, 5) == 0, "");
+        this.Check("pick.switches_beyond_4px", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 124.0, 100.0, 50.0, 0, 0, 5) == 1, "");
+        this.Check("pick.removed_selection_falls_back", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 116.0, 100.0, 50.0, 0, 0, 7) == 1, "");
+        this.Check("pick.none_in_radius", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 1000.0, 1000.0, 50.0, -1, -1, -1) == -1, "");
+        // A photo pin's reach: its centre is far from the tip, and the candidate is still picked from there.
+        let reach: array<Float>;
+        for x in xs { ArrayPush(reach, 200.0); }
+        this.Check("pick.reach_widens", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 1000.0, 1000.0, 50.0, -1, -1, -1) == -1
+            && NMCrosshair.Pick(xs, ys, reach, kinds, layers, items, xs[0], ys[0] + 240.0, 50.0, -1, -1, -1) == 0, "");
+        this.Check("pick.cluster", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 290.0, 100.0, 50.0, 1, -1, -1) == 2, "");
         // clusters are identified by key (item slot), not position: stays selected after a pan of 3 units, drops on a different key
         let cItems: array<Int32> = [5, 6, 200010003];
-        this.Check("pick.cluster_sticky_by_key", NMCrosshair.Pick(xs, ys, kinds, layers, cItems, 292.0, 100.0, 50.0, 1, -1, 200010003) == 2, "");
-        this.Check("pick.cluster_other_key_no_stick", NMCrosshair.Pick(xs, ys, kinds, layers, cItems, 292.0, 100.0, 50.0, 1, -1, 200010004) == 2, "");
+        this.Check("pick.cluster_sticky_by_key", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, cItems, 292.0, 100.0, 50.0, 1, -1, 200010003) == 2, "");
+        this.Check("pick.cluster_other_key_no_stick", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, cItems, 292.0, 100.0, 50.0, 1, -1, 200010004) == 2, "");
         let empty: array<Float>;
         let emptyI: array<Int32>;
-        this.Check("pick.empty_candidates", NMCrosshair.Pick(empty, empty, emptyI, emptyI, emptyI, 0.0, 0.0, 50.0, 0, 0, 5) == -1, "");
+        this.Check("pick.empty_candidates", NMCrosshair.Pick(empty, empty, empty, emptyI, emptyI, emptyI, 0.0, 0.0, 50.0, 0, 0, 5) == -1, "");
     }
 }

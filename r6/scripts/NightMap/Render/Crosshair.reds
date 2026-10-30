@@ -20,7 +20,8 @@ public class NMCrosshair {
 
     // Nearest candidate within radius; the previous selection is kept while it is within 4 units of the
     // nearest one (prevents flicker). Chips are identified by layer+item, clusters by their pyramid level + block (key in the item slot).
-    public static func Pick(xs: array<Float>, ys: array<Float>, kinds: array<Int32>, layers: array<Int32>, items: array<Int32>,
+    // reach[i], when present, widens the radius for that candidate: a big photo pin's centre sits far from its tip.
+    public static func Pick(xs: array<Float>, ys: array<Float>, reach: array<Float>, kinds: array<Int32>, layers: array<Int32>, items: array<Int32>,
                             cx: Float, cy: Float, radius: Float, prevKind: Int32, prevLayer: Int32, prevItem: Int32) -> Int32 {
         let r2 = radius * radius;
         let best = -1;
@@ -32,7 +33,8 @@ public class NMCrosshair {
             let dx = xs[i] - cx;
             let dy = ys[i] - cy;
             let d = dx * dx + dy * dy;
-            if d <= r2 {
+            let far = i < ArraySize(reach) ? radius + reach[i] : radius;
+            if d <= far * far {
                 if best < 0 || d < bestD {
                     best = i;
                     bestD = d;
@@ -64,7 +66,7 @@ public class NMCrosshair {
 
     // shiftX: the focus point sits this far left of the map-area centre (photo drawer open, spec §6.5).
     public func Update(r: ref<NMItemRenderer>, viewW: Float, viewH: Float, scale: Float, shiftX: Float) -> Bool {
-        let idx = NMCrosshair.Pick(r.candX, r.candY, r.candKind, r.candLayer, r.candItem, viewW * 0.5 - shiftX, viewH * 0.5,
+        let idx = NMCrosshair.Pick(r.candX, r.candY, r.candReach, r.candKind, r.candLayer, r.candItem, viewW * 0.5 - shiftX, viewH * 0.5,
             NMTheme.SelectRadius() * scale, this.selKind, this.selLayer, this.selItem);
         let kind = idx >= 0 ? r.candKind[idx] : -1;
         let layer = idx >= 0 ? r.candLayer[idx] : -1;

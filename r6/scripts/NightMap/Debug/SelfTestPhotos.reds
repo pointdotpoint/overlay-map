@@ -153,7 +153,8 @@ public abstract class NMPhotoTests {
         let items: array<Int32>;
         ArrayPush(xs, 100.0); ArrayPush(ys, 100.0); ArrayPush(kinds, 0); ArrayPush(layers, 0); ArrayPush(items, 1);
         ArrayPush(xs, 500.0); ArrayPush(ys, 100.0); ArrayPush(kinds, 0); ArrayPush(layers, 0); ArrayPush(items, 2);
-        t.Check("photo.pick_shifted", NMCrosshair.Pick(xs, ys, kinds, layers, items, 500.0 - 400.0, 100.0, 50.0, -1, -1, -1) == 0, "");
+        let noReach: array<Float>;
+        t.Check("photo.pick_shifted", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 500.0 - 400.0, 100.0, 50.0, -1, -1, -1) == 0, "");
 
 
         t.Check("photo.date_from_path", Equals(NMPhotoDrawer.DateFromPath("C:\\users\\steamuser\\Pictures\\Cyberpunk 2077\\photomode_28102026_110520.png"), "28 OCT 2026 · 11:05")
