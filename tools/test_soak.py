@@ -213,6 +213,21 @@ def test_max_changed_fails_a_view_that_was_still_loading(paths):
     assert r.verdict == "coverage_fail" and "3 map blocks" in r.detail
 
 
+def test_a_flagged_moment_raised_before_the_step_begins_is_still_photographed(paths):
+    game = FakeGame(paths)
+    steps = [{"cmd": "go"}, {"await_state": "never", "timeout": 3, "shoot_on": "hold"}]
+    real = game.tick
+
+    def tick():
+        real()
+        if "1 go" in game.answered and "hold" not in (paths.channel / "state.txt").read_text():
+            game.state("hold", "1|L0")
+
+    game.tick = tick
+    r = drive(paths, game, steps)
+    assert "hold-1a" in r.lumas
+
+
 def test_await_state_timing_out_fails_the_run(paths):
     r = drive(paths, FakeGame(paths), [{"await_state": "ft_load_finished", "timeout": 5}])
     assert r.verdict == "coverage_fail" and "ft_load_finished" in r.detail

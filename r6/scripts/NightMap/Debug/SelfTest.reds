@@ -425,6 +425,7 @@ public class NMSelfTest {
         cam.SetMpp(2.0);
         sl.Update(cam, 16.0);
         let st2 = sl.CurrentLevel() == 2 && sl.PreviousLevel() == 1;
+        sl.Update(cam, 16.0);   // the frame of a level change does not fade yet
         // Short step: after the swap the returning level is at ~0.95, so another 16 ms step would reach 1 and release the outgoing level.
         cam.SetMpp(1.0);
         sl.Update(cam, 1.0);
@@ -530,8 +531,9 @@ public class NMSelfTest {
         let canvas = new inkCanvas();   // detached: widgets exist but are never drawn
         let dk = NMTooltip.CreateDocked(canvas, 40.0, 60.0, 900.0, 1.0);
         dk.Reposition(1500.0, 700.0);
-        this.Check("tooltip.docked_stays", this.Near(dk.Origin().X, 40.0, 0.01) && this.Near(dk.Origin().Y, 60.0, 0.01) && this.Near(dk.CurrentWidth(), 900.0, 0.01),
-            this.F(dk.Origin().X) + "," + this.F(dk.Origin().Y));
+        let dockedAt = dk.Origin();   // bind to a local: a field of a call temporary reads garbage in-game
+        this.Check("tooltip.docked_stays", this.Near(dockedAt.X, 40.0, 0.01) && this.Near(dockedAt.Y, 60.0, 0.01) && this.Near(dk.CurrentWidth(), 900.0, 0.01),
+            this.F(dockedAt.X) + "," + this.F(dockedAt.Y));
         let t = NMTooltip.Create(canvas, 3000.0, 1500.0, 1.0);
         this.Check("tooltip.hidden_when_nothing_selected", !t.IsShown(), "");
         let d = NightMapDetails.Create("cat", "A very long title that must be truncated with an ellipsis");

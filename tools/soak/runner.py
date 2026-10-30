@@ -101,6 +101,7 @@ class Runner:
         self.stages: list[tuple[str, float]] = []
         self.answers: list[str] = []
         self.lumas: dict[str, float] = {}
+        self.shot_seen: dict[str, int] = {}
         self.started = self.world = self.exiting = False
         self.seq = 0
         self.beat_ok = True
@@ -242,11 +243,12 @@ class Runner:
         how many map blocks differ between them. max_changed fails the step when that is exceeded."""
         start = self.clock()
         self.beat_ok = False
-        shot = self.states.count(shoot_on) if shoot_on else 0
+        shot = self.shot_seen.get(shoot_on, 0)    # across steps: the game can raise one before this step starts
         while state not in self.states:
             self._check()
             if shoot_on and self.states.count(shoot_on) > shot:
                 shot += 1
+                self.shot_seen[shoot_on] = shot
                 self._shot(f"{shoot_on}-{shot}a")
                 self._pause(shoot_gap)
                 self._shot(f"{shoot_on}-{shot}b")
