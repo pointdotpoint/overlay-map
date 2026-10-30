@@ -129,3 +129,13 @@ repeat is not covered by this run; the code ignores repeated presses, and only a
 
 Harness: a keysym follows the session's layout, and under gamescope `apostrophe` reached the game as IK_Tilde. Send keycode 94,
 which the game sees as IK_SingleQuote. The `watch_keys` and `last_keys` commands report what the game actually received.
+
+## Teleport anywhere (2026-10-30, branch feat/teleport-anywhere)
+
+`tools/tiles/nmtiles/heightmap.py` bakes the lowest and highest surface of every 32 m cell from the vanilla 3D map
+(terrain, roads, cliffs, metro and the district point clouds) into `Generated/HeightData.reds`. Collision only loads within
+about 100 m of V, so V hops just above the cell's highest surface, then near its lowest, and a ray (Static and Terrain) lands
+V once three probes agree. `tools/soak/plans/teleport.json` passed (20261030-171949) with the real key at 16 spots, every one
+at full health: streets, badlands, a 633 m roof, hills, the sea and a lake. Japantown's open shaft (-600, 1400) has no
+surface and sends V back to the start. Long jumps hold the game's black streaming screen for about 3 to 10 s. Not covered by
+the harness: a vehicle teleport. Self-tests failing are the same three as before.
