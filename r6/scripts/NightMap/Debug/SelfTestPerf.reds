@@ -258,7 +258,8 @@ public abstract class NMPerfTests {
     // ---- selection grow vs slot reuse (renderer slots are reassigned in placement order) ----
 
     private static func GrowScale(r: ref<NMItemRenderer>, slot: Int32) -> Float {
-        return r.chipBg[slot].GetScale().X;
+        let v = r.chipBg[slot].GetScale();   // bind to a local: a field of a call temporary reads garbage in-game
+        return v.X;
     }
 
     // Two icon pins, A at the camera centre (first placed, so the top slot) and B 300 m east. A is selected and

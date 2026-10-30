@@ -418,6 +418,7 @@ public class NMSelfTest {
         let cam = NMCamera.Create(1880.0, 1480.0, cb, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
         cam.SetCenter(-1800.0, 150.0);
         let sl = NMTileLayer.Create(canvas, NMHoloTests.SetIndex("road"), 0);
+        sl.skipLoadWait = true;
         cam.SetMpp(1.0);
         sl.Update(cam, 16.0);
         let st1 = sl.CurrentLevel() == 1 && sl.PreviousLevel() == -1;
@@ -433,6 +434,27 @@ public class NMSelfTest {
         let st4 = sl.CurrentLevel() == 4 && sl.PreviousLevel() == 1;
         sl.Update(cam, NMTileLayer.FadeMs() * 2.0);
         let st5 = sl.CurrentLevel() == 4 && sl.PreviousLevel() == -1;
+        // Tiles that have not loaded: the incoming level waits, and the outgoing one stays until it can fade in.
+        let wl = NMTileLayer.Create(canvas, NMHoloTests.SetIndex("road"), 0);
+        wl.skipLoadWait = true;
+        cam.SetMpp(1.0);
+        wl.Update(cam, 16.0);
+        wl.skipLoadWait = false;
+        wl.holdLoads = true;
+        cam.SetMpp(2.0);
+        wl.Update(cam, 16.0);
+        wl.Update(cam, 16.0);
+        wl.Update(cam, 16.0);
+        this.Check("tiles.fade_waits_for_tiles", wl.CurrentLevel() == 2 && wl.PreviousLevel() == 1 && wl.Alpha() == 0.0 && wl.Waiting() > 0,
+            ToString(wl.CurrentLevel()) + " " + ToString(wl.PreviousLevel()) + " " + this.F(wl.Alpha()) + " " + ToString(wl.Waiting()));
+        cam.SetMpp(4.0);
+        wl.Update(cam, 16.0);
+        this.Check("tiles.unshown_level_dropped", wl.CurrentLevel() == 3 && wl.PreviousLevel() == 1,
+            ToString(wl.CurrentLevel()) + " " + ToString(wl.PreviousLevel()));
+        wl.Update(cam, NMTileLayer.LoadTimeoutMs());
+        wl.Update(cam, NMTileLayer.FadeMs() * 2.0);
+        this.Check("tiles.load_timeout_gives_up", wl.CurrentLevel() == 3 && wl.Waiting() == 0 && wl.PreviousLevel() == -1,
+            ToString(wl.Waiting()) + " " + ToString(wl.PreviousLevel()));
         this.Check("tiles.layer_state_machine", st1 && st2 && st3 && st4 && st5, ToString(st1) + ToString(st2) + ToString(st3) + ToString(st4) + ToString(st5));
         this.Check("tiles.settiles_lookup_hits", hitsOk, "");
         this.Check("tiles.settiles_lookup_misses", missOk, "");

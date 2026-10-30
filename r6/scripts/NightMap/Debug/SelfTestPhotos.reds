@@ -309,8 +309,11 @@ public abstract class NMPhotoTests {
         let b: array<ref<NMPhotoSpot>>;
         ArrayPush(b, NMPhotoTests.Spot(1u, 0.0, 0.0, 1ul));
         ArrayPush(b, NMPhotoTests.Spot(2u, 10.1, 0.0, 2ul));
-        let na = ArraySize(NMPhotoGroups.Newest(a, NMPhotoTests.AllExist(2), r));
-        let nb = ArraySize(NMPhotoGroups.Newest(b, NMPhotoTests.AllExist(2), r));
+        let both = NMPhotoTests.AllExist(2);
+        let groupsA = NMPhotoGroups.Newest(a, both, r);   // bind to locals: ArraySize of a call temporary misreads in-game
+        let groupsB = NMPhotoGroups.Newest(b, both, r);
+        let na = ArraySize(groupsA);
+        let nb = ArraySize(groupsB);
         t.Check("photo.group_edge", na == 1 && nb == 2, "9.9 m -> " + ToString(na) + ", 10.1 m -> " + ToString(nb) + ", r " + ToString(r));
 
         let gone = NMPhotoTests.AllExist(3);

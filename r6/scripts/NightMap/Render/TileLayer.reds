@@ -50,6 +50,12 @@ public class NMTileLayer extends NMMapLayer {
     private let lvWaiting: array<Int32>;
     private let waiting: Int32;
     private let nowMs: Float;
+    // Tiles of the next coarser level over the current view, so a zoom-out has them at once: the outgoing level only
+    // covers what was on screen, and the wider view would show a bare ring around it until they load.
+    private let preTokens: array<ref<ResourceToken>>;
+    private let preKey: Int32;
+    public let skipLoadWait: Bool;   // test hook: fades run on time alone, as if every tile were in
+    public let holdLoads: Bool;      // test hook: no load finishes
     private let cur: Int32;
     private let prev: Int32;
     private let aCur: Float;
@@ -110,6 +116,7 @@ public class NMTileLayer extends NMMapLayer {
         t.levelOffset = Max(levelOffset, 0);
         t.setName = NMTileManifest.SetName(setIdx);
         t.lastRev = -1;
+        t.preKey = -1;
         t.cur = -1;
         t.prev = -1;
         t.tint = NMTheme.TileTint(t.setName, 0);
@@ -223,6 +230,8 @@ public class NMTileLayer extends NMMapLayer {
         return ArraySize(this.pool) - ArraySize(this.freeSlots);
     }
 
+    public func Alpha() -> Float { return this.aCur; }
+    public func Waiting() -> Int32 { return this.waiting; }
     public func CurrentLevel() -> Int32 { return this.cur; }
     public func PreviousLevel() -> Int32 { return this.prev; }
 
@@ -267,7 +276,7 @@ public class NMTileLayer extends NMMapLayer {
                 this.Container(this.cur).Reparent(this.box);   // incoming draws above outgoing
             }
         }
-        if this.aCur < 1.0 && !changed && this.lvWaiting[this.cur] == 0 {
+        if this.aCur < 1.0 && !changed && (this.skipLoadWait || this.lvWaiting[this.cur] == 0) {
             this.aCur = NMTileLayer.FadeStep(this.aCur, dtMs, NMTileLayer.FadeMs(), true);
             touch = true;
         }
@@ -333,6 +342,7 @@ public class NMTileLayer extends NMMapLayer {
         if shown && this.rIx0[lv] == ix0 && this.rIx1[lv] == ix1 && this.rIy0[lv] == iy0 && this.rIy1[lv] == iy1 {
             return;
         }
+        this.Preload(cam, lv + 1);
         this.rSet[lv] = true;
         this.rIx0[lv] = ix0;
         this.rIx1[lv] = ix1;
@@ -387,6 +397,39 @@ public class NMTileLayer extends NMMapLayer {
         }
     }
 
+    private func Preload(cam: ref<NMCamera>, lv: Int32) {
+        if lv >= NMTileManifest.LevelCount() {
+            return;
+        }
+        let tw = 512.0 * NMTileManifest.LevelMpp(lv);
+        let nx = NMTileManifest.LevelNx(lv);
+        let vis = cam.VisibleRect(0.0);
+        let ix0 = Max(FloorF((vis.minX - NMTileManifest.LevelOriginX(lv)) / tw) - 1, 0);
+        let ix1 = Min(FloorF((vis.maxX - NMTileManifest.LevelOriginX(lv)) / tw) + 1, nx - 1);
+        let iy0 = Max(FloorF((NMTileManifest.LevelOriginTop(lv) - vis.maxY) / tw) - 1, 0);
+        let iy1 = Min(FloorF((NMTileManifest.LevelOriginTop(lv) - vis.minY) / tw) + 1, NMTileManifest.LevelNy(lv) - 1);
+        let key = this.levelBase[lv] + iy0 * nx + ix0 + (ix1 - ix0) * 7 + (iy1 - iy0) * 977;
+        if key == this.preKey {
+            return;
+        }
+        this.preKey = key;
+        ArrayClear(this.preTokens);
+        let depot = GameInstance.GetResourceDepot();
+        let iy = iy0;
+        while iy <= iy1 {
+            let ix = ix0;
+            while ix <= ix1 {
+                if this.Has(lv, ix, iy) {
+                    let path = NMTileLayer.TilePath(this.setName, lv, ix, iy);
+                    ArrayPush(this.preTokens, depot.LoadResource(ResRef.FromString(path)));
+                    ArrayPush(this.preTokens, depot.LoadResource(ResRef.FromString(StrReplace(path, ".inkatlas", ".xbm"))));
+                }
+                ix += 1;
+            }
+            iy += 1;
+        }
+    }
+
     private func AllocSlot() -> Int32 {
         if ArraySize(this.freeSlots) > 0 {
             return ArrayPop(this.freeSlots);
@@ -420,7 +463,7 @@ public class NMTileLayer extends NMMapLayer {
         let s = 0;
         while s < ArraySize(this.pool) {
             if this.slotWaiting[s] {
-                if this.slotAtlas[s].IsFinished() && this.slotTexture[s].IsFinished() {
+                if !this.holdLoads && this.slotAtlas[s].IsFinished() && this.slotTexture[s].IsFinished() {
                     this.slotFrames[s] += 1;
                 }
                 if this.slotFrames[s] > NMTileLayer.RevealFrames() || this.nowMs - this.slotAskedMs[s] >= NMTileLayer.LoadTimeoutMs() {

@@ -25,7 +25,8 @@ public abstract class NMGpsTests {
         let core = line.GetWidget(1) as inkCompoundWidget;   // children: glow canvas, core canvas
         let i = 0;
         while i < L.DashesUsed(true) {
-            ArrayPush(out, core.GetWidget(i).GetTranslation().Y);
+            let at = core.GetWidget(i).GetTranslation();   // bind to a local: see NMPerfTests.GrowScale
+            ArrayPush(out, at.Y);
             i += 1;
         }
         return out;
