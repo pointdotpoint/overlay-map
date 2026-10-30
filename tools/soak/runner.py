@@ -61,6 +61,19 @@ class Verdict(Exception):
         self.verdict, self.detail = verdict, detail
 
 
+def changed_cells(a: Path, b: Path) -> float | None:
+    """How many of the map area's 37x20 blocks differ clearly between two pictures of the same view, None if unreadable.
+    The panel is see-through, so a small difference in every block is the world behind it, not the map."""
+    r = subprocess.run(["magick", str(a), str(b), "-alpha", "off", "-crop", "1850x1000+130+180", "+repage",
+                        "-compose", "difference", "-composite", "-colorspace", "Gray", "-resize", "37x20!",
+                        "-threshold", "8%", "-format", "%[fx:mean*w*h]", "info:"],
+                       capture_output=True, text=True, timeout=30)
+    try:
+        return float(r.stdout.strip())
+    except ValueError:
+        return None
+
+
 def image_luma(path: Path) -> float | None:
     """Mean brightness 0..1 of a picture, None when it can't be read."""
     r = subprocess.run(["magick", str(path), "-alpha", "off", "-colorspace", "Gray", "-format", "%[fx:mean]", "info:"],
@@ -73,10 +86,10 @@ def image_luma(path: Path) -> float | None:
 
 class Runner:
     def __init__(self, paths: Paths, game, clock=time.monotonic, sleep=time.sleep,
-                 timeouts: Timeouts | None = None, stop=lambda: False, luma=image_luma):
+                 timeouts: Timeouts | None = None, stop=lambda: False, luma=image_luma, changed=changed_cells):
         self.paths, self.game, self.clock, self.sleep = paths, game, clock, sleep
         self.t = timeouts or Timeouts()
-        self.stop, self.luma = stop, luma
+        self.stop, self.luma, self.changed = stop, luma, changed
 
     def run(self, run_id: str, build_id: str, save: str, steps: list[dict], shots: Path) -> RunResult:
         self.run_id, self.build_id, self.shots = run_id, build_id, shots
@@ -152,7 +165,8 @@ class Runner:
         elif "await_moved" in step:
             self._await_moved(step["await_moved"], step.get("timeout", 120.0))
         elif "await_state" in step:
-            self._await_state(step["await_state"], step.get("timeout", 60.0), step.get("shoot_on"))
+            self._await_state(step["await_state"], step.get("timeout", 60.0), step.get("shoot_on"),
+                              step.get("shoot_gap", 1.0), step.get("max_changed"))
         else:
             raise Verdict("infra_error", f"unknown step {step}")
 
@@ -222,8 +236,10 @@ class Runner:
         verdict = "black_screen" if luma is not None and luma < 0.02 else "hang"
         raise Verdict(verdict, f"the player didn't move {metres:.0f} m in {timeout:.0f} s, luma {luma}")
 
-    def _await_state(self, state: str, timeout: float, shoot_on: str | None = None) -> None:
-        """shoot_on: a state the game raises at a moment worth seeing; two pictures, at once and a second later."""
+    def _await_state(self, state: str, timeout: float, shoot_on: str | None = None, shoot_gap: float = 1.0,
+                     max_changed: float | None = None) -> None:
+        """shoot_on: a state the game raises at a moment worth seeing; two pictures, at once and shoot_gap later, and
+        how many map blocks differ between them. max_changed fails the step when that is exceeded."""
         start = self.clock()
         self.beat_ok = False
         shot = self.states.count(shoot_on) if shoot_on else 0
@@ -232,8 +248,13 @@ class Runner:
             if shoot_on and self.states.count(shoot_on) > shot:
                 shot += 1
                 self._shot(f"{shoot_on}-{shot}a")
-                self._pause(1.0)
+                self._pause(shoot_gap)
                 self._shot(f"{shoot_on}-{shot}b")
+                cells = self.changed(self.shots / f"{shoot_on}-{shot}a.png", self.shots / f"{shoot_on}-{shot}b.png")
+                if cells is not None:
+                    self.lumas[f"{shoot_on}-{shot}-changed"] = cells
+                    if max_changed is not None and cells > max_changed:
+                        raise Verdict("coverage_fail", f"{shoot_on} {shot}: {cells:.0f} map blocks changed")
             if self.clock() - start > timeout:
                 raise Verdict("coverage_fail", f"no {state} in {timeout:.0f} s")
             self.sleep(self.t.tick)

@@ -18,3 +18,17 @@
             i += 1;
         }
     }
+
+    // Chips placed this layout whose widgets are hidden: on screen as far as the code knows, invisible to the player.
+    public func Soak_Hidden() -> Int32 {
+        let n = 0;
+        let i = 0;
+        while i < ArraySize(this.candKind) {
+            if this.candKind[i] == 0 {
+                let slot = this.candSlot[i];
+                if this.chipStyle[slot] != 3 && (!this.chipIcon[slot].IsVisible() || !this.chipBg[slot].IsVisible()) { n += 1; }
+            }
+            i += 1;
+        }
+        return n;
+    }

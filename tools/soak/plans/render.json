@@ -15,120 +15,46 @@
      "wait": 8
     },
     {
+     "cmd": "selftest",
+     "timeout": 60
+    },
+    {
+     "wait": 3
+    },
+    {
      "cmd": "open"
     },
     {
      "wait": 4
     },
     {
-     "cmd": "churn c 2.0 22"
+     "cmd": "seed_photos 500"
     },
     {
-     "wait": 2.5
+     "wait": 2
     },
     {
-     "shot": "base-1"
+     "cmd": "sweep a 1.0 20"
     },
     {
-     "wait": 1
+     "await_state": "sweep_done_a",
+     "timeout": 60
     },
     {
-     "shot": "base-2"
+     "cmd": "sweep b 2.0 12"
     },
     {
-     "wait": 3.5
+     "await_state": "sweep_done_b",
+     "timeout": 60
     },
     {
-     "shot": "churn-1"
-    },
-    {
-     "wait": 1
-    },
-    {
-     "shot": "churn-2"
-    },
-    {
-     "wait": 1
-    },
-    {
-     "shot": "churn-3"
-    },
-    {
-     "wait": 1
-    },
-    {
-     "shot": "churn-4"
-    },
-    {
-     "await_state": "mode_done_c",
-     "timeout": 40
-    },
-    {
-     "cmd": "zoomloop z 26"
-    },
-    {
-     "shot": "zoom-01"
-    },
-    {
-     "wait": 0.4
-    },
-    {
-     "shot": "zoom-02"
-    },
-    {
-     "wait": 0.4
-    },
-    {
-     "shot": "zoom-03"
-    },
-    {
-     "wait": 0.4
-    },
-    {
-     "shot": "zoom-04"
-    },
-    {
-     "wait": 0.4
-    },
-    {
-     "shot": "zoom-05"
-    },
-    {
-     "wait": 0.4
-    },
-    {
-     "shot": "zoom-06"
-    },
-    {
-     "wait": 0.4
-    },
-    {
-     "shot": "zoom-07"
-    },
-    {
-     "wait": 0.4
-    },
-    {
-     "shot": "zoom-08"
-    },
-    {
-     "wait": 0.4
-    },
-    {
-     "shot": "zoom-09"
-    },
-    {
-     "wait": 0.4
-    },
-    {
-     "shot": "zoom-10"
-    },
-    {
-     "wait": 0.4
+     "cmd": "zoomloop z 120 8"
     },
     {
      "await_state": "mode_done_z",
-     "timeout": 60
+     "timeout": 240,
+     "shoot_on": "hold",
+     "shoot_gap": 4.0
     }
    ]
   }

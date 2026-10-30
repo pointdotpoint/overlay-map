@@ -97,7 +97,7 @@ def drive(paths, game, steps, luma=0.5):
         clock["t"] += s
         game.tick()
 
-    return Runner(paths, game, clock=lambda: clock["t"], sleep=sleep, luma=lambda _: luma,
+    return Runner(paths, game, clock=lambda: clock["t"], sleep=sleep, luma=lambda _: luma, changed=lambda a, b: 3.0,
                   timeouts=Timeouts(exit_settle=0.0, grace=0.0)).run("r-1", "b", "Save", steps, paths.soak / "shots")
 
 
@@ -202,6 +202,15 @@ def test_await_state_photographs_each_moment_the_game_flags(paths):
     r = drive(paths, FakeGame(paths, on_key=report),
               [{"key": "x"}, {"await_state": "never", "timeout": 3, "shoot_on": "hold"}])
     assert "hold-1a" in r.lumas and "hold-1b" in r.lumas
+
+
+def test_max_changed_fails_a_view_that_was_still_loading(paths):
+    def report(game):
+        game.state("hold", "1|L3")
+
+    r = drive(paths, FakeGame(paths, on_key=report),
+              [{"key": "x"}, {"await_state": "never", "timeout": 3, "shoot_on": "hold", "max_changed": 1}])
+    assert r.verdict == "coverage_fail" and "3 map blocks" in r.detail
 
 
 def test_await_state_timing_out_fails_the_run(paths):

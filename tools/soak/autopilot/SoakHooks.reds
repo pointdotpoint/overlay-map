@@ -19,17 +19,23 @@ public abstract class NMSoak {
         }
         if Equals(command, "focus_ft far") { return sys.Soak_FocusFastTravel(); }
         if Equals(command, "selected") { return sys.Soak_Selected(); }
+        if Equals(command, "selftest") {
+            let t = new NMSelfTest();
+            t.Run();
+            return "ran";
+        }
         if StrBeginsWith(command, "sweep ") {
             let a = StrSplit(command, " ");
             return sys.Soak_StartSweep(a[1], StringToFloat(a[2]), StringToFloat(a[3]), ArraySize(a) > 4 ? StringToInt(a[4]) : 0);
         }
+        if StrBeginsWith(command, "seed_photos ") { return sys.Soak_SeedPhotos(StringToInt(StrSplit(command, " ")[1])); }
         if StrBeginsWith(command, "churn ") {
             let c = StrSplit(command, " ");
             return sys.Soak_StartChurn(c[1], StringToFloat(c[2]), StringToFloat(c[3]));
         }
         if StrBeginsWith(command, "zoomloop ") {
             let z = StrSplit(command, " ");
-            return sys.Soak_StartZoomLoop(z[1], StringToFloat(z[2]));
+            return sys.Soak_StartZoomLoop(z[1], StringToFloat(z[2]), ArraySize(z) > 3 ? StringToInt(z[3]) : 0);
         }
         return "unknown";
     }

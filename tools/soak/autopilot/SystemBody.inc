@@ -71,6 +71,8 @@
     private let soakClusterFrames: Int32;
     private let soakChipsMax: Int32;
     private let soakLogged: Int32;
+    private let soakHidden: Int32;
+    private let soakHiddenMax: Int32;
     private let soakClDrops: Int32;
     private let soakClMoved: Int32;
     private let soakHolds: Int32;
@@ -102,6 +104,8 @@
         this.soakLogged = 0;
         this.soakLoads0 = this.renderer.soakIconLoads;
         this.soakLoadsSeen = this.soakLoads0;
+        this.soakHidden = 0;
+        this.soakHiddenMax = 0;
         this.soakClDrops = 0;
         this.soakClMoved = 0;
         this.soakHolds = 0;
@@ -143,7 +147,8 @@
                 + "|clusterframes " + IntToString(this.soakClusterFrames)
                 + "|chipsmax " + IntToString(this.soakChipsMax)
                 + "|cldrops " + IntToString(this.soakClDrops) + "|clmoved " + IntToString(this.soakClMoved)
-                + "|holds " + IntToString(this.soakHolds));
+                + "|holds " + IntToString(this.soakHolds)
+                + "|hidden " + IntToString(this.soakHidden) + "|hiddenmax " + IntToString(this.soakHiddenMax));
             return;
         }
         let m = this.soakMpp;
@@ -175,6 +180,9 @@
             i += 1;
         }
         if r.chipsUsed > this.soakChipsMax { this.soakChipsMax = r.chipsUsed; }
+        let hidden = r.Soak_Hidden();
+        this.soakHidden += hidden;
+        if hidden > this.soakHiddenMax { this.soakHiddenMax = hidden; }
         let full = r.chipsUsed >= NMTheme.ChipBudget();
         let clustered = r.clustersUsed > 0;
         if full { this.soakBudgetFrames += 1; }
@@ -257,7 +265,12 @@
         return "started";
     }
 
-    public func Soak_StartZoomLoop(tag: String, seconds: Float) -> String {
+    public func Soak_SeedPhotos(n: Int32) -> String {
+        this.Photos().SeedForPerf(n);
+        return "seeded";
+    }
+
+    public func Soak_StartZoomLoop(tag: String, seconds: Float, holds: Int32) -> String {
         if !IsDefined(this.camera) { return "map closed"; }
         let p = GetPlayer(this.GetGameInstance()).GetWorldPosition();
         this.soakOx = p.X;
@@ -269,11 +282,18 @@
         this.soakResMax = 0;
         this.soakLevels = 0;
         this.soakLastLv = -1;
+        this.soakHolds = 0;
+        this.soakHoldMax = holds;
+        this.soakHoldLeft = 0.0;
         this.soakMode = 2;
         return "started";
     }
 
     private func Soak_ModeFrame(dt: Float) {
+        if this.soakHoldLeft > 0.0 {
+            this.soakHoldLeft -= dt / 1000.0;
+            return;
+        }
         this.soakT += dt / 1000.0;
         if this.soakT >= this.soakEnd {
             if this.soakMode == 1 { this.renderer.Soak_ChurnMinis(false); }
@@ -298,6 +318,11 @@
             if road.CurrentLevel() != this.soakLastLv {
                 this.soakLastLv = road.CurrentLevel();
                 this.soakLevels += 1;
+                if this.soakHolds < this.soakHoldMax {   // the level just changed: stop here for a picture
+                    this.soakHolds += 1;
+                    this.soakHoldLeft = 7.0;
+                    NMSoak.Report("hold", IntToString(this.soakHolds) + "|L" + IntToString(this.soakLastLv));
+                }
             }
         }
     }
