@@ -62,10 +62,10 @@ class Verdict(Exception):
 
 
 def changed_cells(a: Path, b: Path) -> float | None:
-    """How many of the map area's 37x20 blocks differ clearly between two pictures of the same view, None if unreadable.
+    """How many of the map area's 34x20 blocks (the sidebar left out) differ clearly between two pictures of the same view, None if unreadable.
     The panel is see-through, so a small difference in every block is the world behind it, not the map."""
-    r = subprocess.run(["magick", str(a), str(b), "-alpha", "off", "-crop", "1850x1000+130+180", "+repage",
-                        "-compose", "difference", "-composite", "-colorspace", "Gray", "-resize", "37x20!",
+    r = subprocess.run(["magick", str(a), str(b), "-alpha", "off", "-crop", "1700x1000+130+180", "+repage",
+                        "-compose", "difference", "-composite", "-colorspace", "Gray", "-resize", "34x20!",
                         "-threshold", "8%", "-format", "%[fx:mean*w*h]", "info:"],
                        capture_output=True, text=True, timeout=30)
     try:

@@ -247,6 +247,7 @@
     // ---- icon churn on a still map; zoom loop over fresh tiles ----
 
     private let soakMode: Int32;   // 0 sweep, 1 churn, 2 zoom loop
+    private let soakLayerOn: array<Bool>;
     private let soakFlip: Bool;
     private let soakResMax: Int32;
     private let soakLevels: Int32;
@@ -285,6 +286,12 @@
         this.soakHolds = 0;
         this.soakHoldMax = holds;
         this.soakHoldLeft = 0.0;
+        // Tiles alone: markers change with the zoom by design (clusters to pins), and a selection can move the view.
+        ArrayClear(this.soakLayerOn);
+        for L in this.api.layers {
+            ArrayPush(this.soakLayerOn, L.visible);
+            L.SetVisible(false);
+        }
         this.soakMode = 2;
         return "started";
     }
@@ -297,6 +304,13 @@
         this.soakT += dt / 1000.0;
         if this.soakT >= this.soakEnd {
             if this.soakMode == 1 { this.renderer.Soak_ChurnMinis(false); }
+            if this.soakMode == 2 {
+                let i = 0;
+                while i < ArraySize(this.soakLayerOn) {
+                    this.api.layers[i].SetVisible(this.soakLayerOn[i]);
+                    i += 1;
+                }
+            }
             let detail = this.soakMode == 2 ? "levels " + IntToString(this.soakLevels) + "|residentmax " + IntToString(this.soakResMax) : "";
             this.soakMode = 0;
             NMSoak.Report("mode_done_" + this.soakTag, detail);
