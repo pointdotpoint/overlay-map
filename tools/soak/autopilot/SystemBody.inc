@@ -39,5 +39,7 @@
     public func Soak_Selected() -> String {
         let m = this.SelectedMappin();
         if !IsDefined(m) { return "none"; }
-        return (IsDefined(m as FastTravelMappin) ? "ft|" : "other|") + NMVanillaText.Title(m, m.GetVariant());
+        let title = NMVanillaText.Title(m, m.GetVariant());
+        if IsDefined(m as FastTravelMappin) { return "ft|" + title; }
+        return "other|" + title;
     }
