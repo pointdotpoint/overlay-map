@@ -26,8 +26,7 @@ cp -r "$HERE/r6/scripts/NightMap" "$SANDBOX/r6/scripts/NightMap"
 # --soak: also compile the harness's bootstrap and hooks, which only exist in a campaign build.
 if [ "${1:-}" = "--soak" ]; then
   cp "$HERE/tools/soak/autopilot/SoakHooks.reds" "$SANDBOX/r6/scripts/NightMap/Debug/"
-  python3 "$HERE/tools/soak/builds.py" "$SANDBOX/r6/scripts/NightMap/Core/NightMapSystem.reds" \
-    "$HERE/tools/soak/autopilot/SystemBody.inc"
+  python3 "$HERE/tools/soak/builds.py" "$SANDBOX/r6/scripts/NightMap" "$HERE/tools/soak/autopilot"
   mkdir -p "$SANDBOX/r6/scripts/SoakBootstrap"
   cp "$HERE"/tools/soak/bootstrap/*.reds "$SANDBOX/r6/scripts/SoakBootstrap/"
   echo 'module SoakBootstrap' > "$SANDBOX/r6/scripts/SoakBootstrap/SoakBuild.reds"

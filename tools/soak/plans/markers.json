@@ -1,0 +1,69 @@
+{
+ "name": "markers",
+ "runs": [
+  {
+   "name": "pan",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "start"
+    },
+    {
+     "cmd": "sweep a 1.0 25"
+    },
+    {
+     "await_state": "sweep_done_a",
+     "timeout": 60
+    },
+    {
+     "shot": "after-a"
+    },
+    {
+     "cmd": "sweep b 2.0 25"
+    },
+    {
+     "await_state": "sweep_done_b",
+     "timeout": 60
+    },
+    {
+     "shot": "after-b"
+    },
+    {
+     "cmd": "sweep c 4.0 25"
+    },
+    {
+     "await_state": "sweep_done_c",
+     "timeout": 60
+    },
+    {
+     "shot": "after-c"
+    },
+    {
+     "cmd": "sweep d 0.5 25"
+    },
+    {
+     "await_state": "sweep_done_d",
+     "timeout": 60
+    },
+    {
+     "shot": "after-d"
+    }
+   ]
+  }
+ ]
+}

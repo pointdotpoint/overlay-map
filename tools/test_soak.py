@@ -227,8 +227,13 @@ def test_stage_build_overlays_the_hooks_and_stamps_the_id(tmp_path):
     (repo / "tools/soak/autopilot").mkdir(parents=True)
     (repo / "tools/soak/autopilot/SoakHooks.reds").write_text("h")
     (repo / "tools/soak/autopilot/SystemBody.inc").write_text("    func Soak_X();\n")
+    (repo / "tools/soak/autopilot/RendererBody.inc").write_text("    let y;\n")
     (repo / "r6/scripts/NightMap/Core").mkdir()
-    (repo / "r6/scripts/NightMap/Core/NightMapSystem.reds").write_text("public class NightMapSystem {\n}\n\nclass B {\n}\n")
+    (repo / "r6/scripts/NightMap/Core/NightMapSystem.reds").write_text(
+        "public class NightMapSystem {\n    private func UpdateModules(dt: Float) {\n    }\n}\n\nclass B {\n}\n")
+    (repo / "r6/scripts/NightMap/Render").mkdir()
+    (repo / "r6/scripts/NightMap/Render/ItemRenderer.reds").write_text(
+        "public class NMItemRenderer {\n            ic.SetAtlasResource(this.icon.atlas);\n}\n")
     (repo / "archive/pc/mod").mkdir(parents=True)
     (repo / "archive/pc/mod/NightMap.archive").write_bytes(b"z")
     p = Paths(game=tmp_path, user=tmp_path, steam=tmp_path, soak=tmp_path / "soak", wrapper_state=tmp_path, repo=repo)
@@ -237,7 +242,9 @@ def test_stage_build_overlays_the_hooks_and_stamps_the_id(tmp_path):
     assert f'"{b.id}"' in (b.dir / "r6/scripts/SoakBootstrap/SoakBuild.reds").read_text()
     assert not (repo / "r6/scripts/NightMap/Debug/SoakHooks.reds").exists()
     staged = (b.dir / "r6/scripts/NightMap/Core/NightMapSystem.reds").read_text()
-    assert staged == "public class NightMapSystem {\n    func Soak_X();\n}\n\nclass B {\n}\n"
+    assert staged == ("public class NightMapSystem {\n    private func UpdateModules(dt: Float) {\n"
+                      "        this.Soak_Frame(dt);\n    }\n    func Soak_X();\n}\n\nclass B {\n}\n")
+    assert "soakIconLoads" in (b.dir / "r6/scripts/NightMap/Render/ItemRenderer.reds").read_text()
     assert "Soak_X" not in (repo / "r6/scripts/NightMap/Core/NightMapSystem.reds").read_text()
 
 

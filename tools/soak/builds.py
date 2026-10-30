@@ -16,7 +16,19 @@ else:     # run as a script by tools/check.sh --soak
     from soak.paths import PARTS, Paths, rels, tree_hash
 
 BOOTSTRAP_REL = "r6/scripts/SoakBootstrap"
-SYSTEM_REL = "r6/scripts/NightMap/Core/NightMapSystem.reds"
+SCRIPTS_REL = "r6/scripts/NightMap"
+SYSTEM = "Core/NightMapSystem.reds"
+RENDERER = "Render/ItemRenderer.reds"
+# Spliced into classes, with their private fields in reach: redscript's annotations can't target classes defined in
+# scripts. (file under the scripts folder, class, file under tools/soak/autopilot)
+BODIES = [(SYSTEM, "NightMapSystem", "SystemBody.inc"), (RENDERER, "NMItemRenderer", "RendererBody.inc")]
+# Calls added at one exact place. (file, text, replacement)
+PATCHES = [
+    (SYSTEM, "    private func UpdateModules(dt: Float) {\n",
+     "    private func UpdateModules(dt: Float) {\n        this.Soak_Frame(dt);\n"),
+    (RENDERER, "            ic.SetAtlasResource(this.icon.atlas);\n",
+     "            ic.SetAtlasResource(this.icon.atlas);\n            this.soakIconLoads += 1;\n"),
+]
 
 
 class BuildError(RuntimeError):
@@ -37,6 +49,20 @@ def splice_class_body(text: str, class_name: str, body: str) -> str:
     if end is None:
         raise BuildError(f"class {class_name} not found")
     return text[:end.start()] + body + text[end.start():]
+
+
+def apply_overlay(scripts: Path, autopilot: Path) -> None:
+    """The hooks' class bodies and calls, into a staged copy of the scripts; the sources are never touched."""
+    for name, old, new in PATCHES:
+        f = scripts / name
+        text = f.read_text(encoding="utf-8")
+        if text.count(old) != 1:
+            raise BuildError(f"{name}: expected one {old!r}, found {text.count(old)}")
+        f.write_text(text.replace(old, new), encoding="utf-8")
+    for name, cls, inc in BODIES:
+        f = scripts / name
+        f.write_text(splice_class_body(f.read_text(encoding="utf-8"), cls, (autopilot / inc).read_text(encoding="utf-8")),
+                     encoding="utf-8")
 
 
 def _source(paths: Paths, part: str, rel: str) -> Path:
@@ -74,9 +100,7 @@ def stage_build(paths: Paths, parts: list[str]) -> Build:
             else:
                 shutil.copy2(src, dst)
     if "autopilot" in parts:
-        system = tmp / SYSTEM_REL
-        body = (paths.repo / "tools/soak/autopilot/SystemBody.inc").read_text(encoding="utf-8")
-        system.write_text(splice_class_body(system.read_text(encoding="utf-8"), "NightMapSystem", body), encoding="utf-8")
+        apply_overlay(tmp / SCRIPTS_REL, paths.repo / "tools/soak/autopilot")
     build_id = tree_hash(tmp, rels(parts))[:16]
     if "bootstrap" in parts:
         (tmp / BOOTSTRAP_REL / "SoakBuild.reds").write_text(
@@ -91,7 +115,5 @@ def stage_build(paths: Paths, parts: list[str]) -> Build:
     return Build(build_id, final, parts)
 
 
-if __name__ == "__main__":   # tools/check.sh --soak: splice the staged class the same way
-    target = Path(sys.argv[1])
-    target.write_text(splice_class_body(target.read_text(encoding="utf-8"), "NightMapSystem",
-                                        Path(sys.argv[2]).read_text(encoding="utf-8")), encoding="utf-8")
+if __name__ == "__main__":   # tools/check.sh --soak: the same overlay on its sandbox copy
+    apply_overlay(Path(sys.argv[1]), Path(sys.argv[2]))
