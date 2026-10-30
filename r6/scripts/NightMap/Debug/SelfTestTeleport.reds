@@ -24,6 +24,17 @@ public class NMFakeMover extends NMMover {
     public func Move(p: Vector4) { ArrayPush(this.moves, p); }
 
     public func Last() -> Vector4 { return this.moves[ArraySize(this.moves) - 1]; }
+
+    // Fields of a call temporary read garbage in-game, so tests ask for these.
+    public func LastX() -> Float {
+        let p = this.Last();
+        return p.X;
+    }
+
+    public func LastZ() -> Float {
+        let p = this.Last();
+        return p.Z;
+    }
 }
 
 // Test seam: a surface at `z` that only answers once V is within `reach` of it (collision loads near V).
@@ -48,8 +59,7 @@ public class NMFakeGround extends NMGround {
     public func Probe(x: Float, y: Float, top: Float, wide: Bool) -> ref<NMGroundHit> {
         ArrayPush(this.tops, top);
         if this.none || this.onlyWide && !wide { return null; }
-        let v = this.mover.Last();
-        if AbsF(v.Z - this.z) > this.reach { return null; }
+        if AbsF(this.mover.LastZ() - this.z) > this.reach { return null; }
         let h = new NMGroundHit();
         h.x = x + (this.onlyWide ? NMTeleport.WideReach() : 0.0);
         h.y = y;
@@ -115,12 +125,12 @@ public abstract class NMTeleportTests {
         let m1 = NMFakeMover.Create(start);
         let d1 = NMTeleportDriver.Create(NMTeleportTests.Target([55.0]), m1, NMFakeGround.Create(m1, 50.0, 100.0), false);
         let f1 = NMTeleportTests.Run(d1, 20);
-        t.Check("teleport.driver_lands", f1 == 1 + NMTeleport.StableProbes() && m1.Last().Z == 50.5 && StrBeginsWith(d1.result, "ok|ground"), d1.result);
+        t.Check("teleport.driver_lands", f1 == 1 + NMTeleport.StableProbes() && m1.LastZ() == 50.5 && StrBeginsWith(d1.result, "ok|ground"), d1.result);
 
         // Beside a tower: nothing near the roof hop, so the low hop finds the street.
         let m2 = NMFakeMover.Create(start);
         let d2 = NMTeleportDriver.Create(NMTeleportTests.Target([316.0, 47.0]), m2, NMFakeGround.Create(m2, 13.0, 100.0), false);
-        t.Check("teleport.driver_steps_down", NMTeleportTests.Run(d2, 40) > 0 && ArraySize(m2.moves) == 3 && m2.moves[1].Z == 47.0 && m2.Last().Z == 13.5, d2.result);
+        t.Check("teleport.driver_steps_down", NMTeleportTests.Run(d2, 40) > 0 && ArraySize(m2.moves) == 3 && m2.moves[1].Z == 47.0 && m2.LastZ() == 13.5, d2.result);
 
         // A hop waits out both its time and its frames: frames stop under the streaming screen.
         let m3 = NMFakeMover.Create(start);
@@ -137,14 +147,14 @@ public abstract class NMTeleportTests {
         let g4 = NMFakeGround.Create(m4, 50.0, 100.0);
         g4.onlyWide = true;
         let d4 = NMTeleportDriver.Create(NMTeleportTests.Target([55.0]), m4, g4, false);
-        t.Check("teleport.driver_shaft", NMTeleportTests.Run(d4, 40) > 0 && m4.Last().X == 116.0 && StrBeginsWith(d4.result, "ok|"), d4.result);
+        t.Check("teleport.driver_shaft", NMTeleportTests.Run(d4, 40) > 0 && m4.LastX() == 116.0 && StrBeginsWith(d4.result, "ok|"), d4.result);
 
         // No surface anywhere: V goes back to the start.
         let m5 = NMFakeMover.Create(start);
         let g5 = NMFakeGround.Create(m5, 0.0, 0.0);
         g5.none = true;
         let d5 = NMTeleportDriver.Create(NMTeleportTests.Target([316.0, 47.0]), m5, g5, false);
-        t.Check("teleport.driver_no_ground", NMTeleportTests.Run(d5, 80) > 0 && m5.Last().X == 1.0 && m5.Last().Z == 3.0 && Equals(d5.result, "failed|no ground"), d5.result);
+        t.Check("teleport.driver_no_ground", NMTeleportTests.Run(d5, 80) > 0 && m5.LastX() == 1.0 && m5.LastZ() == 3.0 && Equals(d5.result, "failed|no ground"), d5.result);
 
         // Collision loading piece by piece: V waits for hits that agree.
         let m6 = NMFakeMover.Create(start);
@@ -173,7 +183,7 @@ public abstract class NMTeleportTests {
         // A vehicle lands higher than V does.
         let m9 = NMFakeMover.Create(start);
         let d9 = NMTeleportDriver.Create(NMTeleportTests.Target([55.0]), m9, NMFakeGround.Create(m9, 50.0, 100.0), true);
-        t.Check("teleport.driver_vehicle_lands", NMTeleportTests.Run(d9, 30) > 0 && m9.Last().Z == 51.0, d9.result);
+        t.Check("teleport.driver_vehicle_lands", NMTeleportTests.Run(d9, 30) > 0 && m9.LastZ() == 51.0, d9.result);
 
         // An exact target lands in one move, with no ground search.
         let m10 = NMFakeMover.Create(start);
@@ -182,7 +192,7 @@ public abstract class NMTeleportTests {
         exact.z = 7.0;
         let g10 = NMFakeGround.Create(m10, 50.0, 100.0);
         let d10 = NMTeleportDriver.Create(exact, m10, g10, false);
-        t.Check("teleport.driver_exact", NMTeleportTests.Run(d10, 2) == 1 && m10.Last().Z == 7.5 && ArraySize(g10.tops) == 0, d10.result);
+        t.Check("teleport.driver_exact", NMTeleportTests.Run(d10, 2) == 1 && m10.LastZ() == 7.5 && ArraySize(g10.tops) == 0, d10.result);
 
     }
 }

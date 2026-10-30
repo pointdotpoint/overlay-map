@@ -37,14 +37,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t0a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t0b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t0c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t0d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t0"
     },
     {
      "cmd": "open"
@@ -62,14 +80,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t1a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t1b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t1c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t1d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t1"
     },
     {
      "cmd": "open"
@@ -87,14 +123,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t2a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t2b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t2c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t2d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t2"
     },
     {
      "cmd": "open"
@@ -112,14 +166,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t3a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t3b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t3c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t3d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t3"
     },
     {
      "cmd": "open"
@@ -137,14 +209,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t4a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t4b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t4c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t4d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t4"
     },
     {
      "cmd": "open"
@@ -162,14 +252,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t5a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t5b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t5c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t5d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t5"
     },
     {
      "cmd": "open"
@@ -187,14 +295,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t6a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t6b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t6c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t6d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t6"
     },
     {
      "cmd": "open"
@@ -212,14 +338,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t7a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t7b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t7c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t7d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t7"
     },
     {
      "cmd": "open"
@@ -237,14 +381,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t8a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t8b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t8c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t8d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t8"
     },
     {
      "cmd": "open"
@@ -262,14 +424,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t9a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t9b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t9c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t9d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t9"
     },
     {
      "cmd": "open"
@@ -287,14 +467,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t10a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t10b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t10c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t10d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t10"
     },
     {
      "cmd": "open"
@@ -312,14 +510,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t11a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t11b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t11c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t11d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t11"
     },
     {
      "cmd": "open"
@@ -337,14 +553,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t12a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t12b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t12c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t12d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t12"
     },
     {
      "cmd": "open"
@@ -362,14 +596,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t13a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t13b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t13c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t13d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t13"
     },
     {
      "cmd": "open"
@@ -387,14 +639,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t14a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t14b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t14c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t14d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t14"
     },
     {
      "cmd": "open"
@@ -412,14 +682,32 @@
      "key": "KP_Decimal"
     },
     {
-     "wait": 10
+     "wait": 3
+    },
+    {
+     "shot": "t15a"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "t15b"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t15c"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "shot": "t15d"
     },
     {
      "cmd": "vpos",
      "expect": "hp 100"
-    },
-    {
-     "shot": "t15"
     }
    ],
    "forbid": [
