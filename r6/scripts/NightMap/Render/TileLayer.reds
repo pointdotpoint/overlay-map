@@ -14,6 +14,10 @@ module NightMap
 // exact opacity that keeps the combined coverage at the layer opacity all through the fade. It starts at the normal
 // layer opacity and reaches 0 exactly when the incoming level reaches 1, where it is released. The outgoing level only
 // follows the camera (transform and opacity): it never loads tiles and keeps the tile range it had.
+//
+// A pooled image keeps showing its old tile until a new texture has loaded, in its new place, so a tile stays hidden
+// until the depot reports its atlas and texture loaded. The incoming level starts fading only once its tiles are in, so
+// the outgoing one covers the map meanwhile. A load that never finishes gives up after LoadTimeoutMs.
 public class NMTileLayer extends NMMapLayer {
     private let box: ref<inkCanvas>;
     private let setIdx: Int32;
@@ -38,6 +42,14 @@ public class NMTileLayer extends NMMapLayer {
     private let slotIx: array<Int32>;
     private let slotIy: array<Int32>;
     private let freeSlots: array<Int32>;
+    private let slotAtlas: array<ref<ResourceToken>>;
+    private let slotTexture: array<ref<ResourceToken>>;
+    private let slotWaiting: array<Bool>;
+    private let slotAskedMs: array<Float>;
+    private let slotFrames: array<Int32>;
+    private let lvWaiting: array<Int32>;
+    private let waiting: Int32;
+    private let nowMs: Float;
     private let cur: Int32;
     private let prev: Int32;
     private let aCur: Float;
@@ -50,6 +62,9 @@ public class NMTileLayer extends NMMapLayer {
     private let levelOffset: Int32;
 
     public static func FadeMs() -> Float { return 150.0; }
+    public static func LoadTimeoutMs() -> Float { return 1500.0; }
+    // A loaded resource can take a frame or two to reach the widget.
+    public static func RevealFrames() -> Int32 { return 2; }
     // Two resident levels at 4K (up to ~120 tiles each near a 2x ratio) with margin.
     public static func MaxSlots() -> Int32 { return 320; }
 
@@ -107,6 +122,7 @@ public class NMTileLayer extends NMMapLayer {
             let n = NMTileManifest.LevelNx(l) * NMTileManifest.LevelNy(l);
             ArrayResize(t.slotOf, base + n);
             ArrayPush(t.cont, null);
+            ArrayPush(t.lvWaiting, 0);
             ArrayPush(t.rSet, false);
             ArrayPush(t.rIx0, 0);
             ArrayPush(t.rIx1, 0);
@@ -211,13 +227,16 @@ public class NMTileLayer extends NMMapLayer {
     public func PreviousLevel() -> Int32 { return this.prev; }
 
     public func Update(cam: ref<NMCamera>, dtMs: Float) {
+        this.nowMs += MaxF(dtMs, 0.0);
         let fading = this.prev >= 0 || this.aCur < 1.0;
-        if cam.revision == this.lastRev && !fading && !this.tintDirty {
+        if cam.revision == this.lastRev && !fading && !this.tintDirty && this.waiting == 0 {
             return;
         }
         this.lastRev = cam.revision;
+        this.Reveal();
         let lv = NMTileLayer.PickLevelOffset(cam.mpp, this.levelOffset);
         let touch = this.tintDirty;
+        let changed = false;
         if this.cur < 0 {
             this.cur = lv;
             this.aCur = 1.0;
@@ -233,17 +252,22 @@ public class NMTileLayer extends NMMapLayer {
                 touch = true;
                 this.Container(this.cur).Reparent(this.box);   // incoming draws above outgoing
             } else {
-                if this.prev >= 0 {
-                    this.ReleaseLevel(this.prev);
+                if this.prev >= 0 && this.aCur <= 0.0 {
+                    this.ReleaseLevel(this.cur);   // never shown: what is on screen is still the outgoing level
+                } else {
+                    if this.prev >= 0 {
+                        this.ReleaseLevel(this.prev);
+                    }
+                    this.prev = this.cur;
                 }
-                this.prev = this.cur;
                 this.cur = lv;
                 this.aCur = 0.0;
+                changed = true;
                 touch = true;
                 this.Container(this.cur).Reparent(this.box);   // incoming draws above outgoing
             }
         }
-        if this.aCur < 1.0 {
+        if this.aCur < 1.0 && !changed && this.lvWaiting[this.cur] == 0 {
             this.aCur = NMTileLayer.FadeStep(this.aCur, dtMs, NMTileLayer.FadeMs(), true);
             touch = true;
         }
@@ -332,13 +356,21 @@ public class NMTileLayer extends NMMapLayer {
                     let slot = this.AllocSlot();
                     if slot >= 0 {
                         let img = this.pool[slot];
+                        let path = NMTileLayer.TilePath(this.setName, lv, ix, iy);
+                        let depot = GameInstance.GetResourceDepot();
                         img.Reparent(c);
-                        img.SetAtlasResource(ResRef.FromString(NMTileLayer.TilePath(this.setName, lv, ix, iy)));
+                        img.SetAtlasResource(ResRef.FromString(path));
                         img.SetTexturePart(n"full");
                         img.SetTintColor(this.tint);
                         img.SetTranslation(new Vector2(Cast<Float>(ix) * 512.0, Cast<Float>(iy) * 512.0));
                         img.SetSize(new Vector2(512.0, 512.0));
-                        img.SetVisible(true);
+                        this.slotAtlas[slot] = depot.LoadResource(ResRef.FromString(path));
+                        this.slotTexture[slot] = depot.LoadResource(ResRef.FromString(StrReplace(path, ".inkatlas", ".xbm")));
+                        this.slotWaiting[slot] = true;
+                        this.slotAskedMs[slot] = this.nowMs;
+                        this.slotFrames[slot] = 0;
+                        this.lvWaiting[lv] += 1;
+                        this.waiting += 1;
                         this.slotKey[slot] = gk;
                         this.slotLv[slot] = lv;
                         this.slotIx[slot] = ix;
@@ -368,6 +400,11 @@ public class NMTileLayer extends NMMapLayer {
         img.SetInteractive(false);
         img.Reparent(this.box);
         ArrayPush(this.pool, img);
+        ArrayPush(this.slotAtlas, null);
+        ArrayPush(this.slotTexture, null);
+        ArrayPush(this.slotWaiting, false);
+        ArrayPush(this.slotAskedMs, 0.0);
+        ArrayPush(this.slotFrames, 0);
         ArrayPush(this.slotKey, -1);
         ArrayPush(this.slotLv, -1);
         ArrayPush(this.slotIx, 0);
@@ -375,7 +412,38 @@ public class NMTileLayer extends NMMapLayer {
         return ArraySize(this.pool) - 1;
     }
 
+    // Shows the tiles whose resources have arrived, or that have waited too long.
+    private func Reveal() {
+        if this.waiting == 0 {
+            return;
+        }
+        let s = 0;
+        while s < ArraySize(this.pool) {
+            if this.slotWaiting[s] {
+                if this.slotAtlas[s].IsFinished() && this.slotTexture[s].IsFinished() {
+                    this.slotFrames[s] += 1;
+                }
+                if this.slotFrames[s] > NMTileLayer.RevealFrames() || this.nowMs - this.slotAskedMs[s] >= NMTileLayer.LoadTimeoutMs() {
+                    this.StopWaiting(s);
+                    this.pool[s].SetVisible(true);
+                }
+            }
+            s += 1;
+        }
+    }
+
+    private func StopWaiting(s: Int32) {
+        this.slotWaiting[s] = false;
+        this.lvWaiting[this.slotLv[s]] -= 1;
+        this.waiting -= 1;
+    }
+
     private func ReleaseSlot(s: Int32) {
+        if this.slotWaiting[s] {
+            this.StopWaiting(s);
+        }
+        this.slotAtlas[s] = null;
+        this.slotTexture[s] = null;
         this.pool[s].SetVisible(false);
         this.slotOf[this.slotKey[s]] = 0;
         this.slotKey[s] = -1;

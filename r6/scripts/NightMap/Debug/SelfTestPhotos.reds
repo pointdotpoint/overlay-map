@@ -278,7 +278,8 @@ public abstract class NMPhotoTests {
         ArrayPush(glued, NMPhotoStore.ToLine(NMPhotoTests.Spot(7u, 1.0, 2.0, 5ul)) + NMPhotoStore.ToLine(NMPhotoTests.Spot(8u, 3.0, 4.0, 6ul))
             + NMPhotoStore.ToLine(NMPhotoTests.Spot(9u, 5.0, 6.0, 7ul)));
         let unglued = NMPhotoStore.Parse(glued);
-        t.Check("photo.parse_glued_spots", ArraySize(unglued) == 3 && NMPhotoStore.Skipped() == 0,
+        t.Check("photo.parse_glued_spots", ArraySize(unglued) == 3 && NMPhotoStore.Skipped() == 0
+            && unglued[0].hash == 7u && unglued[2].hash == 9u && Equals(unglued[1].path, "photomode_8.png"),
             ToString(ArraySize(unglued)) + " parsed, " + ToString(NMPhotoStore.Skipped()) + " skipped");
 
         let semi = NMPhotoSpot.Create(9u, "odd;name;photo.png", new Vector4(0.0, 0.0, 0.0, 1.0), 0.0, 1ul);

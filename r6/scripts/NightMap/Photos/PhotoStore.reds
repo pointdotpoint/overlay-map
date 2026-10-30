@@ -106,12 +106,29 @@ public abstract class NMPhotoStore {
     }
 
     // Lines that do not parse are skipped; Skipped() reports how many from the last call.
+    // Older versions wrote spots with no line break between them. Every record ends in the shot's ".png", so a line
+    // splits back into its records there; a normal line comes back whole, and an empty one as nothing.
+    public static func Unglue(line: String) -> array<String> {
+        let out: array<String>;
+        let rest = line;
+        let at = StrFindFirst(rest, ".png");
+        while at >= 0 {
+            ArrayPush(out, StrLeft(rest, at + 4));
+            rest = StrMid(rest, at + 4);
+            at = StrFindFirst(rest, ".png");
+        }
+        if StrLen(rest) > 0 {
+            ArrayPush(out, rest);
+        }
+        return out;
+    }
+
     public static func Parse(lines: array<String>) -> array<ref<NMPhotoSpot>> {
         let out: array<ref<NMPhotoSpot>>;
         let bad = 0;
         for line in lines {
-            if StrLen(line) > 0 {
-                let s = NMPhotoStore.FromLine(line);
+            for record in NMPhotoStore.Unglue(line) {
+                let s = NMPhotoStore.FromLine(record);
                 if IsDefined(s) {
                     ArrayPush(out, s);
                 } else {
@@ -224,9 +241,8 @@ public func NMPhotoStoreAppend(line: String) -> Bool {
         NMLog.Error("photo|store|unwritable");
         return false;
     }
-    let lines: array<String>;
-    ArrayPush(lines, line);
-    return f.WriteLines(lines, FileSystemWriteMode.Append);
+    // WriteLines ends no line, so the next append would run on from this one.
+    return f.WriteText(line + "\n", FileSystemWriteMode.Append);
 }
 
 @if(!ModuleExists("RedFileSystem"))

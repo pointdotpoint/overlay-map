@@ -687,9 +687,15 @@ public class NMItemRenderer {
         let color = this.api.catColor[g];
         let style = L.shot[id] != 0u ? 3 : (L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0);
         if this.chipStyle[slot] != style {
+            let wasPhoto = this.chipStyle[slot] == 3;
             this.ApplyChipStyle(slot, style);
             this.chipTintOk[slot] = false;  // force the tint refresh below
             this.chipAlpha[slot] = -1.0;    // force the opacity refresh below
+            if wasPhoto {
+                // A photo pin hides both widgets while chipOn stays true, so the check below would leave them hidden.
+                bg.SetVisible(true);
+                ic.SetVisible(true);
+            }
         }
         if style == 3 {
             let c = this.PlacePhoto(L, id, slot, p, color);
