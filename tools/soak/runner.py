@@ -255,8 +255,7 @@ class Runner:
                 cells = self.changed(self.shots / f"{shoot_on}-{shot}a.png", self.shots / f"{shoot_on}-{shot}b.png")
                 if cells is not None:
                     self.lumas[f"{shoot_on}-{shot}-changed"] = cells
-                    # A session's first level change finds nothing cached: its first picture is still the old level.
-                    if max_changed is not None and cells > max_changed and shot > 1:
+                    if max_changed is not None and cells > max_changed:
                         raise Verdict("coverage_fail", f"{shoot_on} {shot}: {cells:.0f} map blocks changed")
             if self.clock() - start > timeout:
                 raise Verdict("coverage_fail", f"no {state} in {timeout:.0f} s")

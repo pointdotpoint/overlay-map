@@ -249,6 +249,8 @@
 
     private let soakMode: Int32;   // 0 sweep, 1 churn, 2 zoom loop
     private let soakLayerOn: array<Bool>;
+    private let soakCrossing: Bool;
+    private let soakCrossMs: Float;
     private let soakFlip: Bool;
     private let soakResMax: Int32;
     private let soakLevels: Int32;
@@ -330,9 +332,28 @@
         return "started";
     }
 
+    // Every tile set on its new level and nothing left to load: what is on screen now is the settled picture, so any
+    // difference from a later one is a stale or missing tile. Until then the old level legitimately still shows.
+    private func Soak_Crossed() -> Bool {
+        let names: array<String> = ["glow", "road", "bfill", "outline"];
+        for name in names {
+            let t = this.layers.Layer(name) as NMTileLayer;
+            if IsDefined(t) && (t.Waiting() > 0 || t.PreviousLevel() >= 0 || t.Alpha() < 1.0) { return false; }
+        }
+        return true;
+    }
+
     private func Soak_ModeFrame(dt: Float) {
         if this.soakHoldLeft > 0.0 {
             this.soakHoldLeft -= dt / 1000.0;
+            if this.soakCrossing {
+                this.soakCrossMs += dt;
+                if this.Soak_Crossed() {
+                    this.soakCrossing = false;
+                    NMSoak.Report("hold", IntToString(this.soakHolds) + "|L" + IntToString(this.soakLastLv) + "|crossed in "
+                        + FloatToStringPrec(this.soakCrossMs, 0) + " ms");
+                }
+            }
             return;
         }
         this.soakT += dt / 1000.0;
@@ -366,10 +387,11 @@
             if road.CurrentLevel() != this.soakLastLv {
                 this.soakLastLv = road.CurrentLevel();
                 this.soakLevels += 1;
-                if this.soakHolds < this.soakHoldMax {   // the level just changed: stop here for a picture
+                if this.soakHolds < this.soakHoldMax {   // the level just changed: stop here until it has crossed
                     this.soakHolds += 1;
                     this.soakHoldLeft = 14.0;
-                    NMSoak.Report("hold", IntToString(this.soakHolds) + "|L" + IntToString(this.soakLastLv));
+                    this.soakCrossing = true;
+                    this.soakCrossMs = 0.0;
                 }
             }
         }
