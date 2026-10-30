@@ -108,7 +108,7 @@ Open:
 - A session's first zoom can show a faint rectangular seam for a moment while nothing is cached. Hold 1 of the zoom check
   measures 370 blocks and is exempt from the limit; the harness jumps the zoom further in one frame than a player can.
 - Vanishing markers: the cause was found by reading the code and proven by a self-test, not seen on screen.
-- A GPU crash ("Gpu Crash for unknown reasons") hit 2 of about 12 headless launches, and one launch never reached the menu.
+- A GPU crash ("Gpu Crash for unknown reasons") hit 2 of about 24 headless launches, and one launch never reached the menu.
 - Self-tests still failing, not from this work: vanilla.catalog_twelve (13 categories), tracking.live_accepted_are_quest_objectives,
   perf.wide_layer_exceeds_old_cap.
 - Reading a field of a call temporary (`x.GetScale().X`) gives garbage in-game. Bind to a local. That caused 8 false failures.
