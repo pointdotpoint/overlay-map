@@ -56,6 +56,11 @@ With Debug on (Mod Settings → NightMap → Debug tools), chords on the toggle 
 ## For mod authors
 See docs/api.md.
 
+## Zoom
+
+The map zooms in to 0.1 m per pixel, 5x past the finest tiles, so roads and buildings get softer below the 100 M scale.
+Photo pins grow with the zoom past that point, up to 5x, and the first open of a session stays at 0.5 m per pixel.
+
 ## Automated testing
 
 `tools/soak` drives the real game headless in gamescope: it stages a build, backs up the install, saves and settings,
