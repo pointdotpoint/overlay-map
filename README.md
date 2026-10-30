@@ -55,3 +55,14 @@ With Debug on (Mod Settings → NightMap → Debug tools), chords on the toggle 
 
 ## For mod authors
 See docs/api.md.
+
+## Automated testing
+
+`tools/soak` drives the real game headless in gamescope: it stages a build, backs up the install, saves and settings,
+loads a save, follows a plan in `tools/soak/plans`, and restores everything. The game must be closed. Steam's launch
+options need `~/photomode_ui_improvements/scripts/soak/gamescope-wrap.sh` before `%command%`; normal launches pass through it.
+
+    python3 tools/soak/soak.py preflight --save QuickSave-7 --allow-cloud
+    python3 tools/soak/soak.py campaign tools/soak/plans/regression.json --save QuickSave-7 --allow-cloud
+
+Results land in `.soak/results/<campaign>/report.md`. `tools/check.sh --soak` compiles with the harness's hooks.

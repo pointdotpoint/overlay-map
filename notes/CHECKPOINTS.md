@@ -89,3 +89,26 @@ Checkpoint B (perf suite with a route tracked, `route_open`) not run yet.
 - The free teleport was replaced by fast travel to fast travel markers (spec 2026-10-27-nightmap-teleport-design.md §12).
 - Merged at the user's request before any in-game run of the fast travel build (`c5dd34c`). Still to check: the 8
   `ft.*` self-tests, a fast travel from NightMap, the refusals (non-point marker, in a vehicle), and the last-used dataterm.
+
+## Soak harness and bug fixes (2026-10-30, branch feat/soak-harness)
+
+The game is now driven automatically: `tools/soak` (ported from the photo mode mod), headless in gamescope through that
+mod's wrapper in the Steam launch options. `python3 tools/soak/soak.py campaign tools/soak/plans/regression.json --save
+QuickSave-7 --allow-cloud` runs the self-tests, a zoom check over tile level changes and a 3.7 km fast travel with the
+real key. Passed on 2026-10-30 (run 20261030-144626-regression).
+
+| Bug | Cause | Result |
+|---|---|---|
+| Fast travel black screen | No inkSetNextLoadingScreenEvent: V was teleported, the loading sequence never ran | Black 3 of 3 before; passed 3 of 3 after, and again in the regression |
+| Markers vanishing while panning | A slot leaving the photo style kept both widgets hidden while chipOn stayed true | chip.visible_after_photo_slot failed before, passes after |
+| Zoom flicker | Pooled images show their old tile until the new texture loads; the fade ran on a timer | Worst block diff 289 before; at most 25 after holds 2 to 5 |
+| Photo pins lost on restart | WriteLines ends no line, so spots ran together and 1 of 21 loaded | 21 of 21 load; old files still read |
+
+Open:
+- A session's first zoom can show a faint rectangular seam for a moment while nothing is cached. Hold 1 of the zoom check
+  measures 370 blocks and is exempt from the limit; the harness jumps the zoom further in one frame than a player can.
+- Vanishing markers: the cause was found by reading the code and proven by a self-test, not seen on screen.
+- A GPU crash ("Gpu Crash for unknown reasons") hit 2 of about 12 headless launches, and one launch never reached the menu.
+- Self-tests still failing, not from this work: vanilla.catalog_twelve (13 categories), tracking.live_accepted_are_quest_objectives,
+  perf.wide_layer_exceeds_old_cap.
+- Reading a field of a call temporary (`x.GetScale().X`) gives garbage in-game. Bind to a local. That caused 8 false failures.
