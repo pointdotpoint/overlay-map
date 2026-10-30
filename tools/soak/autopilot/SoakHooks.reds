@@ -18,8 +18,6 @@ public abstract class NMSoak {
         }
         if Equals(command, "focus_ft far") { return sys.Soak_FocusFastTravel(); }
         if Equals(command, "selected") { return sys.Soak_Selected(); }
-        if Equals(command, "prefetch") { return sys.Soak_Prefetch(); }
-        if Equals(command, "travel event") { return sys.Soak_Travel(true); }
         return "unknown";
     }
 }

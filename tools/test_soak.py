@@ -166,6 +166,40 @@ def test_a_screen_that_stays_black_fails_await_visible(paths):
     assert r.verdict == "black_screen"
 
 
+def test_a_screenshot_that_fails_is_retried_not_called_black(paths):
+    class Flaky(FakeGame):
+        shots = 0
+
+        def screenshot(self, out):
+            Flaky.shots += 1
+            return Flaky.shots > 1 and super().screenshot(out)
+
+    r = drive(paths, Flaky(paths), [{"shot": "a", "min_luma": 0.02}])
+    assert r.verdict == "pass" and r.lumas == {"a": 0.5}
+
+
+def test_a_screenshot_that_never_works_is_a_harness_error(paths):
+    class Blind(FakeGame):
+        def screenshot(self, out):
+            return False
+
+    r = drive(paths, Blind(paths), [{"shot": "a", "min_luma": 0.02}])
+    assert r.verdict == "infra_error"
+
+
+def test_await_state_passes_when_the_game_reports_it(paths):
+    def report(game):
+        game.state("ft_load_finished", "true")
+
+    r = drive(paths, FakeGame(paths, on_key=report), [{"key": "x"}, {"await_state": "ft_load_finished", "timeout": 5}])
+    assert r.verdict == "pass"
+
+
+def test_await_state_timing_out_fails_the_run(paths):
+    r = drive(paths, FakeGame(paths), [{"await_state": "ft_load_finished", "timeout": 5}])
+    assert r.verdict == "coverage_fail" and "ft_load_finished" in r.detail
+
+
 def test_the_process_ending_is_a_crash(paths):
     def die(game):
         game.alive = False

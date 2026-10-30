@@ -7,6 +7,7 @@ Steps, in order:
   {"shot": "name"}                    a screenshot into the run's screens/; "min_luma" fails it as black_screen
   {"await_visible": 90, "min_luma": 0.02}   screenshots until the frame isn't black, else black_screen
   {"await_moved": 100, "timeout": 90}       the player moved that many metres from where the step began
+  {"await_state": "ft_load_finished", "timeout": 60}   the game reported that state, else coverage_fail
 
 pass: every step done and the game exited by itself. crash: a new crash report, or the process gone.
 hang: no heartbeat for Timeouts.beat, or the game not exiting. black_screen: the game runs but shows nothing.
@@ -36,6 +37,7 @@ class Timeouts:
     beat: float = 90.0
     command: float = 20.0
     shot_gap: float = 3.0
+    shot_tries: int = 3
     tick: float = 0.25
 
 
@@ -140,12 +142,16 @@ class Runner:
             self._pause(step["wait"])
         elif "shot" in step:
             luma = self._shot(step["shot"])
-            if "min_luma" in step and (luma is None or luma < step["min_luma"]):
+            if luma is None and "min_luma" in step:
+                raise Verdict("infra_error", f"no picture for {step['shot']}")
+            if "min_luma" in step and luma < step["min_luma"]:
                 raise Verdict("black_screen", f"{step['shot']}: luma {luma}")
         elif "await_visible" in step:
             self._await_visible(step["await_visible"], step.get("min_luma", 0.02))
         elif "await_moved" in step:
             self._await_moved(step["await_moved"], step.get("timeout", 120.0))
+        elif "await_state" in step:
+            self._await_state(step["await_state"], step.get("timeout", 60.0))
         else:
             raise Verdict("infra_error", f"unknown step {step}")
 
@@ -168,14 +174,17 @@ class Runner:
             self.sleep(self.t.tick)
 
     def _shot(self, name: str) -> float | None:
+        """Brightness of a new picture, None if none could be taken: gamescopectl sometimes writes nothing, and a
+        picture that doesn't exist says nothing about the screen."""
         out = self.shots / f"{name}.png"
-        out.unlink(missing_ok=True)
-        if not self.game.screenshot(out):
-            return None
-        luma = self.luma(out)
-        if luma is not None:
-            self.lumas[name] = luma
-        return luma
+        for _ in range(self.t.shot_tries):
+            out.unlink(missing_ok=True)
+            luma = self.luma(out) if self.game.screenshot(out) else None
+            if luma is not None:
+                self.lumas[name] = luma
+                return luma
+            self._pause(self.t.tick)
+        return None
 
     def _await_visible(self, timeout: float, min_luma: float) -> None:
         """A black frame is a legitimate moment of a loading screen, so only a timeout counts. The heartbeat may
@@ -211,6 +220,17 @@ class Runner:
         luma = self._shot("stuck")
         verdict = "black_screen" if luma is not None and luma < 0.02 else "hang"
         raise Verdict(verdict, f"the player didn't move {metres:.0f} m in {timeout:.0f} s, luma {luma}")
+
+    def _await_state(self, state: str, timeout: float) -> None:
+        start = self.clock()
+        self.beat_ok = False
+        while state not in self.states:
+            self._check()
+            if self.clock() - start > timeout:
+                raise Verdict("coverage_fail", f"no {state} in {timeout:.0f} s")
+            self.sleep(self.t.tick)
+        self.beat_ok = True
+        self.last_change = self.clock()
 
     def _position(self):
         beat = read_beat(self.paths.channel, self.run_id)

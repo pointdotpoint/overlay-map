@@ -43,28 +43,3 @@
         if IsDefined(m as FastTravelMappin) { return "ft|" + title; }
         return "other|" + title;
     }
-
-    // Experiment: the same trip with parts of what the game's own map sends. The map stays open after a prefetch.
-    public func Soak_Prefetch() -> String {
-        let pd = NMFastTravel.PointOf(this.SelectedMappin());
-        if !IsDefined(pd) { return "no point"; }
-        let request = new FastTravelPrefetchRequest();
-        request.destinationRef = pd.GetMarkerRef();
-        NMFastTravel.System(this.GetGameInstance()).QueueRequest(request);
-        return "prefetched";
-    }
-
-    public func Soak_Travel(event: Bool) -> String {
-        let gi = this.GetGameInstance();
-        let player = GetPlayer(gi);
-        let m = this.SelectedMappin();
-        if !IsDefined(m as FastTravelMappin) { return "no point"; }
-        this.Close();
-        NMFastTravel.Travel(gi, m, player);
-        if event {
-            let evt = new inkSetNextLoadingScreenEvent();
-            evt.SetNextLoadingScreenType(inkLoadingScreenType.FastTravel);
-            GameInstance.GetUISystem(gi).QueueEvent(evt);
-        }
-        return event ? "sent with event" : "sent";
-    }

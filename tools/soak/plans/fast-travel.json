@@ -3,24 +3,70 @@
  "runs": [
   {
    "name": "far-trip",
-   "parts": ["scripts", "archive", "bootstrap", "autopilot"],
-   "repeats": 2,
-   "steps": [
-    {"wait": 8},
-    {"shot": "world", "min_luma": 0.02},
-    {"cmd": "open"},
-    {"wait": 3},
-    {"cmd": "focus_ft far", "expect": "^ok"},
-    {"wait": 1.5},
-    {"cmd": "selected", "expect": "^ft"},
-    {"shot": "selected"},
-    {"key": "KP_Decimal"},
-    {"await_moved": 100, "timeout": 120},
-    {"await_visible": 120, "min_luma": 0.02},
-    {"wait": 10},
-    {"shot": "arrived", "min_luma": 0.02}
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
    ],
-   "expect": [{"log": "fasttravel\\|start", "min": 1}]
+   "repeats": 3,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "shot": "world",
+     "min_luma": 0.02
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_ft far",
+     "expect": "^ok"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "selected",
+     "expect": "^ft"
+    },
+    {
+     "shot": "selected"
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "await_moved": 100,
+     "timeout": 120
+    },
+    {
+     "await_state": "ft_load_finished",
+     "timeout": 60
+    },
+    {
+     "await_visible": 60,
+     "min_luma": 0.02
+    },
+    {
+     "wait": 10
+    },
+    {
+     "shot": "arrived",
+     "min_luma": 0.02
+    }
+   ],
+   "expect": [
+    {
+     "log": "fasttravel\\|start",
+     "min": 1
+    }
+   ]
   }
  ]
 }

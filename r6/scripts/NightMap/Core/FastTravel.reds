@@ -41,5 +41,9 @@ public abstract class NMFastTravel {
         request.pointData = NMFastTravel.PointOf(m);
         request.player = player;
         NMFastTravel.System(gi).QueueRequest(request);
+        // Without this the game teleports V but never starts its loading sequence, and the screen stays black for good.
+        let loading = new inkSetNextLoadingScreenEvent();
+        loading.SetNextLoadingScreenType(inkLoadingScreenType.FastTravel);
+        GameInstance.GetUISystem(gi).QueueEvent(loading);
     }
 }
