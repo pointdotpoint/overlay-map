@@ -23,6 +23,16 @@ if [ -d "$GAME/r6/scripts/RedFileSystem" ]; then
   cp "$GAME"/r6/scripts/RedFileSystem/*.reds "$SANDBOX/r6/scripts/RedFileSystem/"
 fi
 cp -r "$HERE/r6/scripts/NightMap" "$SANDBOX/r6/scripts/NightMap"
+# --soak: also compile the harness's bootstrap and hooks, which only exist in a campaign build.
+if [ "${1:-}" = "--soak" ]; then
+  cp "$HERE/tools/soak/autopilot/SoakHooks.reds" "$SANDBOX/r6/scripts/NightMap/Debug/"
+  python3 "$HERE/tools/soak/builds.py" "$SANDBOX/r6/scripts/NightMap/Core/NightMapSystem.reds" \
+    "$HERE/tools/soak/autopilot/SystemBody.inc"
+  mkdir -p "$SANDBOX/r6/scripts/SoakBootstrap"
+  cp "$HERE"/tools/soak/bootstrap/*.reds "$SANDBOX/r6/scripts/SoakBootstrap/"
+  echo 'module SoakBootstrap' > "$SANDBOX/r6/scripts/SoakBootstrap/SoakBuild.reds"
+  echo 'public func Soak_BuildId() -> String = "check"' >> "$SANDBOX/r6/scripts/SoakBootstrap/SoakBuild.reds"
+fi
 
 # scc only scans the scripts dir reliably when given a path relative to its own tree.
 # On a compile error scc hangs instead of exiting, so bound it with a timeout.
