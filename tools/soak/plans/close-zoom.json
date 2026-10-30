@@ -1,0 +1,104 @@
+{
+ "name": "close-zoom",
+ "runs": [
+  {
+   "name": "zoom",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 60
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "zoom 0.1",
+     "expect": "^mpp 0.10"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "counts",
+     "expect": "mpp 0.10"
+    },
+    {
+     "shot": "street-closest",
+     "min_luma": 0.02
+    },
+    {
+     "cmd": "focus_photo 0.5",
+     "expect": "^ok"
+    },
+    {
+     "wait": 5
+    },
+    {
+     "cmd": "selected",
+     "expect": "^photo"
+    },
+    {
+     "shot": "photo-at-0.5"
+    },
+    {
+     "cmd": "zoom 0.25"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "selected",
+     "expect": "^photo"
+    },
+    {
+     "shot": "photo-at-0.25"
+    },
+    {
+     "cmd": "zoom 0.1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "selected",
+     "expect": "^photo"
+    },
+    {
+     "cmd": "counts",
+     "expect": "chips [1-9]"
+    },
+    {
+     "shot": "photo-at-0.1"
+    },
+    {
+     "cmd": "zoom 16"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "far"
+    }
+   ],
+   "forbid": [
+    "TEST\\|FAIL\\|(camera|photo|reticle|tiles)\\."
+   ]
+  }
+ ]
+}

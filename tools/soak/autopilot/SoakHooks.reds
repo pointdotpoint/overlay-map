@@ -19,6 +19,9 @@ public abstract class NMSoak {
         }
         if Equals(command, "focus_ft far") { return sys.Soak_FocusFastTravel(); }
         if Equals(command, "selected") { return sys.Soak_Selected(); }
+        if Equals(command, "counts") { return sys.Soak_Counts(); }
+        if StrBeginsWith(command, "focus_photo ") { return sys.Soak_FocusPhoto(StringToFloat(StrSplit(command, " ")[1])); }
+        if StrBeginsWith(command, "zoom ") { return sys.Soak_SetZoom(StringToFloat(StrSplit(command, " ")[1])); }
         if Equals(command, "selftest") {
             let t = new NMSelfTest();
             t.Run();

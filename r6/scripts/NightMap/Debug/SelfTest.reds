@@ -82,7 +82,12 @@ public class NMSelfTest {
         let zin = cam.mpp;
         cam.ZoomBy(0.000001);
         this.Check("camera.zoom_clamp", zin == 0.5 && cam.mpp == 16.0, this.F(zin) + "/" + this.F(cam.mpp));
-        this.Check("camera.limits_follow_manifest", NightMapSystem.MinMpp() == NMTileManifest.LevelMpp(0) && NightMapSystem.MaxMpp() == NMTileManifest.LevelMpp(NMTileManifest.LevelCount() - 1),
+        this.Check("camera.closer_than_tiles", NightMapSystem.MinMpp() == 0.1 && NightMapSystem.OpenMpp() == NMTileManifest.LevelMpp(0),
+            this.F(NightMapSystem.MinMpp()) + " open " + this.F(NightMapSystem.OpenMpp()));
+        this.Check("photo.thumb_zoom", NMItemRenderer.ThumbZoom(16.0) == 1.0 && NMItemRenderer.ThumbZoom(0.5) == 1.0
+            && this.Near(NMItemRenderer.ThumbZoom(0.25), 2.0, 0.001) && this.Near(NMItemRenderer.ThumbZoom(0.1), 5.0, 0.001),
+            this.F(NMItemRenderer.ThumbZoom(0.25)) + " " + this.F(NMItemRenderer.ThumbZoom(0.1)));
+        this.Check("camera.limits_follow_manifest", NightMapSystem.MaxMpp() == NMTileManifest.LevelMpp(NMTileManifest.LevelCount() - 1),
             this.F(NightMapSystem.MinMpp()) + "/" + this.F(NightMapSystem.MaxMpp()));
         cam.SetCenter(99999.0, -99999.0);
         this.Check("camera.bounds_clamp", cam.cx == 4600.0 && cam.cy == -4600.0, this.F(cam.cx) + "," + this.F(cam.cy));

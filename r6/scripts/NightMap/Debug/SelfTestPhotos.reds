@@ -24,9 +24,9 @@ public abstract class NMPhotoTests {
         t.Check("reticle.corner_touches", AbsF(r[0].X - r[0].Z * 0.5 - 60.0) < 0.01 && AbsF(r[0].Y - r[0].W * 0.5 - 170.0) < 0.01, "");
         let half = NMReticle.Ease(0.0, 100.0, 60.0);
         t.Check("reticle.ease", half > 30.0 && half < 70.0 && NMReticle.Ease(0.0, 100.0, NMReticle.EaseMs()) == 100.0, ToString(half));
-        let idle = NMReticle.BoxFor(false, false);
-        let chip = NMReticle.BoxFor(true, false);
-        let photo = NMReticle.BoxFor(true, true);
+        let idle = NMReticle.BoxFor(false, false, 1.0);
+        let chip = NMReticle.BoxFor(true, false, 1.0);
+        let photo = NMReticle.BoxFor(true, true, 1.0);
         t.Check("reticle.box_sizes", idle.X > chip.X && photo.X > photo.Y && photo.X > NMItemRenderer.ThumbW(), "");
     }
 

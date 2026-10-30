@@ -114,7 +114,11 @@ public class NightMapSystem extends ScriptableSystem {
         return NightMapSettings.Get(this.GetGameInstance());
     }
 
-    public static func MinMpp() -> Float {
+    // Past the finest tiles (0.5 m/px), which magnify: this zoom exists to see photo thumbnails bigger.
+    public static func MinMpp() -> Float { return 0.1; }
+
+    // The first open of a session, and the closest view the map's tiles are sharp at.
+    public static func OpenMpp() -> Float {
         return NMTileManifest.LevelCount() > 0 ? NMTileManifest.LevelMpp(0) : 0.5;
     }
 
@@ -227,7 +231,7 @@ public class NightMapSystem extends ScriptableSystem {
         }
         let bounds = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
         this.camera = NMCamera.Create(layout.mapW, layout.mapH, bounds, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
-        this.camera.SetMpp(this.savedMpp > 0.0 ? this.savedMpp : NightMapSystem.MinMpp());
+        this.camera.SetMpp(this.savedMpp > 0.0 ? this.savedMpp : NightMapSystem.OpenMpp());
         this.CenterOnPlayer(true);
         if IsDefined(s) {
             this.panel.hints.SetText(NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView), "FAST TRAVEL"));
@@ -644,7 +648,8 @@ public class NightMapSystem extends ScriptableSystem {
         let c = this.crosshair;
         let isPhoto = c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers)
             && Equals(this.api.layers[c.selLayer].id, NMPhotos.LayerId());
-        this.reticle.Update(l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5, c.selKind >= 0, c.selX, c.selY, isPhoto, dt);
+        this.reticle.Update(l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5, c.selKind >= 0, c.selX, c.selY, isPhoto,
+            NMItemRenderer.ThumbZoom(this.camera.mpp), dt);
         if this.input.act {
             this.input.act = false;
             this.Activate();

@@ -51,6 +51,7 @@ public class NMItemRenderer {
     private let thumbImg: array<ref<inkImage>>;
     private let thumbLoading: ref<NMThumbListener>;
     private let photoSel: Int32;
+    private let thumbZoom: Float = 1.0;
     private let photoColor: array<HDRColor>;
     private let shotHandler: wref<inkISystemRequestsHandler>;
     public let growSlot: Int32;           // slot currently growing/grown for the selection (icon idle pins), -1 none
@@ -211,6 +212,11 @@ public class NMItemRenderer {
         return id >= 0 && id < ArraySize(L.atlasKey) ? L.atlasKey[id] : "";
     }
 
+    // How much bigger a photo pin's picture is at this zoom: 1 down to the finest tiles, then with the zoom.
+    public static func ThumbZoom(mpp: Float) -> Float {
+        return MaxF(0.5 / MaxF(mpp, 0.0001), 1.0);
+    }
+
     public static func ThumbW() -> Float { return 108.0; }   // 16:9, 4K units (about 54x31 px at 1080p)
     public static func ThumbH() -> Float { return 61.5; }
     public static func PhotoEdge() -> Float { return 4.5; }
@@ -297,18 +303,20 @@ public class NMItemRenderer {
         this.EnsurePhotoWidgets(slot);
         let ts = this.thumbPlan.Want(L.shot[id]);
         let s = this.scale;
-        let tw = NMItemRenderer.ThumbW() * s;
-        let th = NMItemRenderer.ThumbH() * s;
+        let tw = NMItemRenderer.ThumbW() * s * this.thumbZoom;
+        let th = NMItemRenderer.ThumbH() * s * this.thumbZoom;
         let ed = NMItemRenderer.PhotoEdge() * s;
         let half = NMItemRenderer.PhotoPtr() * s * 0.7071;
         let c = new Vector2(p.X, p.Y - half - ed - th * 0.5);   // thumbnail centre; the point's tip sits on p
         let ready = this.thumbPlan.IsReady(ts);
         if ready {
             let im = this.thumbImg[ts];
+            im.SetSize(new Vector2(tw, th));
             im.SetOpacity(L.opacity * L.alpha[id]);
             im.SetTranslation(c);
             im.SetVisible(true);
         }
+        this.photoFill[slot].SetSize(new Vector2(tw, th));
         this.photoFill[slot].SetTranslation(c);
         this.photoFill[slot].SetVisible(!ready);
         let edgeColor = slot == this.photoSel ? NMTheme.Yellow() : color;
@@ -345,6 +353,7 @@ public class NMItemRenderer {
         this.lastCamRev = cam.revision;
         this.lastApiRev = api.revision;
         this.relayouts += 1;
+        this.thumbZoom = NMItemRenderer.ThumbZoom(cam.mpp);
         this.thumbPlan.BeginLayout();
         ArrayClear(this.candX);
         ArrayClear(this.candY);

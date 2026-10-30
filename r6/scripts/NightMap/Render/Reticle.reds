@@ -21,9 +21,9 @@ public class NMReticle {
     public static func EaseMs() -> Float { return 120.0; }
 
     // Bracket box size (4K units): open when nothing is focused, tighter around a marker, landscape around a photo pin.
-    public static func BoxFor(locked: Bool, photo: Bool) -> Vector2 {
+    public static func BoxFor(locked: Bool, photo: Bool, thumbZoom: Float) -> Vector2 {
         if !locked { return new Vector2(170.0, 170.0); }
-        if photo { return new Vector2(NMItemRenderer.ThumbW() + 30.0, NMItemRenderer.ThumbH() + 30.0); }
+        if photo { return new Vector2(NMItemRenderer.ThumbW() * thumbZoom + 30.0, NMItemRenderer.ThumbH() * thumbZoom + 30.0); }
         return new Vector2(130.0, 130.0);
     }
 
@@ -71,8 +71,8 @@ public class NMReticle {
     }
 
     // fx, fy: the focus point; sx, sy: the focused marker's screen position when hasSel.
-    public func Update(fx: Float, fy: Float, hasSel: Bool, sx: Float, sy: Float, photo: Bool, dtMs: Float) {
-        let box = NMReticle.BoxFor(hasSel, photo);
+    public func Update(fx: Float, fy: Float, hasSel: Bool, sx: Float, sy: Float, photo: Bool, thumbZoom: Float, dtMs: Float) {
+        let box = NMReticle.BoxFor(hasSel, photo, thumbZoom);
         let tx = hasSel ? sx : fx;
         let ty = hasSel ? sy : fy;
         let tw = box.X * this.s;

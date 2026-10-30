@@ -37,6 +37,7 @@
     }
 
     public func Soak_Selected() -> String {
+        if IsDefined(this.SelectedPhoto()) { return "photo"; }
         let m = this.SelectedMappin();
         if !IsDefined(m) { return "none"; }
         let title = NMVanillaText.Title(m, m.GetVariant());
@@ -264,6 +265,39 @@
         this.soakEnd = seconds;
         this.soakMode = 1;
         return "started";
+    }
+
+    // Centres the map on the saved photo spot nearest V, at this zoom.
+    public func Soak_FocusPhoto(mpp: Float) -> String {
+        if !IsDefined(this.camera) { return "map closed"; }
+        let here = GetPlayer(this.GetGameInstance()).GetWorldPosition();
+        let best: ref<NMPhotoSpot>;
+        let bestD = -1.0;
+        for s in this.Photos().Spots() {
+            let d = Vector4.Distance(here, s.Position());
+            if bestD < 0.0 || d < bestD {
+                bestD = d;
+                best = s;
+            }
+        }
+        if !IsDefined(best) { return "none"; }
+        this.camera.follow = false;
+        this.camera.SetMpp(mpp);
+        this.camera.SetCenter(best.x, best.y);
+        return "ok|" + FloatToStringPrec(bestD, 0) + "m";
+    }
+
+    public func Soak_SetZoom(mpp: Float) -> String {
+        if !IsDefined(this.camera) { return "map closed"; }
+        this.camera.follow = false;
+        this.camera.SetMpp(mpp);
+        return "mpp " + FloatToStringPrec(this.camera.mpp, 2);
+    }
+
+    public func Soak_Counts() -> String {
+        if !IsDefined(this.renderer) { return "map closed"; }
+        return "chips " + IntToString(this.renderer.chipsUsed) + "|clusters " + IntToString(this.renderer.clustersUsed)
+            + "|mpp " + FloatToStringPrec(this.camera.mpp, 2);
     }
 
     public func Soak_SeedPhotos(n: Int32) -> String {
