@@ -119,3 +119,13 @@ Open:
 The camera goes to 0.1 m/px, 5x past the finest tiles, and photo pins grow with it up to 5x. A photo pin is selected from its
 tip at any size. `tools/soak/plans/close-zoom.json` passed (20261030-150052) and so did the regression (20261030-150736).
 Self-tests: 314 passed, 3 failed, the same three as above. Below the 100 M scale the map magnifies its tiles and looks soft.
+
+## Hold to show (2026-10-30, branch feat/hold-to-show)
+
+Display -> Hold key to show, off by default: press opens, release closes, and the hint reads RELEASE ' CLOSE.
+`tools/soak/plans/hold-to-show.json` passed (20261030-154151) with real key events: the normal toggle, then a 5 s hold, then a
+second hold. Self-tests failing are the same three as above. A synthetic held key sends no repeats, so a real keyboard's key
+repeat is not covered by this run; the code ignores repeated presses, and only a false release would close the map.
+
+Harness: a keysym follows the session's layout, and under gamescope `apostrophe` reached the game as IK_Tilde. Send keycode 94,
+which the game sees as IK_SingleQuote. The `watch_keys` and `last_keys` commands report what the game actually received.
