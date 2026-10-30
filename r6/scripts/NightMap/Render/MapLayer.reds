@@ -70,7 +70,15 @@ public class NMLayerStack {
     }
 
     public func Update(cam: ref<NMCamera>, dtMs: Float) {
+        // The tile sets cross a level together: one that fades in early shows as a seam against the others.
+        let held = false;
         for l in this.layers {
+            let t = l as NMTileLayer;
+            if IsDefined(t) && t.WaitingOnCurrent() { held = true; }
+        }
+        for l in this.layers {
+            let t = l as NMTileLayer;
+            if IsDefined(t) { t.holdFade = held; }
             l.Update(cam, dtMs);
         }
     }

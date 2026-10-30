@@ -54,6 +54,7 @@ public class NMTileLayer extends NMMapLayer {
     // covers what was on screen, and the wider view would show a bare ring around it until they load.
     private let preTokens: array<ref<ResourceToken>>;
     private let preKey: Int32;
+    public let holdFade: Bool;       // the stack holds every set until all of them have their tiles
     public let skipLoadWait: Bool;   // test hook: fades run on time alone, as if every tile were in
     public let holdLoads: Bool;      // test hook: no load finishes
     private let cur: Int32;
@@ -232,6 +233,7 @@ public class NMTileLayer extends NMMapLayer {
 
     public func Alpha() -> Float { return this.aCur; }
     public func Waiting() -> Int32 { return this.waiting; }
+    public func WaitingOnCurrent() -> Bool { return this.cur >= 0 && this.lvWaiting[this.cur] > 0; }
     public func CurrentLevel() -> Int32 { return this.cur; }
     public func PreviousLevel() -> Int32 { return this.prev; }
 
@@ -276,7 +278,7 @@ public class NMTileLayer extends NMMapLayer {
                 this.Container(this.cur).Reparent(this.box);   // incoming draws above outgoing
             }
         }
-        if this.aCur < 1.0 && !changed && (this.skipLoadWait || this.lvWaiting[this.cur] == 0) {
+        if this.aCur < 1.0 && !changed && (this.skipLoadWait || (!this.holdFade && this.lvWaiting[this.cur] == 0)) {
             this.aCur = NMTileLayer.FadeStep(this.aCur, dtMs, NMTileLayer.FadeMs(), true);
             touch = true;
         }

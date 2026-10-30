@@ -207,10 +207,11 @@ def test_await_state_photographs_each_moment_the_game_flags(paths):
 def test_max_changed_fails_a_view_that_was_still_loading(paths):
     def report(game):
         game.state("hold", "1|L3")
+        game.state("hold", "2|L2")
 
     r = drive(paths, FakeGame(paths, on_key=report),
-              [{"key": "x"}, {"await_state": "never", "timeout": 3, "shoot_on": "hold", "max_changed": 1}])
-    assert r.verdict == "coverage_fail" and "3 map blocks" in r.detail
+              [{"key": "x"}, {"await_state": "never", "timeout": 8, "shoot_on": "hold", "max_changed": 1}])
+    assert r.verdict == "coverage_fail" and r.detail.startswith("hold 2: 3 map blocks")
 
 
 def test_a_flagged_moment_raised_before_the_step_begins_is_still_photographed(paths):
