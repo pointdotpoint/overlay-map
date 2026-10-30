@@ -118,6 +118,10 @@
     }
 
     private func Soak_Frame(dt: Float) {
+        if this.soakMode > 0 && IsDefined(this.renderer) {
+            this.Soak_ModeFrame(dt);
+            return;
+        }
         if !this.soakOn || !IsDefined(this.renderer) { return; }
         this.Soak_Compare();
         this.soakFrames += 1;
@@ -229,5 +233,71 @@
             NMSoak.Report("sweep_drop", this.soakTag + "|f" + IntToString(this.soakFrames) + "|L" + IntToString(li) + "#" + IntToString(item)
                 + "|at " + FloatToStringPrec(at.X, 0) + "," + FloatToStringPrec(at.Y, 0) + "|chips " + IntToString(this.renderer.chipsUsed)
                 + "|clusters " + IntToString(this.renderer.clustersUsed));
+        }
+    }
+
+    // ---- icon churn on a still map; zoom loop over fresh tiles ----
+
+    private let soakMode: Int32;   // 0 sweep, 1 churn, 2 zoom loop
+    private let soakFlip: Bool;
+    private let soakResMax: Int32;
+    private let soakLevels: Int32;
+    private let soakLastLv: Int32;
+
+    public func Soak_StartChurn(tag: String, mpp: Float, seconds: Float) -> String {
+        if !IsDefined(this.camera) { return "map closed"; }
+        let p = GetPlayer(this.GetGameInstance()).GetWorldPosition();
+        this.camera.follow = false;
+        this.camera.SetMpp(mpp);
+        this.camera.SetCenter(p.X, p.Y);
+        this.soakTag = tag;
+        this.soakT = 0.0;
+        this.soakEnd = seconds;
+        this.soakMode = 1;
+        return "started";
+    }
+
+    public func Soak_StartZoomLoop(tag: String, seconds: Float) -> String {
+        if !IsDefined(this.camera) { return "map closed"; }
+        let p = GetPlayer(this.GetGameInstance()).GetWorldPosition();
+        this.soakOx = p.X;
+        this.soakOy = p.Y;
+        this.camera.follow = false;
+        this.soakTag = tag;
+        this.soakT = 0.0;
+        this.soakEnd = seconds;
+        this.soakResMax = 0;
+        this.soakLevels = 0;
+        this.soakLastLv = -1;
+        this.soakMode = 2;
+        return "started";
+    }
+
+    private func Soak_ModeFrame(dt: Float) {
+        this.soakT += dt / 1000.0;
+        if this.soakT >= this.soakEnd {
+            if this.soakMode == 1 { this.renderer.Soak_ChurnMinis(false); }
+            let detail = this.soakMode == 2 ? "levels " + IntToString(this.soakLevels) + "|residentmax " + IntToString(this.soakResMax) : "";
+            this.soakMode = 0;
+            NMSoak.Report("mode_done_" + this.soakTag, detail);
+            return;
+        }
+        if this.soakMode == 1 {
+            if this.soakT >= 6.0 {
+                this.soakFlip = !this.soakFlip;
+                this.renderer.Soak_ChurnMinis(this.soakFlip);
+            }
+            return;
+        }
+        let m = 1.5 * PowF(2.0, SinF(this.soakT * 2.4));
+        this.camera.SetMpp(m);
+        this.camera.SetCenter(this.soakOx + 90.0 * this.soakT, this.soakOy + 40.0 * this.soakT);
+        let road = this.layers.Layer("road") as NMTileLayer;
+        if IsDefined(road) {
+            if road.Resident() > this.soakResMax { this.soakResMax = road.Resident(); }
+            if road.CurrentLevel() != this.soakLastLv {
+                this.soakLastLv = road.CurrentLevel();
+                this.soakLevels += 1;
+            }
         }
     }

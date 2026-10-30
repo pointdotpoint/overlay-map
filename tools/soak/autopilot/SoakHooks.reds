@@ -23,6 +23,14 @@ public abstract class NMSoak {
             let a = StrSplit(command, " ");
             return sys.Soak_StartSweep(a[1], StringToFloat(a[2]), StringToFloat(a[3]), ArraySize(a) > 4 ? StringToInt(a[4]) : 0);
         }
+        if StrBeginsWith(command, "churn ") {
+            let c = StrSplit(command, " ");
+            return sys.Soak_StartChurn(c[1], StringToFloat(c[2]), StringToFloat(c[3]));
+        }
+        if StrBeginsWith(command, "zoomloop ") {
+            let z = StrSplit(command, " ");
+            return sys.Soak_StartZoomLoop(z[1], StringToFloat(z[2]));
+        }
         return "unknown";
     }
 

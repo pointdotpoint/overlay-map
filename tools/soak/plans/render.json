@@ -1,0 +1,136 @@
+{
+ "name": "render",
+ "runs": [
+  {
+   "name": "probe",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "churn c 2.0 22"
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "shot": "base-1"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "shot": "base-2"
+    },
+    {
+     "wait": 3.5
+    },
+    {
+     "shot": "churn-1"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "shot": "churn-2"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "shot": "churn-3"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "shot": "churn-4"
+    },
+    {
+     "await_state": "mode_done_c",
+     "timeout": 40
+    },
+    {
+     "cmd": "zoomloop z 26"
+    },
+    {
+     "shot": "zoom-01"
+    },
+    {
+     "wait": 0.4
+    },
+    {
+     "shot": "zoom-02"
+    },
+    {
+     "wait": 0.4
+    },
+    {
+     "shot": "zoom-03"
+    },
+    {
+     "wait": 0.4
+    },
+    {
+     "shot": "zoom-04"
+    },
+    {
+     "wait": 0.4
+    },
+    {
+     "shot": "zoom-05"
+    },
+    {
+     "wait": 0.4
+    },
+    {
+     "shot": "zoom-06"
+    },
+    {
+     "wait": 0.4
+    },
+    {
+     "shot": "zoom-07"
+    },
+    {
+     "wait": 0.4
+    },
+    {
+     "shot": "zoom-08"
+    },
+    {
+     "wait": 0.4
+    },
+    {
+     "shot": "zoom-09"
+    },
+    {
+     "wait": 0.4
+    },
+    {
+     "shot": "zoom-10"
+    },
+    {
+     "wait": 0.4
+    },
+    {
+     "await_state": "mode_done_z",
+     "timeout": 60
+    }
+   ]
+  }
+ ]
+}
