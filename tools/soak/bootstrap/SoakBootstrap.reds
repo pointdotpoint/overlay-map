@@ -28,6 +28,7 @@ public class SoakChannel extends ScriptableService {
     private let m_worldReported: Bool;
     private let m_exiting: Bool;
     private let m_lastCommand: String;
+    private let m_watch: array<ref<CallbackHandle>>;
 
     public static func Get() -> ref<SoakChannel> {
         return GameInstance.GetScriptableServiceContainer().GetService(n"SoakBootstrap.SoakChannel") as SoakChannel;
@@ -127,9 +128,23 @@ public class SoakChannel extends ScriptableService {
         this.State("session_ready", "");
         if !this.m_ticking {
             this.m_ticking = true;
+            this.WatchFastTravel();
             this.Schedule(5.0);
         }
     }
+
+    // The game's own view of a trip: which of these flags fires tells where a stuck trip stopped.
+    private func WatchFastTravel() {
+        let defs = GetAllBlackboardDefs().FastTRavelSystem;
+        let bb = GameInstance.GetBlackboardSystem(GetGameInstance()).Get(defs);
+        ArrayPush(this.m_watch, bb.RegisterListenerBool(defs.FastTravelStarted, this, n"OnFtStarted"));
+        ArrayPush(this.m_watch, bb.RegisterListenerBool(defs.FastTravelLoadingScreenStarted, this, n"OnFtLoadStarted"));
+        ArrayPush(this.m_watch, bb.RegisterListenerBool(defs.FastTravelLoadingScreenFinished, this, n"OnFtLoadFinished"));
+    }
+
+    protected cb func OnFtStarted(value: Bool) -> Bool { this.State("ft_started", ToString(value)); return true; }
+    protected cb func OnFtLoadStarted(value: Bool) -> Bool { this.State("ft_load_started", ToString(value)); return true; }
+    protected cb func OnFtLoadFinished(value: Bool) -> Bool { this.State("ft_load_finished", ToString(value)); return true; }
 
     private func Schedule(delay: Float) {
         GameInstance.GetDelaySystem(GetGameInstance()).DelayCallback(new SoakTick(), delay, false);
