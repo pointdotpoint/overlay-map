@@ -195,6 +195,15 @@ def test_await_state_passes_when_the_game_reports_it(paths):
     assert r.verdict == "pass"
 
 
+def test_await_state_photographs_each_moment_the_game_flags(paths):
+    def report(game):
+        game.state("hold", "1|10,20")
+
+    r = drive(paths, FakeGame(paths, on_key=report),
+              [{"key": "x"}, {"await_state": "never", "timeout": 3, "shoot_on": "hold"}])
+    assert "hold-1a" in r.lumas and "hold-1b" in r.lumas
+
+
 def test_await_state_timing_out_fails_the_run(paths):
     r = drive(paths, FakeGame(paths), [{"await_state": "ft_load_finished", "timeout": 5}])
     assert r.verdict == "coverage_fail" and "ft_load_finished" in r.detail
@@ -233,7 +242,8 @@ def test_stage_build_overlays_the_hooks_and_stamps_the_id(tmp_path):
         "public class NightMapSystem {\n    private func UpdateModules(dt: Float) {\n    }\n}\n\nclass B {\n}\n")
     (repo / "r6/scripts/NightMap/Render").mkdir()
     (repo / "r6/scripts/NightMap/Render/ItemRenderer.reds").write_text(
-        "public class NMItemRenderer {\n            ic.SetAtlasResource(this.icon.atlas);\n}\n")
+        "public class NMItemRenderer {\n            ic.SetAtlasResource(this.icon.atlas);\n"
+        "                        this.miniIcon[mi].SetAtlasResource(this.api.catAtlas[g2]);\n}\n")
     (repo / "archive/pc/mod").mkdir(parents=True)
     (repo / "archive/pc/mod/NightMap.archive").write_bytes(b"z")
     p = Paths(game=tmp_path, user=tmp_path, steam=tmp_path, soak=tmp_path / "soak", wrapper_state=tmp_path, repo=repo)

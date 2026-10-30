@@ -24,44 +24,27 @@
      "shot": "start"
     },
     {
-     "cmd": "sweep a 1.0 25"
+     "cmd": "sweep a 1.0 30 8"
     },
     {
      "await_state": "sweep_done_a",
-     "timeout": 60
+     "timeout": 120,
+     "shoot_on": "hold"
     },
     {
-     "shot": "after-a"
-    },
-    {
-     "cmd": "sweep b 2.0 25"
+     "cmd": "sweep b 2.0 20 4"
     },
     {
      "await_state": "sweep_done_b",
-     "timeout": 60
+     "timeout": 90,
+     "shoot_on": "hold"
     },
     {
-     "shot": "after-b"
-    },
-    {
-     "cmd": "sweep c 4.0 25"
-    },
-    {
-     "await_state": "sweep_done_c",
-     "timeout": 60
-    },
-    {
-     "shot": "after-c"
-    },
-    {
-     "cmd": "sweep d 0.5 25"
+     "cmd": "sweep d 0.5 15"
     },
     {
      "await_state": "sweep_done_d",
      "timeout": 60
-    },
-    {
-     "shot": "after-d"
     }
    ]
   }

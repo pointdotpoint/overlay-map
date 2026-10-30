@@ -71,8 +71,14 @@
     private let soakClusterFrames: Int32;
     private let soakChipsMax: Int32;
     private let soakLogged: Int32;
+    private let soakClDrops: Int32;
+    private let soakClMoved: Int32;
+    private let soakHolds: Int32;
+    private let soakHoldMax: Int32;
+    private let soakHoldLeft: Float;
+    private let soakLoadsSeen: Int32;
 
-    public func Soak_StartSweep(tag: String, mpp: Float, seconds: Float) -> String {
+    public func Soak_StartSweep(tag: String, mpp: Float, seconds: Float, holds: Int32) -> String {
         if !IsDefined(this.camera) || !IsDefined(this.renderer) { return "map closed"; }
         let p = GetPlayer(this.GetGameInstance()).GetWorldPosition();
         this.soakOx = p.X;
@@ -95,6 +101,12 @@
         this.soakChipsMax = 0;
         this.soakLogged = 0;
         this.soakLoads0 = this.renderer.soakIconLoads;
+        this.soakLoadsSeen = this.soakLoads0;
+        this.soakClDrops = 0;
+        this.soakClMoved = 0;
+        this.soakHolds = 0;
+        this.soakHoldMax = holds;
+        this.soakHoldLeft = 0.0;
         ArrayClear(this.soakPrevKeys);
         ArrayClear(this.soakPrevSlots);
         ArrayClear(this.soakRecent);
@@ -109,6 +121,11 @@
         if !this.soakOn || !IsDefined(this.renderer) { return; }
         this.Soak_Compare();
         this.soakFrames += 1;
+        if this.soakHoldLeft > 0.0 {
+            this.soakHoldLeft -= dt / 1000.0;
+            return;
+        }
+        this.Soak_MaybeHold();
         this.soakT += dt / 1000.0;
         if this.soakT >= this.soakEnd {
             this.soakOn = false;
@@ -120,11 +137,28 @@
                 + "|iconloads " + IntToString(this.renderer.soakIconLoads - this.soakLoads0)
                 + "|budgetframes " + IntToString(this.soakBudgetFrames)
                 + "|clusterframes " + IntToString(this.soakClusterFrames)
-                + "|chipsmax " + IntToString(this.soakChipsMax));
+                + "|chipsmax " + IntToString(this.soakChipsMax)
+                + "|cldrops " + IntToString(this.soakClDrops) + "|clmoved " + IntToString(this.soakClMoved)
+                + "|holds " + IntToString(this.soakHolds));
             return;
         }
         let m = this.soakMpp;
         this.camera.SetCenter(this.soakOx + 800.0 * m * SinF(this.soakT * 0.7), this.soakOy + 600.0 * m * SinF(this.soakT * 1.1));
+    }
+
+    // An icon just reloaded on screen: stop here so the supervisor can photograph that spot.
+    private func Soak_MaybeHold() {
+        let r = this.renderer;
+        let loaded = r.soakIconLoads != this.soakLoadsSeen;
+        this.soakLoadsSeen = r.soakIconLoads;
+        if !loaded || this.soakHolds >= this.soakHoldMax { return; }
+        let at = r.soakLoadAt;
+        let m = 120.0;
+        if at.X < m || at.Y < m || at.X > this.camera.viewW * 0.72 - m || at.Y > this.camera.viewH - m { return; }
+        this.soakHolds += 1;
+        this.soakHoldLeft = 1.5;
+        NMSoak.Report("hold", IntToString(this.soakHolds) + "|" + FloatToStringPrec(at.X, 0) + "," + FloatToStringPrec(at.Y, 0)
+            + "|view " + FloatToStringPrec(this.camera.viewW, 0) + "x" + FloatToStringPrec(this.camera.viewH, 0));
     }
 
     private func Soak_Compare() {
@@ -132,7 +166,8 @@
         let cur: array<Int32>;
         let i = 0;
         while i < ArraySize(r.candLayer) {
-            ArrayPush(cur, r.candLayer[i] * 100000 + r.candItem[i]);
+            // Clusters carry layer -1 and their cell key: negative keys, so they never decode as markers.
+            ArrayPush(cur, r.candKind[i] == 0 ? r.candLayer[i] * 100000 + r.candItem[i] : -1 - r.candItem[i]);
             i += 1;
         }
         if r.chipsUsed > this.soakChipsMax { this.soakChipsMax = r.chipsUsed; }
@@ -147,7 +182,7 @@
             if at < 0 {
                 this.Soak_Dropped(key, full, clustered);
             } else if r.candSlot[at] != this.soakPrevSlots[p] {
-                this.soakMoved += 1;
+                if key < 0 { this.soakClMoved += 1; } else { this.soakMoved += 1; }
             }
             p += 1;
         }
@@ -168,6 +203,10 @@
     }
 
     private func Soak_Dropped(key: Int32, full: Bool, clustered: Bool) {
+        if key < 0 {
+            this.soakClDrops += 1;
+            return;
+        }
         let li = key / 100000;
         let item = key - li * 100000;
         if li < 0 || li >= ArraySize(this.api.layers) { return; }

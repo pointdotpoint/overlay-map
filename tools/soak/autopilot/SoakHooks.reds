@@ -21,7 +21,7 @@ public abstract class NMSoak {
         if Equals(command, "selected") { return sys.Soak_Selected(); }
         if StrBeginsWith(command, "sweep ") {
             let a = StrSplit(command, " ");
-            return sys.Soak_StartSweep(a[1], StringToFloat(a[2]), StringToFloat(a[3]));
+            return sys.Soak_StartSweep(a[1], StringToFloat(a[2]), StringToFloat(a[3]), ArraySize(a) > 4 ? StringToInt(a[4]) : 0);
         }
         return "unknown";
     }

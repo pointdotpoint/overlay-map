@@ -7,7 +7,8 @@ Steps, in order:
   {"shot": "name"}                    a screenshot into the run's screens/; "min_luma" fails it as black_screen
   {"await_visible": 90, "min_luma": 0.02}   screenshots until the frame isn't black, else black_screen
   {"await_moved": 100, "timeout": 90}       the player moved that many metres from where the step began
-  {"await_state": "ft_load_finished", "timeout": 60}   the game reported that state, else coverage_fail
+  {"await_state": "ft_load_finished", "timeout": 60}   the game reported that state, else coverage_fail;
+                                      "shoot_on": "hold" photographs each time the game raises that state meanwhile
 
 pass: every step done and the game exited by itself. crash: a new crash report, or the process gone.
 hang: no heartbeat for Timeouts.beat, or the game not exiting. black_screen: the game runs but shows nothing.
@@ -151,7 +152,7 @@ class Runner:
         elif "await_moved" in step:
             self._await_moved(step["await_moved"], step.get("timeout", 120.0))
         elif "await_state" in step:
-            self._await_state(step["await_state"], step.get("timeout", 60.0))
+            self._await_state(step["await_state"], step.get("timeout", 60.0), step.get("shoot_on"))
         else:
             raise Verdict("infra_error", f"unknown step {step}")
 
@@ -221,11 +222,18 @@ class Runner:
         verdict = "black_screen" if luma is not None and luma < 0.02 else "hang"
         raise Verdict(verdict, f"the player didn't move {metres:.0f} m in {timeout:.0f} s, luma {luma}")
 
-    def _await_state(self, state: str, timeout: float) -> None:
+    def _await_state(self, state: str, timeout: float, shoot_on: str | None = None) -> None:
+        """shoot_on: a state the game raises at a moment worth seeing; two pictures, at once and a second later."""
         start = self.clock()
         self.beat_ok = False
+        shot = self.states.count(shoot_on) if shoot_on else 0
         while state not in self.states:
             self._check()
+            if shoot_on and self.states.count(shoot_on) > shot:
+                shot += 1
+                self._shot(f"{shoot_on}-{shot}a")
+                self._pause(1.0)
+                self._shot(f"{shoot_on}-{shot}b")
             if self.clock() - start > timeout:
                 raise Verdict("coverage_fail", f"no {state} in {timeout:.0f} s")
             self.sleep(self.t.tick)
