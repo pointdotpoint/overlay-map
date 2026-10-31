@@ -38,6 +38,12 @@ Build options and caches:
 - Previews are written to `tools/tiles/build/preview_minimap_{close,mid,far}.png`.
 - Calibration lives in `tools/tiles/calibration.json`.
 
+Collectible spots come from the game's own files (never from a fan map), regenerated after a game patch:
+    python3 tools/collectibles/scan.py --wolvenkit <WolvenKit 10 CLI> --dotnet <.NET 10 runtime>   # world sectors
+    python3 tools/soak/soak.py campaign tools/soak/plans/lootdump.json --save <save>              # item records
+    python3 tools/collectibles/gen.py --scan ~/.cache/nightmap-sectors/scan --dump <run>/dump-1/channel/lootdump.txt
+UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only`.
+
 ## Using it
 - `'` open/close · Numpad 8/4/6/2 (7/9/1/3) pan · Numpad +/- zoom · Numpad 5 follow V · Numpad 0 act. Every key can be rebound in Mod Settings → NightMap.
 - Arrow keys are never used (they steer vehicles). Keep NumLock on.
@@ -48,6 +54,7 @@ Build options and caches:
 - GPS routes: the route to your vanilla waypoint (white) and to the tracked quest (yellow, teal for gigs) are mirrored from the minimap as flowing dots. Mod Settings → NightMap → Display → GPS routes.
 - The game's HUD fades out while the map is open (Display → Hide HUD while open).
 - Numpad . on any spot teleports V there: onto the roof or ground below, or into the water. On a fast travel marker it fast-travels, on a photo pin it goes to the photo's spot, and V's car comes along. Long jumps show the game's loading screen for a few seconds first.
+- Collectibles: every shard, tarot graffiti, iconic weapon, legendary cyberware and clothing, and skill shard placed in the world has its own pin (All view only). Collected ones stay on the map, scratched out and faded. Shards and tarot follow your journal; items count once they have been in V's inventory (the list is saved with the game; an item sold before this version doesn't count). Teleporting to a pin lands on the spot. Mod Settings → NightMap → Collectibles turns each category on or off, and hides collected ones.
 - Display → Hold key to show keeps the map up only while `'` is held, instead of pressing to open and again to close.
 - `Numpad .` on a selected fast travel marker fast travels there with the game's own fast travel (arrival at the dataterm, the game's own locks during some quests or combat). On foot only; your vehicle stays behind. Display → Fast travel key.
 - Mods can add their own items through the layer API.
