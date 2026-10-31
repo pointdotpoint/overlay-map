@@ -39,7 +39,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--skip-export", action="store_true", help="accepted for compatibility; the build no longer reads 3D-map meshes")
     ap.add_argument("--jobs", type=int, default=4, help="workers for every process pool (BC7 encoding uses min(jobs, 2))")
     ap.add_argument("--game-version", default="2.31")
+    ap.add_argument("--ui-only", action="store_true", help="re-render only the UI and holo atlases into the last build's workspace and repack")
     args = ap.parse_args(argv)
+    if args.ui_only:
+        return ui_only(args.out, args.jobs)
     t_start = time.time()
     os.nice(19)
     game = args.game.resolve()
@@ -120,6 +123,38 @@ def main(argv: list[str] | None = None) -> int:
     print(f"total wall time {time.time() - t_start:.0f}s")
     if mb > 250:
         print("WARNING: archive exceeds the 250 MB target; rebuild with the finest level at 0.75 m/px (spec 11.2)")
+    return 0
+
+
+def write_ui(ws: Path, png_dir: Path, dds: Path, jobs: int) -> None:
+    """The UI and holo atlases: render, encode and write their resources into the workspace."""
+    ui_img, ui_parts = build_ui_atlas()
+    ui_png = png_dir / "ui.png"
+    ui_img.save(ui_png)
+    holo_img, holo_parts = build_holo_atlas()
+    holo_png = png_dir / "holo.png"
+    holo_img.save(holo_png)
+    payloads = encode_bc7([ui_png, holo_png], dds, min(jobs, 2))
+    xbm_t = json.loads((TPL / "tile.xbm.json").read_text())
+    atl_t = json.loads((TPL / "atlas.inkatlas.json").read_text())
+    write_resource(ws, "nightmap\\ui\\ui.xbm", make_xbm_json(xbm_t, 1024, 1024, payloads[ui_png]))
+    write_resource(ws, "nightmap\\ui\\ui.inkatlas", make_inkatlas_json(atl_t, "nightmap\\ui\\ui.xbm", ui_parts, 1024, 1024))
+    write_resource(ws, "nightmap\\ui\\holo.xbm", make_xbm_json(xbm_t, holo_img.width, holo_img.height, payloads[holo_png]))
+    write_resource(ws, "nightmap\\ui\\holo.inkatlas",
+                   make_inkatlas_json(atl_t, "nightmap\\ui\\holo.xbm", holo_parts, holo_img.width, holo_img.height))
+
+
+def ui_only(out: Path, jobs: int) -> int:
+    """Repack the archive with fresh UI atlases, keeping the tiles a full build left in out/workspace."""
+    ws = out / "workspace"
+    if not (ws / "nightmap" / "tiles").is_dir():
+        raise SystemExit(f"error: no tiles in {ws}; run a full build first")
+    png_dir = out / "png"
+    png_dir.mkdir(parents=True, exist_ok=True)
+    write_ui(ws, png_dir, out / "dds", jobs)
+    deserialize_all(ws)
+    archive = pack_archive(ws, REPO / "archive" / "pc" / "mod" / "NightMap.archive")
+    print(f"archive {archive} {archive.stat().st_size / 1e6:.1f} MB (UI atlases only)")
     return 0
 
 

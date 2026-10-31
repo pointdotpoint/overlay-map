@@ -11,6 +11,9 @@ SIZES = {
     "ring": 216, "player": 112,
     "bracket_tl": 110, "bracket_tr": 110, "bracket_bl": 110, "bracket_br": 110,
     "icon_quest": 48, "icon_gig": 48, "icon_vendor": 48, "icon_ft": 48, "icon_undisc": 48, "icon_dot": 48,
+    # collectibles (NMTheme.VanillaIconSize) and the scratch drawn over a collected one
+    "icon_c_shard": 64, "icon_c_tarot": 64, "icon_c_weapon": 64, "icon_c_cyber": 64, "icon_c_cloth": 64,
+    "icon_c_skill": 64, "icon_strike": 64,
 }
 # hex radius / stroke width per hex part (4K units)
 _HEX = {"chip": (48, 5), "chip_sel": (60, 7), "cluster": (79, 6), "cluster_sel": (91, 7), "mini": (34, 4)}
@@ -107,6 +110,39 @@ def _icon(size: int, kind: str) -> Image.Image:
         d.arc((7 * k, 3 * k, 17 * k, 13 * k), 180, 60, fill=_WHITE, width=w)
         d.line([P(12, 12), P(12, 15)], fill=_WHITE, width=w)
         d.ellipse((11 * k, 18 * k, 13 * k, 20 * k), fill=_WHITE)
+    elif kind == "c_shard":   # a data shard with its contacts
+        d.polygon([P(7, 3), P(14, 3), P(17, 6), P(17, 21), P(7, 21)], outline=_WHITE, width=w)
+        for x in (10, 12.5, 15):
+            d.line([P(x - 0.5, 16), P(x - 0.5, 19)], fill=_WHITE, width=int(1.4 * k))
+    elif kind == "c_tarot":   # a card with a star
+        d.rectangle((5.5 * k, 2 * k, 18.5 * k, 22 * k), outline=_WHITE, width=w)
+        star = [P(12 + r * math.sin(math.radians(36 * i)), 12 - r * math.cos(math.radians(36 * i)))
+                for i, r in zip(range(10), [4.8, 2.0] * 5)]
+        d.polygon(star, fill=_WHITE)
+    elif kind == "c_weapon":   # a pistol
+        d.polygon([P(3, 6), P(21, 6), P(21, 11), P(13, 11), P(11, 19), P(6, 19), P(7.5, 11), P(3, 11)],
+                  outline=_WHITE, width=w)
+        d.line([P(13, 11), P(14, 14), P(10.5, 14)], fill=_WHITE, width=int(1.6 * k))
+    elif kind == "c_cyber":   # a chip with pins
+        d.rectangle((7 * k, 7 * k, 17 * k, 17 * k), outline=_WHITE, width=w)
+        for c in (10, 14):
+            d.line([P(c, 3), P(c, 7)], fill=_WHITE, width=w)
+            d.line([P(c, 17), P(c, 21)], fill=_WHITE, width=w)
+            d.line([P(3, c), P(7, c)], fill=_WHITE, width=w)
+            d.line([P(17, c), P(21, c)], fill=_WHITE, width=w)
+        d.ellipse((10.5 * k, 10.5 * k, 13.5 * k, 13.5 * k), fill=_WHITE)
+    elif kind == "c_cloth":   # a jacket
+        d.polygon([P(8.5, 3), P(3, 6.5), P(1.5, 12), P(5.5, 13), P(6, 21), P(18, 21), P(18.5, 13), P(22.5, 12),
+                   P(21, 6.5), P(15.5, 3), P(12, 7)], outline=_WHITE, width=w)
+        d.line([P(12, 7), P(12, 21)], fill=_WHITE, width=int(1.6 * k))
+    elif kind == "c_skill":   # an arrow up in a ring
+        d.ellipse((3 * k, 3 * k, 21 * k, 21 * k), outline=_WHITE, width=w)
+        d.line([P(12, 17), P(12, 8)], fill=_WHITE, width=w)
+        d.line([P(8, 11.5), P(12, 7.5), P(16, 11.5)], fill=_WHITE, width=w, joint="curve")
+    elif kind == "strike":   # black edge then white core: the tint colours the core, the edge keeps it readable
+        for half, fill in ((2.3, (0, 0, 0, 255)), (1.2, _WHITE)):
+            o = half / math.sqrt(2)
+            d.polygon([P(3 - o, 21 - o), P(21 - o, 3 - o), P(21 + o, 3 + o), P(3 + o, 21 + o)], fill=fill)
     else:  # dot
         d.ellipse((7 * k, 7 * k, 17 * k, 17 * k), fill=_WHITE)
     return _down(img, size)
