@@ -74,20 +74,36 @@ public abstract class NMSoak {
     public static func LootDump() -> String {
         let out = NMSoakDump.Open("lootdump.txt");
         let items = 0;
-        for r in TweakDBInterface.GetRecords(n"Item_Record") {
-            let it = r as Item_Record;
-            if IsDefined(it) {
-                let t = it.ItemType();
-                let q = it.Quality();
-                let flags = "";
-                if it.TagsContains(n"IconicWeapon") { flags += "I"; }
-                if it.TagsContains(n"Recipe") || IsDefined(r as ItemRecipe_Record) { flags += "R"; }
-                if it.TagsContains(n"Quest") { flags += "Q"; }
-                if it.TagsContains(n"Cyberware") { flags += "C"; }
-                if it.TagsContains(n"Clothing") { flags += "L"; }
-                out.Line("i|" + TDBID.ToStringDEBUG(r.GetID()) + "|" + (IsDefined(t) ? ToString(t.Type()) : "-") + "|"
-                    + (IsDefined(q) ? ToString(q.Type()) : "-") + "|" + flags + "|" + GetLocalizedTextByKey(it.DisplayName()));
-                items += 1;
+        let kinds = [n"Item_Record", n"WeaponItem_Record", n"Gadget_Record", n"Clothing_Record", n"ConsumableItem_Record",
+            n"ItemRecipe_Record", n"RecipeItem_Record"];
+        for kind in kinds {
+            for r in TweakDBInterface.GetRecords(kind) {
+                let it = r as Item_Record;
+                if IsDefined(it) {
+                    let t = it.ItemType();
+                    let q = it.Quality();
+                    let tags = "";
+                    for tag in it.Tags() { tags += NameToString(tag) + ","; }
+                    let extra = "";
+                    let rec = r as ItemRecipe_Record;
+                    if IsDefined(rec) && IsDefined(rec.CraftingResult()) && IsDefined(rec.CraftingResult().Item()) {
+                        extra = TDBID.ToStringDEBUG(rec.CraftingResult().Item().GetID());
+                    }
+                    let act = it.ItemSecondaryAction();
+                    if IsDefined(act) {
+                        let jp = TweakDBInterface.GetString(act.GetID() + t".journalEntry", "");
+                        if StrLen(jp) > 0 { extra = "J:" + jp; }
+                    }
+                    let spec = r as RecipeItem_Record;
+                    if IsDefined(spec) {
+                        let cs: array<wref<Item_Record>>;
+                        spec.CraftableItems(cs);
+                        for c in cs { extra += TDBID.ToStringDEBUG(c.GetID()) + ","; }
+                    }
+                    out.Line("i|" + TDBID.ToStringDEBUG(r.GetID()) + "|" + NameToString(kind) + "|" + (IsDefined(t) ? ToString(t.Type()) : "-") + "|"
+                        + (IsDefined(q) ? ToString(q.Type()) : "-") + "|" + tags + "|" + extra + "|" + GetLocalizedTextByKey(it.DisplayName()));
+                    items += 1;
+                }
             }
         }
         let tables = 0;
@@ -107,6 +123,23 @@ public abstract class NMSoak {
                 for c in incs { line += TDBID.ToStringDEBUG(c.GetID()) + ","; }
                 out.Line(line);
                 tables += 1;
+            }
+        }
+        let jm = GameInstance.GetJournalManager(GetGameInstance());
+        let ctx: JournalRequestContext;
+        ctx.stateFilter.inactive = true;
+        ctx.stateFilter.active = true;
+        ctx.stateFilter.succeeded = true;
+        ctx.stateFilter.failed = true;
+        let groups: array<wref<JournalEntry>>;
+        jm.GetTarots(ctx, groups);
+        for g in groups {
+            let cards: array<wref<JournalEntry>>;
+            jm.GetChildren(g, ctx.stateFilter, cards);
+            for c in cards {
+                let tc = c as JournalTarot;
+                out.Line("tarot|" + g.GetId() + "/" + c.GetId() + "|" + IntToString(IsDefined(tc) ? tc.GetIndex() : -1) + "|"
+                    + (IsDefined(tc) ? GetLocalizedText(tc.GetName()) : "") + "|" + ToString(jm.GetEntryState(c)) + "|" + c.GetEditorName());
             }
         }
         out.Line("end|" + IntToString(items) + "|" + IntToString(tables));
