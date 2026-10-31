@@ -14,6 +14,10 @@
     {
      "log": "TEST\\|SUMMARY",
      "min": 1
+    },
+    {
+     "log": "collect\\|built\\|",
+     "min": 1
     }
    ],
    "forbid": [
@@ -131,6 +135,69 @@
     },
     {
      "wait": 2
+    }
+   ]
+  },
+  {
+   "name": "teleport",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "collect_focus 1",
+     "expect": "^ok"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "selected",
+     "expect": "^collect\\|TAROT"
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "t0a"
+    },
+    {
+     "wait": 6
+    },
+    {
+     "shot": "t0b"
+    },
+    {
+     "wait": 6
+    },
+    {
+     "cmd": "vpos",
+     "expect": "hp 100"
+    },
+    {
+     "shot": "t0c"
+    }
+   ],
+   "expect": [
+    {
+     "log": "teleport\\|start\\|.*exact=true",
+     "min": 1
     }
    ]
   }

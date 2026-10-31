@@ -643,9 +643,15 @@ public class NightMapSystem extends ScriptableSystem {
         this.renderer.SetHalo(this.holoEffects);
         this.renderer.SetShotHandler(this.Photos().Handler());
         this.Photos().SyncLayer(this.api, this.PhotosVisible());
+        let t0 = NMClock.NowMs();
         this.NoteInventory();
         this.Collect().Refresh(this.GetGameInstance(), this.CollectSeen());
-        this.SyncCollect();
+        let t1 = NMClock.NowMs();
+        if this.Collect().SyncWouldRebuild(this.filterView, this.Settings()) {
+            this.SyncCollect();
+            NMLog.Info("collect|built|" + IntToString(this.Collect().collectedN) + "/" + IntToString(ArraySize(this.Collect().spots))
+                + " collected|refresh " + FloatToStringPrec(t1 - t0, 1) + " ms|build " + FloatToStringPrec(NMClock.NowMs() - t1, 1) + " ms");
+        }
         this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
         this.crosshair = NMCrosshair.Create();
         // The sidebar is always visible; marker details dock in it. The focus point is the middle of the map left of it.

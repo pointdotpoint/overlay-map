@@ -239,16 +239,26 @@ public class NMCollect extends IScriptable {
         this.collectedN = n;
     }
 
-    // Builds or rebuilds the layers when the collected state or the settings changed since the last sync.
-    public func Sync(api: ref<NightMap>, view: Int32, s: ref<NightMapSettings>) {
-        this.EnsureSpots();
-        let showCollected = !IsDefined(s) || s.collectShowCollected;
-        let sig = ToString(view) + "|" + ToString(showCollected) + "|" + ToString(this.collectedN);
+    private static func Signature(view: Int32, s: ref<NightMapSettings>, collectedN: Int32) -> String {
+        let sig = ToString(view) + "|" + ToString(!IsDefined(s) || s.collectShowCollected) + "|" + ToString(collectedN);
         let c = 0;
         while c < NMCollectCats.Count() {
             sig += NMCollectCats.Enabled(s, c) ? "1" : "0";
             c += 1;
         }
+        return sig;
+    }
+
+    public func SyncWouldRebuild(view: Int32, s: ref<NightMapSettings>) -> Bool {
+        return !this.built || NotEquals(NMCollect.Signature(view, s, this.collectedN), this.shownSig) || this.Changed();
+    }
+
+    // Builds or rebuilds the layers when the collected state or the settings changed since the last sync.
+    public func Sync(api: ref<NightMap>, view: Int32, s: ref<NightMapSettings>) {
+        this.EnsureSpots();
+        let showCollected = !IsDefined(s) || s.collectShowCollected;
+        let sig = NMCollect.Signature(view, s, this.collectedN);
+        let c = 0;
         if this.built && Equals(sig, this.shownSig) && !this.Changed() { return; }
         this.built = true;
         this.shownSig = sig;
