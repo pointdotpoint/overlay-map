@@ -229,8 +229,57 @@ public class NightMapSettings extends ScriptableSystem {
     public let teleportEnabled: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Debug")
+    @runtimeProperty("ModSettings.category", "Collectibles")
     @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "Shards")
+    @runtimeProperty("ModSettings.description", "Show shards to read.")
+    public let collectShards: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Collectibles")
+    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "Tarot")
+    @runtimeProperty("ModSettings.description", "Show tarot card graffiti.")
+    public let collectTarot: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Collectibles")
+    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "Iconic weapons")
+    @runtimeProperty("ModSettings.description", "Show iconic weapons lying in the world.")
+    public let collectWeapons: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Collectibles")
+    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "Cyberware")
+    @runtimeProperty("ModSettings.description", "Show legendary cyberware lying in the world.")
+    public let collectCyberware: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Collectibles")
+    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "Clothing")
+    @runtimeProperty("ModSettings.description", "Show legendary clothing lying in the world.")
+    public let collectClothing: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Collectibles")
+    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "Skill shards")
+    @runtimeProperty("ModSettings.description", "Show skill and perk shards.")
+    public let collectSkill: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Collectibles")
+    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "Show collected")
+    @runtimeProperty("ModSettings.description", "Keep collected ones on the map, scratched out and faded.")
+    public let collectShowCollected: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Debug")
+    @runtimeProperty("ModSettings.category.order", "4")
     @runtimeProperty("ModSettings.displayName", "Debug tools")
     @runtimeProperty("ModSettings.description", "Enables the debug key chords and the clip probe.")
     public let debug: Bool = false;

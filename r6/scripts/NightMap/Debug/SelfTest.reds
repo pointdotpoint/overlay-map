@@ -28,6 +28,7 @@ public class NMSelfTest {
         NMFastTravelTests.Run(this);
         NMTeleportTests.Run(this);
         NMPhotoTests.Run(this);
+        NMCollectTests.Run(this);
         NMPerfTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }

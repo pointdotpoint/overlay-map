@@ -38,6 +38,12 @@
 
     public func Soak_Selected() -> String {
         if IsDefined(this.SelectedPhoto()) { return "photo"; }
+        let c = this.crosshair;
+        if IsDefined(c) && c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers)
+            && NMCollect.IsCollectLayer(this.api.layers[c.selLayer].id) {
+            let d = this.api.layers[c.selLayer].listener.GetDetails(c.selItem);
+            return "collect|" + d.category + "|" + d.title + "|" + d.rowValues[0];
+        }
         let m = this.SelectedMappin();
         if !IsDefined(m) { return "none"; }
         let title = NMVanillaText.Title(m, m.GetVariant());
@@ -287,6 +293,43 @@
         this.camera.SetMpp(mpp);
         this.camera.SetCenter(best.x, best.y);
         return "ok|" + FloatToStringPrec(bestD, 0) + "m";
+    }
+
+    // ---- collectibles ----
+
+    public func Soak_Collect() -> String {
+        let c = this.Collect();
+        let out = "spots " + IntToString(ArraySize(c.spots)) + "|collected " + IntToString(c.collectedN) + "|layers";
+        let k = 0;
+        while k < NMCollectCats.Count() {
+            let L = this.api.GetLayer(NMCollectCats.LayerId(k));
+            out += " " + (IsDefined(L) ? IntToString(L.count) + (L.visible ? "v" : "h") : "-");
+            k += 1;
+        }
+        return out;
+    }
+
+    // Centres the map on the first spot of a category, close enough for the crosshair to select it.
+    public func Soak_CollectFocus(cat: Int32) -> String {
+        if !IsDefined(this.camera) { return "map closed"; }
+        let c = this.Collect();
+        for s in c.spots {
+            if s.cat == cat {
+                this.camera.follow = false;
+                this.camera.SetMpp(0.5);
+                this.camera.SetCenter(s.pos.X, s.pos.Y);
+                return "ok|" + s.ref + "|" + c.Title(s);
+            }
+        }
+        return "none";
+    }
+
+    // Marks an item record as seen, as a pickup would, and redraws.
+    public func Soak_CollectSeen(ref: String) -> String {
+        this.NoteItem(TDBID.Create(ref));
+        this.Collect().Refresh(this.GetGameInstance(), this.CollectSeen());
+        this.SyncCollect();
+        return this.Soak_Collect();
     }
 
     public func Soak_SetZoom(mpp: Float) -> String {

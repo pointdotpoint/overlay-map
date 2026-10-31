@@ -46,6 +46,7 @@ public class NightMapLayer {
     public let prio: array<Int32>;
     public let emph: array<Bool>;
     public let alpha: array<Float>;
+    public let struck: array<Bool>;
     public let count: Int32;
     private let freeIds: array<Int32>;
 
@@ -124,7 +125,7 @@ public class NightMapLayer {
         return true;
     }
 
-    // Copies an item's fields into slot id (position, category, icon, tint, label, priority, emphasis, opacity).
+    // Copies an item's fields into slot id (position, category, icon, tint, label, priority, emphasis, opacity, scratch).
     private func Store(id: Int32, item: ref<NightMapItem>) {
         this.px[id] = item.x;
         this.py[id] = item.y;
@@ -145,6 +146,7 @@ public class NightMapLayer {
         this.prio[id] = item.priority;
         this.emph[id] = item.emphasis;
         this.alpha[id] = item.opacity;
+        this.struck[id] = item.struck;
     }
 
     // Replaces an item's content in place (position, category, icon, tint, label, emphasis, opacity). The id stays valid.
@@ -198,6 +200,7 @@ public class NightMapLayer {
         ArrayClear(this.prio);
         ArrayClear(this.emph);
         ArrayClear(this.alpha);
+        ArrayClear(this.struck);
         ArrayClear(this.freeIds);
         ArrayClear(this.cellOf);
         ArrayClear(this.nextIn);
@@ -343,6 +346,7 @@ public class NightMapLayer {
         ArrayPush(this.prio, 0);
         ArrayPush(this.emph, false);
         ArrayPush(this.alpha, 1.0);
+        ArrayPush(this.struck, false);
         let l = 0;
         while l < 3 {
             ArrayPush(this.cellOf, -1);

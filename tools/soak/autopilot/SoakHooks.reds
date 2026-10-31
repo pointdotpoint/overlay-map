@@ -46,6 +46,15 @@ public abstract class NMSoak {
             return sys.Soak_SetZoom(StringToFloat(m[1]));
         }
         if Equals(command, "lootdump") { return NMSoak.LootDump(); }
+        if Equals(command, "collect") { return sys.Soak_Collect(); }
+        if StrBeginsWith(command, "collect_focus ") {
+            let cf = StrSplit(command, " ");
+            return sys.Soak_CollectFocus(StringToInt(cf[1]));
+        }
+        if StrBeginsWith(command, "collect_seen ") {
+            let cs = StrSplit(command, " ");
+            return sys.Soak_CollectSeen(cs[1]);
+        }
         if Equals(command, "selftest") {
             let t = new NMSelfTest();
             t.Run();

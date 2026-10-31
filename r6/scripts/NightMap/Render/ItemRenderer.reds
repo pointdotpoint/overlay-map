@@ -46,6 +46,9 @@ public class NMItemRenderer {
     private let photoEdge: array<ref<inkRectangle>>;   // [slot * 4 + side]
     private let photoPtr: array<ref<inkRectangle>>;
     private let photoOn: array<Bool>;
+    // A scratch over a struck item's icon, created on the slot's first struck item.
+    public let chipStrike: array<ref<inkImage>>;
+    public let strikeOn: array<Bool>;
     // Thumbnails are held by shot hash in NMThumbPlan slots, each with its own image (never a chip's icon).
     private let thumbPlan: ref<NMThumbPlan>;
     private let thumbImg: array<ref<inkImage>>;
@@ -178,6 +181,8 @@ public class NMItemRenderer {
             ArrayPush(r.photoFill, null);
             ArrayPush(r.photoPtr, null);
             ArrayPush(r.photoOn, false);
+            ArrayPush(r.chipStrike, null);
+            ArrayPush(r.strikeOn, false);
             ArrayPush(r.photoColor, NMTheme.Cyan());
             let e = 0;
             while e < 4 { ArrayPush(r.photoEdge, null); e += 1; }
@@ -614,6 +619,31 @@ public class NMItemRenderer {
         this.chipStyle[slot] = style;
     }
 
+    // Shows or hides the slot's scratch; it copies the icon's size, scale and opacity, so call it after those are set.
+    private func SetStrike(slot: Int32, on: Bool, style: Int32, p: Vector2, tint: HDRColor) {
+        if !on {
+            if this.strikeOn[slot] {
+                this.chipStrike[slot].SetVisible(false);
+                this.strikeOn[slot] = false;
+            }
+            return;
+        }
+        if !IsDefined(this.chipStrike[slot]) {
+            this.chipStrike[slot] = NMUi.Image(this.parent, n"icon_strike", 0.0, 0.0, NMTheme.VanillaIconSize() * this.scale, tint, true);
+        }
+        let st = this.chipStrike[slot];
+        let ic = this.chipIcon[slot];
+        st.SetSize(ic.GetSize());
+        st.SetScale(ic.GetScale());
+        st.SetOpacity(ic.GetOpacity());
+        st.SetTintColor(tint);
+        st.SetTranslation(p);
+        if !this.strikeOn[slot] {
+            st.SetVisible(true);
+            this.strikeOn[slot] = true;
+        }
+    }
+
     // t in 0..1: scale 1 -> VanillaEmphScale and opacity idle -> full, like the vanilla OnSelect animation.
     private func SetGrow(slot: Int32, t: Float) {
         let k = 1.0 + (NMTheme.VanillaEmphScale() - 1.0) * t;
@@ -623,6 +653,10 @@ public class NMItemRenderer {
         this.chipBg[slot].SetScale(new Vector2(k, k));
         this.chipIcon[slot].SetScale(new Vector2(k, k));
         this.chipIcon[slot].SetOpacity(o);
+        if this.strikeOn[slot] {
+            this.chipStrike[slot].SetScale(new Vector2(k, k));
+            this.chipStrike[slot].SetOpacity(o);
+        }
         this.chipBg[slot].SetOpacity(o * this.BlobOpacity());
     }
 
@@ -709,6 +743,7 @@ public class NMItemRenderer {
             }
         }
         if style == 3 {
+            this.SetStrike(slot, false, 3, p, color);
             let c = this.PlacePhoto(L, id, slot, p, color);
             this.chipOn[slot] = true;
             ArrayPush(this.candX, c.X);
@@ -761,6 +796,7 @@ public class NMItemRenderer {
             ic.SetVisible(true);
             this.chipOn[slot] = true;
         }
+        this.SetStrike(slot, L.struck[id], style, p, icTint);
         ArrayPush(this.candX, p.X);
         ArrayPush(this.candY, p.Y);
         ArrayPush(this.candReach, 0.0);
@@ -1022,6 +1058,7 @@ public class NMItemRenderer {
             if this.chipOn[s] {
                 this.chipBg[s].SetVisible(false);
                 this.chipIcon[s].SetVisible(false);
+                this.SetStrike(s, false, 0, new Vector2(0.0, 0.0), NMTheme.Cyan());
                 if this.photoOn[s] {
                     this.SetPhotoVisible(s, false);
                 }

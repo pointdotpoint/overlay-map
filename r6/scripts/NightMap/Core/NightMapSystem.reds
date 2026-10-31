@@ -52,6 +52,10 @@ public class NightMapSystem extends ScriptableSystem {
     private let routes: ref<NMRouteLayer>;
     private let routesOff: Bool;          // perf suite override (SetRoutesEnabled)
     private let photos: ref<NMPhotos>;
+    private let collect: ref<NMCollect>;
+    // Collectible item records V has had, saved with the game (an iconic sold later still counts as collected).
+    private persistent let collectSeen: array<TweakDBID>;
+    private let collectSeenMap: ref<inkHashMap>;
     private let hud: ref<NMHudHider>;     // set while the map is open with "Hide HUD while open" on
     private let lastRouteReadMs: Float;
     private let filterView: Int32;
@@ -70,9 +74,15 @@ public class NightMapSystem extends ScriptableSystem {
             this.api.SetWorld(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
         }
         this.vanilla = NMVanilla.Create(this.api, this.GetGameInstance());
+        this.collect = new NMCollect();
         this.input = new NMInput();
         GameInstance.GetCallbackSystem().RegisterCallback(n"Input/Key", this, n"OnKeyInput");
         NMLog.Info("loaded (tiles " + (NMTileManifest.Available() ? "present" : "missing") + ", precise clock " + ToString(NMClock.Precise()) + ")");
+    }
+
+    // The save's seen list has just been read: drop a set built before it.
+    private func OnRestored(saveVersion: Int32, gameVersion: Int32) {
+        this.collectSeenMap = null;
     }
 
     // Loading a save or quitting to menu ends the session: tear the overlay down so nothing is orphaned.
@@ -94,6 +104,51 @@ public class NightMapSystem extends ScriptableSystem {
         if !IsDefined(this.photos) { this.photos = new NMPhotos(); }
         return this.photos;
     }
+    public func Collect() -> ref<NMCollect> {
+        if !IsDefined(this.collect) { this.collect = new NMCollect(); }
+        return this.collect;
+    }
+
+    // The seen list as a set, built on first use: the persistent array is only restored after OnAttach.
+    public func CollectSeen() -> ref<inkHashMap> {
+        if !IsDefined(this.collectSeenMap) {
+            this.collectSeenMap = new inkHashMap();
+            for id in this.collectSeen {
+                let h = TDBID.ToNumber(id);
+                if !this.collectSeenMap.KeyExist(h) { this.collectSeenMap.Insert(h, this); }
+            }
+        }
+        return this.collectSeenMap;
+    }
+
+    // An item reached V's inventory: remember it if a collectible pin stands for it.
+    public func NoteItem(id: TweakDBID) {
+        if !TDBID.IsValid(id) || !this.Collect().Tracks(id) { return; }
+        let h = TDBID.ToNumber(id);
+        let seen = this.CollectSeen();
+        if seen.KeyExist(h) { return; }
+        seen.Insert(h, this);
+        ArrayPush(this.collectSeen, id);
+        NMLog.Info("collect|seen|" + TDBID.ToStringDEBUG(id));
+    }
+
+    // Everything V carries now (covers items picked up before this version, if still carried).
+    private func NoteInventory() {
+        let player = GetPlayer(this.GetGameInstance());
+        let ts = GameInstance.GetTransactionSystem(this.GetGameInstance());
+        if !IsDefined(player) || !IsDefined(ts) { return; }
+        let list: array<wref<gameItemData>>;
+        ts.GetItemList(player, list);
+        for d in list {
+            if IsDefined(d) { this.NoteItem(ItemID.GetTDBID(d.GetID())); }
+        }
+    }
+
+    private func SyncCollect() {
+        let s = this.Settings();
+        this.Collect().Sync(this.api, this.filterView, s);
+    }
+
     public func Gps() -> ref<NMGps> {
         if !IsDefined(this.gps) { this.gps = new NMGps(); }
         return this.gps;
@@ -588,6 +643,9 @@ public class NightMapSystem extends ScriptableSystem {
         this.renderer.SetHalo(this.holoEffects);
         this.renderer.SetShotHandler(this.Photos().Handler());
         this.Photos().SyncLayer(this.api, this.PhotosVisible());
+        this.NoteInventory();
+        this.Collect().Refresh(this.GetGameInstance(), this.CollectSeen());
+        this.SyncCollect();
         this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
         this.crosshair = NMCrosshair.Create();
         // The sidebar is always visible; marker details dock in it. The focus point is the middle of the map left of it.
@@ -728,6 +786,7 @@ public class NightMapSystem extends ScriptableSystem {
             this.filterView = (this.filterView + 1) % NMVanillaFilters.ViewCount();
             this.vanilla.ApplyFilters(this.filterView, this.Settings());
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
+            this.SyncCollect();
             this.UpdateHeader();
         }
         this.marker.Update(this.camera, GetPlayer(this.GetGameInstance()), l.mapW, l.mapH);

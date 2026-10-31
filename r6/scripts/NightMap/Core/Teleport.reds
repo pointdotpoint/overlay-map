@@ -31,10 +31,11 @@ public abstract class NMTeleport {
     public static func StableProbes() -> Int32 { return 3; }         // agreeing hits in a row before landing
     public static func StableTolerance() -> Float { return 0.2; }
 
-    // Vanilla layers whose marker Z is a floor V can stand on. Pinned (waypoint, tracked quest pin) and Other (markers
+    // Layers whose marker Z is a floor V can stand on: vanilla ones, and collectibles. Pinned (waypoint, tracked quest pin) and Other (markers
     // riding NPCs or vehicles) are not.
     public static func ExactLayer(layerId: CName) -> Bool {
         let s = NameToString(layerId);
+        if StrBeginsWith(s, "Collect.") { return true; }   // collectibles sit where the world placed them
         return StrBeginsWith(s, "Vanilla.") && NotEquals(s, "Vanilla.Pinned") && NotEquals(s, "Vanilla.Other");
     }
 

@@ -1,0 +1,124 @@
+{
+ "name": "collect",
+ "runs": [
+  {
+   "name": "pins",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "expect": [
+    {
+     "log": "TEST\\|SUMMARY",
+     "min": 1
+    }
+   ],
+   "forbid": [
+    "TEST\\|FAIL\\|collect\\."
+   ],
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 120
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "collect",
+     "expect": "spots 1870\\|"
+    },
+    {
+     "cmd": "zoom 4"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "shot": "c0_city"
+    },
+    {
+     "cmd": "aim -1450 1250"
+    },
+    {
+     "cmd": "zoom 1.5"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "shot": "c1_watson"
+    },
+    {
+     "cmd": "collect_focus 2",
+     "expect": "^ok"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "selected",
+     "expect": "^collect\\|ICONIC WEAPON"
+    },
+    {
+     "shot": "c2_weapon"
+    },
+    {
+     "cmd": "zoom 1"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "shot": "c3_weapon_area"
+    },
+    {
+     "cmd": "collect_focus 1",
+     "expect": "^ok"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "selected",
+     "expect": "^collect\\|TAROT"
+    },
+    {
+     "shot": "c4_tarot"
+    },
+    {
+     "cmd": "collect_focus 0",
+     "expect": "^ok"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "selected",
+     "expect": "^collect\\|SHARD"
+    },
+    {
+     "shot": "c5_shard"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    }
+   ]
+  }
+ ]
+}
