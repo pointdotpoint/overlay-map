@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .paths import Paths
 
-GAMELOG_TAIL = 3000
+GAMELOG_TAIL = 400000
 
 
 def log_offset(paths: Paths) -> int:

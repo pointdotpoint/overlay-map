@@ -1,0 +1,15 @@
+{
+ "name": "lootdump",
+ "runs": [
+  {
+   "name": "dump",
+   "parts": ["scripts", "archive", "bootstrap", "autopilot"],
+   "repeats": 1,
+   "steps": [
+    {"wait": 8},
+    {"cmd": "lootdump", "timeout": 170},
+    {"wait": 5}
+   ]
+  }
+ ]
+}

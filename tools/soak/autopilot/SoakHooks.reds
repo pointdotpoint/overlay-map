@@ -44,6 +44,7 @@ public abstract class NMSoak {
             let m = StrSplit(command, " ");
             return sys.Soak_SetZoom(StringToFloat(m[1]));
         }
+        if Equals(command, "lootdump") { return NMSoak.LootDump(); }
         if Equals(command, "selftest") {
             let t = new NMSelfTest();
             t.Run();
@@ -66,6 +67,48 @@ public abstract class NMSoak {
             return sys.Soak_StartZoomLoop(z[1], StringToFloat(z[2]), ArraySize(z) > 3 ? StringToInt(z[3]) : 0);
         }
         return "unknown";
+    }
+
+    // Spike: every item and loot table, for joining offline with the world scan. Needs TweakXL's GetRecords.
+    public static func LootDump() -> String {
+        let items = 0;
+        for r in TweakDBInterface.GetRecords(n"Item_Record") {
+            let it = r as Item_Record;
+            if IsDefined(it) {
+                let t = it.ItemType();
+                let q = it.Quality();
+                let flags = "";
+                if it.TagsContains(n"IconicWeapon") { flags += "I"; }
+                if it.TagsContains(n"Recipe") || IsDefined(r as ItemRecipe_Record) { flags += "R"; }
+                if it.TagsContains(n"Quest") { flags += "Q"; }
+                if it.TagsContains(n"Cyberware") { flags += "C"; }
+                if it.TagsContains(n"Clothing") { flags += "L"; }
+                NMLog.Info("LD|i|" + TDBID.ToStringDEBUG(r.GetID()) + "|" + (IsDefined(t) ? ToString(t.Type()) : "-") + "|"
+                    + (IsDefined(q) ? ToString(q.Type()) : "-") + "|" + flags + "|" + GetLocalizedTextByKey(it.DisplayName()));
+                items += 1;
+            }
+        }
+        let tables = 0;
+        for r in TweakDBInterface.GetRecords(n"LootTable_Record") {
+            let lt = r as LootTable_Record;
+            if IsDefined(lt) {
+                let line = "LD|t|" + TDBID.ToStringDEBUG(r.GetID()) + "|";
+                let els: array<wref<LootItem_Record>>;
+                lt.LootItems(els);
+                for e in els {
+                    let ir = e.ItemID();
+                    if IsDefined(ir) { line += TDBID.ToStringDEBUG(ir.GetID()) + ","; }
+                }
+                line += "|";
+                let incs: array<wref<LootTable_Record>>;
+                lt.LootTableInclusions(incs);
+                for c in incs { line += TDBID.ToStringDEBUG(c.GetID()) + ","; }
+                NMLog.Info(line);
+                tables += 1;
+            }
+        }
+        NMLog.Info("LD|end|" + IntToString(items) + "|" + IntToString(tables));
+        return "items " + IntToString(items) + " tables " + IntToString(tables);
     }
 
     // A state line for the supervisor; survives a killed game, unlike the game log.
