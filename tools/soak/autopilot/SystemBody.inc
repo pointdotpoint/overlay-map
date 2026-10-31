@@ -323,7 +323,15 @@
                 }
             }
         }
-        return "police " + IntToString(n) + "|dots " + IntToString(dots);
+        let raw: array<ref<IMappin>>;
+        GameInstance.GetMappinSystem(this.GetGameInstance()).GetMappins(gamemappinsMappinTargetType.Map, raw);
+        let inList = 0;
+        for m in raw {
+            if NMVanilla.IsPolice(m) { inList += 1; }
+        }
+        let ps = GameInstance.GetScriptableSystemsContainer(this.GetGameInstance()).Get(n"PreventionSystem") as PreventionSystem;
+        return "police " + IntToString(n) + "|dots " + IntToString(dots) + "|in map list " + IntToString(inList)
+            + "|heat " + (IsDefined(ps) ? ToString(ps.GetHeatStage()) : "-");
     }
 
     // ---- collectibles ----

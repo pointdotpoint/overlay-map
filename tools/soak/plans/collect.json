@@ -215,11 +215,15 @@
      "wait": 8
     },
     {
-     "cmd": "wanted 3",
-     "expect": "^wanted 3"
+     "cmd": "wanted 2",
+     "expect": "^wanted 2"
     },
     {
-     "wait": 25
+     "wait": 12
+    },
+    {
+     "cmd": "police",
+     "expect": "in map list [1-9]"
     },
     {
      "cmd": "open"
@@ -231,7 +235,7 @@
      "cmd": "zoom 1"
     },
     {
-     "wait": 2
+     "wait": 3
     },
     {
      "cmd": "police",

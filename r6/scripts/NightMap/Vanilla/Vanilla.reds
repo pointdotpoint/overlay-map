@@ -205,8 +205,11 @@ public class NMVanilla extends NMVanillaSink {
         return this.LogOnce(v);
     }
 
-    // Police NPCs and cars are stub mappins; the minimap draws them as light blue dots (MinimapStubMappinController).
+    // Police the minimap draws as light blue dots: chasing cars and MaxTac AVs (Zzz04_PreventionVehicleVariant,
+    // MinimapPreventionVehicleMappinController) and police stub mappins (MinimapStubMappinController).
     public static func IsPolice(m: ref<IMappin>) -> Bool {
+        if !IsDefined(m) { return false; }
+        if Equals(m.GetVariant(), gamedataMappinVariant.Zzz04_PreventionVehicleVariant) { return true; }
         let stub = m as StubMappin;
         if !IsDefined(stub) { return false; }
         let t = stub.GetStubMappinType();
