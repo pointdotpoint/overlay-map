@@ -178,7 +178,7 @@ public class NMVanilla extends NMVanillaSink {
                     if visible && cat.IsOther(filter) {
                         this.LogOnce(v);
                     }
-                    this.diff.Observe(id.value, pos.X, pos.Y, pos.Z, v, m.GetPhase(), visible, tracked, filter, this);
+                    this.diff.Observe(id.value, pos.X, pos.Y, pos.Z, v, m.GetPhase(), visible, tracked, filter, this, NMVanilla.IsPolice(m));
                 }
             }
         }
@@ -205,8 +205,21 @@ public class NMVanilla extends NMVanillaSink {
         return this.LogOnce(v);
     }
 
+    // Police NPCs and cars are stub mappins; the minimap draws them as light blue dots (MinimapStubMappinController).
+    public static func IsPolice(m: ref<IMappin>) -> Bool {
+        let stub = m as StubMappin;
+        if !IsDefined(stub) { return false; }
+        let t = stub.GetStubMappinType();
+        return Equals(t, gameStubMappinType.Police) || Equals(t, gameStubMappinType.PoliceVehicle);
+    }
+
     private func ItemFor(s: ref<NMVanillaSnap>, slot: Int32) -> ref<NightMapItem> {
         let catName = slot == -2 ? n"vanilla.pinned" : this.catalog.CategoryName(slot);
+        if s.police {
+            return NightMapItem.Create(new Vector4(s.x, s.y, s.z, 1.0), catName, NMTheme.MinimapAtlas(), n"enemyMappin-1")
+                .WithTint(NMTheme.VanillaStateColor(n"Prevention_LightBlue"))
+                .WithDot(true);
+        }
         let completed = Equals(s.phase, gamedataMappinPhase.CompletedPhase);
         return NightMapItem.Create(new Vector4(s.x, s.y, s.z, 1.0), catName, NMTheme.MappinAtlas(), this.catalog.PartFor(s.variant))
             .WithTint(this.catalog.ColorFor(s.variant, s.phase))

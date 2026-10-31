@@ -295,6 +295,37 @@
         return "ok|" + FloatToStringPrec(bestD, 0) + "m";
     }
 
+    // ---- police ----
+
+    // Raises (or with 0 clears) V's wanted level through the prevention system's console request.
+    public func Soak_Wanted(level: Int32) -> String {
+        let ps = GameInstance.GetScriptableSystemsContainer(this.GetGameInstance()).Get(n"PreventionSystem") as PreventionSystem;
+        if !IsDefined(ps) { return "no prevention system"; }
+        let req = new PreventionConsoleInstructionRequest();
+        req.instruction = level > 0 ? EPreventionSystemInstruction.Active : EPreventionSystemInstruction.Safe;
+        req.heatStage = IntEnum<EPreventionHeatStage>(level);
+        ps.QueueRequest(req);
+        return "wanted " + IntToString(level);
+    }
+
+    // Police markers mirrored on the map, and how many of them are drawn as dots.
+    public func Soak_Police() -> String {
+        let n = 0;
+        let dots = 0;
+        for L in this.api.layers {
+            let vl = L.listener as NMVanillaListener;
+            if IsDefined(vl) {
+                for e in vl.book {
+                    if IsDefined(e) && IsDefined(e.snap) && e.snap.police && e.item >= 0 {
+                        n += 1;
+                        if L.dot[e.item] { dots += 1; }
+                    }
+                }
+            }
+        }
+        return "police " + IntToString(n) + "|dots " + IntToString(dots);
+    }
+
     // ---- collectibles ----
 
     public func Soak_Collect() -> String {

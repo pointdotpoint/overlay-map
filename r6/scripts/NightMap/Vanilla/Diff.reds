@@ -11,6 +11,7 @@ public class NMVanillaSnap {
     public let visible: Bool;
     public let tracked: Bool;
     public let filter: Int32;
+    public let police: Bool;   // a police NPC or car (StubMappin), drawn as the minimap's blue dot
 
     public static func Make(key: Uint64, x: Float, y: Float, variant: gamedataMappinVariant, phase: gamedataMappinPhase,
                             visible: Bool, tracked: Bool, filter: Int32) -> ref<NMVanillaSnap> {
@@ -122,7 +123,7 @@ public class NMVanillaDiff {
     // One mappin of the current poll. Allocates a snapshot only when the marker is new or differs from the one
     // already held (the steady state allocates nothing).
     public func Observe(key: Uint64, x: Float, y: Float, z: Float, variant: gamedataMappinVariant, phase: gamedataMappinPhase,
-                        visible: Bool, tracked: Bool, filter: Int32, sink: ref<NMVanillaSink>) {
+                        visible: Bool, tracked: Bool, filter: Int32, sink: ref<NMVanillaSink>, opt police: Bool) {
         let shown = tracked || (visible && filter >= 0 && NotEquals(phase, gamedataMappinPhase.CompletedPhase));
         if !shown {
             return;
@@ -131,6 +132,7 @@ public class NMVanillaDiff {
         if !IsDefined(e) {
             let s = NMVanillaSnap.Make(key, x, y, variant, phase, visible, tracked, filter);
             s.z = z;
+            s.police = police;
             e = new NMVanillaEntry();
             e.key = key;
             e.snap = s;
@@ -149,6 +151,7 @@ public class NMVanillaDiff {
             || NotEquals(o.tracked, tracked) || o.filter != filter {
             let s2 = NMVanillaSnap.Make(key, x, y, variant, phase, visible, tracked, filter);
             s2.z = z;
+            s2.police = police;
             sink.OnChange(e, s2);
             e.snap = s2;
             e.slot = NMVanillaRules.Slot(s2);

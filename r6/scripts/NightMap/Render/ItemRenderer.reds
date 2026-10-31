@@ -38,7 +38,7 @@ public class NMItemRenderer {
     private let chipTintBg: array<HDRColor>;
     private let chipTintIc: array<HDRColor>;
     public let chipAlpha: array<Float>;
-    public let chipStyle: array<Int32>;   // -1 unset, 0 hex, 1 icon idle, 2 icon emphasised, 3 photo pin
+    public let chipStyle: array<Int32>;   // -1 unset, 0 hex, 1 icon idle, 2 icon emphasised, 3 photo pin, 4 dot
     // Photo pins (style 3): a thumbnail in the slot's icon image, plus rectangles created on the slot's first photo:
     // a dark fill shown until the thumbnail loads, a 4-sided border, and a 45-degree point touching the spot.
     private let parent: wref<inkCanvas>;
@@ -585,10 +585,13 @@ public class NMItemRenderer {
         if this.chipStyle[slot] == 3 && style != 3 {
             this.SetPhotoVisible(slot, false);
         }
-        if style == 3 {
+        if style == 3 || style == 4 {
             bg.SetVisible(false);
             bg.SetScale(new Vector2(1.0, 1.0));
             ic.SetScale(new Vector2(1.0, 1.0));
+            if style == 4 {
+                ic.SetSize(new Vector2(NMTheme.DotSize() * this.scale, NMTheme.DotSize() * this.scale));
+            }
             if slot == this.growSlot { this.growSlot = -1; }
             this.chipStyle[slot] = style;
             return;
@@ -730,15 +733,17 @@ public class NMItemRenderer {
         }
         let g = L.catGlobal[L.cat[id]];
         let color = this.api.catColor[g];
-        let style = L.shot[id] != 0u ? 3 : (L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0);
+        let style = L.shot[id] != 0u ? 3 : (L.dot[id] ? 4 : (L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0));
         if this.chipStyle[slot] != style {
             let wasPhoto = this.chipStyle[slot] == 3;
+            let wasDot = this.chipStyle[slot] == 4;
             this.ApplyChipStyle(slot, style);
             this.chipTintOk[slot] = false;  // force the tint refresh below
             this.chipAlpha[slot] = -1.0;    // force the opacity refresh below
-            if wasPhoto {
-                // A photo pin hides both widgets while chipOn stays true, so the check below would leave them hidden.
-                bg.SetVisible(true);
+            if wasPhoto || wasDot {
+                // A photo pin hides both widgets and a dot its blob while chipOn stays true, so the check below would
+                // leave them hidden.
+                bg.SetVisible(style != 4);
                 ic.SetVisible(true);
             }
         }
@@ -792,7 +797,7 @@ public class NMItemRenderer {
         bg.SetTranslation(p);
         ic.SetTranslation(p);
         if !this.chipOn[slot] {
-            bg.SetVisible(true);
+            bg.SetVisible(style != 4);
             ic.SetVisible(true);
             this.chipOn[slot] = true;
         }

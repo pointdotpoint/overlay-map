@@ -47,6 +47,7 @@ public class NightMapLayer {
     public let emph: array<Bool>;
     public let alpha: array<Float>;
     public let struck: array<Bool>;
+    public let dot: array<Bool>;
     public let count: Int32;
     private let freeIds: array<Int32>;
 
@@ -147,6 +148,7 @@ public class NightMapLayer {
         this.emph[id] = item.emphasis;
         this.alpha[id] = item.opacity;
         this.struck[id] = item.struck;
+        this.dot[id] = item.dot;
     }
 
     // Replaces an item's content in place (position, category, icon, tint, label, emphasis, opacity). The id stays valid.
@@ -201,6 +203,7 @@ public class NightMapLayer {
         ArrayClear(this.emph);
         ArrayClear(this.alpha);
         ArrayClear(this.struck);
+        ArrayClear(this.dot);
         ArrayClear(this.freeIds);
         ArrayClear(this.cellOf);
         ArrayClear(this.nextIn);
@@ -347,6 +350,7 @@ public class NightMapLayer {
         ArrayPush(this.emph, false);
         ArrayPush(this.alpha, 1.0);
         ArrayPush(this.struck, false);
+        ArrayPush(this.dot, false);
         let l = 0;
         while l < 3 {
             ArrayPush(this.cellOf, -1);

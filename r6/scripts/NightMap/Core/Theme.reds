@@ -20,6 +20,8 @@ public abstract class NMTheme {
 
     // ---- vanilla map markers (sub-project 2): values extracted from the vanilla world map (spike LOOK.md) ----
     public static func MappinAtlas() -> ResRef { return r"base\\gameplay\\gui\\common\\icons\\mappin_icons.inkatlas"; }
+    public static func MinimapAtlas() -> ResRef { return r"base\\gameplay\\gui\\widgets\\minimap\\atlas_minimap.inkatlas"; }
+    public static func DotSize() -> Float { return 32.0; }                // police dots (4K units)
     public static func ShadowAtlas() -> ResRef { return r"base\\gameplay\\gui\\common\\shadow_blobs.inkatlas"; }
     public static func VanillaIconSize() -> Float { return 64.0; }        // 4K units, as the vanilla world map
     public static func VanillaShadowSize() -> Float { return 180.0; }     // soft blob under the icon; tune at checkpoint 4
@@ -39,6 +41,7 @@ public abstract class NMTheme {
         if Equals(state, n"FastTravelMetro") { return new HDRColor(0.8, 0.506, 1.0, 1.0); }  // #CC81FF
         if Equals(state, n"Relic") { return new HDRColor(0.471, 0.678, 1.0, 1.0); }          // #78ADFF
         if Equals(state, n"Player") { return new HDRColor(0.161, 1.0, 0.725, 1.0); }         // #29FFB9
+        if Equals(state, n"Prevention_LightBlue") { return new HDRColor(0.369, 0.965, 1.0, 1.0); }   // MainColors.Blue #5EF6FF
         return new HDRColor(1.0, 1.0, 1.0, 1.0);   // ServicePoint, Vehicle, VehicleForPurchase and anything unknown
     }
     public static func ShadowColor() -> HDRColor { return new HDRColor(0.0, 0.0, 0.0, 1.0); }

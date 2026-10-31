@@ -200,6 +200,65 @@
      "min": 1
     }
    ]
+  },
+  {
+   "name": "police",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "wanted 3",
+     "expect": "^wanted 3"
+    },
+    {
+     "wait": 25
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "zoom 1"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "police",
+     "expect": "police [1-9]\\d*\\|dots [1-9]"
+    },
+    {
+     "shot": "p0_police"
+    },
+    {
+     "cmd": "zoom 0.6"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "shot": "p1_police_close"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "cmd": "wanted 0"
+    },
+    {
+     "wait": 3
+    }
+   ]
   }
  ]
 }

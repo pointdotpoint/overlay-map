@@ -8,6 +8,39 @@ public abstract class NMCollectTests {
         NMCollectTests.GameCases(t);
         NMCollectTests.SyncCases(t);
         NMCollectTests.StrikeCases(t);
+        NMCollectTests.PoliceDotCases(t);
+    }
+
+    // Police (vanilla stub mappins) draw as the minimap's small blue dot: no shadow blob, full strength.
+    private static func PoliceDotCases(t: ref<NMSelfTest>) {
+        t.Check("police.not_stub", !NMVanilla.IsPolice(null), "");
+        let api = NMCollectTests.TestApi();
+        let L = api.CreateLayer(n"Vanilla.Test", "Test", 80);
+        L.SetPinStyle(NightMapPinStyle.Icon);
+        let a = L.Add(NightMapItem.Create(new Vector4(-1800.0, 150.0, 0.0, 1.0), n"t", NMTheme.MinimapAtlas(), n"enemyMappin-1")
+            .WithTint(NMTheme.VanillaStateColor(n"Prevention_LightBlue")).WithDot(true));
+        let b = L.Add(NightMapItem.Create(new Vector4(-1780.0, 150.0, 0.0, 1.0), n"t", NMTheme.MappinAtlas(), n"quest"));
+        let canvas = new inkCanvas();
+        let r = NMItemRenderer.Create(api, canvas, 1.0);
+        let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
+        cam.SetCenter(-1800.0, 150.0);
+        cam.SetMpp(0.5);
+        r.Update(cam, 1880.0, 1480.0);
+        let sa = NMCollectTests.SlotOf(r, L.index, a);
+        let sb = NMCollectTests.SlotOf(r, L.index, b);
+        t.Check("police.dot_style", sa >= 0 && r.chipStyle[sa] == 4 && !r.chipBg[sa].IsVisible() && r.chipIcon[sa].IsVisible(), ToString(sa));
+        if sa >= 0 {
+            let size = r.chipIcon[sa].GetSize();
+            let c = NMTheme.VanillaStateColor(n"Prevention_LightBlue");
+            t.Check("police.dot_look", t.Near(size.X, NMTheme.DotSize(), 0.01) && t.Near(r.chipAlpha[sa], 1.0, 0.001)
+                && t.Near(c.Blue, 1.0, 0.001) && t.Near(c.Red, 0.369, 0.001), t.F(size.X) + " " + t.F(r.chipAlpha[sa]));
+        }
+        t.Check("police.others_keep_blob", sb >= 0 && r.chipStyle[sb] == 1 && r.chipBg[sb].IsVisible(), "");
+        // A slot that drew a dot shows its blob again for an ordinary marker.
+        L.Update(a, NightMapItem.Create(new Vector4(-1800.0, 150.0, 0.0, 1.0), n"t", NMTheme.MappinAtlas(), n"quest"));
+        r.Update(cam, 1880.0, 1480.0);
+        let sa2 = NMCollectTests.SlotOf(r, L.index, a);
+        t.Check("police.slot_reuse_blob", sa2 >= 0 && r.chipStyle[sa2] == 1 && r.chipBg[sa2].IsVisible(), ToString(sa2));
     }
 
     private static func TestApi() -> ref<NightMap> {

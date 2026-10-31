@@ -47,6 +47,11 @@ public abstract class NMSoak {
         }
         if Equals(command, "lootdump") { return NMSoak.LootDump(); }
         if Equals(command, "collect") { return sys.Soak_Collect(); }
+        if Equals(command, "police") { return sys.Soak_Police(); }
+        if StrBeginsWith(command, "wanted ") {
+            let wl = StrSplit(command, " ");
+            return sys.Soak_Wanted(StringToInt(wl[1]));
+        }
         if StrBeginsWith(command, "collect_focus ") {
             let cf = StrSplit(command, " ");
             return sys.Soak_CollectFocus(StringToInt(cf[1]));
