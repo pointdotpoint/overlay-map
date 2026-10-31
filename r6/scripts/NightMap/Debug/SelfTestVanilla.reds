@@ -156,7 +156,10 @@ public abstract class NMVanillaTests {
             && !NMVanillaStyle.CanQuestTrack(gamedataMappinVariant.ServicePointFoodVariant), "");
         let cat = NMVanillaCatalog.Build();
         let n = cat.Count();
-        t.Check("vanilla.catalog_twelve", n == 12, ToString(n));
+        // 12 filters in 2.31, 13 since: the catalogue follows TweakDB, so only a floor is fixed.
+        let names = "";
+        for nm in cat.names { names += nm + ","; }
+        t.Check("vanilla.catalog_from_tweakdb", n >= 12, ToString(n) + " " + names);
         let ft = cat.FilterIndexOf(gamedataMappinVariant.FastTravelVariant);
         let gw = cat.FilterIndexOf(gamedataMappinVariant.GangWatchVariant);
         let dp = cat.FilterIndexOf(gamedataMappinVariant.ServicePointDropPointVariant);
@@ -298,12 +301,11 @@ public abstract class NMVanillaTests {
     }
 
     // Review focus 3 against the live map mappins. No side effects (never calls TrackQuest). Every mappin that
-    // CanTrackQuest accepts is re-derived independently of CanQuestTrack: Quest/SecondaryQuest group (read from the
-    // game's own group record), not racing, and an entry whose parent is a JournalQuestObjectiveBase (what
-    // TrackEntry needs). Anything else accepted counts as bad.
+    // CanTrackQuest accepts is re-derived independently of CanQuestTrack, by vanilla's own rule (worldMap.script
+    // CanQuestTrackMappin): Quest/SecondaryQuest group (read from the game's own group record), not racing, and a
+    // journal entry. Vanilla then tracks that entry whatever its parent is. Anything else accepted counts as bad.
     private static func LiveTrackRules(t: ref<NMSelfTest>) {
         let gi = GetGameInstance();
-        let jm = GameInstance.GetJournalManager(gi);
         let arr: array<ref<IMappin>>;
         GameInstance.GetMappinSystem(gi).GetMappins(gamemappinsMappinTargetType.Map, arr);
         let withHash = 0;
@@ -323,8 +325,7 @@ public abstract class NMVanillaTests {
                 if NMVanillaTracking.CanTrackQuest(gi, m) {
                     accepted += 1;
                     let info = NMVanillaTracking.QuestInfo(gi, m);
-                    let parent = IsDefined(info.entry) ? jm.GetParentEntry(info.entry) as JournalQuestObjectiveBase : null;
-                    if !questGroup || Equals(v, gamedataMappinVariant.Zzz18_RacingVariant) || !IsDefined(parent) {
+                    if !questGroup || Equals(v, gamedataMappinVariant.Zzz18_RacingVariant) || !IsDefined(info.entry) {
                         bad += 1;
                         detail += ToString(v) + "(" + NameToString(name) + ") ";
                     }

@@ -198,8 +198,9 @@ public abstract class NMPerfTests {
         wide.SetCategory(n"test.w", "W", NMTheme.Pink());
         i = 0;
         while i < 400 {
-            let wx = minX + 1000.0 + Cast<Float>((i * 37) % 20) / 20.0 * (spanX - 2000.0) + Cast<Float>(i % 7) * 13.0;
-            let wy = minY + 1000.0 + Cast<Float>((i * 11) % 20 + (i / 20) % 3) / 22.0 * (spanY - 2000.0);
+            // A 20 x 20 lattice: each item in its own level-0 cell while the spacing exceeds a cell.
+            let wx = minX + 1000.0 + Cast<Float>(i % 20) / 20.0 * (spanX - 2000.0) + Cast<Float>(i % 7) * 13.0;
+            let wy = minY + 1000.0 + Cast<Float>(i / 20) / 20.0 * (spanY - 2000.0);
             wide.Add(NightMapItem.Create(new Vector4(wx, wy, 0.0, 1.0), n"test.w", NMTheme.UiAtlas(), n"icon_dot"));
             i += 1;
         }
