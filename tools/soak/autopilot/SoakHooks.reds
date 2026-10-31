@@ -1,5 +1,6 @@
 module NightMap
 import SoakBootstrap.*
+import RedFileSystem.*
 
 // The soak harness's commands, overlaid into the scripts only during a campaign (tools/soak/builds.py); never shipped.
 // tools/soak/runner.py sends one command at a time and reads the answer as a "done" state. redscript's annotations
@@ -71,6 +72,7 @@ public abstract class NMSoak {
 
     // Spike: every item and loot table, for joining offline with the world scan. Needs TweakXL's GetRecords.
     public static func LootDump() -> String {
+        let out = NMSoakDump.Open("lootdump.txt");
         let items = 0;
         for r in TweakDBInterface.GetRecords(n"Item_Record") {
             let it = r as Item_Record;
@@ -83,7 +85,7 @@ public abstract class NMSoak {
                 if it.TagsContains(n"Quest") { flags += "Q"; }
                 if it.TagsContains(n"Cyberware") { flags += "C"; }
                 if it.TagsContains(n"Clothing") { flags += "L"; }
-                NMLog.Info("LD|i|" + TDBID.ToStringDEBUG(r.GetID()) + "|" + (IsDefined(t) ? ToString(t.Type()) : "-") + "|"
+                out.Line("i|" + TDBID.ToStringDEBUG(r.GetID()) + "|" + (IsDefined(t) ? ToString(t.Type()) : "-") + "|"
                     + (IsDefined(q) ? ToString(q.Type()) : "-") + "|" + flags + "|" + GetLocalizedTextByKey(it.DisplayName()));
                 items += 1;
             }
@@ -92,7 +94,7 @@ public abstract class NMSoak {
         for r in TweakDBInterface.GetRecords(n"LootTable_Record") {
             let lt = r as LootTable_Record;
             if IsDefined(lt) {
-                let line = "LD|t|" + TDBID.ToStringDEBUG(r.GetID()) + "|";
+                let line = "t|" + TDBID.ToStringDEBUG(r.GetID()) + "|";
                 let els: array<wref<LootItem_Record>>;
                 lt.LootItems(els);
                 for e in els {
@@ -103,11 +105,12 @@ public abstract class NMSoak {
                 let incs: array<wref<LootTable_Record>>;
                 lt.LootTableInclusions(incs);
                 for c in incs { line += TDBID.ToStringDEBUG(c.GetID()) + ","; }
-                NMLog.Info(line);
+                out.Line(line);
                 tables += 1;
             }
         }
-        NMLog.Info("LD|end|" + IntToString(items) + "|" + IntToString(tables));
+        out.Line("end|" + IntToString(items) + "|" + IntToString(tables));
+        out.Flush();
         return "items " + IntToString(items) + " tables " + IntToString(tables);
     }
 
@@ -123,5 +126,31 @@ public class NMSoakTpFrame extends DelayCallback {
     public let system: wref<NightMapSystem>;
     public func Call() {
         if IsDefined(this.system) { this.system.Soak_TpTick(); }
+    }
+}
+
+// Lines to a file in the channel storage, which the harness keeps with the run (the game log drops early lines).
+public class NMSoakDump {
+    private let file: ref<File>;
+    private let buf: String;
+    private let n: Int32;
+
+    public static func Open(name: String) -> ref<NMSoakDump> {
+        let d = new NMSoakDump();
+        d.file = FileSystem.GetStorage("SoakBootstrap").GetFile(name);
+        d.file.WriteText("", FileSystemWriteMode.Truncate);
+        return d;
+    }
+
+    public func Line(line: String) {
+        this.buf += line + "\n";
+        this.n += 1;
+        if this.n >= 200 { this.Flush(); }
+    }
+
+    public func Flush() {
+        this.file.WriteText(this.buf, FileSystemWriteMode.Append);
+        this.buf = "";
+        this.n = 0;
     }
 }
