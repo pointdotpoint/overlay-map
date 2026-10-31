@@ -6,6 +6,7 @@ public class NMCollectSpot {
     public let pos: Vector4;
     public let ref: String;
     public let item: TweakDBID;
+    public let journal: wref<JournalEntry>;   // a shard's journal entry, once resolved
     public let collected: Bool;
 }
 
@@ -116,7 +117,7 @@ public class NMCollectListener extends NightMapLayerListener {
 // the settings changed.
 public class NMCollect extends IScriptable {
     public let spots: array<ref<NMCollectSpot>>;
-    private let journal: array<wref<JournalEntry>>;   // per spot: the shard's journal entry (null for other kinds)
+    private let journalReady: Bool;
     private let tarot: ref<inkHashMap>;               // tarot journal id hash -> its JournalEntry (NMCollectEntry)
     private let tracked: ref<inkHashMap>;             // item record hash -> anything: items whose pickup counts
     private let listeners: array<ref<NMCollectListener>>;
@@ -168,20 +169,18 @@ public class NMCollect extends IScriptable {
     }
 
     private func EnsureJournal(gi: GameInstance) {
-        if ArraySize(this.journal) == ArraySize(this.spots) { return; }
+        if this.journalReady { return; }
+        this.journalReady = true;
         let jm = GameInstance.GetJournalManager(gi);
-        ArrayClear(this.journal);
         for s in this.spots {
-            let e: wref<JournalEntry>;
             if s.cat == NMCollectCats.Shard() && IsDefined(jm) {
                 let rec = TweakDBInterface.GetItemRecord(s.item);
                 let act = IsDefined(rec) ? rec.ItemSecondaryAction() : null;
                 if IsDefined(act) {
                     let path = TweakDBInterface.GetString(act.GetID() + t".journalEntry", "");
-                    if StrLen(path) > 0 { e = jm.GetEntryByString(path, "gameJournalOnscreen"); }
+                    if StrLen(path) > 0 { s.journal = jm.GetEntryByString(path, "gameJournalOnscreen"); }
                 }
             }
-            ArrayPush(this.journal, e);
         }
         this.tarot = new inkHashMap();
         if !IsDefined(jm) { return; }
@@ -224,7 +223,7 @@ public class NMCollect extends IScriptable {
             let s = this.spots[i];
             let got = false;
             if s.cat == NMCollectCats.Shard() {
-                got = IsDefined(jm) && IsDefined(this.journal[i]) && NotEquals(jm.GetEntryState(this.journal[i]), gameJournalEntryState.Inactive);
+                got = IsDefined(jm) && IsDefined(s.journal) && NotEquals(jm.GetEntryState(s.journal), gameJournalEntryState.Inactive);
             } else if s.cat == NMCollectCats.Tarot() {
                 for id in StrSplit(s.ref, "+") {
                     let e = this.TarotEntry(id);
@@ -322,6 +321,11 @@ public class NMCollect extends IScriptable {
             let e = this.TarotEntry(ids[0]) as JournalTarot;
             if IsDefined(e) { return GetLocalizedText(e.GetName()); }
             return sp.ref;
+        }
+        let shard = sp.journal as JournalOnscreen;
+        if IsDefined(shard) {
+            let title = GetLocalizedText(shard.GetTitle());
+            if StrLen(title) > 0 { return title; }
         }
         let rec = TweakDBInterface.GetItemRecord(sp.item);
         if IsDefined(rec) {

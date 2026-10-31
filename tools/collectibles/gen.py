@@ -16,6 +16,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "r6/scripts/NightMap/Generated/CollectData.reds"
+DUPLICATE_M = 2.0   # the same item this close to another copy is one pin
 TABLE_REACH = 3   # a loot table placed more often than this is a random drop, not a fixed collectible
 CATEGORIES = "STWCLK"   # shard, tarot, iconic weapon, cyberware, clothing, skill shard
 
@@ -103,14 +104,15 @@ def collect(rows: list[dict], d: Dump) -> list[Entry]:
         return frozenset(s)
 
     placed = collections.Counter(i for r in rows for i in set(r["ids"]) if i.startswith("LootTables."))
-    seen: set = set()
+    placed_at: dict = collections.defaultdict(list)
     out: list[Entry] = []
 
     def add(cat: str, p: list, ref: str) -> None:
-        key = (cat, ref, round(p[0]), round(p[1]), round(p[2]))
-        if key not in seen:
-            seen.add(key)
-            out.append(Entry(cat, float(p[0]), float(p[1]), float(p[2]), ref))
+        near = placed_at[(cat, ref)]
+        if any(sum((a - b) ** 2 for a, b in zip(q, p)) < DUPLICATE_M ** 2 for q in near):
+            return
+        near.append(p)
+        out.append(Entry(cat, float(p[0]), float(p[1]), float(p[2]), ref))
 
     for r in rows:
         if not r.get("p"):

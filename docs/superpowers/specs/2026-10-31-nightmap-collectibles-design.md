@@ -46,7 +46,7 @@ published on Nexus, so the data comes from the game's own files, never from MapG
    - skill shard: `*Skillbook*` items;
    - tarot: nodes named `mq033_<card>`; minor cards are named `mq033_minor_<rank>_of_<suit>` in the world and
      `mq033_<rank>_of_the_<suit>` in the journal.
-   Duplicates (same item within 1 m) collapse. Output: `r6/scripts/NightMap/Generated/CollectData.reds`, chunks of
+   Duplicates (same item within 2 m) collapse. Output: `r6/scripts/NightMap/Generated/CollectData.reds`, chunks of
    `category,x,y,z,ref` entries; `ref` is a TweakDB item name, or tarot journal ids joined with `+`.
 
 ## Runtime (`r6/scripts/NightMap/Collect/`)
