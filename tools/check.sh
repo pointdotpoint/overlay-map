@@ -22,6 +22,11 @@ if [ -d "$GAME/r6/scripts/RedFileSystem" ]; then
   mkdir -p "$SANDBOX/r6/scripts/RedFileSystem"
   cp "$GAME"/r6/scripts/RedFileSystem/*.reds "$SANDBOX/r6/scripts/RedFileSystem/"
 fi
+# TweakXL adds GetRecords, used only by the harness's spike commands.
+if [ -d "$GAME/red4ext/plugins/TweakXL/Scripts" ]; then
+  mkdir -p "$SANDBOX/r6/scripts/TweakXL"
+  cp "$GAME"/red4ext/plugins/TweakXL/Scripts/*.reds "$SANDBOX/r6/scripts/TweakXL/"
+fi
 cp -r "$HERE/r6/scripts/NightMap" "$SANDBOX/r6/scripts/NightMap"
 # --soak: also compile the harness's bootstrap and hooks, which only exist in a campaign build.
 if [ "${1:-}" = "--soak" ]; then
