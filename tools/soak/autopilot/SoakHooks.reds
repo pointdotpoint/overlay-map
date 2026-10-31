@@ -137,7 +137,7 @@ public class NMSoakDump {
 
     public static func Open(name: String) -> ref<NMSoakDump> {
         let d = new NMSoakDump();
-        d.file = FileSystem.GetStorage("SoakBootstrap").GetFile(name);
+        d.file = SoakChannel.Get().Storage().GetFile(name);
         d.file.WriteText("", FileSystemWriteMode.Truncate);
         return d;
     }

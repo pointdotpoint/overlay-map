@@ -39,7 +39,8 @@ public class SoakChannel extends ScriptableService {
             .SetLifetime(CallbackLifetime.Forever);
     }
 
-    private func Storage() -> ref<FileSystemStorage> {
+    // RedFileSystem gives a storage out once, so harness commands that write files borrow this one.
+    public func Storage() -> ref<FileSystemStorage> {
         if !this.m_attempted {
             this.m_attempted = true;
             this.m_storage = FileSystem.GetStorage("SoakBootstrap");
