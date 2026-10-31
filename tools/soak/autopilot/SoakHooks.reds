@@ -48,6 +48,16 @@ public abstract class NMSoak {
         if Equals(command, "lootdump") { return NMSoak.LootDump(); }
         if Equals(command, "collect") { return sys.Soak_Collect(); }
         if Equals(command, "police") { return sys.Soak_Police(); }
+        if Equals(command, "saves_req") { return NMSoakSaves.Request(); }
+        if Equals(command, "save_manual") { return NMSoakSaves.SaveNew(); }
+        if Equals(command, "saves_new") { return NMSoakSaves.FindNew(); }
+        if Equals(command, "load_new") { return NMSoakSaves.LoadNew(); }
+        if Equals(command, "delete_new") { return NMSoakSaves.DeleteNew(); }
+        if Equals(command, "saves_has_new") { return NMSoakSaves.HasNew(); }
+        if StrBeginsWith(command, "collect_state ") {
+            let st = StrSplit(command, " ");
+            return sys.Soak_CollectState(st[1]);
+        }
         if StrBeginsWith(command, "wanted ") {
             let wl = StrSplit(command, " ");
             return sys.Soak_Wanted(StringToInt(wl[1]));
@@ -199,5 +209,97 @@ public class NMSoakDump {
         this.file.WriteText(this.buf, FileSystemWriteMode.Append);
         this.buf = "";
         this.n = 0;
+    }
+}
+
+// Save round trip for the collectible seen list: a new manual save (overwrites nothing), loaded, then deleted
+// in-game before the game exits so Steam Cloud has nothing new to upload. Only a save whose name was not listed
+// before the manual save is ever loaded or deleted. State lives in SoakChannel.note: it must survive the load.
+public class NMSoakSaves extends IScriptable {
+    public let saves: array<String>;
+    public let ready: Bool;
+
+    private static func Listener() -> ref<NMSoakSaves> {
+        return NightMapSystem.Get(GetGameInstance()).Soak_SavesListener();
+    }
+
+    public cb func OnSaves(saves: array<String>) {
+        this.saves = saves;
+        this.ready = true;
+    }
+
+    public static func Request() -> String {
+        let l = NMSoakSaves.Listener();
+        l.ready = false;
+        let handler = GameInstance.GetSystemRequestsHandler();
+        handler.RegisterToCallback(n"OnSavesForLoadReady", l, n"OnSaves");
+        handler.RequestSavesForLoad();
+        return "requested";
+    }
+
+    private static func Joined(a: array<String>) -> String {
+        let out = "|";
+        for s in a { out += s + "|"; }
+        return out;
+    }
+
+    public static func SaveNew() -> String {
+        let l = NMSoakSaves.Listener();
+        if !l.ready { return "no list"; }
+        let handler = GameInstance.GetSystemRequestsHandler();
+        if !handler.HasFreeSaveSlot("ManualSave-") { return "no free slot"; }
+        SoakChannel.Get().note = "before=" + NMSoakSaves.Joined(l.saves);
+        handler.ManualSave("ManualSave-");
+        return "saving|listed " + IntToString(ArraySize(l.saves));
+    }
+
+    public static func FindNew() -> String {
+        let l = NMSoakSaves.Listener();
+        let channel = SoakChannel.Get();
+        if !l.ready || !StrBeginsWith(channel.note, "before=") { return "not ready"; }
+        let before = StrMid(channel.note, 7);
+        let found: array<String>;
+        for s in l.saves {
+            if !StrContains(before, "|" + s + "|") { ArrayPush(found, s); }
+        }
+        if ArraySize(found) != 1 || !StrBeginsWith(found[0], "ManualSave-") {
+            return "new " + IntToString(ArraySize(found)) + " " + NMSoakSaves.Joined(found);
+        }
+        channel.note = "new=" + found[0];
+        return "new " + found[0];
+    }
+
+    private static func NewName() -> String {
+        let note = SoakChannel.Get().note;
+        return StrBeginsWith(note, "new=") ? StrMid(note, 4) : "";
+    }
+
+    private static func IndexOfNew() -> Int32 {
+        let name = NMSoakSaves.NewName();
+        let l = NMSoakSaves.Listener();
+        if StrLen(name) == 0 || !l.ready { return -1; }
+        return ArrayFindFirst(l.saves, name);
+    }
+
+    public static func LoadNew() -> String {
+        let i = NMSoakSaves.IndexOfNew();
+        if i < 0 { return "no new save"; }
+        SoakChannel.Get().ExpectReload();
+        GameInstance.GetSystemRequestsHandler().LoadSavedGame(i);
+        return "loading " + NMSoakSaves.NewName();
+    }
+
+    public static func DeleteNew() -> String {
+        let i = NMSoakSaves.IndexOfNew();
+        if i < 0 { return "no new save"; }
+        let name = NMSoakSaves.NewName();
+        GameInstance.GetSystemRequestsHandler().DeleteSavedGame(i);
+        return "deleted " + name;
+    }
+
+    public static func HasNew() -> String {
+        let l = NMSoakSaves.Listener();
+        if !l.ready { return "no list"; }
+        return ArrayContains(l.saves, NMSoakSaves.NewName()) ? "present" : "absent";
     }
 }

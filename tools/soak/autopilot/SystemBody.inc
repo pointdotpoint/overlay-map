@@ -295,6 +295,35 @@
         return "ok|" + FloatToStringPrec(bestD, 0) + "m";
     }
 
+    // ---- save round trip ----
+
+    private let soakSaves: ref<NMSoakSaves>;
+
+    public func Soak_SavesListener() -> ref<NMSoakSaves> {
+        if !IsDefined(this.soakSaves) { this.soakSaves = new NMSoakSaves(); }
+        return this.soakSaves;
+    }
+
+    // Whether a collectible item counts as collected now, and whether V carries it (it must not, for the seen list
+    // to be what is tested).
+    public func Soak_CollectState(ref: String) -> String {
+        let id = TDBID.Create(ref);
+        this.Collect().Refresh(this.GetGameInstance(), this.CollectSeen());
+        let collected = false;
+        for s in this.Collect().spots {
+            if s.item == id && s.collected { collected = true; }
+        }
+        let carried = false;
+        let player = GetPlayer(this.GetGameInstance());
+        let ts = GameInstance.GetTransactionSystem(this.GetGameInstance());
+        let list: array<wref<gameItemData>>;
+        ts.GetItemList(player, list);
+        for d in list {
+            if IsDefined(d) && ItemID.GetTDBID(d.GetID()) == id { carried = true; }
+        }
+        return "collected " + ToString(collected) + "|carried " + ToString(carried) + "|seen " + IntToString(ArraySize(this.collectSeen));
+    }
+
     // ---- police ----
 
     // Raises (or with 0 clears) V's wanted level through the prevention system's console request.

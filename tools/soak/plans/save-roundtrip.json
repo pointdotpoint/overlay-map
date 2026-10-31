@@ -1,0 +1,96 @@
+{
+ "name": "save-roundtrip",
+ "runs": [
+  {
+   "name": "seen",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "collect_state Items.Preset_Achilles_Collectible",
+     "expect": "collected false\\|carried false"
+    },
+    {
+     "cmd": "collect_seen Items.Preset_Achilles_Collectible"
+    },
+    {
+     "cmd": "collect_state Items.Preset_Achilles_Collectible",
+     "expect": "collected true\\|carried false"
+    },
+    {
+     "cmd": "saves_req"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "save_manual",
+     "expect": "^saving"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "saves_req"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "saves_new",
+     "expect": "^new ManualSave-"
+    },
+    {
+     "cmd": "load_new",
+     "expect": "^loading ManualSave-"
+    },
+    {
+     "wait": 10
+    },
+    {
+     "await_visible": 120,
+     "min_luma": 0.02
+    },
+    {
+     "wait": 15
+    },
+    {
+     "cmd": "collect_state Items.Preset_Achilles_Collectible",
+     "expect": "collected true\\|carried false",
+     "timeout": 60
+    },
+    {
+     "cmd": "saves_req"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "delete_new",
+     "expect": "^deleted ManualSave-"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "saves_req"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "saves_has_new",
+     "expect": "^absent"
+    }
+   ]
+  }
+ ]
+}

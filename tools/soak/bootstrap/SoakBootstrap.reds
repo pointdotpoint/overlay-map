@@ -29,6 +29,8 @@ public class SoakChannel extends ScriptableService {
     private let m_exiting: Bool;
     private let m_lastCommand: String;
     private let m_watch: array<ref<CallbackHandle>>;
+    private let m_reload: Bool;   // a command loads a save mid-run: tick again once the new session is ready
+    public let note: String;      // survives that load (this service outlives sessions)
 
     public static func Get() -> ref<SoakChannel> {
         return GameInstance.GetScriptableServiceContainer().GetService(n"SoakBootstrap.SoakChannel") as SoakChannel;
@@ -131,6 +133,10 @@ public class SoakChannel extends ScriptableService {
             this.m_ticking = true;
             this.WatchFastTravel();
             this.Schedule(5.0);
+        } else if this.m_reload {
+            // A load drops every pending delay callback, the tick chain with it.
+            this.m_reload = false;
+            this.Schedule(5.0);
         }
     }
 
@@ -157,6 +163,8 @@ public class SoakChannel extends ScriptableService {
         let p = player.GetWorldPosition();
         return FloatToStringPrec(p.X, 2) + "," + FloatToStringPrec(p.Y, 2) + "," + FloatToStringPrec(p.Z, 2);
     }
+
+    public func ExpectReload() { this.m_reload = true; }
 
     public func OnTick() {
         if !this.m_worldReported {
