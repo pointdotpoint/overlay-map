@@ -15,6 +15,7 @@ public class NMSelfTest {
         this.GridCases();
         this.ApiCases();
         this.InputCases();
+        this.PadCases();
         this.LayoutCases();
         this.TileCases();
         this.RendererCases();
@@ -340,6 +341,112 @@ public class NMSelfTest {
         this.Check("input.key_names", Equals(NMInput.KeyName(EInputKey.IK_NumPad8), "NUM 8") && Equals(NMInput.KeyName(EInputKey.IK_Backslash), "\\")
             && Equals(NMInput.KeyName(EInputKey.IK_NumPlus), "NUM +")
             && Equals(NMInput.KeyName(EInputKey.IK_SingleQuote), "'"), NMInput.KeyName(EInputKey.IK_NumPad8));
+    }
+
+    private func PadCases() {
+        let A = EInputKey.IK_Pad_A_CROSS;
+        let B = EInputKey.IK_Pad_B_CIRCLE;
+        let X = EInputKey.IK_Pad_X_SQUARE;
+        let Y = EInputKey.IK_Pad_Y_TRIANGLE;
+        let VIEW = EInputKey.IK_Pad_Back_Select;
+        let press = EInputAction.IACT_Press;
+        let release = EInputAction.IACT_Release;
+        this.Check("pad.is_pad", NMPad.IsPad(A) && NMPad.IsPad(EInputKey.IK_Pad_RightAxisY) && NMPad.IsPad(VIEW)
+            && !NMPad.IsPad(EInputKey.IK_NumPad8) && !NMPad.IsPad(EInputKey.IK_Escape), "");
+        // Open: a tap does nothing; a hold opens once, at 500 ms.
+        let p = new NMPad();
+        p.Button(VIEW, press, 1000.0, false, false, false, false, true);
+        p.Button(VIEW, release, 1200.0, false, false, false, false, true);
+        this.Check("pad.view_tap_no_open", !p.PollHold(1600.0, false, false, false) && !p.Waiting(), "");
+        p.Button(VIEW, press, 2000.0, false, false, false, false, true);
+        let early = p.PollHold(2499.0, false, false, false);
+        let at = p.PollHold(2500.0, false, false, false);
+        let again = p.PollHold(2600.0, false, false, false);
+        this.Check("pad.view_hold_opens", !early && at && !again && p.Waiting(), ToString(early) + ToString(at) + ToString(again));
+        p.Button(VIEW, release, 2700.0, true, true, true, false, true);
+        this.Check("pad.view_release_after_open_keeps_open", !p.close && !p.Waiting(), "");
+        // While the map owns the pad: buttons map to actions, and View or B close.
+        p.Button(A, press, 3000.0, true, true, true, false, true);
+        p.Button(X, press, 3000.0, true, true, true, false, true);
+        p.Button(Y, press, 3000.0, true, true, true, false, true);
+        p.Button(EInputKey.IK_Pad_RightThumb, press, 3000.0, true, true, true, false, true);
+        this.Check("pad.buttons", p.act && p.teleport && p.filter && p.recenter && !p.close && p.lastWasPad, "");
+        p.Reset();
+        p.Button(A, release, 3000.0, true, true, true, false, true);
+        this.Check("pad.release_is_not_a_press", !p.act, "");
+        p.Button(B, press, 3000.0, true, true, true, false, true);
+        this.Check("pad.b_closes", p.close, "");
+        p.Reset();
+        p.Button(VIEW, press, 3100.0, true, true, true, false, true);
+        this.Check("pad.view_closes_when_open", p.close, "");
+        // Map opened with the keyboard: the pad does nothing on it.
+        let k = new NMPad();
+        let used = k.Button(A, press, 0.0, true, false, false, false, true);
+        k.Button(B, press, 0.0, true, false, false, false, true);
+        k.Button(VIEW, press, 0.0, true, false, false, false, true);
+        k.Axis(EInputKey.IK_Pad_LeftAxisX, 1.0);
+        this.Check("pad.keyboard_open_ignores_pad", !used && !k.act && !k.close && !k.PollHold(9999.0, true, false, false) && !k.lastWasPad, "");
+        // Off: nothing at all.
+        let off = new NMPad();
+        off.Button(VIEW, press, 0.0, false, false, false, false, false);
+        this.Check("pad.disabled_ignores_all", !off.PollHold(9999.0, false, false, false) && !off.Waiting(), "");
+        // Hold to show: open after the hold, close on release.
+        let h = new NMPad();
+        h.Button(VIEW, press, 0.0, false, false, false, true, true);
+        let hOpen = h.PollHold(500.0, false, false, false);
+        h.Button(VIEW, release, 900.0, true, true, true, true, true);
+        this.Check("pad.hold_to_show_release_closes", hOpen && h.close, "");
+        // Car pass-through: opened from the pad but not owning it; holding View again closes.
+        let c = new NMPad();
+        c.Button(A, press, 0.0, true, true, false, false, true);
+        c.Button(VIEW, press, 100.0, true, true, false, false, true);
+        let cEarly = c.PollHold(400.0, true, true, false);
+        let cClose = c.PollHold(600.0, true, true, false);
+        this.Check("pad.car_pass_through", !c.act && !c.close && !cEarly && cClose, ToString(cEarly) + ToString(cClose));
+        // Sticks: deadzone, full tilt, diagonals stay within the unit circle; screen Y is down.
+        let s = new NMPad();
+        s.Axis(EInputKey.IK_Pad_LeftAxisX, 0.15);
+        s.Axis(EInputKey.IK_Pad_LeftAxisY, 0.1);
+        let dz = s.PanVector();
+        this.Check("pad.deadzone", dz.X == 0.0 && dz.Y == 0.0, this.F(dz.X));
+        s.Axis(EInputKey.IK_Pad_LeftAxisX, 1.0);
+        s.Axis(EInputKey.IK_Pad_LeftAxisY, 0.0);
+        let full = s.PanVector();
+        this.Check("pad.full_tilt", this.Near(full.X, 1.0, 0.001) && full.Y == 0.0, this.F(full.X));
+        s.Axis(EInputKey.IK_Pad_LeftAxisX, 0.0);
+        s.Axis(EInputKey.IK_Pad_LeftAxisY, 1.0);
+        let up = s.PanVector();
+        this.Check("pad.stick_up_pans_north", this.Near(up.Y, -1.0, 0.001), this.F(up.Y));
+        s.Axis(EInputKey.IK_Pad_LeftAxisX, 0.9);
+        s.Axis(EInputKey.IK_Pad_LeftAxisY, 0.9);
+        let dg = s.PanVector();
+        this.Check("pad.diag_unit", SqrtF(dg.X * dg.X + dg.Y * dg.Y) <= 1.0001 && dg.X > 0.6, this.F(dg.X) + "," + this.F(dg.Y));
+        s.Axis(EInputKey.IK_Pad_LeftAxisX, 0.6);
+        s.Axis(EInputKey.IK_Pad_LeftAxisY, 0.0);
+        let half = s.PanVector();
+        this.Check("pad.small_tilt_is_slow", half.X > 0.0 && half.X < 0.4, this.F(half.X));
+        // Triggers: RT in, LT out, both cancel; a press without analog values counts as full.
+        let t = new NMPad();
+        t.Axis(EInputKey.IK_Pad_RightTrigger, 1.0);
+        let zin = t.ZoomRate();
+        t.Axis(EInputKey.IK_Pad_LeftTrigger, 1.0);
+        let zboth = t.ZoomRate();
+        t.Axis(EInputKey.IK_Pad_RightTrigger, 0.05);
+        let zout = t.ZoomRate();
+        let tb = new NMPad();
+        tb.Button(EInputKey.IK_Pad_RightTrigger, press, 0.0, true, true, true, false, true);
+        let zbtn = tb.ZoomRate();
+        tb.Button(EInputKey.IK_Pad_RightTrigger, release, 0.0, true, true, true, false, true);
+        this.Check("pad.zoom_rate", this.Near(zin, 1.0, 0.001) && zboth == 0.0 && this.Near(zout, -1.0, 0.001) && this.Near(zbtn, 1.0, 0.001) && tb.ZoomRate() == 0.0,
+            this.F(zin) + "," + this.F(zboth) + "," + this.F(zout) + "," + this.F(zbtn));
+        t.Reset();
+        let r0 = t.PanVector();
+        this.Check("pad.reset_clears_axes", t.ZoomRate() == 0.0 && r0.X == 0.0 && r0.Y == 0.0, "");
+        // Hint copy.
+        this.Check("pad.hint_text", Equals(NMPad.HintText("ALL", "TELEPORT", true, false),
+            "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT   ·   X TELEPORT   ·   Y FILTER: ALL   ·   B CLOSE"), NMPad.HintText("ALL", "TELEPORT", true, false));
+        this.Check("pad.hint_variants", StrContains(NMPad.HintText("JOBS", "FAST TRAVEL", true, true), "RELEASE VIEW CLOSE")
+            && !StrContains(NMPad.HintText("ALL", "TELEPORT", false, false), "X "), "");
     }
 
     private func LayoutCases() {

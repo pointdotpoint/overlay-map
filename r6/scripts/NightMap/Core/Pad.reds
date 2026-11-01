@@ -1,0 +1,164 @@
+module NightMap
+
+// Controller input for the map. Raw pad events (Codeware's Input/Key and Input/Axis) become map intents; nothing
+// here touches the game. Holding View opens the map; while the map owns the pad (opened with it), LS pans, LT/RT zoom,
+// A acts, X teleports, Y cycles the filter, R3 follows V, and B or View close. A map opened with the keyboard ignores
+// the pad. In a car with pass-through on, the map is opened from the pad but does not own it: holding View again
+// closes it and every other button keeps driving.
+public class NMPad {
+    public let act: Bool;
+    public let teleport: Bool;
+    public let filter: Bool;
+    public let recenter: Bool;
+    public let close: Bool;
+    public let lastWasPad: Bool;
+    private let lx: Float;
+    private let ly: Float;
+    private let lt: Float;
+    private let rt: Float;
+    private let viewDown: Bool;
+    private let viewDownMs: Float;
+    private let holdFired: Bool;
+
+    public static func HoldMs() -> Float = 500.0
+    public static func CooldownFrames() -> Int32 = 8
+    public static func StickDeadzone() -> Float = 0.2
+    public static func TriggerDeadzone() -> Float = 0.1
+    // In a car the map owns the pad and the car coasts (the user's choice). True: the pass-through fallback.
+    public static func CarPassThrough() -> Bool = false
+
+    public static func IsPad(key: EInputKey) -> Bool {
+        let k = EnumInt(key);
+        return k >= EnumInt(EInputKey.IK_Pad_A_CROSS) && k <= EnumInt(EInputKey.IK_Pad_RightAxisY);
+    }
+
+    // mapOpen: the map is up. fromPad: it was opened with the pad. owned: the map holds the pad (game actions held off).
+    // Returns true when the map used the button.
+    public func Button(key: EInputKey, action: EInputAction, nowMs: Float, mapOpen: Bool, fromPad: Bool, owned: Bool, holdToShow: Bool, enabled: Bool) -> Bool {
+        if !enabled {
+            this.viewDown = false;
+            return false;
+        }
+        let pressed = Equals(action, EInputAction.IACT_Press);
+        let released = Equals(action, EInputAction.IACT_Release);
+        if !pressed && !released {
+            return false;
+        }
+        if Equals(key, EInputKey.IK_Pad_LeftTrigger) {
+            this.lt = pressed ? 1.0 : 0.0;
+            return owned;
+        }
+        if Equals(key, EInputKey.IK_Pad_RightTrigger) {
+            this.rt = pressed ? 1.0 : 0.0;
+            return owned;
+        }
+        if Equals(key, EInputKey.IK_Pad_Back_Select) {
+            if pressed {
+                if mapOpen && owned && !holdToShow {
+                    this.close = true;
+                    this.lastWasPad = true;
+                    return true;
+                }
+                if !mapOpen || (fromPad && !owned) {
+                    this.viewDown = true;
+                    this.viewDownMs = nowMs;
+                    this.holdFired = false;
+                }
+                return false;
+            }
+            let wasDown = this.viewDown;
+            this.viewDown = false;
+            if wasDown && holdToShow && mapOpen && fromPad && this.holdFired {
+                this.close = true;
+                return true;
+            }
+            return false;
+        }
+        if !mapOpen || !owned || !pressed {
+            return mapOpen && owned;
+        }
+        this.lastWasPad = true;
+        if Equals(key, EInputKey.IK_Pad_A_CROSS) { this.act = true; return true; }
+        if Equals(key, EInputKey.IK_Pad_X_SQUARE) { this.teleport = true; return true; }
+        if Equals(key, EInputKey.IK_Pad_Y_TRIANGLE) { this.filter = true; return true; }
+        if Equals(key, EInputKey.IK_Pad_RightThumb) { this.recenter = true; return true; }
+        if Equals(key, EInputKey.IK_Pad_B_CIRCLE) { this.close = true; return true; }
+        return true;
+    }
+
+    // Sticks and triggers (game convention: stick up is positive).
+    public func Axis(key: EInputKey, value: Float) {
+        if Equals(key, EInputKey.IK_Pad_LeftAxisX) { this.lx = value; return; }
+        if Equals(key, EInputKey.IK_Pad_LeftAxisY) { this.ly = value; return; }
+        if Equals(key, EInputKey.IK_Pad_LeftTrigger) { this.lt = value; return; }
+        if Equals(key, EInputKey.IK_Pad_RightTrigger) { this.rt = value; }
+    }
+
+    // True once when View has been held for HoldMs: open the map while it is closed, or close a pass-through map.
+    public func PollHold(nowMs: Float, mapOpen: Bool, fromPad: Bool, owned: Bool) -> Bool {
+        if !this.viewDown || this.holdFired || nowMs - this.viewDownMs < NMPad.HoldMs() {
+            return false;
+        }
+        if mapOpen && !(fromPad && !owned) {
+            return false;
+        }
+        this.holdFired = true;
+        return true;
+    }
+
+    // View is down and its hold still matters: the system keeps polling meanwhile.
+    public func Waiting() -> Bool {
+        return this.viewDown;
+    }
+
+    // Unit pan direction in screen space (+Y = south). Radial deadzone, then a squared response for fine control.
+    public func PanVector() -> Vector2 {
+        let mag = SqrtF(this.lx * this.lx + this.ly * this.ly);
+        let dz = NMPad.StickDeadzone();
+        if mag < dz {
+            return new Vector2(0.0, 0.0);
+        }
+        let m = MinF(1.0, (mag - dz) / (1.0 - dz));
+        let k = m * m / mag;
+        return new Vector2(this.lx * k, -this.ly * k);
+    }
+
+    // -1..1: positive zooms in (RT), negative out (LT).
+    public func ZoomRate() -> Float {
+        return NMPad.TriggerCurve(this.rt) - NMPad.TriggerCurve(this.lt);
+    }
+
+    private static func TriggerCurve(v: Float) -> Float {
+        let dz = NMPad.TriggerDeadzone();
+        if v < dz {
+            return 0.0;
+        }
+        return MinF(1.0, (v - dz) / (1.0 - dz));
+    }
+
+    // One-shots, axes and the View hold.
+    public func Reset() {
+        this.act = false;
+        this.teleport = false;
+        this.filter = false;
+        this.recenter = false;
+        this.close = false;
+        this.lx = 0.0;
+        this.ly = 0.0;
+        this.lt = 0.0;
+        this.rt = 0.0;
+        this.viewDown = false;
+        this.holdFired = false;
+    }
+
+    public static func HintText(view: String, teleportLabel: String, teleportOn: Bool, holdToShow: Bool) -> String {
+        return "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT"
+            + (teleportOn ? "   ·   X " + teleportLabel : "")
+            + "   ·   Y FILTER: " + view
+            + "   ·   " + (holdToShow ? "RELEASE VIEW CLOSE" : "B CLOSE");
+    }
+
+    public static func PassThroughHint(keyboardHint: String) -> String {
+        return "HOLD VIEW CLOSE   ·   " + keyboardHint;
+    }
+}
