@@ -9,8 +9,12 @@ Hologram-style 2D world map overlay for Cyberpunk 2077 (redscript + Codeware). O
 ## Requirements
 - Cyberpunk 2077 2.31 (tiles are built for it; a different major.minor shows a warning in the panel)
 - redscript and Codeware (required)
-- Mod Settings (optional): keybinds and settings
-- RedIMGRetriever (optional): image items
+- RED4ext (required by Codeware)
+- Mod Settings (optional): settings menu and key rebinding; without it the defaults apply
+- RedFileSystem (optional): stores photo-pin spots in NightMap's own `photos.txt`; without it photo pins aren't kept
+- RedIMGRetriever (optional): photo thumbnails (image items)
+
+Every optional mod is detected with `@if(ModuleExists(...))`, so NightMap compiles and runs without it.
 
 To build tiles: WolvenKit CLI (the build runs the executable named by `NIGHTMAP_WOLVENKIT`, default `WolvenKit.CLI`), Wine + `texconv.exe`, Python 3 with numpy, Pillow, scipy and shapely.
 
@@ -28,8 +32,11 @@ The map is drawn from the game's own minimap geometry:
 - The build decodes the `minimapEncodedShapes` embedded in the `exterior_*` streaming sectors. EP1 copies replace the
   base ones.
 - It classifies roads, then merges buildings into clean footprints.
-- It bakes four colourless mask tile sets: `road`, `bfill`, `glow` and `outline`. Each has six levels from 0.5 to
-  16 m/px, as BC7 512 px tiles.
+- It bakes five colourless mask tile sets: `road_minor`, `road_major` (wide arterials, and short pieces bridging them),
+  `bfill` (building fill with a baked dot matrix), `glow` (from road rims) and `outline`. Each has six levels from
+  0.5 to 16 m/px, as BC7 512 px tiles.
+- Scripts and the archive must be installed together: scripts that expect five sets over an older four-set archive
+  draw no roads.
 - At runtime each set is tinted from `NMTheme` (`TileTint` / `TileOpacity`), so themes recolour the map without a
   rebuild.
 
@@ -51,9 +58,11 @@ UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only
 - Arrow keys are never used (they steer vehicles). Keep NumLock on.
 - Controller: hold View for half a second to open the map (a tap still does what it does in the game). While it is open the map takes the controller, so V stops: left stick pans, LT/RT zoom, A acts, X teleports, Y cycles the filter, R3 follows V, B (or View) closes. In a car the car coasts meanwhile. A map opened with the keyboard ignores the controller, so you can drive with a pad and use the numpad map. Mod Settings → NightMap → Controller → Open map button (Hold View / Off).
 - Zoom crossfades between six baked levels, from 0.5 m/px (single buildings) to 16 m/px (the whole city).
-- The game's own map markers (quests, gigs, NCPD, vendors, fast travel, …) appear with their vanilla icons. Move the map so a marker is nearest the centre to see its tooltip; `Numpad 0` tracks its quest, or clears your vanilla waypoint. Setting new waypoints comes with the optional native plugin (later).
-- `Numpad /` cycles the markers shown: All → Jobs (quests, gigs, psycho) → Services (ripperdoc, vendors, autofixer, drop points, fast travel, your property), like the vanilla quick lists; NCPD scanner and apartments to rent show only in All. Mod Settings → NightMap → Map filters turns each vanilla category on or off.
-- The header (bottom right) shows the tracked quest and its current objective.
+- The game's own map markers (quests, gigs, NCPD, vendors, fast travel, …) appear with their vanilla icons, each on a dark plate ringed in its own colour. Move the map so a marker is nearest the centre to see its details card in the sidebar; `Numpad 0` tracks its quest, or clears your vanilla waypoint. Setting new waypoints comes with the optional native plugin (later).
+- `Numpad /` cycles the markers shown: All → Jobs (quests, gigs, psycho) → Services (ripperdoc, vendors, autofixer, drop points, fast travel, your property), like the vanilla quick lists; NCPD scanner and apartments to rent show only in All. A filter keeps its categories visible as long as quests and fast travel when zooming out.
+- There is no clustering. Markers shrink and fade out by tier as the map zooms out: minor ones (gigs, vendors, NCPD, collectibles, photo pins) first, quests and fast travel last, the tracked quest and V never. Markers never overlap: where two would, the more important one is drawn, and the district title and scale bar stay clear. Mod Settings → NightMap → Map filters turns each vanilla category on or off.
+- The district title sits top left (with the active filter under it) and the scale bar top right. The sidebar's bottom shows the tracked quest and its current objective.
+- The panel is nearly opaque by default (Display → Panel opacity); installs still on the old 0.45 default move to 0.92 once.
 - GPS routes: the route to your vanilla waypoint (white) and to the tracked quest (yellow, teal for gigs) are mirrored from the minimap as flowing dots. Mod Settings → NightMap → Display → GPS routes.
 - The game's HUD fades out while the map is open (Display → Hide HUD while open).
 - Numpad . on any spot teleports V there: onto the roof or ground below, or into the water. On a fast travel marker it fast-travels, on a photo pin it goes to the photo's spot, and V's car comes along. Long jumps show the game's loading screen for a few seconds first.
@@ -76,7 +85,8 @@ Photo pins grow with the zoom past that point, up to 5x, and the first open of a
 ## Automated testing
 
 `tools/soak` drives the real game headless in gamescope: it stages a build, backs up the install, saves and settings,
-loads a save, follows a plan in `tools/soak/plans`, and restores everything. The game must be closed. Steam's launch
+loads a save, follows a plan in `tools/soak/plans`, and restores everything. The game must be closed: if it is open,
+preflight waits 30 s, then stops the campaign and leaves the game running (a campaign only kills a game it launched). Steam's launch
 options need `~/photomode_ui_improvements/scripts/soak/gamescope-wrap.sh` before `%command%`; normal launches pass through it.
 
     python3 tools/soak/soak.py preflight --save QuickSave-7 --allow-cloud
