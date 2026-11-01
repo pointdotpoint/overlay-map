@@ -129,6 +129,11 @@ public class SoakChannel extends ScriptableService {
     private cb func OnSessionReady(event: ref<GameSessionEvent>) {
         if event.IsPreGame() || !this.ReadPlan() { return; }
         this.State("session_ready", "");
+        // A third-party mod's first-run notice (Immersive Third Person) opens a tutorial popup over the game about 20 s
+        // into a session until its quest fact is in the save. The QuickSave a campaign loads predates the mod, and the
+        // fact set when the popup shows only lives in that session (the harness's own saves are made and deleted by
+        // NMSoakSaves), so mark it seen in every session, a reload included.
+        GameInstance.GetQuestsSystem(GetGameInstance()).SetFact(n"immersive_third_person_notice_seen", 1);
         if !this.m_ticking {
             this.m_ticking = true;
             this.WatchFastTravel();
@@ -170,9 +175,6 @@ public class SoakChannel extends ScriptableService {
         if !this.m_worldReported {
             this.m_worldReported = true;
             this.State("world", "");
-            // A third-party mod's first-run notice (Immersive Third Person) opens a tutorial popup over the game about
-            // 20 s in, until its quest fact is set in the save; the harness never saves, so mark it seen per session.
-            GameInstance.GetQuestsSystem(GetGameInstance()).SetFact(n"immersive_third_person_notice_seen", 1);
         }
         this.Beat("world", this.PositionText());
         let command = this.Command();

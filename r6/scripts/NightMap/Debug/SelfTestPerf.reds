@@ -206,8 +206,32 @@ public abstract class NMPerfTests {
             }
             c += 1;
         }
+        // The chip budget path on its own: with the declutter off (test hook), 3,000 debug items over a mid-zoom view fill
+        // the 300 slots, and the occupancy walk must still stop on exactly the items the full scan stops on. Under the
+        // declutter the cull caps end the walks first (sawCapped above counts both), so this keeps the budget-full case.
+        let budgetBad = "";
+        let sawBudget = false;
+        r.noDeclutter = true;
+        let bc = 0;
+        while bc < 3 {
+            cam.SetCenter(cx[bc], cy[bc]);
+            cam.SetMpp(5.1);
+            r.forceScan = true;
+            r.Invalidate();
+            r.Update(cam, 1880.0, 1480.0);
+            let bref = NMRendSnap.Take(r);
+            r.forceScan = false;
+            r.Invalidate();
+            r.Update(cam, 1880.0, 1480.0);
+            let bd = NMRendSnap.Diff(bref, NMRendSnap.Take(r));
+            if NotEquals(bd, "") { budgetBad += "c" + ToString(bc) + ": " + bd + "; "; }
+            if bref.chips >= NMTheme.ChipBudget() { sawBudget = true; }
+            bc += 1;
+        }
+        r.noDeclutter = false;
         t.Check("perf.occ_identical_to_scan", Equals(bad, "") && runs == 21, bad);
         t.Check("perf.equivalence_exercised", sawCapped && sawFar && sawChip && dbg.count == 3000, ToString(sawCapped) + ToString(sawFar) + ToString(sawChip));
+        t.Check("perf.budget_full_identical", sawBudget && Equals(budgetBad, ""), ToString(sawBudget) + " " + budgetBad);
         // The wide layer must really have > 150 occupied level-0 cells (the old 64 cap's territory) over the city.
         t.Check("perf.wide_layer_exceeds_old_cap", wide.occN[0] > 150 && Equals(NMPerfTests.OccErr(wide), ""), ToString(wide.occN[0]));
         // Far zoom costs less than it draws: at 16 m/unit the Minor layers (3,000 debug items among them) are skipped

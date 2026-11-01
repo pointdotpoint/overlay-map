@@ -382,8 +382,9 @@ public class NMItemRenderer {
             let L = api.layers[li];
             let tier = L.EffectiveTier();
             this.curAlways = tier <= 0;
+            // Major layers come before every Minor one, so `culled` is theirs alone while they are placed.
             this.cullLimit = this.curAlways || this.noDeclutter ? 2147483647
-                : (tier == 1 ? NMItemRenderer.CullCap() : Min(this.culled + NMItemRenderer.LayerCullCap(), NMItemRenderer.CullCap()));
+                : (tier == 1 ? NMItemRenderer.CullCap() : this.culled + NMItemRenderer.LayerCullCap());
             if L.VisibleAt(cam.mpp) && L.count > 0 && !this.Saturated() {
                 let f = NMTiers.LayerFade(L, cam.mpp);
                 if f > 0.0 {   // fully faded: skipped whole, not a candidate (spec 7.2)
@@ -492,15 +493,17 @@ public class NMItemRenderer {
     // 1. A level-0 cell's chain stops after CellMissCap culls with no placement in between (items outside the view
     //    neither count nor reset): about as many markers as fit in the cell on screen, at least 2, so a cell smaller
     //    than a marker gives up after two misses while a cell many markers across (close zoom) keeps looking.
-    // 2. A Minor layer stops after LayerCullCap culls of its own, so dense Minor layers walked first (vendors, drop
-    //    points) can't use up the evaluation of the ones after them (the collectibles, last by priority). Major layers
-    //    (fast travel, quests: all a far view shows) have only the relayout's bound: after CullCap culls in one relayout
-    //    only Always-tier items are still placed (they never cull). The selection is placed before any layer
-    //    (PlaceKept), so no bound can drop it.
+    // 2. Major layers (fast travel, quests: all a far view shows) stop together after CullCap culls. They are walked
+    //    first (tier, then priority), so the count is theirs alone.
+    // 3. Each Minor layer then gets its own slice of LayerCullCap culls, whatever the layers before it used: dense
+    //    layers walked first (fast travel, vendors, drop points) can't starve the ones after them (the collectibles,
+    //    last by priority). A relayout's culls are at most CullCap + LayerCullCap x the Minor layers in view.
+    //    Always-tier items never cull, and the selection is placed before any layer (PlaceKept), so no bound drops them.
     // Task 11, measured with NMPerfSuite: a cull costs about as much as a placement, and one cap of 300 per relayout
     // kept the real-marker sweep (vanilla_open) over main's frame time while starving the collectibles at mid zoom.
-    public static func LayerCullCap() -> Int32 { return 40; }
-    public static func CullCap() -> Int32 { return 4 * NMItemRenderer.LayerCullCap(); }
+    // 24 per Minor layer: with a slice per layer, 40 cost vanilla_open +0.56 ms script avg against main.
+    public static func LayerCullCap() -> Int32 { return 24; }
+    public static func CullCap() -> Int32 { return 160; }
 
     private func LayerRadii() {
         let s = this.scale * this.curScale;

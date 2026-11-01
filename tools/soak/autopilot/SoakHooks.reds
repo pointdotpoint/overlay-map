@@ -26,11 +26,13 @@ public abstract class NMSoak {
         if Equals(command, "desc_probe") { return NMSoakDesc.Add(sys); }
         if StrBeginsWith(command, "focus_layer ") {
             let fl = StrSplit(command, " ");
+            if ArraySize(fl) < 3 { return "usage: focus_layer <id part> <mpp>"; }
             return sys.Soak_FocusLayer(fl[1], StringToFloat(fl[2]));
         }
         if Equals(command, "perf") { return sys.Soak_Perf(); }
         if StrBeginsWith(command, "set ") {
             let sv = StrSplit(command, " ");
+            if ArraySize(sv) < 3 { return "usage: set <name> <value>"; }
             return sys.Soak_Set(sv[1], sv[2]);
         }
         if Equals(command, "is_open") { return sys.Soak_IsOpen(); }

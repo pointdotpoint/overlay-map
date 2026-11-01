@@ -270,6 +270,46 @@ public abstract class NMDeclutterTests {
         t.Check("declutter.cap_per_layer", r13.culled == NMItemRenderer.LayerCullCap()
             && NMDeclutterTests.Placed(r13, lone, loneId), NMDeclutterTests.Info(r13));
 
+        // 11b. Major culls don't eat the Minor slices: a Major layer spends its CullCap, two dense Minor layers their
+        // LayerCullCap each, and a last, lowest-priority Minor layer is still walked and places its lone item.
+        let api14 = NMDeclutterTests.Api();
+        let maj = NMDeclutterTests.Layer(api14, n"test.dc.majpiles", 90, NightMapTier.Major);
+        let minA = NMDeclutterTests.Layer(api14, n"test.dc.minA", 60, NightMapTier.Minor);
+        let minB = NMDeclutterTests.Layer(api14, n"test.dc.minB", 50, NightMapTier.Minor);
+        let minC = NMDeclutterTests.Layer(api14, n"test.dc.minC", 5, NightMapTier.Minor);
+        i = 0;
+        while i < 200 * 6 {
+            let mc = i / 6;   // 6 items in each of 200 cells: x -3750..-1250 m, 20 rows
+            NMDeclutterTests.At(maj, Cast<Float>(mc % 10 - 15) * 250.0 + 125.0, Cast<Float>(mc / 10 - 10) * 250.0 + 125.0);
+            i += 1;
+        }
+        i = 0;
+        while i < 60 * 6 {
+            let ac = i / 6;   // 60 cells each: A at x -1000..-250 m, B at x 0..750 m
+            NMDeclutterTests.At(minA, Cast<Float>(ac % 3 - 4) * 250.0 + 125.0, Cast<Float>(ac / 3 - 10) * 250.0 + 125.0);
+            NMDeclutterTests.At(minB, Cast<Float>(ac % 3) * 250.0 + 125.0, Cast<Float>(ac / 3 - 10) * 250.0 + 125.0);
+            i += 1;
+        }
+        let lastId = NMDeclutterTests.At(minC, 3000.0, 0.0);
+        let r14 = NMItemRenderer.Create(api14, new inkCanvas(), 1.0);
+        r14.Update(NMDeclutterTests.Cam(4.0), w, h);
+        t.Check("declutter.minor_slices_after_major", r14.culled == NMItemRenderer.CullCap() + 2 * NMItemRenderer.LayerCullCap()
+            && r14.capStops == 3 && NMDeclutterTests.Placed(r14, minC, lastId), "stops " + ToString(r14.capStops) + " " + NMDeclutterTests.Info(r14));
+
+        // 11c. A filter-promoted big layer (1,657 items, like the shards, promoted to Major) still fills mid zoom: the
+        // Major cap stops it only after a screenful of markers.
+        let api15 = NMDeclutterTests.Api();
+        let big = NMDeclutterTests.Layer(api15, n"test.dc.bigpromoted", 40, NightMapTier.Minor);
+        big.SetPromoted(true);
+        i = 0;
+        while i < 1657 {
+            NMDeclutterTests.At(big, -6000.0 + Cast<Float>((i * 7919) % 10600), -4600.0 + Cast<Float>((i * 104729) % 12000));
+            i += 1;
+        }
+        let r15 = NMItemRenderer.Create(api15, new inkCanvas(), 1.0);
+        r15.Update(NMDeclutterTests.Cam(4.0), w, h);
+        t.Check("declutter.promoted_big_layer_fills", ArraySize(r15.candX) >= 60 && r15.culled <= NMItemRenderer.CullCap(), NMDeclutterTests.Info(r15));
+
         // 12. The header is reserved: a pile of Minor and Major items inside the panel's padded title rect is culled,
         // an Always item there stays, and an item just outside the rect is placed. Rects come from a real panel
         // (scale 1, so map units are 4K units) with a district name set.

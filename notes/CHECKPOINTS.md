@@ -183,7 +183,7 @@ against about 10 ms earlier). Both sides ran under the same conditions:
 | closed_end | 23.68 | 23.40 | -1.2 % | 26.94 | 25.96 | -3.6 % | 0.00 | 0.00 |
 
 Every mean is within +5 %. Two p95 values are above +5 %: closed_baseline (+8.5 %, no mod code runs there, so this is
-noise) and panzoom (+7.1 %). The script time, which is stable from run to run, is at or below main everywhere except
+noise) and panzoom (+7.1 %, script p95 +1.1 ms: **accepted by the user 2026-11-01**). The script time, which is stable from run to run, is at or below main everywhere except
 panzoom (2.07 against 2.05 avg; p95 7.08 against 5.98 ms, the extra tile set). Before the environment changed (frames at
 about 10 ms), three main runs against the tuned branch before the tile-layer fix gave, as the mean over the closed
 baseline: open_empty +1.70 against +1.26 ms, vanilla_open +1.76 / +1.82, panzoom +1.27 / +1.46, items_50000 +1.96 / +3.81.
@@ -200,12 +200,48 @@ Run-to-run p95 noise was about ±10 % on idle scenarios with identical script co
 | `DeclutterOverlap` | 0.75 → 1.0 | plate rings may touch, never overlap; z2 placed markers 187 → 120 |
 | NCPD Scanner (Story filter) priority | 80 → 45 | was placed before services and collectibles at mid zoom |
 | NCPD Scanner fade | Minor 4–6 → ambient 2.5–4 m/unit (`NightMapLayer.SetAmbient`, `NMTiers.LayerFade`) | z4 was a wall of teal NCPD icons; mid zoom keeps vendors and collectibles |
-| declutter cull cap | 300 per relayout → 40 per Minor layer, 160 per relayout | perf gate (above), and collectibles were starved at z2/z4 |
+| declutter cull cap | 300 per relayout → Major layers 160 together, each Minor layer 24 of its own (fix round 1) | perf gate (above); a shared total starved the collectibles (last by priority) at z2/z4 |
 | hint keycaps | letter-spacing 0 → 4 (4K units), width estimate counts spaces at 7 | PAN read "8462" |
 | `NMTiers` thresholds, minimum scale | unchanged (Minor 4–6, Major 24–32, 0.7 at 8+) | z8/z16 already show only Major + tracked |
 
-Placed markers per zoom (look run 20261101-120243): z0.5 23, z2 120, z4 110, z8 60 (quests 9, fast travel 51), z16 25
-(quests 7, fast travel 18).
+Placed markers per zoom (look run 20261101-134657, after fix round 1): z0.5 23, z2 118, z4 130 (collectibles 31: shards 3,
+tarot 8, weapons 3, clothing 8, skill 9; spread over the view), z8 60 (quests 9, fast travel 51), z16 25 (quests 7, fast
+travel 18). Before fix round 1, z4 had 5 collectibles, near the centre.
+
+### Fix round 1 (review)
+
+- Each Minor layer now gets its own 24-cull slice (Major layers share 160 and are walked first); before, Minor slices
+  were cut by a running total that included the fast-travel culls, so the collectibles were skipped. New self-tests:
+  `declutter.minor_slices_after_major` (a Major layer and three Minor layers; the last still places),
+  `declutter.promoted_big_layer_fills` (1,657 items promoted to Major place a screenful at mid zoom),
+  `perf.budget_full_identical` (the chip-budget-full path of the scan/occupancy equivalence, declutter off).
+- Tile streaming: new tiles are requested at most 24 per set per frame (the level's fade waits for the rest), and the
+  next level's preload is requested 6 tiles per set per frame instead of all at once.
+- Harness: the Immersive Third Person fact is set at every session start; `set` and `focus_layer` check their arguments.
+
+Final perf, 2 runs each side, interleaved, same environment (ReShade VHS preset on for both; every run drifted more than
+0.5 ms between its closed scenarios, so these are noisy). Raw lines: `.scratch/perf-main.txt`, `.scratch/perf-branch.txt`.
+
+| scenario | main avg | branch avg | Δ avg | main p95 | branch p95 | Δ p95 | main script avg | branch script avg |
+|---|---|---|---|---|---|---|---|---|
+| closed_baseline | 23.11 | 22.97 | -0.6 % | 25.12 | 24.87 | -1.0 % | 0.00 | 0.00 |
+| open_empty | 24.15 | 24.39 | +1.0 % | 25.72 | 27.18 | +5.7 % | 1.89 | 1.72 |
+| vanilla_open | 24.41 | 25.13 | +2.9 % | 25.92 | 28.24 | +9.0 % | 2.64 | 3.16 |
+| route_open | 24.31 | 25.06 | +3.1 % | 25.83 | 27.59 | +6.8 % | 1.90 | 1.77 |
+| photos_500 | 25.00 | 26.27 | +5.1 % | 29.21 | 31.34 | +7.3 % | 5.44 | 2.30 |
+| items_5000 | 25.55 | 25.65 | +0.4 % | 29.89 | 29.32 | -1.9 % | 4.34 | 2.59 |
+| items_20000 | 25.97 | 24.99 | -3.8 % | 30.14 | 27.25 | -9.6 % | 4.69 | 2.27 |
+| items_50000 | 26.43 | 25.64 | -3.0 % | 29.70 | 29.60 | -0.3 % | 4.71 | 2.20 |
+| idle_0p5 | 25.65 | 25.47 | -0.7 % | 28.64 | 30.28 | +5.7 % | 0.09 | 0.10 |
+| idle_2 | 25.82 | 25.59 | -0.9 % | 29.47 | 30.96 | +5.1 % | 0.09 | 0.10 |
+| idle_8 | 25.87 | 25.10 | -3.0 % | 29.16 | 29.94 | +2.7 % | 0.09 | 0.10 |
+| panzoom_0p5_16 | 25.90 | 24.64 | -4.9 % | 29.23 | 27.47 | -6.0 % | 2.10 | 1.95 |
+| closed_end | 24.62 | 24.17 | -1.8 % | 27.95 | 28.13 | +0.6 % | 0.00 | 0.00 |
+
+Means: all within +5 % except photos_500 at +5.1 %, whose script time is under half of main's (2.30 against 5.44 ms),
+so that is frame noise. The real cost of the per-layer slices is vanilla_open's script: +0.52 ms avg (3.16 against
+2.64), p95 7.10 against 5.87 ms. panzoom script p95 in these runs: 6.00 against 6.15 ms, after the tile budgets; the
+earlier +1.1 ms (7.08 against 5.98) is **accepted by the user 2026-11-01**.
 
 ### Screenshots
 
@@ -236,6 +272,8 @@ regression 20261101-130814 pass, `TEST|SUMMARY|passed=455|failed=0`; collect 202
 20261101-124027 pass (455 / 0); fast-travel 20261101-124930 pass (3 runs); render 20261101-130308 pass (455 / 0);
 controller 20261101-125746: hold pass, pad-1 coverage_fail at step 84 (`vdist: still 0`), the known View-close
 movement lock from main. The pad hint bar's keycaps show in controller pad_open.png.
+After fix round 1: render 20261101-142351 pass, regression 20261101-135020 pass, collect 20261101-135453 pass (3 runs),
+look 20261101-134657 pass; self-tests `passed=458|failed=0`.
 
 ### Harness notes
 

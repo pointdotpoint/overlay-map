@@ -26,6 +26,7 @@ public class NMTileLayer extends NMMapLayer {
     private let keys: array<Int32>;
     private let cont: array<ref<inkCanvas>>;
     private let rSet: array<Bool>;
+    private let incomplete: array<Bool>;   // the level's last range still has tiles to request (TilesPerFrame)
     private let rIx0: array<Int32>;
     private let rIx1: array<Int32>;
     private let rIy0: array<Int32>;
@@ -56,6 +57,13 @@ public class NMTileLayer extends NMMapLayer {
     // covers what was on screen, and the wider view would show a bare ring around it until they load.
     private let preTokens: array<ref<ResourceToken>>;
     private let preKey: Int32;
+    private let preLv: Int32;        // the range PreloadStep is still requesting: level, bounds and the next tile
+    private let preX0: Int32;
+    private let preX1: Int32;
+    private let preY1: Int32;
+    private let preIx: Int32;
+    private let preIy: Int32;
+    private let preActive: Bool;
     public let holdFade: Bool;       // the stack holds every set until all of them have their tiles
     public let skipLoadWait: Bool;   // test hook: fades run on time alone, as if every tile were in
     public let holdLoads: Bool;      // test hook: no load finishes
@@ -76,6 +84,10 @@ public class NMTileLayer extends NMMapLayer {
     public static func RevealFrames() -> Int32 { return 2; }
     // Two resident levels at 4K (up to ~120 tiles each near a 2x ratio) with margin.
     public static func MaxSlots() -> Int32 { return 320; }
+    // New tiles requested per set per frame: a level change asks for up to ~50 per set, and five sets at once made the
+    // frame's script spike; the rest follow on the next frames, and the level's fade waits for them (Task 11).
+    public static func TilesPerFrame() -> Int32 { return 24; }
+    public static func PreloadPerFrame() -> Int32 { return 6; }   // next-level tiles warmed per set per frame
 
     public static func TilePath(setName: String, lv: Int32, ix: Int32, iy: Int32) -> String {
         return "nightmap\\tiles\\" + setName + "\\L" + ToString(lv) + "\\t_" + ToString(ix) + "_" + ToString(iy) + ".inkatlas";
@@ -134,6 +146,7 @@ public class NMTileLayer extends NMMapLayer {
             ArrayPush(t.cont, null);
             ArrayPush(t.lvWaiting, 0);
             ArrayPush(t.rSet, false);
+            ArrayPush(t.incomplete, false);
             ArrayPush(t.rIx0, 0);
             ArrayPush(t.rIx1, 0);
             ArrayPush(t.rIy0, 0);
@@ -235,14 +248,15 @@ public class NMTileLayer extends NMMapLayer {
 
     public func Alpha() -> Float { return this.aCur; }
     public func Waiting() -> Int32 { return this.waiting; }
-    public func WaitingOnCurrent() -> Bool { return this.cur >= 0 && this.lvWaiting[this.cur] > 0; }
+    public func WaitingOnCurrent() -> Bool { return this.cur >= 0 && (this.lvWaiting[this.cur] > 0 || this.incomplete[this.cur]); }
     public func CurrentLevel() -> Int32 { return this.cur; }
     public func PreviousLevel() -> Int32 { return this.prev; }
 
     public func Update(cam: ref<NMCamera>, dtMs: Float) {
         this.nowMs += MaxF(dtMs, 0.0);
         let fading = this.prev >= 0 || this.aCur < 1.0;
-        if cam.revision == this.lastRev && !fading && !this.tintDirty && this.waiting == 0 {
+        if cam.revision == this.lastRev && !fading && !this.tintDirty && this.waiting == 0 && !(this.cur >= 0 && this.incomplete[this.cur]) {
+            if this.preActive { this.PreloadStep(); }
             return;
         }
         this.lastRev = cam.revision;
@@ -280,7 +294,7 @@ public class NMTileLayer extends NMMapLayer {
                 this.Container(this.cur).Reparent(this.box);   // incoming draws above outgoing
             }
         }
-        if this.aCur < 1.0 && !changed && (this.skipLoadWait || (!this.holdFade && this.lvWaiting[this.cur] == 0)) {
+        if this.aCur < 1.0 && !changed && (this.skipLoadWait || (!this.holdFade && this.lvWaiting[this.cur] == 0 && !this.incomplete[this.cur])) {
             this.aCur = NMTileLayer.FadeStep(this.aCur, dtMs, NMTileLayer.FadeMs(), true);
             touch = true;
         }
@@ -301,6 +315,7 @@ public class NMTileLayer extends NMMapLayer {
             this.PlaceLevel(cam, this.prev, NMTileLayer.UnderOpacity(this.opacity, this.aCur), touch, false);
         }
         this.tintDirty = false;
+        if this.preActive { this.PreloadStep(); }
     }
 
     private func Container(lv: Int32) -> ref<inkCanvas> {
@@ -343,7 +358,7 @@ public class NMTileLayer extends NMMapLayer {
         let ix1 = Min(FloorF((vis.maxX - ox) / tw), nx - 1);
         let iy0 = Max(FloorF((otop - vis.maxY) / tw), 0);
         let iy1 = Min(FloorF((otop - vis.minY) / tw), ny - 1);
-        if shown && this.rIx0[lv] == ix0 && this.rIx1[lv] == ix1 && this.rIy0[lv] == iy0 && this.rIy1[lv] == iy1 {
+        if shown && !this.incomplete[lv] && this.rIx0[lv] == ix0 && this.rIx1[lv] == ix1 && this.rIy0[lv] == iy0 && this.rIy1[lv] == iy1 {
             return;
         }
         this.Preload(cam, lv + 1);
@@ -363,13 +378,23 @@ public class NMTileLayer extends NMMapLayer {
             }
             s += 1;
         }
+        let added = 0;
+        let more = false;
+        let full = false;   // the pool ran out: what is missing stays missing (logged), not pending
         let iy = iy0;
-        while iy <= iy1 {
+        while iy <= iy1 && !more {
             let ix = ix0;
-            while ix <= ix1 {
+            while ix <= ix1 && !more {
                 let gk = this.levelBase[lv] + iy * nx + ix;
                 if this.slotOf[gk] == 0 && this.Has(lv, ix, iy) {
-                    let slot = this.AllocSlot();
+                    let slot = -1;
+                    if added >= NMTileLayer.TilesPerFrame() {
+                        more = true;   // the rest on the next frames
+                    } else {
+                        added += 1;
+                        slot = this.AllocSlot();
+                        if slot < 0 { full = true; }
+                    }
                     if slot >= 0 {
                         let img = this.pool[slot];
                         let path = NMTileLayer.TilePath(this.setName, lv, ix, iy);
@@ -396,7 +421,7 @@ public class NMTileLayer extends NMMapLayer {
                         this.slotIx[slot] = ix;
                         this.slotIy[slot] = iy;
                         this.slotOf[gk] = slot + 1;
-                    } else if !this.capLogged {
+                    } else if full && !this.capLogged {
                         this.capLogged = true;
                         NMLog.Error("tile pool exhausted in set " + this.setName + " (cap " + ToString(NMTileLayer.MaxSlots()) + "): some tiles will be missing");
                     }
@@ -405,6 +430,7 @@ public class NMTileLayer extends NMMapLayer {
             }
             iy += 1;
         }
+        this.incomplete[lv] = more && !full;
     }
 
     private func Preload(cam: ref<NMCamera>, lv: Int32) {
@@ -424,19 +450,34 @@ public class NMTileLayer extends NMMapLayer {
         }
         this.preKey = key;
         ArrayClear(this.preTokens);
+        this.preLv = lv;
+        this.preX0 = ix0;
+        this.preX1 = ix1;
+        this.preY1 = iy1;
+        this.preIx = ix0;
+        this.preIy = iy0;
+        this.preActive = true;
+        this.PreloadStep();
+    }
+
+    // Requests up to PreloadPerFrame tiles of the pending preload range, row by row; Update calls it every frame until
+    // the range is done, so a level change doesn't ask for the whole next level in one frame (Task 11).
+    private func PreloadStep() {
         let depot = GameInstance.GetResourceDepot();
-        let iy = iy0;
-        while iy <= iy1 {
-            let ix = ix0;
-            while ix <= ix1 {
-                if this.Has(lv, ix, iy) {
-                    let path = NMTileLayer.TilePath(this.setName, lv, ix, iy);
-                    ArrayPush(this.preTokens, depot.LoadResource(ResRef.FromString(path)));
-                    ArrayPush(this.preTokens, depot.LoadResource(ResRef.FromString(StrReplace(path, ".inkatlas", ".xbm"))));
-                }
-                ix += 1;
+        let asked = 0;
+        while this.preActive && asked < NMTileLayer.PreloadPerFrame() {
+            if this.Has(this.preLv, this.preIx, this.preIy) {
+                let path = NMTileLayer.TilePath(this.setName, this.preLv, this.preIx, this.preIy);
+                ArrayPush(this.preTokens, depot.LoadResource(ResRef.FromString(path)));
+                ArrayPush(this.preTokens, depot.LoadResource(ResRef.FromString(StrReplace(path, ".inkatlas", ".xbm"))));
+                asked += 1;
             }
-            iy += 1;
+            this.preIx += 1;
+            if this.preIx > this.preX1 {
+                this.preIx = this.preX0;
+                this.preIy += 1;
+                if this.preIy > this.preY1 { this.preActive = false; }
+            }
         }
     }
 
@@ -526,6 +567,7 @@ public class NMTileLayer extends NMMapLayer {
             s += 1;
         }
         this.rSet[lv] = false;
+        this.incomplete[lv] = false;
         if IsDefined(this.cont[lv]) {
             this.cont[lv].SetVisible(false);
         }
