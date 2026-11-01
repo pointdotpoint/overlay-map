@@ -54,8 +54,7 @@ public class NMHolo {
         this.vignette = NMUi.HoloImage(parent, n"holo_vignette", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloScanColor(), NMTheme.VignetteOpacity(), inkBrushTileType.NoTile);
     }
 
-    // Noise (accent) over the tiles, under the markers. The scanline image (black, over everything but the overlay) is one period taller
-    // than the map and starts one period up, so the looped translation by one period is seamless.
+    // Noise (accent) over the tiles, under the markers.
     public func AddNoise(parent: wref<inkCompoundWidget>) {
         if !this.effects {
             return;
@@ -63,6 +62,8 @@ public class NMHolo {
         this.noise = NMUi.HoloImage(parent, n"holo_noise", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloAccent(this.theme), NMTheme.HoloNoiseOpacity(), inkBrushTileType.Both);
     }
 
+    // Scanlines (black) over the markers, under the overlay. The image is one period taller than the map and starts one
+    // period up, so the looped translation by one period is seamless.
     public func AddScan(parent: wref<inkCompoundWidget>) {
         if !this.effects {
             return;
@@ -144,9 +145,9 @@ public class NMHolo {
             dBar.AddInterpolator(NMHolo.Fade(0.0, 0.0, 5.9, 0.1));
             this.Loop(this.bar, dBar);
         }
-        // Noise flicker: hard steps between 0.08 and 0.14, five per second.
+        // Noise flicker: hard steps between 0.027 and 0.047, five per second.
         if IsDefined(this.noise) {
-            let steps: array<Float> = [0.12, 0.08, 0.14, 0.10, 0.13, 0.09];
+            let steps: array<Float> = [0.04, 0.027, 0.047, 0.033, 0.043, 0.03];
             let dNoise = new inkAnimDef();
             let i = 0;
             while i < ArraySize(steps) {

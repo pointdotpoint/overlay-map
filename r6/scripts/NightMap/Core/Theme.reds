@@ -101,8 +101,8 @@ public abstract class NMTheme {
     public static func RingsOpacity() -> Float { return 0.10; }
     public static func VignetteOpacity() -> Float { return 0.55; }
     public static func RingsSize() -> Float { return 1440.0; }   // 4K units across
-    public static func HoloNoiseOpacity() -> Float { return 0.12; }   // the flicker animation moves it between 0.08 and 0.14
-    public static func HoloBarOpacity() -> Float { return 0.25; }
+    public static func HoloNoiseOpacity() -> Float { return 0.04; }   // the flicker animation moves it between 0.027 and 0.047
+    public static func HoloBarOpacity() -> Float { return 0.12; }
     public static func HoloEdgeOpacity() -> Float { return 0.6; }
     public static func HoloBracketGain() -> Float { return 1.25; }   // brackets brighten with HDR gain (bloom not verified)
     public static func HaloOpacity() -> Float { return 0.35; }       // marker halo in the pin's own colour (effects on)
@@ -120,17 +120,17 @@ public abstract class NMTheme {
             if Equals(set, "outline") { return new HDRColor(0.227, 0.816, 0.424, 1.0); }     // #3ad06c
             if Equals(set, "road_minor") { return new HDRColor(0.165, 0.847, 0.392, 1.0); }  // #2ad864
             if Equals(set, "road_major") { return new HDRColor(0.561, 1.0, 0.707, 1.0); }    // #8fffb4
-            return new HDRColor(0.184, 0.682, 0.350, 1.0);                                   // #2fae59 (bfill)
+            return new HDRColor(0.106, 0.471, 0.227, 1.0);                                   // #1b783a (bfill)
         }
         if Equals(set, "glow") { return new HDRColor(0.184, 0.612, 1.0, 1.0); }              // #2f9cff
         if Equals(set, "outline") { return new HDRColor(0.227, 0.561, 0.816, 1.0); }         // #3a8fd0
         if Equals(set, "road_minor") { return new HDRColor(0.165, 0.525, 0.847, 1.0); }      // #2a86d8
         if Equals(set, "road_major") { return new HDRColor(0.561, 0.863, 1.0, 1.0); }        // #8fdcff
-        return new HDRColor(0.184, 0.435, 0.682, 1.0);                                       // #2f6fae (bfill; one tint for fill and dots)
+        return new HDRColor(0.106, 0.290, 0.471, 1.0);                                       // #1b4a78 (bfill; one tint for fill and dots)
     }
     public static func TileOpacity(set: String) -> Float {
         if Equals(set, "glow") { return 0.50; }
-        if Equals(set, "bfill") { return 0.60; }
+        if Equals(set, "bfill") { return 0.40; }
         if Equals(set, "outline") { return 0.40; }
         if Equals(set, "road_minor") { return 0.60; }
         if Equals(set, "road_major") { return 0.90; }
