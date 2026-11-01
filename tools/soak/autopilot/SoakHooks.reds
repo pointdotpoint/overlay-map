@@ -25,6 +25,11 @@ public abstract class NMSoak {
         if Equals(command, "watch_keys") { return sys.Soak_WatchKeys(); }
         if Equals(command, "last_keys") { return sys.Soak_LastKeys(); }
         if Equals(command, "hold_mode") { return sys.Soak_HoldMode(); }
+        if Equals(command, "watch_axis") { return sys.Soak_WatchAxis(); }
+        if Equals(command, "last_axis") { return sys.Soak_LastAxis(); }
+        if Equals(command, "in_menu") { return sys.Soak_InMenu(); }
+        if Equals(command, "hold_ctx on") { return sys.Soak_HoldCtx(true); }
+        if Equals(command, "hold_ctx off") { return sys.Soak_HoldCtx(false); }
         // Bind StrSplit to a local: indexing a call temporary reads garbage in-game.
         if StrBeginsWith(command, "focus_photo ") {
             let f = StrSplit(command, " ");

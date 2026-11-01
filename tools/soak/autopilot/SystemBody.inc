@@ -525,6 +525,43 @@
         this.soakKeys += ToString(evt.GetKey()) + ":" + ToString(evt.GetAction()) + " ";
     }
 
+    private let soakAxis: String;
+    private let soakCtx: Bool;
+
+    // Stick and trigger events from the pad (mouse axes are skipped): key and value, capped so a held stick can't grow it.
+    public func Soak_WatchAxis() -> String {
+        GameInstance.GetCallbackSystem().RegisterCallback(n"Input/Axis", this, n"Soak_OnAxis");
+        return "watching";
+    }
+
+    private cb func Soak_OnAxis(evt: ref<AxisInputEvent>) {
+        let k = ToString(evt.GetKey());
+        if StrBeginsWith(k, "IK_Pad") && StrLen(this.soakAxis) < 1500 {
+            this.soakAxis += k + "=" + FloatToStringPrec(evt.GetValue(), 2) + " ";
+        }
+    }
+
+    public func Soak_LastAxis() -> String {
+        let seen = this.soakAxis;
+        this.soakAxis = "";
+        return StrLen(seen) > 0 ? seen : "none";
+    }
+
+    // Whether a full-screen game menu (the vanilla map, hub, pause menu) is up.
+    public func Soak_InMenu() -> String {
+        let bb = GameInstance.GetBlackboardSystem(this.GetGameInstance()).Get(GetAllBlackboardDefs().UI_System);
+        return bb.GetBool(GetAllBlackboardDefs().UI_System.IsInMenu) ? "menu" : "game";
+    }
+
+    // Holds the game's actions off with the modal popup context, as the vehicle radio list does.
+    public func Soak_HoldCtx(on: Bool) -> String {
+        if Equals(on, this.soakCtx) { return on ? "held" : "free"; }
+        this.soakCtx = on;
+        let ui = GameInstance.GetUISystem(this.GetGameInstance());
+        if on { ui.PushGameContext(UIGameContext.ModalPopup); } else { ui.PopGameContext(UIGameContext.ModalPopup); }
+        return on ? "held" : "free";
+    }
+
     public func Soak_LastKeys() -> String {
         let seen = this.soakKeys;
         this.soakKeys = "";

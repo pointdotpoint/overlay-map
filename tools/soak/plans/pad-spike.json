@@ -1,0 +1,192 @@
+{
+ "name": "pad-spike",
+ "runs": [
+  {
+   "name": "spike",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "watch_keys"
+    },
+    {
+     "cmd": "watch_axis"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "pad": "A"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "padaxis": "LX",
+     "value": 1.0
+    },
+    {
+     "wait": 1
+    },
+    {
+     "padaxis": "LX",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "last_axis"
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "padhold": "VIEW",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "in_menu"
+    },
+    {
+     "shot": "view_hold"
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "in_menu"
+    },
+    {
+     "pad": "VIEW"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "in_menu"
+    },
+    {
+     "shot": "view_tap"
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "in_menu"
+    },
+    {
+     "shot": "after_b"
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "cmd": "hold_ctx on"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "shot": "ctx_held"
+    },
+    {
+     "padaxis": "RT",
+     "value": 1.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "padaxis": "RT",
+     "value": 0.0
+    },
+    {
+     "pad": "VIEW"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "in_menu"
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "cmd": "last_axis"
+    },
+    {
+     "cmd": "hold_ctx off"
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "cmd": "in_menu"
+    }
+   ]
+  }
+ ]
+}
