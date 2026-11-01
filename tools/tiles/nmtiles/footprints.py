@@ -43,9 +43,9 @@ class Footprints:
         return Footprints(np.split(z["pts"], np.cumsum(z["lens"])[:-1]) if len(z["lens"]) else [])
 
 
-def footprint_key(road: np.ndarray, building: np.ndarray, road_major: np.ndarray | None = None) -> str:
+def footprint_key(road: np.ndarray, building: np.ndarray, road_major: np.ndarray) -> str:
     h = hashlib.sha256(f"v{VERSION}|{PARAMS}|{TILE}|{MARGIN}|{MAX_MARGIN}|{EDGE_TOUCH}|{shapely.__version__}".encode())
-    for a in (road, building) + (() if road_major is None else (road_major,)):
+    for a in (road, building, road_major):
         h.update(str(a.shape).encode())
         h.update(np.ascontiguousarray(a).tobytes())
     return h.hexdigest()[:16]
@@ -170,12 +170,11 @@ def math_floor(v: float, step: float) -> float:
     return float(np.floor(v / step) * step)
 
 
-def load_or_build(road: np.ndarray, building: np.ndarray, cache: Path, jobs: int, log=print,
-                  road_major: np.ndarray | None = None) -> Footprints:
-    """Footprints are cut by every road, so `road_major` (if any) is joined to `road` for the cut and hashed in the key."""
+def load_or_build(road: np.ndarray, building: np.ndarray, cache: Path, jobs: int, road_major: np.ndarray,
+                  log=print) -> Footprints:
+    """Footprints are cut by every road, so `road_major` is joined to `road` for the cut and hashed in the key."""
     key = footprint_key(road, building, road_major)
-    if road_major is not None:
-        road = np.concatenate([road, road_major])
+    road = np.concatenate([road, road_major])
     fp = Footprints.load(cache, key)
     if fp is not None:
         log(f"footprints: cached {len(fp.polys)}")

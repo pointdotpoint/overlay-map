@@ -1,7 +1,8 @@
 import numpy as np
+import pytest
 
 from nmtiles.render import LevelGrid
-from nmtiles.render_minimap import GLOW_MIN_MPP, SETS, TriIndex, make_sources, render_tile
+from nmtiles.render_minimap import GLOW_MIN_MPP, SETS, TileSources, TriIndex, make_sources, render_tile
 
 # 2x2 tiles of 512 px at 1 m/px: tile (ix, iy) covers x in [512 ix, 512 ix + 512), y in (1024 - 512 (iy+1), 1024 - 512 iy]
 GRID = LevelGrid(1.0, 0.0, 1024.0, 2, 2, 512)
@@ -76,7 +77,7 @@ def test_adjacent_tiles_agree_with_one_big_render_for_fractional_vertices():
     s = src(road, polys)
     l, r = render_tile(s, GRID, 0, 0), render_tile(s, GRID, 1, 0)
     big = LevelGrid(1.0, 0.0, 1024.0, 1, 1, 1024)
-    whole = render_tile(make_sources(road, polys, big.tile_world), big, 0, 0)
+    whole = render_tile(make_sources(road, polys, big.tile_world, NOROAD), big, 0, 0)
     for name in ("road_minor", "bfill", "outline"):      # glow needs mpp >= 2: covered below
         left, right = alpha(l[name]).astype(int), alpha(r[name]).astype(int)
         assert left[:, 511].max() > 0 and right[:, 0].max() > 0, name        # painted on both sides of the shared edge
@@ -108,7 +109,7 @@ def test_glow_exists_only_at_levels_with_mpp_at_least_two():
         g = LevelGrid(mpp, 0.0, 1024.0 * mpp, 2, 2, 512)
         road = tri((50 * mpp, 1000 * mpp), (150 * mpp, 1000 * mpp), (100 * mpp, 900 * mpp))   # px (50..150, 24..124)
         foot = [box(200 * mpp, 800 * mpp, 300 * mpp, 900 * mpp)]
-        out = render_tile(make_sources(road, foot, g.tile_world), g, 0, 0)
+        out = render_tile(make_sources(road, foot, g.tile_world, NOROAD), g, 0, 0)
         assert {"road_minor", "bfill", "outline"} <= set(out)
         have.append("glow" in out)
     assert have == [False, False, True, True, True, True]
@@ -154,7 +155,7 @@ def test_glow_stitches_across_a_tile_edge_and_is_deterministic():
     s = src2(road, polys)
     l, r = render_tile(s, GRID2, 0, 0), render_tile(s, GRID2, 1, 0)
     big = LevelGrid(2.0, 0.0, 2048.0, 1, 1, 1024)
-    whole = render_tile(make_sources(road, polys, big.tile_world), big, 0, 0)
+    whole = render_tile(make_sources(road, polys, big.tile_world, NOROAD), big, 0, 0)
     left, right = alpha(l["glow"]).astype(int), alpha(r["glow"]).astype(int)
     top = alpha(whole["glow"]).astype(int)[:512]
     assert left[:, 511].max() > 0 and right[:, 0].max() > 0
@@ -183,3 +184,43 @@ def test_glow_gain_falls_with_level_so_far_zoom_is_not_haze():
     from nmtiles.render_minimap import GLOW_GAIN, glow_gain
     g = [glow_gain(m) for m in (2.0, 4.0, 8.0, 16.0)]
     assert g[0] == GLOW_GAIN and all(a > b for a, b in zip(g, g[1:])) and g[3] < 1.0
+
+
+def test_short_minor_piece_between_collinear_major_segments_is_major():
+    # 1 m/px; major 20 m wide segments with a 20 x 20 m square (width 10: minor) bridging the 20 m gap
+    major = np.concatenate([quad(100, 600, 200, 620), quad(220, 600, 320, 620)])
+    stub = quad(200, 600, 220, 620)
+    out = render_tile(src(road=stub, major=major), GRID, 0, 0)
+    mn, mj = alpha(out["road_minor"]) if "road_minor" in out else np.zeros((512, 512)), alpha(out["road_major"])
+    row, col = 1024 - 610, 210
+    assert mj[row, col] == 255 and mn[row, col] == 0
+    assert mn.max() == 0
+
+
+def test_side_street_meeting_a_major_road_stays_minor():
+    major = quad(100, 600, 400, 620)                  # 300 x 20 m arterial
+    side = quad(240, 620, 250, 800)                   # 10 x 180 m street, T-junction on the arterial's edge
+    out = render_tile(src(road=side, major=major), GRID, 0, 0)
+    mn, mj = alpha(out["road_minor"]), alpha(out["road_major"])
+    assert mn[1024 - 700, 245] == 255 and mj[1024 - 700, 245] == 0
+    assert mn[1024 - 625, 245] == 255 and mj[1024 - 625, 245] == 0     # right at the junction
+
+
+def test_road_major_is_required():
+    with pytest.raises(TypeError):
+        make_sources(NOROAD, [], 256.0)
+    with pytest.raises(TypeError):
+        TileSources(TriIndex(NOROAD, 256.0), TriIndex(NOROAD, 256.0), [])
+
+
+def test_promotion_stitches_across_tile_edges():
+    major = np.concatenate([quad(400, 600, 500, 620), quad(524, 600, 624, 620)])    # gap of 24 m across x = 512
+    stub = quad(500, 600, 524, 620)
+    s = src(road=stub, major=major)
+    l, r = render_tile(s, GRID, 0, 0), render_tile(s, GRID, 1, 0)
+    big = LevelGrid(1.0, 0.0, 1024.0, 1, 1, 1024)
+    whole = render_tile(make_sources(stub, [], big.tile_world, major), big, 0, 0)
+    for name in ("road_major",):
+        got = np.hstack([alpha(l[name]), alpha(r[name])]).astype(int)
+        assert np.abs(got - alpha(whole[name]).astype(int)[:512]).max() <= 2
+    assert "road_minor" not in l and "road_minor" not in r

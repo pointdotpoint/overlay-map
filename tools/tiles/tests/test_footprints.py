@@ -40,8 +40,8 @@ def test_no_duplicates_across_tile_borders_and_deterministic():
 
 def test_key_changes_with_inputs_and_params():
     b = rect(0, 0, 10, 10)
-    assert footprint_key(EMPTY, b) == footprint_key(EMPTY, b)
-    assert footprint_key(EMPTY, b) != footprint_key(EMPTY, rect(0, 0, 10, 11))
+    assert footprint_key(EMPTY, b, EMPTY) == footprint_key(EMPTY, b, EMPTY)
+    assert footprint_key(EMPTY, b, EMPTY) != footprint_key(EMPTY, rect(0, 0, 10, 11), EMPTY)
 
 
 def test_cache_roundtrip(tmp_path):

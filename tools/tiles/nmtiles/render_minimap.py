@@ -21,7 +21,9 @@ from typing import Callable
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+from scipy.ndimage import maximum_filter, minimum_filter
 
+from nmtiles.minimap import MAJOR_WIDTH_M
 from nmtiles.render import LevelGrid
 
 SETS = ("glow", "bfill", "outline", "road_minor", "road_major")      # draw order, back to front: roads over buildings
@@ -38,6 +40,7 @@ def glow_gain(mpp: float) -> float:
     return GLOW_GAIN * math.sqrt(GLOW_MIN_MPP / max(mpp, GLOW_MIN_MPP))
 
 GLOW_MINOR_WEIGHT = 0.35                                 # minor-road rim strength in the glow, relative to major
+BRIDGE_EXTENT = 1.5 * MAJOR_WIDTH_M                      # m: a minor piece up to this long between major pieces is promoted
 GLOW_MARGIN = math.ceil(3 * GLOW_RADIUS) + 3             # >= 3 sigma plus the LANCZOS support
 EDGE_MARGIN = 3                                          # px: >= the LANCZOS support, so the kernel sees the neighbouring tile
 BATCH = 100_000                                          # primitives drawn per Python list conversion (bounded memory)
@@ -94,10 +97,9 @@ class TileSources:
     polys: list[np.ndarray]         # footprint exteriors, world xy
 
 
-def make_sources(road: np.ndarray, polys: list[np.ndarray], cell: float, road_major: np.ndarray | None = None) -> TileSources:
+def make_sources(road: np.ndarray, polys: list[np.ndarray], cell: float, road_major: np.ndarray) -> TileSources:
     boxes = np.array([[p.min(axis=0), p.max(axis=0)] for p in polys], np.float64).reshape(-1, 2, 2)
-    major = np.zeros((0, 3, 2), np.float32) if road_major is None else road_major
-    return TileSources(TriIndex(road, cell), TriIndex(major, cell), TriIndex(boxes, cell), polys)
+    return TileSources(TriIndex(road, cell), TriIndex(road_major, cell), TriIndex(boxes, cell), polys)
 
 
 def _window(grid: LevelGrid, ix: int, iy: int, margin: int) -> tuple[float, float, float, float, int]:
@@ -167,6 +169,27 @@ def _road_edge(road: np.ndarray) -> np.ndarray:
     return road - np.minimum(road, eroded)
 
 
+def bridge_size(mpp: float) -> int:
+    """Odd side in px of the closing kernel that bridges BRIDGE_EXTENT metres (1 = no-op at coarse levels)."""
+    k = math.ceil(BRIDGE_EXTENT / mpp)
+    return k + 1 - k % 2
+
+
+def _promote(minor: np.ndarray | None, major: np.ndarray | None, mpp: float) -> tuple[np.ndarray | None, np.ndarray | None]:
+    """Minor road pieces that sit in a gap of the major roads no wider than BRIDGE_EXTENT (junction squares, short
+    pieces between two major segments) belong to the major road: move them over, so arterials read as continuous
+    lines. Closing the major mask only fills concavities, so a side street abutting a road stays minor.
+    The closing reaches k - 1 px: callers must render with a margin of at least that."""
+    k = bridge_size(mpp)
+    if minor is None or major is None or k < 3:
+        return minor, major
+    closed = minimum_filter(maximum_filter(major, size=k, mode="constant"), size=k, mode="constant")
+    closed = np.where(closed >= 128, 255, 0).astype(np.uint8)
+    closed = maximum_filter(closed, size=7, mode="constant")      # 3 px slack: LANCZOS ringing around the pieces' edges
+    moved = np.minimum(minor, closed)
+    return minor - moved, np.maximum(major, moved)
+
+
 def _glow(major: np.ndarray | None, minor: np.ndarray | None, gain: float = GLOW_GAIN) -> np.ndarray | None:
     """Blurred road rims, lifted by `gain`: major at full gain, minor at GLOW_MINOR_WEIGHT of it; margin included."""
     if major is None and minor is None:
@@ -192,9 +215,11 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
     # Levels with a glow set render every mask with the larger margin (the window shifts by whole pixels, so the
     # cropped result is identical) and blur it before cropping.
     glow_on = grid.mpp >= GLOW_MIN_MPP
-    margin = GLOW_MARGIN if glow_on else EDGE_MARGIN
+    margin = max(GLOW_MARGIN if glow_on else EDGE_MARGIN, bridge_size(grid.mpp) + EDGE_MARGIN + 3)
     minor = _fill_mask(src.road, grid, ix, iy, margin)
     major = _fill_mask(src.road_major, grid, ix, iy, margin)
+    minor, major = _promote(minor, major, grid.mpp)
+    minor = None if minor is None or not minor.any() else minor
     put("road_minor", None if minor is None else _crop(minor, margin))
     put("road_major", None if major is None else _crop(major, margin))
     masks = _foot_masks(src, grid, ix, iy, margin)
