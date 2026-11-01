@@ -12,6 +12,10 @@ Steps, in order:
   {"await_moved": 100, "timeout": 90}       the player moved that many metres from where the step began
   {"await_state": "ft_load_finished", "timeout": 60}   the game reported that state, else coverage_fail;
                                       "shoot_on": "hold" photographs each time the game raises that state meanwhile
+  {"pad": "A"}, {"padhold": "VIEW", "seconds": 0.8}   a virtual Xbox 360 pad (tools/soak/pad.py): a press, a hold
+  {"paddown": "B"}, {"padup": "B"}    held across the steps between them
+  {"padaxis": "LX", "value": 1.0}     a stick (-1..1, up/right positive) or trigger (LT/RT, 0..1); stays until changed
+                                      A plan with any pad step gets the pad before launch; it is released at the end.
 
 pass: every step done and the game exited by itself. crash: a new crash report, or the process gone.
 hang: no heartbeat for Timeouts.beat, or the game not exiting. black_screen: the game runs but shows nothing.
@@ -87,10 +91,25 @@ def image_luma(path: Path) -> float | None:
         return None
 
 
+PAD_STEPS = ("pad", "padhold", "paddown", "padup", "padaxis")
+
+
+def _virtual_pad():
+    from .pad import VirtualPad
+    return VirtualPad()
+
+
+def uses_pad(steps: list[dict]) -> bool:
+    return any(k in step for step in steps for k in PAD_STEPS)
+
+
 class Runner:
     def __init__(self, paths: Paths, game, clock=time.monotonic, sleep=time.sleep,
-                 timeouts: Timeouts | None = None, stop=lambda: False, luma=image_luma, changed=changed_cells):
+                 timeouts: Timeouts | None = None, stop=lambda: False, luma=image_luma, changed=changed_cells,
+                 pad_factory=None):
         self.paths, self.game, self.clock, self.sleep = paths, game, clock, sleep
+        self.pad_factory = pad_factory or _virtual_pad
+        self.pad = None
         self.t = timeouts or Timeouts()
         self.stop, self.luma, self.changed = stop, luma, changed
 
@@ -115,6 +134,13 @@ class Runner:
         try:
             if self._session_alive():            # the last run's crash reporter / gamescope
                 self.game.kill()
+            if uses_pad(steps):
+                try:
+                    self.pad = self.pad_factory()
+                    self.pad.open()
+                except OSError as e:
+                    self.pad = None
+                    raise Verdict("infra_error", f"no virtual pad: {e}")
             self.game.launch()
             self._wait(self.game.running, self.t.launch, "infra_error", "the game didn't start")
             self.started = True
@@ -144,6 +170,12 @@ class Runner:
             return self._result(v.verdict, v.detail)
         finally:
             self.game.release_all()
+            if self.pad is not None:
+                try:
+                    self.pad.neutral()
+                finally:
+                    self.pad.close()
+                    self.pad = None
 
     # ---- steps ----
 
@@ -162,6 +194,20 @@ class Runner:
         elif "hold" in step:
             if not self.game.hold(step["hold"], step.get("seconds", 1.0)):
                 raise Verdict("infra_error", f"key {step['hold']} didn't reach the game")
+        elif "pad" in step:
+            self.pad.press(step["pad"], step.get("seconds", 0.1))
+        elif "padhold" in step:
+            self.pad.down(step["padhold"])
+            try:
+                self._pause(step.get("seconds", 1.0))
+            finally:
+                self.pad.up(step["padhold"])
+        elif "paddown" in step:
+            self.pad.down(step["paddown"])
+        elif "padup" in step:
+            self.pad.up(step["padup"])
+        elif "padaxis" in step:
+            self.pad.axis(step["padaxis"], float(step.get("value", 0.0)))
         elif "wait" in step:
             self._pause(step["wait"])
         elif "shot" in step:

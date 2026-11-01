@@ -98,7 +98,35 @@ def paths(tmp_path):
     return p
 
 
-def drive(paths, game, steps, luma=0.5):
+class FakePad:
+    def __init__(self, log, fail=False):
+        self.log, self.fail = log, fail
+
+    def open(self):
+        if self.fail:
+            raise PermissionError("/dev/uinput")
+        self.log.append("open")
+
+    def press(self, name, seconds=0.1):
+        self.log.append(f"press {name}")
+
+    def down(self, name):
+        self.log.append(f"down {name}")
+
+    def up(self, name):
+        self.log.append(f"up {name}")
+
+    def axis(self, name, value):
+        self.log.append(f"axis {name} {value}")
+
+    def neutral(self):
+        self.log.append("neutral")
+
+    def close(self):
+        self.log.append("close")
+
+
+def drive(paths, game, steps, luma=0.5, pad_factory=None):
     clock = {"t": 0.0}
 
     def sleep(s):
@@ -106,7 +134,27 @@ def drive(paths, game, steps, luma=0.5):
         game.tick()
 
     return Runner(paths, game, clock=lambda: clock["t"], sleep=sleep, luma=lambda _: luma, changed=lambda a, b: 3.0,
-                  timeouts=Timeouts(exit_settle=0.0, grace=0.0)).run("r-1", "b", "Save", steps, paths.soak / "shots")
+                  timeouts=Timeouts(exit_settle=0.0, grace=0.0),
+                  pad_factory=pad_factory).run("r-1", "b", "Save", steps, paths.soak / "shots")
+
+
+def test_pad_steps_drive_the_virtual_pad_and_release_it(paths):
+    log = []
+    r = drive(paths, FakeGame(paths), [{"pad": "A"}, {"padhold": "VIEW", "seconds": 0.8}, {"paddown": "B"},
+                                        {"padup": "B"}, {"padaxis": "LX", "value": 1.0}], pad_factory=lambda: FakePad(log))
+    assert r.verdict == "pass", r.detail
+    assert log == ["open", "press A", "down VIEW", "up VIEW", "down B", "up B", "axis LX 1.0", "neutral", "close"]
+
+
+def test_a_plan_without_pad_steps_makes_no_pad(paths):
+    log = []
+    r = drive(paths, FakeGame(paths), [{"wait": 1}], pad_factory=lambda: FakePad(log))
+    assert r.verdict == "pass" and log == []
+
+
+def test_no_uinput_access_is_a_harness_error(paths):
+    r = drive(paths, FakeGame(paths), [{"pad": "A"}], pad_factory=lambda: FakePad([], fail=True))
+    assert r.verdict == "infra_error" and "virtual pad" in r.detail
 
 
 def test_a_black_frame_with_an_alpha_channel_measures_black(tmp_path):
