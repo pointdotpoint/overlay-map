@@ -394,6 +394,74 @@ public class NMSelfTest {
         this.Check("input.key_names", Equals(NMInput.KeyName(EInputKey.IK_NumPad8), "NUM 8") && Equals(NMInput.KeyName(EInputKey.IK_Backslash), "\\")
             && Equals(NMInput.KeyName(EInputKey.IK_NumPlus), "NUM +")
             && Equals(NMInput.KeyName(EInputKey.IK_SingleQuote), "'"), NMInput.KeyName(EInputKey.IK_NumPad8));
+        this.HintCases();
+    }
+
+    // Every key the hint copy names, pinned (Mod Settings applies the user's saved bindings to class defaults).
+    public static func HintSettings(holdToShow: Bool) -> ref<NightMapSettings> {
+        let s = new NightMapSettings();
+        s.keyToggle = EInputKey.IK_Backslash;
+        s.keyPanUp = EInputKey.IK_NumPad8;
+        s.keyPanDown = EInputKey.IK_NumPad2;
+        s.keyPanLeft = EInputKey.IK_NumPad4;
+        s.keyPanRight = EInputKey.IK_NumPad6;
+        s.keyZoomIn = EInputKey.IK_NumPlus;
+        s.keyZoomOut = EInputKey.IK_NumMinus;
+        s.keyRecenter = EInputKey.IK_NumPad5;
+        s.keyAct = EInputKey.IK_NumPad0;
+        s.keyFilter = EInputKey.IK_NumSlash;
+        s.keyTeleport = EInputKey.IK_NumPeriod;
+        s.teleportEnabled = true;
+        s.holdToShow = holdToShow;
+        return s;
+    }
+
+    private static func LastLabel(h: array<NMHint>) -> String {
+        return ArraySize(h) > 0 ? h[ArraySize(h) - 1].label : "";
+    }
+
+    // Keycap hint bar (Task 10): the entries reproduce the old single-line copy exactly, CLOSE stays last.
+    private func HintCases() {
+        let s = NMSelfTest.HintSettings(false);
+        let hs = NMSelfTest.HintSettings(true);
+        // The old NMInput.HintText / NMPad.HintText strings, captured before the bar replaced them.
+        let kb = "NUM 8/NUM 4/NUM 6/NUM 2 PAN   ·   NUM + NUM - ZOOM   ·   NUM 5 FOLLOW   ·   NUM 0 ACT   ·   NUM . TELEPORT   ·   NUM / FILTER: ALL   ·   \\ CLOSE";
+        let kbHold = "NUM 8/NUM 4/NUM 6/NUM 2 PAN   ·   NUM + NUM - ZOOM   ·   NUM 5 FOLLOW   ·   NUM 0 ACT   ·   NUM . FAST TRAVEL   ·   NUM / FILTER: SERVICES   ·   RELEASE \\ CLOSE";
+        let pad = "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT   ·   X TELEPORT   ·   Y FILTER: ALL   ·   B CLOSE";
+        let padHold = "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT   ·   X FAST TRAVEL   ·   Y FILTER: JOBS   ·   RELEASE VIEW CLOSE";
+        let padNoTp = "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT   ·   Y FILTER: ALL   ·   B CLOSE";
+        let j0 = NMHints.Join(NMInput.Hints(s, "ALL", "TELEPORT"));
+        let j1 = NMHints.Join(NMInput.Hints(hs, "SERVICES", "FAST TRAVEL"));
+        this.Check("hint.join_matches_legacy", Equals(j0, kb) && Equals(NMInput.HintText(s, "ALL", "TELEPORT"), kb)
+            && Equals(j1, kbHold) && Equals(NMInput.HintText(hs, "SERVICES", "FAST TRAVEL"), kbHold), j0 + " | " + j1);
+        let p0 = NMHints.Join(NMPad.Hints("ALL", "TELEPORT", true, false));
+        let p1 = NMHints.Join(NMPad.Hints("JOBS", "FAST TRAVEL", true, true));
+        let p2 = NMHints.Join(NMPad.Hints("ALL", "TELEPORT", false, false));
+        this.Check("hint.join_matches_legacy_pad", Equals(p0, pad) && Equals(NMPad.HintText("ALL", "TELEPORT", true, false), pad)
+            && Equals(p1, padHold) && Equals(NMPad.HintText("JOBS", "FAST TRAVEL", true, true), padHold) && Equals(p2, padNoTp),
+            p0 + " | " + p1 + " | " + p2);
+        // CLOSE is the last entry in every variant: keyboard, Hold to show, pad, pass-through and the NumLock notice.
+        let kbH = NMInput.Hints(s, "ALL", "TELEPORT");
+        let pass = NMPad.PassThroughHints(NMInput.Hints(hs, "ALL", "TELEPORT"));
+        let numlock = NMInput.NumLockHints(kbH);
+        let lasts = NMSelfTest.LastLabel(kbH) + "|" + NMSelfTest.LastLabel(NMInput.Hints(hs, "ALL", "TELEPORT")) + "|"
+            + NMSelfTest.LastLabel(NMPad.Hints("ALL", "TELEPORT", true, true)) + "|" + NMSelfTest.LastLabel(pass) + "|" + NMSelfTest.LastLabel(numlock);
+        this.Check("hint.close_last", Equals(lasts, "CLOSE|CLOSE|CLOSE|CLOSE|CLOSE")
+            && ArraySize(pass) > 0 && Equals(pass[ArraySize(pass) - 1].key, "VIEW") && Equals(pass[ArraySize(pass) - 1].pre, "HOLD"), lasts);
+        let n = ArraySize(numlock);
+        this.Check("hint.numlock_plain", n == ArraySize(kbH) + 1 && n >= 2 && Equals(numlock[n - 2].key, "")
+            && StrContains(numlock[n - 2].label, "NUMLOCK"), ToString(n));
+        // Short key names only when every map key is on the numpad; a custom non-numpad bind shows every key in full.
+        let short = NMHints.Short(kbH);
+        let w = NMSelfTest.HintSettings(false);
+        w.keyPanUp = EInputKey.IK_W;
+        let full = NMHints.Short(NMInput.Hints(w, "ALL", "TELEPORT"));
+        let shortOk = ArraySize(short) >= 3 && Equals(short[0].key, "8 4 6 2") && Equals(short[1].key, "+ -") && Equals(short[2].key, "5");
+        let fullOk = ArraySize(full) >= 3 && Equals(full[0].key, "W/NUM 4/NUM 6/NUM 2") && Equals(full[2].key, "NUM 5");
+        let padShort = NMHints.Short(NMPad.Hints("ALL", "TELEPORT", true, false));
+        let padOk = ArraySize(padShort) > 1 ? Equals(padShort[1].key, "LT/RT") : false;
+        this.Check("hint.short_numpad", shortOk && fullOk && padOk,
+            (ArraySize(short) > 0 ? short[0].key : "-") + " / " + (ArraySize(full) > 0 ? full[0].key : "-"));
     }
 
     private func PadCases() {
@@ -535,6 +603,32 @@ public class NMSelfTest {
             "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT   ·   X TELEPORT   ·   Y FILTER: ALL   ·   B CLOSE"), NMPad.HintText("ALL", "TELEPORT", true, false));
         this.Check("pad.hint_variants", StrContains(NMPad.HintText("JOBS", "FAST TRAVEL", true, true), "RELEASE VIEW CLOSE")
             && !StrContains(NMPad.HintText("ALL", "TELEPORT", false, false), "X "), "");
+        this.HintBarCases();
+    }
+
+    // The keycap bar at 1920x1080 with the longest set: a pad-opened pass-through map with Hold to show, teleport, the
+    // SERVICES filter and the NumLock notice. Nothing is dropped, nothing overflows, CLOSE sits flush right.
+    private func HintBarCases() {
+        let l = NMPanelLayout.Compute(1920.0, 1080.0);
+        let longest = NMInput.NumLockHints(NMPad.PassThroughHints(NMInput.Hints(NMSelfTest.HintSettings(true), "SERVICES", "FAST TRAVEL")));
+        let bar = NMHintBar.Create(new inkCanvas(), 0.0, l.mapH, l.w, l.hintH, l.scale, 0);
+        bar.Set(longest);
+        let right = l.w - NMHintBar.Margin() * l.scale;
+        this.Check("hint.bar_fits_1080p", ArraySize(longest) == 9 && bar.Shown() == ArraySize(longest) && bar.LaidOutWidth() > 0.0
+            && bar.LaidOutWidth() <= l.w && this.Near(bar.LastRight(), right, 0.5),
+            ToString(ArraySize(longest)) + "/" + ToString(bar.Shown()) + " " + this.F(bar.LaidOutWidth()) + "/" + this.F(l.w) + " last " + this.F(bar.LastRight()));
+        bar.Set(NMInput.NumLockHints(NMPad.PassThroughHints(NMInput.Hints(NMSelfTest.HintSettings(true), "SERVICES", "FAST TRAVEL"))));
+        let same = bar.Rebuilds();
+        bar.Set(NMPad.Hints("ALL", "TELEPORT", true, false));
+        this.Check("hint.bar_rebuilds_on_change", same == 1 && bar.Rebuilds() == 2, ToString(same) + "/" + ToString(bar.Rebuilds()));
+        // Too narrow (custom long binds would do the same): entries go from the left, CLOSE never does.
+        let narrow = NMHintBar.Create(new inkCanvas(), 0.0, 0.0, 1200.0 * l.scale, l.hintH, l.scale, 0);
+        narrow.Set(longest);
+        let kept = narrow.Kept();
+        let k = ArraySize(kept);
+        this.Check("hint.bar_drops_from_left", k >= 1 && k < ArraySize(longest) && narrow.Shown() == k && narrow.LaidOutWidth() <= 1200.0 * l.scale
+            && Equals(kept[k - 1].pre, "HOLD") && Equals(kept[k - 1].label, "CLOSE") && !Equals(kept[0].label, "PAN"),
+            ToString(k) + " " + this.F(narrow.LaidOutWidth()));
     }
 
     private func LayoutCases() {
@@ -886,7 +980,7 @@ public class NMSelfTest {
         let three = NightMapDetails.Create("Gig", "Shoot to Thrill").AddAction("NUM 0", "Track").AddAction("NUM .", "Fast travel").AddAction("NUM 1", "Third");
         card.ShowDetails(three, NMTheme.Cyan());
         this.Check("tooltip.two_actions", card.KeycapsShown() == 2, ToString(card.KeycapsShown()));
-        this.Check("tooltip.keycap_width", NMTooltip.Keycap(new inkCanvas(), "NUM 0", "TRACK") > NMTooltip.Keycap(new inkCanvas(), "0", "TRACK"), "");
+        this.Check("tooltip.keycap_width", NMUi.Keycap(new inkCanvas(), "NUM 0", "TRACK") > NMUi.Keycap(new inkCanvas(), "0", "TRACK"), "");
 
         // No selection: the sidebar shows no text but the tracking block (no "POINT AT A MARKER"), also after a card hid.
         let fl = NMPanelLayout.Compute(3840.0, 2160.0);
@@ -928,5 +1022,13 @@ public class NMSelfTest {
         let empty: array<Float>;
         let emptyI: array<Int32>;
         this.Check("pick.empty_candidates", NMCrosshair.Pick(empty, empty, empty, emptyI, emptyI, emptyI, 0.0, 0.0, 50.0, 0, 0, 5) == -1, "");
+        // The focus point is the map area's centre (mapW: the camera's width) less the sidebar shift, which lands on the
+        // middle of the view the renderer culls to. Passing viewW there would move it half a sidebar left of the reticle.
+        let l4 = NMPanelLayout.Compute(3840.0, 2160.0);
+        let l1 = NMPanelLayout.Compute(1920.0, 1080.0);
+        let f4 = NMCrosshair.FocusX(l4.mapW, NMPhotoDrawer.FocusShift(l4));
+        let f1 = NMCrosshair.FocusX(l1.mapW, NMPhotoDrawer.FocusShift(l1));
+        this.Check("pick.focus_mid_view", this.Near(f4, l4.viewW * 0.5, 0.01) && this.Near(f1, l1.viewW * 0.5, 0.01)
+            && f4 + NMTheme.SelectRadius() * l4.scale < l4.viewW, this.F(f4) + "/" + this.F(l4.viewW) + " " + this.F(f1) + "/" + this.F(l1.viewW));
     }
 }

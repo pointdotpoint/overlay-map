@@ -51,7 +51,7 @@ public class NMPanel {
     public let scaleTickL: ref<inkRectangle>;
     public let scaleTickR: ref<inkRectangle>;
     public let scaleLabel: ref<inkText>;
-    public let hints: ref<inkText>;
+    public let hintBar: ref<NMHintBar>;
     public let holo: ref<NMHolo>;
     public let sidebar: ref<inkCanvas>;       // right of the view, outside the map clip: card (drawer) and tracking block
     public let tracking: ref<inkCanvas>;      // the tracking block, pinned to the sidebar's bottom; hidden with no quest
@@ -105,8 +105,7 @@ public class NMPanel {
 
         // Hint bar.
         NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.CardBg(), 0.6);
-        p.hints = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(34.0 * s), NMTheme.HoloHighlight(theme));
-        p.hints.SetTranslation(new Vector2(58.0 * s, layout.mapH + 34.0 * s));
+        p.hintBar = NMHintBar.Create(p.root, 0.0, layout.mapH, layout.w, layout.hintH, s, theme);
 
         // Top-left header: the district as a large letter-spaced title, the filter view under it in the accent colour.
         p.districtTitle = NMUi.Text(p.root, NMTheme.BodyFont(), n"Bold", Cast<Int32>(68.0 * s), NMTheme.HeaderTitle(theme));
@@ -217,6 +216,7 @@ public class NMPanel {
         p.sidebar = NMUi.Canvas(p.root, l.viewW, 0.0, l.sideW, l.mapH);
         p.sidebar.SetName(n"Sidebar");
         NMUi.Rect(p.sidebar, 0.0, 0.0, l.sideW, l.mapH, NMTheme.SidebarBg(theme), NMTheme.SidebarOpacity(opacity));
+        // The inner gradient reuses the holo_edge_l art but is part of the frame (spec 6), so hologramEffects does not gate it.
         NMUi.HoloImage(p.sidebar, n"holo_edge_l", 0.0, 0.0, 80.0 * s, l.mapH, hi, NMTheme.SidebarGradientOpacity(), inkBrushTileType.NoTile);
         NMUi.Rect(p.sidebar, 0.0, 0.0, 3.0 * s, l.mapH, hi, NMTheme.SidebarEdgeOpacity());
 

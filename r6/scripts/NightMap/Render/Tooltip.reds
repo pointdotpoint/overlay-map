@@ -76,33 +76,6 @@ public class NMTooltip {
         return Max(1, FloorF(width / (size * 0.45)) - 6);
     }
 
-    // Keycap chip (spec 6): the key in an outlined box (fill HoloHighlight @ .14, 1 px edge @ .55), the label beside it,
-    // drawn at the parent's top-left. Returns the width used (an estimate from the text lengths: ink lays text out
-    // later). scale defaults to 1 (4K), theme to cyan.
-    public static func Keycap(parent: ref<inkCompoundWidget>, key: String, label: String, opt scale: Float, opt theme: Int32) -> Float {
-        let s = scale > 0.0 ? scale : 1.0;
-        let hi = NMTheme.HoloHighlight(theme);
-        let kw = (24.0 + 17.0 * Cast<Float>(StrLen(key))) * s;
-        let kh = 46.0 * s;
-        let e = 2.0 * s;   // 1 px at 1080p
-        let eo = NMTheme.KeycapEdgeOpacity();
-        NMUi.Rect(parent, 0.0, 0.0, kw, kh, hi, NMTheme.KeycapFillOpacity());
-        NMUi.Rect(parent, 0.0, 0.0, kw, e, hi, eo);
-        NMUi.Rect(parent, 0.0, kh - e, kw, e, hi, eo);
-        NMUi.Rect(parent, 0.0, e, e, kh - 2.0 * e, hi, eo);
-        NMUi.Rect(parent, kw - e, e, e, kh - 2.0 * e, hi, eo);
-        let k = NMUi.Text(parent, NMTheme.BodyFont(), n"Medium", Cast<Int32>(26.0 * s), NMTheme.HeaderTitle(theme));
-        k.SetTranslation(new Vector2(12.0 * s, 8.0 * s));
-        k.SetText(key);
-        let gap = 16.0 * s;
-        let tr = 3.0 * s;
-        let t = NMUi.Text(parent, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.Text());
-        t.SetTranslation(new Vector2(kw + gap, 7.0 * s));
-        t.SetTracking(Cast<Int32>(tr));
-        t.SetText(StrUpper(label));
-        return kw + gap + Cast<Float>(StrLen(label)) * (28.0 * s * 0.55 + tr);
-    }
-
     public static func Create(parent: ref<inkCanvas>, mapW: Float, mapH: Float, scale: Float, opt theme: Int32) -> ref<NMTooltip> {
         let t = new NMTooltip();
         let s = scale;
@@ -279,7 +252,7 @@ public class NMTooltip {
             if on {
                 if NotEquals(this.actKey[i], d.actionKeys[i]) || NotEquals(this.actLabel[i], d.actionLabels[i]) {
                     this.act[i].RemoveAllChildren();
-                    NMTooltip.Keycap(this.act[i], d.actionKeys[i], d.actionLabels[i], s, this.theme);
+                    NMUi.Keycap(this.act[i], d.actionKeys[i], d.actionLabels[i], s, this.theme);
                     this.actKey[i] = d.actionKeys[i];
                     this.actLabel[i] = d.actionLabels[i];
                 }

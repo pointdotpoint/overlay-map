@@ -64,9 +64,16 @@ public class NMCrosshair {
         this.selItem = -1;
     }
 
-    // shiftX: the focus point sits this far left of the map-area centre (photo drawer open, spec §6.5).
-    public func Update(r: ref<NMItemRenderer>, viewW: Float, viewH: Float, scale: Float, shiftX: Float) -> Bool {
-        let idx = NMCrosshair.Pick(r.candX, r.candY, r.candReach, r.candKind, r.candLayer, r.candItem, viewW * 0.5 - shiftX, viewH * 0.5,
+    // The focus point's X: the centre of the map area (mapW, the width the camera centres on) less shiftX. With the
+    // sidebar's shift (NMPhotoDrawer.FocusShift) it is the middle of the view the renderer culls to (viewW / 2).
+    public static func FocusX(mapW: Float, shiftX: Float) -> Float {
+        return mapW * 0.5 - shiftX;
+    }
+
+    // mapW / mapH: the map area (not the view left of the sidebar). shiftX: the focus point sits this far left of the
+    // map-area centre (the sidebar, spec 6.5).
+    public func Update(r: ref<NMItemRenderer>, mapW: Float, mapH: Float, scale: Float, shiftX: Float) -> Bool {
+        let idx = NMCrosshair.Pick(r.candX, r.candY, r.candReach, r.candKind, r.candLayer, r.candItem, NMCrosshair.FocusX(mapW, shiftX), mapH * 0.5,
             NMTheme.SelectRadius() * scale, this.selKind, this.selLayer, this.selItem);
         let kind = idx >= 0 ? r.candKind[idx] : -1;
         let layer = idx >= 0 ? r.candLayer[idx] : -1;

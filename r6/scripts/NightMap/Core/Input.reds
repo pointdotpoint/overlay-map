@@ -142,14 +142,28 @@ public class NMInput {
         return StrUpper(s);
     }
 
-    // teleportLabel: what the teleport key does for the current selection ("FAST TRAVEL" or "TELEPORT").
+    // The hint bar's entries. teleportLabel: what the teleport key does for the current selection ("FAST TRAVEL" or
+    // "TELEPORT"). Key names come from the user's bindings; CLOSE (the toggle key) is last.
+    public static func Hints(s: ref<NightMapSettings>, view: String, teleportLabel: String) -> array<NMHint> {
+        let h: array<NMHint>;
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyPanUp) + "/" + NMInput.KeyName(s.keyPanLeft) + "/" + NMInput.KeyName(s.keyPanRight) + "/" + NMInput.KeyName(s.keyPanDown), "PAN"));
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyZoomIn) + " " + NMInput.KeyName(s.keyZoomOut), "ZOOM"));
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyRecenter), "FOLLOW"));
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyAct), "ACT"));
+        if s.teleportEnabled {
+            ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyTeleport), teleportLabel));
+        }
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyFilter), "FILTER: " + view));
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyToggle), "CLOSE", s.holdToShow ? "RELEASE" : ""));
+        return h;
+    }
+
     public static func HintText(s: ref<NightMapSettings>, view: String, teleportLabel: String) -> String {
-        return NMInput.KeyName(s.keyPanUp) + "/" + NMInput.KeyName(s.keyPanLeft) + "/" + NMInput.KeyName(s.keyPanRight) + "/" + NMInput.KeyName(s.keyPanDown) + " PAN"
-            + "   ·   " + NMInput.KeyName(s.keyZoomIn) + " " + NMInput.KeyName(s.keyZoomOut) + " ZOOM"
-            + "   ·   " + NMInput.KeyName(s.keyRecenter) + " FOLLOW"
-            + "   ·   " + NMInput.KeyName(s.keyAct) + " ACT"
-            + (s.teleportEnabled ? "   ·   " + NMInput.KeyName(s.keyTeleport) + " " + teleportLabel : "")
-            + "   ·   " + NMInput.KeyName(s.keyFilter) + " FILTER: " + view
-            + "   ·   " + (s.holdToShow ? "RELEASE " : "") + NMInput.KeyName(s.keyToggle) + " CLOSE";
+        return NMHints.Join(NMInput.Hints(s, view, teleportLabel));
+    }
+
+    // An arrow key was seen (NumLock off): a plain-text notice before CLOSE.
+    public static func NumLockHints(h: array<NMHint>) -> array<NMHint> {
+        return NMHints.Notice(h, "ARROW KEYS IGNORED - TURN NUMLOCK ON");
     }
 }

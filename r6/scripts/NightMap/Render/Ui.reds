@@ -57,6 +57,52 @@ public abstract class NMUi {
         return img;
     }
 
+    // Keycap chip (spec 6), shared by the sidebar card and the hint bar: the key in an outlined box (fill HoloHighlight
+    // @ NMTheme.KeycapFillOpacity, 1 px edge @ KeycapEdgeOpacity), the label beside it, drawn at the parent's top-left.
+    // Returns the width used (KeycapWidth: ink lays text out later). scale defaults to 1 (4K), theme to cyan.
+    public static func Keycap(parent: ref<inkCompoundWidget>, key: String, label: String, opt scale: Float, opt theme: Int32) -> Float {
+        let s = scale > 0.0 ? scale : 1.0;
+        let hi = NMTheme.HoloHighlight(theme);
+        let kw = NMUi.KeyBoxWidth(key, s);
+        let kh = NMUi.KeycapHeight() * s;
+        let e = 2.0 * s;   // 1 px at 1080p
+        let eo = NMTheme.KeycapEdgeOpacity();
+        NMUi.Rect(parent, 0.0, 0.0, kw, kh, hi, NMTheme.KeycapFillOpacity());
+        NMUi.Rect(parent, 0.0, 0.0, kw, e, hi, eo);
+        NMUi.Rect(parent, 0.0, kh - e, kw, e, hi, eo);
+        NMUi.Rect(parent, 0.0, e, e, kh - 2.0 * e, hi, eo);
+        NMUi.Rect(parent, kw - e, e, e, kh - 2.0 * e, hi, eo);
+        let k = NMUi.Text(parent, NMTheme.BodyFont(), n"Medium", Cast<Int32>(26.0 * s), NMTheme.HeaderTitle(theme));
+        k.SetAnchorPoint(new Vector2(0.5, 0.0));   // centred: the box width is an estimate, the text's is not
+        k.SetTranslation(new Vector2(kw * 0.5, 8.0 * s));
+        k.SetText(key);
+        NMUi.KeyLabel(parent, label, kw + NMUi.KeycapGap() * s, s);
+        return NMUi.KeycapWidth(key, label, s);
+    }
+
+    public static func KeycapHeight() -> Float { return 46.0; }   // 4K units
+    public static func KeycapGap() -> Float { return 16.0; }      // 4K units between the box and its label
+
+    // Estimated widths at scale s (Rajdhani caps at 0.55 em, see NMTooltip.FitChars).
+    public static func KeyBoxWidth(key: String, s: Float) -> Float {
+        return (24.0 + 17.0 * Cast<Float>(StrLen(key))) * s;
+    }
+    public static func KeyLabelWidth(label: String, s: Float) -> Float {
+        return Cast<Float>(StrLen(label)) * (28.0 * 0.55 + 3.0) * s;
+    }
+    public static func KeycapWidth(key: String, label: String, s: Float) -> Float {
+        return NMUi.KeyBoxWidth(key, s) + NMUi.KeycapGap() * s + NMUi.KeyLabelWidth(label, s);
+    }
+
+    // A keycap's label (Medium 28, letter-spaced, uppercase) at x; also the hint bar's plain text.
+    public static func KeyLabel(parent: ref<inkCompoundWidget>, label: String, x: Float, s: Float) -> ref<inkText> {
+        let t = NMUi.Text(parent, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.Text());
+        t.SetTranslation(new Vector2(x, 7.0 * s));
+        t.SetTracking(Cast<Int32>(3.0 * s));
+        t.SetText(StrUpper(label));
+        return t;
+    }
+
     public static func Text(parent: wref<inkCompoundWidget>, font: String, style: CName, size: Int32, color: HDRColor) -> ref<inkText> {
         let t = new inkText();
         t.SetAnchor(inkEAnchor.TopLeft);

@@ -218,14 +218,31 @@ public class NMPad {
         this.holdFired = false;
     }
 
-    public static func HintText(view: String, teleportLabel: String, teleportOn: Bool, holdToShow: Bool) -> String {
-        return "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT"
-            + (teleportOn ? "   ·   X " + teleportLabel : "")
-            + "   ·   Y FILTER: " + view
-            + "   ·   " + (holdToShow ? "RELEASE VIEW CLOSE" : "B CLOSE");
+    public static func Hints(view: String, teleportLabel: String, teleportOn: Bool, holdToShow: Bool) -> array<NMHint> {
+        let h: array<NMHint>;
+        ArrayPush(h, NMHints.Of("LS", "PAN"));
+        ArrayPush(h, NMHints.Of("LT/RT", "ZOOM"));
+        ArrayPush(h, NMHints.Of("R3", "FOLLOW"));
+        ArrayPush(h, NMHints.Of("A", "ACT"));
+        if teleportOn {
+            ArrayPush(h, NMHints.Of("X", teleportLabel));
+        }
+        ArrayPush(h, NMHints.Of("Y", "FILTER: " + view));
+        ArrayPush(h, holdToShow ? NMHints.Of("VIEW", "CLOSE", "RELEASE") : NMHints.Of("B", "CLOSE"));
+        return h;
     }
 
-    public static func PassThroughHint(keyboardHint: String) -> String {
-        return "HOLD VIEW CLOSE   ·   " + keyboardHint;
+    public static func HintText(view: String, teleportLabel: String, teleportOn: Bool, holdToShow: Bool) -> String {
+        return NMHints.Join(NMPad.Hints(view, teleportLabel, teleportOn, holdToShow));
+    }
+
+    // A pass-through map (opened from the pad in a car, the keyboard hints shown): holding View again closes it, last.
+    public static func PassThroughHints(base: array<NMHint>) -> array<NMHint> {
+        let h: array<NMHint>;
+        for e in base {
+            ArrayPush(h, e);
+        }
+        ArrayPush(h, NMHints.Of("VIEW", "CLOSE", "HOLD"));
+        return h;
     }
 }

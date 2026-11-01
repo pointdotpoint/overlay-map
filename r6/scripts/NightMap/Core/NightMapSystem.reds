@@ -105,7 +105,6 @@ public class NightMapSystem extends ScriptableSystem {
     private let hdrQuestTitle: String;
     private let hdrQuestObjective: String;
     private let hdrQuestIsQuest: Bool;
-    private let hdrHint: String;
     private let hdrScaleLabel: String;
 
     private func OnAttach() {
@@ -513,7 +512,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.camera.SetMpp(this.savedMpp > 0.0 ? this.savedMpp : NightMapSystem.OpenMpp());
         this.CenterOnPlayer(true);
         if IsDefined(s) {
-            this.panel.hints.SetText(NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView), "FAST TRAVEL"));
+            this.panel.hintBar.Set(NMInput.Hints(s, NMVanillaFilters.ViewName(this.filterView), "FAST TRAVEL"));
         }
         this.isOpen = true;
         this.input.ResetHeld();
@@ -872,7 +871,6 @@ public class NightMapSystem extends ScriptableSystem {
         this.hdrFilter = "\n";
         this.hdrQuestTitle = "\n";
         this.hdrQuestObjective = "\n";
-        this.hdrHint = "\n";
         this.hdrScaleLabel = "\n";
         this.hdrQuestState = -1;
         this.hdrQuestIsQuest = false;
@@ -1007,6 +1005,8 @@ public class NightMapSystem extends ScriptableSystem {
         }
         let relaid = this.renderer.UpdateFor(this.camera, l);
         if relaid {
+            // mapW, not viewW: the focus is the map-area centre less the sidebar shift, i.e. the middle of the culled view
+            // (NMCrosshair.FocusX, pick.focus_mid_view).
             let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale, this.drawerShift);
             // Re-query tooltip content only when the selection or the data changed, not on every pan frame.
             if changed || this.api.revision != this.tipApiRev {
@@ -1203,19 +1203,17 @@ public class NightMapSystem extends ScriptableSystem {
             this.renderer.SetReserved(this.panel.HeaderRects());   // markers keep clear of the header text
         }
         if IsDefined(s) {
-            let hint = NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView), this.TeleportLabel());
+            let view = NMVanillaFilters.ViewName(this.filterView);
+            let hints = NMInput.Hints(s, view, this.TeleportLabel());
             if this.padOwned && this.pad.lastWasPad {
-                hint = NMPad.HintText(NMVanillaFilters.ViewName(this.filterView), this.TeleportLabel(), s.teleportEnabled, s.holdToShow);
+                hints = NMPad.Hints(view, this.TeleportLabel(), s.teleportEnabled, s.holdToShow);
             } else if this.padFromPad && !this.padOwned {
-                hint = NMPad.PassThroughHint(hint);
+                hints = NMPad.PassThroughHints(hints);
             }
             if this.input.arrowSeen {
-                hint += "   ·   ARROW KEYS IGNORED - TURN NUMLOCK ON";
+                hints = NMInput.NumLockHints(hints);
             }
-            if NotEquals(hint, this.hdrHint) {
-                this.panel.hints.SetText(hint);
-                this.hdrHint = hint;
-            }
+            this.panel.hintBar.Set(hints);   // rebuilds only when the hints changed
         }
     }
 
