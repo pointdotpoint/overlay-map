@@ -1,0 +1,239 @@
+{
+ "name": "psm-probe",
+ "runs": [
+  {
+   "name": "probe",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padaxis": "RX",
+     "value": 1.0
+    },
+    {
+     "wait": 0.7
+    },
+    {
+     "padaxis": "RX",
+     "value": 0.0
+    },
+    {
+     "wait": 0.3
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padhold": "VIEW",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padaxis": "RX",
+     "value": 1.0
+    },
+    {
+     "wait": 0.7
+    },
+    {
+     "padaxis": "RX",
+     "value": 0.0
+    },
+    {
+     "wait": 0.3
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padhold": "VIEW",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "pad": "VIEW"
+    },
+    {
+     "wait": 0.15
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "cmd": "cam"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padaxis": "RX",
+     "value": 1.0
+    },
+    {
+     "wait": 0.7
+    },
+    {
+     "padaxis": "RX",
+     "value": 0.0
+    },
+    {
+     "wait": 0.3
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "pad": "A"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padaxis": "RX",
+     "value": 1.0
+    },
+    {
+     "wait": 0.7
+    },
+    {
+     "padaxis": "RX",
+     "value": 0.0
+    },
+    {
+     "wait": 0.3
+    },
+    {
+     "cmd": "yaw"
+    }
+   ]
+  }
+ ]
+}

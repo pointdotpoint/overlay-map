@@ -579,6 +579,20 @@
         return "yaw " + FloatToStringPrec(Rad2Deg(AtanF(fx, fy)), 1);
     }
 
+    // Player state machine values, for finding what holds V after a close.
+    public func Soak_Psm() -> String {
+        let player = GetPlayer(this.GetGameInstance()) as PlayerPuppet;
+        let bb = player.GetPlayerStateMachineBlackboard();
+        let d = GetAllBlackboardDefs().PlayerStateMachine;
+        return "loco " + IntToString(bb.GetInt(d.Locomotion)) + " det " + IntToString(bb.GetInt(d.LocomotionDetailed))
+            + " high " + IntToString(bb.GetInt(d.HighLevel)) + " upper " + IntToString(bb.GetInt(d.UpperBody))
+            + " ui " + IntToString(bb.GetInt(d.UI)) + " dil " + IntToString(bb.GetInt(d.TimeDilation))
+            + " tier " + IntToString(bb.GetInt(d.SceneTier)) + " zones " + IntToString(bb.GetInt(d.Zones))
+            + " combat " + IntToString(bb.GetInt(d.Combat)) + " vision " + IntToString(bb.GetInt(d.Vision))
+            + " cons " + IntToString(bb.GetInt(d.Consumable)) + " gadget " + IntToString(bb.GetInt(d.CombatGadget))
+            + " uizoom " + ToString(bb.GetBool(d.IsUIZoomDevice)) + " mg " + ToString(bb.GetBool(d.IsInMinigame));
+    }
+
     // Pause menus NightMap opened for a View tap.
     public func Soak_Pauses() -> String { return "pauses " + IntToString(this.padPauses); }
 

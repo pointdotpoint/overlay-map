@@ -33,6 +33,7 @@ public abstract class NMSoak {
         if Equals(command, "uictx on") { return sys.Soak_UiCtx(true); }
         if Equals(command, "uictx off") { return sys.Soak_UiCtx(false); }
         if Equals(command, "yaw") { return sys.Soak_Yaw(); }
+        if Equals(command, "psm") { return sys.Soak_Psm(); }
         if StrBeginsWith(command, "se_on ") {
             let sa = StrSplit(command, " ");
             return sys.Soak_Se(sa[1], true);

@@ -1,0 +1,268 @@
+{
+ "name": "viewclose-repeat",
+ "runs": [
+  {
+   "name": "probe",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "pauses"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "padhold": "VIEW",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "is_open"
+    },
+    {
+     "pad": "VIEW"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "cmd": "pauses"
+    },
+    {
+     "cmd": "cam"
+    },
+    {
+     "cmd": "in_menu"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "padhold": "VIEW",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "is_open"
+    },
+    {
+     "pad": "VIEW"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "cmd": "pauses"
+    },
+    {
+     "cmd": "cam"
+    },
+    {
+     "cmd": "in_menu"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "padhold": "VIEW",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "is_open"
+    },
+    {
+     "pad": "VIEW"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "cmd": "pauses"
+    },
+    {
+     "cmd": "cam"
+    },
+    {
+     "cmd": "in_menu"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "padhold": "VIEW",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "is_open"
+    },
+    {
+     "pad": "VIEW"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "cmd": "pauses"
+    },
+    {
+     "cmd": "cam"
+    },
+    {
+     "cmd": "in_menu"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "padhold": "VIEW",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "is_open"
+    },
+    {
+     "pad": "VIEW"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "cmd": "pauses"
+    },
+    {
+     "cmd": "cam"
+    },
+    {
+     "cmd": "in_menu"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    }
+   ]
+  }
+ ]
+}
