@@ -83,8 +83,8 @@ public abstract class NMTheme {
         return NMTheme.Cyan();
     }
     public static func HoloBackground(theme: Int32) -> HDRColor {
-        if theme == 1 { return new HDRColor(0.027, 0.078, 0.051, 1.0); } // #07140d
-        return NMTheme.MapBackground();                                  // #08121a
+        if theme == 1 { return new HDRColor(0.016, 0.063, 0.031, 1.0); } // #041008
+        return new HDRColor(0.020, 0.051, 0.094, 1.0);                   // #050d18
     }
     // Corner brackets: the highlight colour; with effects on it gets HDR gain so it reads brighter than the frame.
     public static func BracketColor(theme: Int32, effects: Bool) -> HDRColor {
@@ -96,8 +96,11 @@ public abstract class NMTheme {
         return new HDRColor(c.Red * g, c.Green * g, c.Blue * g, 1.0);
     }
     public static func HoloScanColor() -> HDRColor { return new HDRColor(0.0, 0.0, 0.0, 1.0); }
-    public static func HoloGridOpacity() -> Float { return 0.07; }
-    public static func HoloScanOpacity() -> Float { return 0.20; }
+    public static func HoloGridOpacity() -> Float { return 0.08; }
+    public static func HoloScanOpacity() -> Float { return 0.14; }
+    public static func RingsOpacity() -> Float { return 0.10; }
+    public static func VignetteOpacity() -> Float { return 0.55; }
+    public static func RingsSize() -> Float { return 1440.0; }   // 4K units across
     public static func HoloNoiseOpacity() -> Float { return 0.12; }   // the flicker animation moves it between 0.08 and 0.14
     public static func HoloBarOpacity() -> Float { return 0.25; }
     public static func HoloEdgeOpacity() -> Float { return 0.6; }
@@ -112,19 +115,25 @@ public abstract class NMTheme {
     // Tile-set tints. Tiles are colourless masks; these are applied at runtime, so a theme change needs no rebuild.
     // Keys are NMTileManifest.SetName values.
     public static func TileTint(set: String, theme: Int32) -> HDRColor {
-        if Equals(set, "glow") { return NMTheme.HoloAccent(theme); }
-        if Equals(set, "road") {
-            if theme == 1 { return new HDRColor(0.122, 0.604, 0.322, 1.0); }   // #1f9a52
-                return new HDRColor(0.118, 0.549, 0.588, 1.0);                     // #1e8c96
+        if theme == 1 {   // same lightness and saturation as cyan, hue ~140 degrees
+            if Equals(set, "glow") { return new HDRColor(0.184, 1.0, 0.456, 1.0); }          // #2fff74
+            if Equals(set, "outline") { return new HDRColor(0.227, 0.816, 0.424, 1.0); }     // #3ad06c
+            if Equals(set, "road_minor") { return new HDRColor(0.165, 0.847, 0.392, 1.0); }  // #2ad864
+            if Equals(set, "road_major") { return new HDRColor(0.561, 1.0, 0.707, 1.0); }    // #8fffb4
+            return new HDRColor(0.184, 0.682, 0.350, 1.0);                                   // #2fae59 (bfill)
         }
-        if theme == 1 { return new HDRColor(0.659, 1.0, 0.749, 1.0); }         // #a8ffbf (bfill, outline)
-        return new HDRColor(0.624, 0.953, 1.0, 1.0);                           // #9ff3ff
+        if Equals(set, "glow") { return new HDRColor(0.184, 0.612, 1.0, 1.0); }              // #2f9cff
+        if Equals(set, "outline") { return new HDRColor(0.227, 0.561, 0.816, 1.0); }         // #3a8fd0
+        if Equals(set, "road_minor") { return new HDRColor(0.165, 0.525, 0.847, 1.0); }      // #2a86d8
+        if Equals(set, "road_major") { return new HDRColor(0.561, 0.863, 1.0, 1.0); }        // #8fdcff
+        return new HDRColor(0.184, 0.435, 0.682, 1.0);                                       // #2f6fae (bfill; one tint for fill and dots)
     }
     public static func TileOpacity(set: String) -> Float {
-        if Equals(set, "glow") { return 0.45; }
-        if Equals(set, "road") { return 0.55; }
-        if Equals(set, "bfill") { return 0.12; }
-        if Equals(set, "outline") { return 0.9; }
+        if Equals(set, "glow") { return 0.50; }
+        if Equals(set, "bfill") { return 0.60; }
+        if Equals(set, "outline") { return 0.40; }
+        if Equals(set, "road_minor") { return 0.60; }
+        if Equals(set, "road_major") { return 0.90; }
         return 1.0;
     }
 }

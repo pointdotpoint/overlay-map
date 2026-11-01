@@ -893,7 +893,7 @@ public class NightMapSystem extends ScriptableSystem {
             NMLog.Info("collect|built|" + IntToString(this.Collect().collectedN) + "/" + IntToString(ArraySize(this.Collect().spots))
                 + " collected|refresh " + FloatToStringPrec(t1 - t0, 1) + " ms|build " + FloatToStringPrec(NMClock.NowMs() - t1, 1) + " ms");
         }
-        this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale);
+        this.marker = NMPlayerMarker.Create(this.panel.overlay, l.scale, this.holoEffects, this.holoTheme);
         this.crosshair = NMCrosshair.Create();
         // The sidebar is always visible; marker details dock in it. The focus point is the middle of the map left of it.
         this.reticle = NMReticle.Create(this.panel.overlay, l.scale, this.holoTheme);   // under the sidebar

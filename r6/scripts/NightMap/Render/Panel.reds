@@ -77,9 +77,11 @@ public class NMPanel {
         p.mapContent.Reparent(area);
         p.holo.AddGrid(p.mapContent);                                                      // under the glow
         p.tiles = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
-        p.holo.AddScan(p.mapContent);                                                      // over the tiles, under the markers
+        p.holo.AddVignette(p.mapContent);                                                  // over the tiles, under the routes
+        p.holo.AddNoise(p.mapContent);                                                     // over the tiles, under the markers
         p.routes = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);           // GPS routes, under the markers
         p.items = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
+        p.holo.AddScan(p.mapContent);                                                      // over the markers, under the overlay
         p.holo.AddBar(p.mapContent);                                                       // over the markers, under the player arrow
         p.overlay = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
 

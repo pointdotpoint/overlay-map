@@ -8,7 +8,7 @@ module NightMap
 // and Stop() ends the loops first. With effects off no widget exists and no animation is started.
 //
 // Stack inside the clipped map content, bottom to top (the panel inserts them between its own canvases):
-//   grid (under the tile layers) | tiles: glow, road, bfill, outline | scanlines, noise | items | scan bar | overlay
+//   grid (under the tile layers) | tiles: glow, bfill, outline, road_minor, road_major | vignette | noise | routes | items | scanlines | scan bar | overlay
 // The edge glow sits on the panel root, under the corner brackets.
 public class NMHolo {
     public let effects: Bool;
@@ -17,6 +17,7 @@ public class NMHolo {
     public let scan: ref<inkImage>;
     public let noise: ref<inkImage>;
     public let bar: ref<inkImage>;
+    public let vignette: ref<inkImage>;
     public let edges: array<ref<inkImage>>;
     private let proxies: array<ref<inkAnimProxy>>;
     private let mapW: Float;
@@ -45,15 +46,29 @@ public class NMHolo {
         this.grid = NMUi.HoloImage(parent, n"holo_grid", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloAccent(this.theme), NMTheme.HoloGridOpacity(), inkBrushTileType.Both);
     }
 
-    // Scanlines (black) and noise (accent), over the tiles, under the markers. The scanline image is one period taller
+    // Edge darkening over the tiles, under the routes: holo_vignette stretched over the map (alpha 0 centre, 1 corners).
+    public func AddVignette(parent: wref<inkCompoundWidget>) {
+        if !this.effects {
+            return;
+        }
+        this.vignette = NMUi.HoloImage(parent, n"holo_vignette", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloScanColor(), NMTheme.VignetteOpacity(), inkBrushTileType.NoTile);
+    }
+
+    // Noise (accent) over the tiles, under the markers. The scanline image (black, over everything but the overlay) is one period taller
     // than the map and starts one period up, so the looped translation by one period is seamless.
+    public func AddNoise(parent: wref<inkCompoundWidget>) {
+        if !this.effects {
+            return;
+        }
+        this.noise = NMUi.HoloImage(parent, n"holo_noise", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloAccent(this.theme), NMTheme.HoloNoiseOpacity(), inkBrushTileType.Both);
+    }
+
     public func AddScan(parent: wref<inkCompoundWidget>) {
         if !this.effects {
             return;
         }
         let p = this.ScanPeriod();
         this.scan = NMUi.HoloImage(parent, n"holo_scan", 0.0, 0.0 - p, this.mapW, this.mapH + p, NMTheme.HoloScanColor(), NMTheme.HoloScanOpacity(), inkBrushTileType.Both);
-        this.noise = NMUi.HoloImage(parent, n"holo_noise", 0.0, 0.0, this.mapW, this.mapH, NMTheme.HoloAccent(this.theme), NMTheme.HoloNoiseOpacity(), inkBrushTileType.Both);
     }
 
     // Starts invisible above the map; its loop fades it in while it sweeps down.
