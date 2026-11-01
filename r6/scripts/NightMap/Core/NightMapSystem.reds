@@ -897,8 +897,9 @@ public class NightMapSystem extends ScriptableSystem {
         this.crosshair = NMCrosshair.Create();
         // The sidebar is always visible; marker details dock in it. The focus point is the middle of the map left of it.
         this.reticle = NMReticle.Create(this.panel.overlay, l.scale, this.holoTheme);   // under the sidebar
-        this.drawer = NMPhotoDrawer.Create(this.panel.overlay, l, this.holoTheme);
-        this.tooltip = NMTooltip.CreateDocked(this.drawer.Root(), 40.0 * l.scale, 40.0 * l.scale, l.sideW - 80.0 * l.scale, l.scale);
+        this.drawer = NMPhotoDrawer.Create(this.panel.sidebar, l, this.holoTheme);
+        let pad = NMPanel.SidebarPad() * l.scale;
+        this.tooltip = NMTooltip.CreateDocked(this.drawer.Root(), pad, pad, l.sideW - 2.0 * pad, l.scale, this.holoTheme);
         this.drawerShift = NMPhotoDrawer.FocusShift(l);
         this.camera.SetScreenShift(this.drawerShift);
         this.UpdateHeader();
@@ -1004,13 +1005,13 @@ public class NightMapSystem extends ScriptableSystem {
         if this.Photos().Revision() != this.Photos().SyncedRevision() {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
         }
-        let relaid = this.renderer.Update(this.camera, l.mapW, l.mapH);
+        let relaid = this.renderer.UpdateFor(this.camera, l);
         if relaid {
             let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale, this.drawerShift);
             // Re-query tooltip content only when the selection or the data changed, not on every pan frame.
             if changed || this.api.revision != this.tipApiRev {
                 this.tipApiRev = this.api.revision;
-                this.RefreshTooltip(changed);
+                this.RefreshSidebar(changed);
             }
             // The camera moved (relayout): selX/selY changed, so follow the marker. No-op while hidden.
             this.tooltip.Reposition(this.crosshair.selX, this.crosshair.selY);
@@ -1065,11 +1066,6 @@ public class NightMapSystem extends ScriptableSystem {
         this.routes.Update(this.camera, p.X, p.Y, dt, l.mapW, l.mapH);
     }
 
-    private func RefreshTooltip(changed: Bool) {
-        this.RefreshSidebar(changed);
-        this.drawer.SetEmpty(!this.tooltip.IsShown() && !this.drawer.IsShown());
-    }
-
     private func RefreshSidebar(changed: Bool) {
         let c = this.crosshair;
         if changed {
@@ -1100,7 +1096,11 @@ public class NightMapSystem extends ScriptableSystem {
             if !IsDefined(d) {
                 d = this.DefaultDetails(L, c.selItem);
             }
-            this.tooltip.ShowDetails(d, d.hasColor ? d.color : this.api.catColor[L.catGlobal[L.cat[c.selItem]]]);
+            let id = c.selItem;
+            let cat = this.api.catColor[L.catGlobal[L.cat[id]]];
+            // The card's icon as the map draws it: on its plate in the icon colour, or a hex chip in the category colour.
+            this.tooltip.ShowCard(d, d.hasColor ? d.color : cat, this.renderer.IconOf(L, id), L.hasTint[id] ? L.tint[id] : cat,
+                L.pinStyle != 1);
         } else {
             this.tooltip.Hide();
             this.drawer.Hide();
@@ -1174,19 +1174,21 @@ public class NightMapSystem extends ScriptableSystem {
         let q = NMQuestHeader.Read(this.GetGameInstance());
         let qState = q.visible ? 1 : 0;
         if qState != this.hdrQuestState {
-            this.panel.questTitle.SetVisible(q.visible);
+            this.panel.tracking.SetVisible(q.visible);
             this.hdrQuestState = qState;
             this.hdrQuestObjective = "\n";   // visibility of the objective follows its text: re-evaluate below
         }
         if q.visible {
-            let title = StrUpper(q.title);
+            let title = NMTooltip.Truncate(StrUpper(q.title), this.panel.QuestTitleChars());
             let titleChanged = NotEquals(title, this.hdrQuestTitle);
             if titleChanged {
                 this.panel.questTitle.SetText(title);
                 this.hdrQuestTitle = title;
             }
             if titleChanged || NotEquals(q.isQuest, this.hdrQuestIsQuest) {
-                this.panel.questTitle.SetTintColor(NMTheme.VanillaStateColor(q.isQuest ? n"Quest" : n"Gigs"));
+                let qc = NMTheme.VanillaStateColor(q.isQuest ? n"Quest" : n"Gigs");
+                this.panel.questTitle.SetTintColor(qc);
+                this.panel.questDiamond.SetTintColor(qc);
                 this.hdrQuestIsQuest = q.isQuest;
             }
         }

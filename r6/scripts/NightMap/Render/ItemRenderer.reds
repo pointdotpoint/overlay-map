@@ -340,6 +340,13 @@ public class NMItemRenderer {
         this.lastCamRev = -1;
     }
 
+    // Markers are placed out to this far past the view's edges (the clip cuts a marker straddling an edge).
+    public static func CullMargin(scale: Float) -> Float { return 60.0 * scale; }
+
+    // Relayout for the panel: culled to the map visible left of the sidebar (layout.viewW), not the whole map area, so
+    // nothing is placed under the sidebar (the viewport clips there too, NMPanel).
+    public func UpdateFor(cam: ref<NMCamera>, l: ref<NMPanelLayout>) -> Bool { return this.Update(cam, l.viewW, l.mapH); }
+
     public func Update(cam: ref<NMCamera>, viewW: Float, viewH: Float) -> Bool {
         let api = this.api;
         if cam.revision == this.lastCamRev && api.revision == this.lastApiRev {
@@ -363,7 +370,7 @@ public class NMItemRenderer {
         let order: array<Int32> = this.LayerOrder();
         // Same level-0 range and ring centre for every layer. The ring order itself is built on first use: sparse
         // layers never need it, and over the whole city it is ~9,000 cells.
-        this.indRg = this.CellRange(0, cam, 60.0 * this.scale);
+        this.indRg = this.CellRange(0, cam, NMItemRenderer.CullMargin(this.scale));
         this.ringCx = Clamp(this.CenterCell(0, cam, false), this.indRg[0], this.indRg[2]);
         this.ringCy = Clamp(this.CenterCell(0, cam, true), this.indRg[1], this.indRg[3]);
         this.ringBuilt = false;
@@ -420,7 +427,7 @@ public class NMItemRenderer {
         this.hN = 0;
         this.hRmax = 0.0;
         this.hK = NMTheme.DeclutterOverlap();
-        let m = 60.0 * this.scale;
+        let m = NMItemRenderer.CullMargin(this.scale);
         let plate = NMTheme.PlateSize() * 0.25 * NMTheme.VanillaEmphScale();
         let biggest = MaxF(MaxF(plate, NMTheme.ChipSize() * 0.5), MaxF(NMTheme.DotSize() * 0.5, NMItemRenderer.ThumbW() * 0.5 * this.thumbZoom));
         this.hCell = MaxF(2.0 * biggest * this.scale, 1.0);
@@ -778,6 +785,16 @@ public class NMItemRenderer {
         ic.key = "dot";
     }
 
+    // The icon an item draws with, for the sidebar card: a fresh ref (ResolveIcon fills a shared scratch).
+    public func IconOf(L: ref<NightMapLayer>, id: Int32) -> ref<NMIconRef> {
+        this.ResolveIcon(L, id);
+        let r = new NMIconRef();
+        r.atlas = this.icon.atlas;
+        r.part = this.icon.part;
+        r.key = this.icon.key;
+        return r;
+    }
+
     // The tier scale (chipK) of the slot a candidate drew into; 1 for no candidate. Photo slots keep chipK at 1 (their
     // widgets take the tier scale directly), and NightMapSystem forces the reticle's scale to 1 for them anyway.
     public func CandScale(cand: Int32) -> Float {
@@ -956,7 +973,7 @@ public class NMItemRenderer {
             return false;   // the selection, already placed up front
         }
         let p = cam.WorldToMap(L.px[id], L.py[id]);
-        let m = 60.0 * this.scale;
+        let m = NMItemRenderer.CullMargin(this.scale);
         if p.X < -m || p.X > viewW + m || p.Y < -m || p.Y > viewH + m {
             return false;
         }

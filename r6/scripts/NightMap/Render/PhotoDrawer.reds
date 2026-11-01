@@ -1,12 +1,11 @@
 module NightMap
 
-// Large preview of the focused photo pin over the right half of the map (spec §6.5). Replaces the tooltip for
-// photo pins; the shot loads by hash into the drawer's own image.
+// Large preview of the focused photo pin in the sidebar (spec §6.5). Replaces the tooltip for photo pins; the shot
+// loads by hash into the drawer's own image. The sidebar glass is NMPanel's; with nothing focused the drawer is empty.
 public class NMPhotoDrawer {
     private let s: Float;
-    private let root: ref<inkCanvas>;     // always visible: the sidebar
+    private let root: ref<inkCanvas>;     // always visible, transparent: the card area of the sidebar
     private let photo: ref<inkCanvas>;    // the photo preview, shown while a photo pin is focused
-    private let empty: ref<inkText>;
     private let img: ref<inkImage>;
     private let imgFill: ref<inkRectangle>;
     private let category: ref<inkText>;
@@ -48,6 +47,7 @@ public class NMPhotoDrawer {
             + StrMid(d, 9, 2) + ":" + StrMid(d, 11, 2);
     }
 
+    // parent: the sidebar (NMPanel.sidebar), sideW x mapH.
     public static func Create(parent: ref<inkCanvas>, l: ref<NMPanelLayout>, theme: Int32) -> ref<NMPhotoDrawer> {
         let dr = new NMPhotoDrawer();
         let s = l.scale;
@@ -55,12 +55,7 @@ public class NMPhotoDrawer {
         let w = l.sideW;
         let h = l.mapH;
         let pad = 40.0 * s;
-        dr.root = NMUi.Canvas(parent, l.viewW, 0.0, w, h);
-        NMUi.Rect(dr.root, 0.0, 0.0, w, h, NMTheme.CardBg(), 0.95);
-        NMUi.Rect(dr.root, 0.0, 0.0, 6.0 * s, h, NMTheme.HoloHighlight(theme), 1.0);
-        dr.empty = NMUi.Text(dr.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Muted());
-        dr.empty.SetTranslation(new Vector2(pad, pad));
-        dr.empty.SetText("POINT AT A MARKER");
+        dr.root = NMUi.Canvas(parent, 0.0, 0.0, w, h);
         dr.photo = NMUi.Canvas(dr.root, 0.0, 0.0, w, h);
         dr.photo.SetVisible(false);
         let iw = w - pad * 2.0;
@@ -103,7 +98,6 @@ public class NMPhotoDrawer {
 
     public func IsShown() -> Bool { return this.shown; }
     public func Root() -> ref<inkCanvas> { return this.root; }
-    public func SetEmpty(on: Bool) { this.empty.SetVisible(on); }
     public func ImageShown() -> Bool { return this.img.IsVisible(); }
     public func LastListener() -> ref<NMDrawerListener> { return this.listener; }
 

@@ -53,6 +53,9 @@ public class NMPanel {
     public let scaleLabel: ref<inkText>;
     public let hints: ref<inkText>;
     public let holo: ref<NMHolo>;
+    public let sidebar: ref<inkCanvas>;       // right of the view, outside the map clip: card (drawer) and tracking block
+    public let tracking: ref<inkCanvas>;      // the tracking block, pinned to the sidebar's bottom; hidden with no quest
+    public let questDiamond: ref<inkRectangle>;
 
     // theme / effects: NMTheme.ThemeIndex(NightMapSettings.holoColor) / hologramEffects, passed in so the layout stays testable.
     public static func Build(window: wref<inkCompoundWidget>, layout: ref<NMPanelLayout>, opacity: Float, theme: Int32, effects: Bool) -> ref<NMPanel> {
@@ -67,10 +70,12 @@ public class NMPanel {
         NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.PanelBg(), opacity);
         NMUi.Rect(p.root, 0.0, 0.0, layout.mapW, layout.mapH, NMTheme.HoloBackground(theme), opacity);
 
-        // Clipped viewport (inkScrollArea's internal mask), same pattern as Codeware's text input viewport.
+        // Clipped viewport (inkScrollArea's internal mask), same pattern as Codeware's text input viewport. It clips at
+        // the view's right edge: the map content is mapW wide (the camera centres on the map area), but nothing of it
+        // draws under the sidebar.
         let area = new inkScrollArea();
         area.SetAnchor(inkEAnchor.TopLeft);
-        area.SetSize(new Vector2(layout.mapW, layout.mapH));
+        area.SetSize(new Vector2(layout.viewW, layout.mapH));
         area.SetConstrainContentPosition(false);
         area.SetUseInternalMask(true);
         area.SetInteractive(false);
@@ -96,6 +101,8 @@ public class NMPanel {
         p.holo.AddBar(p.mapContent);                                                       // over the markers, under the player arrow
         p.overlay = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
 
+        NMPanel.BuildSidebar(p, opacity, theme);
+
         // Hint bar.
         NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.CardBg(), 0.6);
         p.hints = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(34.0 * s), NMTheme.HoloHighlight(theme));
@@ -112,19 +119,6 @@ public class NMPanel {
         p.districtSub.SetVisible(false);
         p.districtSub.SetName(n"DistrictSub");
 
-        // Tracked quest and objective in the bottom-right corner of the map area, right-aligned (until the sidebar
-        // tracking block takes them). A vertical panel stacks them from the bottom, so a two-line objective leaves no gap.
-        let header = new inkVerticalPanel();
-        header.SetAnchor(inkEAnchor.TopLeft);
-        header.SetAnchorPoint(new Vector2(1.0, 1.0));
-        header.SetTranslation(new Vector2(layout.mapW - 67.0 * s, layout.mapH - 40.0 * s));
-        header.SetInteractive(false);
-        header.Reparent(p.root);
-        p.questTitle = NMPanel.HeaderLine(header, n"Bold", 34.0 * s, NMTheme.VanillaStateColor(n"Quest"), 0.0);
-        p.questTitle.SetVisible(false);
-        p.questObjective = NMPanel.HeaderLine(header, n"Medium", 30.0 * s, NMTheme.Text(), 6.0 * s);
-        p.questObjective.SetWrappingAtPosition(layout.sideW - 120.0 * s);   // inside the sidebar; two lines at most (NMQuestHeader.Clip)
-        p.questObjective.SetVisible(false);
         p.warning = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(32.0 * s), NMTheme.Pink());
         p.warning.SetTranslation(new Vector2(67.0 * s, 240.0 * s));
         p.warning.SetVisible(false);
@@ -211,12 +205,48 @@ public class NMPanel {
         this.scaleLabel.SetTranslation(new Vector2(at.X + len * 0.5, at.Y + 30.0 * s));
     }
 
-    private static func HeaderLine(parent: ref<inkVerticalPanel>, style: CName, size: Float, color: HDRColor, top: Float) -> ref<inkText> {
-        let t = NMUi.Text(parent, NMTheme.BodyFont(), style, Cast<Int32>(size), color);
-        t.SetHAlign(inkEHorizontalAlign.Right);
-        t.SetHorizontalAlignment(textHorizontalAlignment.Right);
-        t.SetMargin(new inkMargin(0.0, top, 0.0, 0.0));
-        return t;
+    public static func SidebarPad() -> Float { return 40.0; }      // 4K units, the sidebar's inner margin
+    public static func TrackingHeight() -> Float { return 300.0; }  // 4K units: divider, label, title, three objective lines
+
+    // Sidebar (spec 6): glass over the panel fill, a bright 1.5 px left edge with a soft inner gradient, and the tracking
+    // block pinned to the bottom. The marker card (NMPhotoDrawer and its docked NMTooltip) is added on open.
+    private static func BuildSidebar(p: ref<NMPanel>, opacity: Float, theme: Int32) {
+        let l = p.layout;
+        let s = l.scale;
+        let hi = NMTheme.HoloHighlight(theme);
+        p.sidebar = NMUi.Canvas(p.root, l.viewW, 0.0, l.sideW, l.mapH);
+        p.sidebar.SetName(n"Sidebar");
+        NMUi.Rect(p.sidebar, 0.0, 0.0, l.sideW, l.mapH, NMTheme.SidebarBg(theme), NMTheme.SidebarOpacity(opacity));
+        NMUi.HoloImage(p.sidebar, n"holo_edge_l", 0.0, 0.0, 80.0 * s, l.mapH, hi, NMTheme.SidebarGradientOpacity(), inkBrushTileType.NoTile);
+        NMUi.Rect(p.sidebar, 0.0, 0.0, 3.0 * s, l.mapH, hi, NMTheme.SidebarEdgeOpacity());
+
+        let pad = NMPanel.SidebarPad() * s;
+        let w = l.sideW - 2.0 * pad;
+        let th = NMPanel.TrackingHeight() * s;
+        p.tracking = NMUi.Canvas(p.sidebar, pad, l.mapH - th, w, th);
+        p.tracking.SetName(n"Tracking");
+        p.tracking.SetVisible(false);
+        NMUi.Rect(p.tracking, 0.0, 0.0, w, 2.0 * s, hi, NMTheme.DividerOpacity());
+        let label = NMUi.Text(p.tracking, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.CardLabel(theme));
+        label.SetTranslation(new Vector2(0.0, 24.0 * s));
+        label.SetTracking(Cast<Int32>(4.0 * s));
+        label.SetText("TRACKING");
+        let quest = NMTheme.VanillaStateColor(n"Quest");
+        p.questDiamond = NMUi.Rect(p.tracking, 11.0 * s, 98.0 * s, 16.0 * s, 16.0 * s, quest, 1.0);
+        p.questDiamond.SetAnchorPoint(new Vector2(0.5, 0.5));
+        p.questDiamond.SetRotation(45.0);
+        p.questTitle = NMUi.Text(p.tracking, NMTheme.BodyFont(), n"Bold", Cast<Int32>(40.0 * s), quest);
+        p.questTitle.SetTranslation(new Vector2(30.0 * s, 74.0 * s));
+        p.questObjective = NMUi.Text(p.tracking, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Text());
+        p.questObjective.SetTranslation(new Vector2(0.0, 134.0 * s));
+        p.questObjective.SetWrappingAtPosition(w);   // the sidebar width; NMQuestHeader.Clip bounds the length
+        p.questObjective.SetVisible(false);
+    }
+
+    // Characters of a quest title that fit the tracking block at its font size (NMTooltip.FitChars).
+    public func QuestTitleChars() -> Int32 {
+        let s = this.layout.scale;
+        return NMTooltip.FitChars(this.layout.sideW - 2.0 * NMPanel.SidebarPad() * s - 30.0 * s, 40.0 * s, 0.0);
     }
 
     public func Destroy() {

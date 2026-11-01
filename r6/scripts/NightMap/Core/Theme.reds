@@ -86,6 +86,30 @@ public abstract class NMTheme {
         if theme == 1 { return new HDRColor(0.902, 1.0, 0.925, 1.0); }  // #e6ffec
         return new HDRColor(0.902, 0.969, 1.0, 1.0);                     // #e6f7ff
     }
+    // Sidebar glass (spec 6): a dark fill over the panel fill, a bright left edge and a soft inner gradient.
+    public static func SidebarBg(theme: Int32) -> HDRColor {
+        if theme == 1 { return new HDRColor(0.012, 0.047, 0.024, 1.0); } // #030c06
+        return new HDRColor(0.012, 0.035, 0.071, 1.0);                   // #030912
+    }
+    // At least .80 and always above the panel fill it sits on (0.92 -> 0.98), so the world and the map never show
+    // through: ink blends in linear light, where a few percent of a bright pixel still reads on a dark fill.
+    public static func SidebarOpacity(panel: Float) -> Float { return ClampF(panel + 0.06, 0.80, 1.0); }
+    public static func SidebarEdgeOpacity() -> Float { return 0.55; }
+    public static func SidebarGradientOpacity() -> Float { return 0.10; }
+    // Small uppercase labels (HOVERED, TRACKING) and the card's description text.
+    public static func CardLabel(theme: Int32) -> HDRColor {
+        if theme == 1 { return new HDRColor(0.435, 0.753, 0.541, 1.0); } // #6fc08a
+        return new HDRColor(0.435, 0.612, 0.753, 1.0);                   // #6f9cc0
+    }
+    public static func CardBody(theme: Int32) -> HDRColor {
+        if theme == 1 { return new HDRColor(0.710, 0.878, 0.761, 1.0); } // #b5e0c2
+        return new HDRColor(0.710, 0.804, 0.878, 1.0);                   // #b5cde0
+    }
+    // Keycap box (spec 6: fill @ .14, edge @ .55 in the sRGB mockup). Ink blends in linear light, where a .14 fill of
+    // the highlight reads about .40 on the dark glass and drowns the key; .04 lands on the mockup's look.
+    public static func KeycapFillOpacity() -> Float { return 0.04; }
+    public static func KeycapEdgeOpacity() -> Float { return 0.55; }
+    public static func DividerOpacity() -> Float { return 0.14; }   // card and tracking dividers
     public static func HeaderScrimOpacity() -> Float { return 0.4; }   // holo_halo behind the title, map-background tint
     public static func HeaderPad() -> Float { return 16.0; }           // markers keep this clear of the header text
     // Corner brackets: the highlight colour; with effects on it gets HDR gain so it reads brighter than the frame.

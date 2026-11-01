@@ -58,6 +58,45 @@ public class NMSelfTest {
         return -1;
     }
 
+    // A widget's top-left in panel space: its translations summed up to the panel root.
+    public static func PanelPos(w: wref<inkWidget>) -> Vector2 {
+        let x = 0.0;
+        let y = 0.0;
+        let cur = w;
+        while IsDefined(cur) && NotEquals(cur.GetName(), n"NightMapPanel") {
+            let t = cur.GetTranslation();
+            x += t.X;
+            y += t.Y;
+            cur = cur.GetParentWidget();
+        }
+        return new Vector2(x, y);
+    }
+
+    public static func HasAncestor(w: wref<inkWidget>, name: CName) -> Bool {
+        let cur: wref<inkWidget> = w.GetParentWidget();
+        while IsDefined(cur) {
+            if Equals(cur.GetName(), name) { return true; }
+            cur = cur.GetParentWidget();
+        }
+        return false;
+    }
+
+    // Visible text widgets with text under w (w included), skipping hidden subtrees and the subtree named skip.
+    public static func VisibleTexts(w: wref<inkWidget>, skip: CName) -> Int32 {
+        if !IsDefined(w) || !w.IsVisible() || Equals(w.GetName(), skip) { return 0; }
+        let t = w as inkText;
+        if IsDefined(t) { return StrLen(t.GetText()) > 0 ? 1 : 0; }
+        let c = w as inkCompoundWidget;
+        if !IsDefined(c) { return 0; }
+        let n = 0;
+        let i = 0;
+        while i < c.GetNumChildren() {
+            n += NMSelfTest.VisibleTexts(c.GetWidgetByIndex(i), skip);
+            i += 1;
+        }
+        return n;
+    }
+
     public func Near(a: Float, b: Float, eps: Float) -> Bool {
         return AbsF(a - b) <= eps;
     }
@@ -522,6 +561,8 @@ public class NMSelfTest {
         let titleOk = true;
         let barOk = true;
         let zOk = true;
+        let clipOk = true;
+        let trackOk = true;
         let fdetail = "";
         for sz in fsizes {
             let fl = NMPanelLayout.Compute(sz.X, sz.Y);
@@ -555,11 +596,27 @@ public class NMSelfTest {
                 zOk = false;
                 fdetail += "scrim=" + ToString(scrim) + " items=" + ToString(items) + " ";
             }
+            // Sidebar (spec 6): the viewport clips at the view's right edge (nothing on the map draws under the
+            // sidebar), and the sidebar comes after the viewport under the panel root, outside the clip.
+            let side = NMSelfTest.ChildIndex(panel.root, n"Sidebar");
+            let clipW = view >= 0 ? panel.root.GetWidgetByIndex(view).GetWidth() : -1.0;
+            if view < 0 || side <= view || !this.Near(clipW, fl.viewW, 0.5) {
+                clipOk = false;
+                fdetail += "clip " + this.F(clipW) + "/" + this.F(fl.viewW) + " side=" + ToString(side) + " ";
+            }
+            // The tracked quest sits in the sidebar, in its bottom 30 %.
+            let qp = NMSelfTest.PanelPos(panel.questTitle);
+            if !NMSelfTest.HasAncestor(panel.questTitle, n"Sidebar") || qp.X < fl.viewW || qp.Y <= fl.mapH * 0.7 {
+                trackOk = false;
+                fdetail += "quest " + this.F(qp.X) + "," + this.F(qp.Y) + " ";
+            }
             panel.Destroy();
         }
         this.Check("layout.header_above_markers", zOk, fdetail);
         this.Check("layout.district_top_left", titleOk, fdetail);
         this.Check("layout.scale_bar_in_view", barOk, fdetail);
+        this.Check("layout.map_clipped_to_view", clipOk, fdetail);
+        this.Check("layout.tracking_bottom", trackOk, fdetail);
         this.Check("settings.panel_opacity_migrates", this.Near(NMTheme.MigratePanelOpacity(0.45), 0.92, 0.0001)
             && this.Near(NMTheme.MigratePanelOpacity(0.6), 0.6, 0.0001) && this.Near(NMTheme.MigratePanelOpacity(0.92), 0.92, 0.0001)
             && this.Near(NMTheme.MigratePanelOpacity(0.449), 0.449, 0.0001) && this.Near(NMTheme.MigratePanelOpacity(0.451), 0.451, 0.0001),
@@ -751,6 +808,26 @@ public class NMSelfTest {
         L.SetVisible(false);
         r.Update(cam, 1880.0, 1480.0);
         this.Check("renderer.hidden_layer_draws_nothing", r.chipsUsed == 0 && ArraySize(r.candX) == 0, ToString(r.chipsUsed) + "/" + ToString(ArraySize(r.candX)));
+        // Placed as NightMapSystem places them: nothing lands under the sidebar (past the view plus the cull margin).
+        L.SetVisible(true);
+        let pl = NMPanelLayout.Compute(3840.0, 2160.0);
+        let pc = NMCamera.Create(pl.mapW, pl.mapH, bounds, 0.5, 16.0);
+        pc.SetScreenShift(NMPhotoDrawer.FocusShift(pl));
+        pc.SetMpp(1.0);   // close enough that the chip budget does not run out before the view's edges
+        let pr = NMItemRenderer.Create(api, new inkCanvas(), pl.scale);
+        pr.noDeclutter = true;
+        pr.UpdateFor(pc, pl);
+        let maxX = -100000.0;
+        for x in pr.candX { maxX = MaxF(maxX, x); }
+        let n = ArraySize(pr.candX);
+        // Control: culled to the whole map area instead, some items do land under the sidebar.
+        pr.Invalidate();
+        pr.Update(pc, pl.mapW, pl.mapH);
+        let ctrlX = -100000.0;
+        for x in pr.candX { ctrlX = MaxF(ctrlX, x); }
+        let edge = pl.viewW + NMItemRenderer.CullMargin(pl.scale);
+        this.Check("renderer.culls_to_view", n > 0 && maxX <= edge && ctrlX > edge,
+            ToString(n) + " max " + this.F(maxX) + " control " + this.F(ctrlX) + " edge " + this.F(edge));
     }
 
     private func VersionCases() {
@@ -791,6 +868,39 @@ public class NMSelfTest {
         t.Hide();
         this.Check("tooltip.hides_again", !t.IsShown(), "");
         this.Check("tooltip.truncate", Equals(NMTooltip.Truncate("abcdef", 4), "abc…") && Equals(NMTooltip.Truncate("abc", 4), "abc"), "");
+
+        // Sidebar card (spec 6) at the 4K sidebar width: a long description wraps to at most three lines.
+        let cw = 784.0;
+        let card = NMTooltip.CreateDocked(canvas, 40.0, 40.0, cw, 1.0);
+        card.ShowDetails(NightMapDetails.Create("Gig", "Shoot to Thrill").AddRow("Distance", "640 M"), NMTheme.Cyan());
+        let h0 = card.Height();
+        let bare = !card.DescriptionShown();
+        let desc = "Wakako wants a shipment intercepted before it reaches the checkpoint. The convoy leaves Japantown at dusk; "
+            + "stop it before the bridge, keep the cargo intact and bring the driver back alive for questioning.";   // ~200
+        card.ShowDetails(NightMapDetails.Create("Gig", "Shoot to Thrill").WithDescription(desc).AddRow("Distance", "640 M"), NMTheme.Cyan());
+        let h1 = card.Height();
+        let grow = h1 - h0;
+        this.Check("tooltip.shows_description", bare && card.DescriptionShown() && grow > 0.0
+            && grow <= 3.0 * NMTooltip.DescLineH() + NMTooltip.DescGap() + 0.01 && StrLen(card.DescriptionText()) < StrLen(desc),
+            "len " + ToString(StrLen(desc)) + " grow " + this.F(grow) + " shown " + ToString(card.DescriptionShown()) + " text " + ToString(StrLen(card.DescriptionText())));
+        let three = NightMapDetails.Create("Gig", "Shoot to Thrill").AddAction("NUM 0", "Track").AddAction("NUM .", "Fast travel").AddAction("NUM 1", "Third");
+        card.ShowDetails(three, NMTheme.Cyan());
+        this.Check("tooltip.two_actions", card.KeycapsShown() == 2, ToString(card.KeycapsShown()));
+        this.Check("tooltip.keycap_width", NMTooltip.Keycap(new inkCanvas(), "NUM 0", "TRACK") > NMTooltip.Keycap(new inkCanvas(), "0", "TRACK"), "");
+
+        // No selection: the sidebar shows no text but the tracking block (no "POINT AT A MARKER"), also after a card hid.
+        let fl = NMPanelLayout.Compute(3840.0, 2160.0);
+        let panel = NMPanel.Build(new inkCanvas(), fl, NMTheme.DefaultPanelOpacity(), 0, false);
+        let dr = NMPhotoDrawer.Create(panel.sidebar, fl, 0);
+        let side = NMTooltip.CreateDocked(dr.Root(), 40.0, 40.0, fl.sideW - 80.0, fl.scale);
+        let blank0 = NMSelfTest.VisibleTexts(panel.sidebar, n"Tracking");
+        side.ShowDetails(three, NMTheme.Cyan());
+        let shownTexts = NMSelfTest.VisibleTexts(panel.sidebar, n"Tracking");
+        side.Hide();
+        let blank1 = NMSelfTest.VisibleTexts(panel.sidebar, n"Tracking");
+        this.Check("tooltip.empty_state_blank", blank0 == 0 && blank1 == 0 && shownTexts > 0,
+            ToString(blank0) + "/" + ToString(shownTexts) + "/" + ToString(blank1));
+        panel.Destroy();
     }
 
     private func PickCases() {
