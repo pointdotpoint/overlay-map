@@ -41,11 +41,14 @@ public class NMPanel {
     public let routes: ref<inkCanvas>;
     public let items: ref<inkCanvas>;
     public let overlay: ref<inkCanvas>;
-    public let subtitle: ref<inkText>;
+    public let districtTitle: ref<inkText>;   // top-left header: the district
+    public let districtSub: ref<inkText>;     // under it: the filter view, hidden on ALL
     public let warning: ref<inkText>;
     public let questTitle: ref<inkText>;
     public let questObjective: ref<inkText>;
     public let scaleBar: ref<inkRectangle>;
+    public let scaleTickL: ref<inkRectangle>;
+    public let scaleTickR: ref<inkRectangle>;
     public let scaleLabel: ref<inkText>;
     public let hints: ref<inkText>;
     public let holo: ref<NMHolo>;
@@ -59,7 +62,7 @@ public class NMPanel {
         p.root.SetName(n"NightMapPanel");
         p.holo = NMHolo.Create(effects, theme, layout.mapW, layout.mapH, s);
         // One background layer per region (the panel fill only under the hint bar): stacking the panel fill under the map
-        // fill would compound the opacity (0.45 over 0.45 reads as 0.70) and the world would not show through.
+        // fill would compound the opacity (0.45 over 0.45 reads as 0.70) and a low setting would not show the world through.
         NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.PanelBg(), opacity);
         NMUi.Rect(p.root, 0.0, 0.0, layout.mapW, layout.mapH, NMTheme.HoloBackground(theme), opacity);
 
@@ -90,16 +93,24 @@ public class NMPanel {
         p.hints = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(34.0 * s), NMTheme.HoloHighlight(theme));
         p.hints.SetTranslation(new Vector2(58.0 * s, layout.mapH + 34.0 * s));
 
-        // Header (district, tracked quest, objective) in the bottom-right corner of the map area, right-aligned. A
-        // vertical panel stacks it from the bottom, so a hidden quest or a two-line objective leaves no gap.
+        // Top-left header: the district as a large letter-spaced title, the filter view under it in the accent colour.
+        p.districtTitle = NMUi.Text(p.root, NMTheme.BodyFont(), n"Bold", Cast<Int32>(68.0 * s), NMTheme.HeaderTitle(theme));
+        p.districtTitle.SetTranslation(new Vector2(88.0 * s, 80.0 * s));
+        p.districtTitle.SetTracking(Cast<Int32>(8.0 * s));
+        p.districtSub = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(32.0 * s), NMTheme.HoloAccent(theme));
+        p.districtSub.SetTranslation(new Vector2(90.0 * s, 164.0 * s));
+        p.districtSub.SetTracking(Cast<Int32>(6.0 * s));
+        p.districtSub.SetVisible(false);
+
+        // Tracked quest and objective in the bottom-right corner of the map area, right-aligned (until the sidebar
+        // tracking block takes them). A vertical panel stacks them from the bottom, so a two-line objective leaves no gap.
         let header = new inkVerticalPanel();
         header.SetAnchor(inkEAnchor.TopLeft);
         header.SetAnchorPoint(new Vector2(1.0, 1.0));
         header.SetTranslation(new Vector2(layout.mapW - 67.0 * s, layout.mapH - 40.0 * s));
         header.SetInteractive(false);
         header.Reparent(p.root);
-        p.subtitle = NMPanel.HeaderLine(header, n"Medium", 34.0 * s, NMTheme.HoloHighlight(theme), 0.0);
-        p.questTitle = NMPanel.HeaderLine(header, n"Bold", 34.0 * s, NMTheme.VanillaStateColor(n"Quest"), 8.0 * s);
+        p.questTitle = NMPanel.HeaderLine(header, n"Bold", 34.0 * s, NMTheme.VanillaStateColor(n"Quest"), 0.0);
         p.questTitle.SetVisible(false);
         p.questObjective = NMPanel.HeaderLine(header, n"Medium", 30.0 * s, NMTheme.Text(), 6.0 * s);
         p.questObjective.SetWrappingAtPosition(layout.sideW - 120.0 * s);   // inside the sidebar; two lines at most (NMQuestHeader.Clip)
@@ -108,10 +119,16 @@ public class NMPanel {
         p.warning.SetTranslation(new Vector2(67.0 * s, 240.0 * s));
         p.warning.SetVisible(false);
 
-        // Scale bar (top-right of the map area).
-        p.scaleBar = NMUi.Rect(p.root, layout.viewW - 400.0 * s, 96.0 * s, 336.0 * s, 5.0 * s, NMTheme.Text(), 1.0);
-        p.scaleLabel = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(32.0 * s), NMTheme.Text());
-        p.scaleLabel.SetTranslation(new Vector2(layout.viewW - 300.0 * s, 108.0 * s));
+        // Scale bar (top-right of the view): a thin bar with end ticks, the label centred under it (SetScaleBar).
+        let bx = layout.viewW - 500.0 * s;
+        let bt = NMPanel.ScaleBarThickness(s);
+        p.scaleBar = NMUi.Rect(p.root, bx, 96.0 * s, NMPanel.ScaleBarMax(s), bt, NMTheme.Text(), 1.0);
+        p.scaleTickL = NMUi.Rect(p.root, bx, 96.0 * s, bt, 20.0 * s, NMTheme.Text(), 1.0);
+        p.scaleTickR = NMUi.Rect(p.root, bx + NMPanel.ScaleBarMax(s) - bt, 96.0 * s, bt, 20.0 * s, NMTheme.Text(), 1.0);
+        p.scaleLabel = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Text());
+        p.scaleLabel.SetAnchorPoint(new Vector2(0.5, 0.0));
+        p.scaleLabel.SetTracking(Cast<Int32>(4.0 * s));
+        p.SetScaleBar(NMPanel.ScaleBarMax(s));
 
         // Frame outline, edge glow and glowing corner brackets (brightened with HDR gain when effects are on).
         let t = 2.0 * s;
@@ -129,6 +146,19 @@ public class NMPanel {
         NMUi.Image(p.root, n"bracket_br", layout.w - b, layout.h - b, b, bc, false);
         p.holo.Play(p.mapContent);
         return p;
+    }
+
+    public static func ScaleBarMax(scale: Float) -> Float { return 336.0 * scale; }
+    public static func ScaleBarThickness(scale: Float) -> Float { return 4.0 * scale; }   // 2 px at 1080p
+
+    // The bar keeps its left end; the right tick and the centred label follow its length.
+    public func SetScaleBar(len: Float) {
+        let s = this.layout.scale;
+        let at = this.scaleBar.GetTranslation();
+        let bt = NMPanel.ScaleBarThickness(s);
+        this.scaleBar.SetSize(new Vector2(len, bt));
+        this.scaleTickR.SetTranslation(new Vector2(at.X + len - bt, at.Y));
+        this.scaleLabel.SetTranslation(new Vector2(at.X + len * 0.5, at.Y + 30.0 * s));
     }
 
     private static func HeaderLine(parent: ref<inkVerticalPanel>, style: CName, size: Float, color: HDRColor, top: Float) -> ref<inkText> {

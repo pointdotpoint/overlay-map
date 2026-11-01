@@ -89,7 +89,7 @@ public abstract class NMHoloTests {
             t.F(NMHoloTests.Lum("road_major", 0)) + "/" + t.F(NMHoloTests.Lum("bfill", 0)) + "/" + t.F(NMHoloTests.Lum("outline", 0)));
         t.Check("theme.overlay_opacities", t.Near(NMTheme.RingsOpacity(), 0.10, 0.0001) && t.Near(NMTheme.VignetteOpacity(), 0.55, 0.0001), "");
         t.Check("holo.glow_opacity", t.Near(NMTheme.TileOpacity("glow"), 0.50, 0.0001), "");
-        t.Check("holo.panel_opacity_default", t.Near(NMTheme.DefaultPanelOpacity(), 0.45, 0.0001), "");
+        t.Check("holo.panel_opacity_default", t.Near(NMTheme.DefaultPanelOpacity(), 0.92, 0.0001), t.F(NMTheme.DefaultPanelOpacity()));
         t.Check("holo.theme_index", NMTheme.ThemeIndex(NightMapHoloColor.Cyan) == 0 && NMTheme.ThemeIndex(NightMapHoloColor.Green) == 1, "");
         let brC: HDRColor = NMTheme.BracketColor(0, true);
         let brOff: HDRColor = NMTheme.BracketColor(0, false);

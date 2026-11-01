@@ -189,7 +189,7 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.step", "0.02")
     @runtimeProperty("ModSettings.min", "0.3")
     @runtimeProperty("ModSettings.max", "1.0")
-    public let panelOpacity: Float = 0.45;
+    public let panelOpacity: Float = 0.92;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")

@@ -505,6 +505,33 @@ public class NMSelfTest {
         this.Check("layout.ninety_percent_wide", this.Near(full.w, 3840.0 * 0.9, 0.5), this.F(full.w));
         this.Check("layout.sidebar_quarter", this.Near(full.sideW, full.mapW * 0.25, 0.5) && this.Near(full.viewW, full.mapW - full.sideW, 0.5),
             this.F(full.sideW) + " " + this.F(full.viewW));
+        // Frame (spec 6): district title top-left, scale bar inside the view (its longest bar, right tick included).
+        let fsizes: array<Vector2> = [new Vector2(3840.0, 2160.0), new Vector2(1920.0, 1080.0)];
+        let titleOk = true;
+        let barOk = true;
+        let fdetail = "";
+        for sz in fsizes {
+            let fl = NMPanelLayout.Compute(sz.X, sz.Y);
+            let panel = NMPanel.Build(new inkCanvas(), fl, NMTheme.DefaultPanelOpacity(), 0, false);
+            let tp = panel.districtTitle.GetTranslation();
+            let onRoot = Equals(panel.districtTitle.GetParentWidget().GetName(), n"NightMapPanel");   // translation in panel space
+            if !onRoot || tp.X > fl.viewW * 0.1 || tp.Y > fl.mapH * 0.1 {
+                titleOk = false;
+                fdetail += "title root=" + ToString(onRoot) + " " + this.F(tp.X) + "," + this.F(tp.Y) + " ";
+            }
+            panel.SetScaleBar(NMPanel.ScaleBarMax(fl.scale));   // the longest bar UpdateScale can draw
+            let right = panel.scaleTickR.GetTranslation().X + panel.scaleTickR.GetWidth();
+            if right > fl.viewW {
+                barOk = false;
+                fdetail += "bar " + this.F(right) + "/" + this.F(fl.viewW) + " ";
+            }
+            panel.Destroy();
+        }
+        this.Check("layout.district_top_left", titleOk, fdetail);
+        this.Check("layout.scale_bar_in_view", barOk, fdetail);
+        this.Check("settings.panel_opacity_migrates", this.Near(NMTheme.MigratePanelOpacity(0.45), 0.92, 0.0001)
+            && this.Near(NMTheme.MigratePanelOpacity(0.6), 0.6, 0.0001) && this.Near(NMTheme.MigratePanelOpacity(0.92), 0.92, 0.0001),
+            this.F(NMTheme.MigratePanelOpacity(0.45)) + " " + this.F(NMTheme.MigratePanelOpacity(0.6)));
     }
 
     private func TileCases() {

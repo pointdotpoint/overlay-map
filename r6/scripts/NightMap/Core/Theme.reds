@@ -81,6 +81,11 @@ public abstract class NMTheme {
         if theme == 1 { return new HDRColor(0.016, 0.063, 0.031, 1.0); } // #041008
         return new HDRColor(0.020, 0.051, 0.094, 1.0);                   // #050d18
     }
+    // District title in the top-left header (#e6f7ff), mirrored in green.
+    public static func HeaderTitle(theme: Int32) -> HDRColor {
+        if theme == 1 { return new HDRColor(0.902, 1.0, 0.925, 1.0); }  // #e6ffec
+        return new HDRColor(0.902, 0.969, 1.0, 1.0);                     // #e6f7ff
+    }
     // Corner brackets: the highlight colour; with effects on it gets HDR gain so it reads brighter than the frame.
     public static func BracketColor(theme: Int32, effects: Bool) -> HDRColor {
         let c = NMTheme.HoloHighlight(theme);
@@ -106,7 +111,12 @@ public abstract class NMTheme {
     public static func HoloEdgeOpacity() -> Float { return 0.6; }
     public static func HoloBracketGain() -> Float { return 1.25; }   // brackets brighten with HDR gain (bloom not verified)
     public static func ScanPeriod() -> Float { return 4.0; }          // holo_scan line spacing in 4K units
-    public static func DefaultPanelOpacity() -> Float { return 0.45; }   // see-through; keep equal to NightMapSettings.panelOpacity
+    public static func DefaultPanelOpacity() -> Float { return 0.92; }   // nearly opaque (spec 4.5); keep equal to NightMapSettings.panelOpacity
+    // The old default (0.45) becomes the new one. The 0.02 slider step from 0.3 can't produce 0.45, so a saved 0.45 is
+    // never the player's choice; any other value is kept.
+    public static func MigratePanelOpacity(saved: Float) -> Float {
+        return AbsF(saved - 0.45) < 0.001 ? NMTheme.DefaultPanelOpacity() : saved;
+    }
     // The glow layer draws a level this many steps coarser than the camera's, upscaled (bilinear = soft bloom).
     public static func GlowLevelOffset() -> Int32 { return 2; }
 

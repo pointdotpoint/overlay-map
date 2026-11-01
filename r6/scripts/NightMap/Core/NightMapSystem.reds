@@ -99,7 +99,8 @@ public class NightMapSystem extends ScriptableSystem {
     private let lastRouteReadMs: Float;
     private let filterView: Int32;
     // Header change-cache: SetText / tint only when the value changed (reset in OnOpened).
-    private let hdrSubtitle: String;
+    private let hdrDistrict: String;
+    private let hdrFilter: String;
     private let hdrQuestState: Int32;   // -1 unknown, 0 hidden, 1 shown
     private let hdrQuestTitle: String;
     private let hdrQuestObjective: String;
@@ -497,6 +498,9 @@ public class NightMapSystem extends ScriptableSystem {
             size = new Vector2(3840.0, 2160.0);
         }
         let s = this.Settings();
+        if IsDefined(s) {
+            s.panelOpacity = NMTheme.MigratePanelOpacity(s.panelOpacity);   // a saved old default moves to the new one
+        }
         let layout = NMPanelLayout.Compute(size.X, size.Y);
         this.holoTheme = IsDefined(s) ? NMTheme.ThemeIndex(s.holoColor) : 0;
         this.holoEffects = IsDefined(s) ? s.hologramEffects : true;
@@ -516,7 +520,8 @@ public class NightMapSystem extends ScriptableSystem {
         this.OnOpened();
         this.UpdateWarning();
         this.EnsureLoop();
-        NMLog.Info("open " + FloatToStringPrec(size.X, 0) + "x" + FloatToStringPrec(size.Y, 0));
+        NMLog.Info("open " + FloatToStringPrec(size.X, 0) + "x" + FloatToStringPrec(size.Y, 0)
+            + " opacity=" + FloatToStringPrec(IsDefined(s) ? s.panelOpacity : NMTheme.DefaultPanelOpacity(), 2));
     }
 
     // Tile problems (non-blocking): missing manifest, manifest present but archive not loaded, tiles built for another game version.
@@ -863,7 +868,8 @@ public class NightMapSystem extends ScriptableSystem {
         this.Photos().OnMapOpened();
         this.tipApiRev = -1;
         this.scaleRev = -1;
-        this.hdrSubtitle = "\n";   // sentinels no real text equals: force the first header write
+        this.hdrDistrict = "\n";   // sentinels no real text equals: force the first header write
+        this.hdrFilter = "\n";
         this.hdrQuestTitle = "\n";
         this.hdrQuestObjective = "\n";
         this.hdrHint = "\n";
@@ -1142,9 +1148,9 @@ public class NightMapSystem extends ScriptableSystem {
     private func UpdateScale() {
         let l = this.panel.layout;
         this.scaleRev = this.camera.revision;
-        let maxMeters = 336.0 * l.scale * this.camera.mpp;
+        let maxMeters = NMPanel.ScaleBarMax(l.scale) * this.camera.mpp;
         let len = NMMath.NiceLength(maxMeters);
-        this.panel.scaleBar.SetSize(new Vector2(len / this.camera.mpp, 5.0 * l.scale));
+        this.panel.SetScaleBar(len / this.camera.mpp);
         let label = NMMath.FormatMeters(len);
         if NotEquals(label, this.hdrScaleLabel) {
             this.panel.scaleLabel.SetText(label);
@@ -1155,10 +1161,15 @@ public class NightMapSystem extends ScriptableSystem {
     private func UpdateHeader() {
         let s = this.Settings();
         let district = this.DistrictName();
-        let subtitle = this.filterView == 0 ? district : district + "   ·   " + NMVanillaFilters.ViewName(this.filterView);
-        if NotEquals(subtitle, this.hdrSubtitle) {
-            this.panel.subtitle.SetText(subtitle);
-            this.hdrSubtitle = subtitle;
+        if NotEquals(district, this.hdrDistrict) {
+            this.panel.districtTitle.SetText(district);
+            this.hdrDistrict = district;
+        }
+        let filter = this.filterView == 0 ? "" : "FILTER · " + NMVanillaFilters.ViewName(this.filterView);
+        if NotEquals(filter, this.hdrFilter) {
+            this.panel.districtSub.SetVisible(StrLen(filter) > 0);
+            if StrLen(filter) > 0 { this.panel.districtSub.SetText(filter); }
+            this.hdrFilter = filter;
         }
         let q = NMQuestHeader.Read(this.GetGameInstance());
         let qState = q.visible ? 1 : 0;
