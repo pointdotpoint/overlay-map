@@ -71,7 +71,7 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category", "Keys")
     @runtimeProperty("ModSettings.category.order", "0")
     @runtimeProperty("ModSettings.displayName", "Act on selection")
-    @runtimeProperty("ModSettings.description", "Zooms into a selected cluster, or activates the selected item.")
+    @runtimeProperty("ModSettings.description", "Activates the selected item.")
     public let keyAct: EInputKey = EInputKey.IK_NumPad0;
 
     @runtimeProperty("ModSettings.mod", "NightMap")

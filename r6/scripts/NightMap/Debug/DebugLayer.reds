@@ -16,7 +16,7 @@ public class NMDebugListener extends NightMapLayerListener {
             .AddRow("ITEM", "#" + ToString(id))
             .AddRow("WORLD X", FloatToStringPrec(pos.X, 0))
             .AddRow("WORLD Y", FloatToStringPrec(pos.Y, 0))
-            .WithDescription("Synthetic item used to test clustering, selection and performance.")
+            .WithDescription("Synthetic item used to test tiers, selection and performance.")
             .AddAction("ACT", "LOG THIS ITEM");
     }
 

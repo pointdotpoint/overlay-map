@@ -7,7 +7,7 @@ public enum NightMapTier {
     Minor = 2
 }
 
-// How a layer's individual items are drawn. Clusters are always hexes.
+// How a layer's items are drawn.
 public enum NightMapPinStyle {
     Hex = 0,
     Icon = 1
@@ -240,8 +240,8 @@ public class NightMapLayer {
         this.Touch();
     }
 
-    // Non-clustered layers always draw individual chips; keep them small (< 500 items).
-    // The renderer scans every alive item of such a layer on each relayout; it is not meant for large counts.
+    // Deprecated and ignored: there is no clustering any more; markers scale down and fade out by tier (SetTier).
+    // Kept so existing callers compile; it still records the flag.
     public func SetClustering(enabled: Bool) {
         this.clustering = enabled;
         this.Touch();

@@ -82,10 +82,6 @@ public class NightMapSystem extends ScriptableSystem {
     private let scaleRev: Int32;
     private let perf: ref<NMPerfSuite>;
     private let perfHidden: Bool;
-    private let cacheTotal: Int32;
-    private let cacheN: Int32;
-    private let cacheCats: array<Int32>;
-    private let cacheCounts: array<Int32>;
     private let versionLogged: Bool;
     private let layerEpoch: Int32;
     private let imageRetries: Int32;
@@ -874,7 +870,6 @@ public class NightMapSystem extends ScriptableSystem {
         this.hdrScaleLabel = "\n";
         this.hdrQuestState = -1;
         this.hdrQuestIsQuest = false;
-        this.cacheTotal = -1;
         this.imageRetries = 0;
         this.imageRev = this.api.revision;
         this.layerEpoch = this.api.layerEpoch;
@@ -1008,7 +1003,7 @@ public class NightMapSystem extends ScriptableSystem {
         if relaid {
             let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale, this.drawerShift);
             // Re-query tooltip content only when the selection or the data changed, not on every pan frame.
-            if changed || this.api.revision != this.tipApiRev || this.ClusterStale() {
+            if changed || this.api.revision != this.tipApiRev {
                 this.tipApiRev = this.api.revision;
                 this.RefreshTooltip(changed);
             }
@@ -1019,8 +1014,10 @@ public class NightMapSystem extends ScriptableSystem {
         let c = this.crosshair;
         let isPhoto = c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers)
             && Equals(this.api.layers[c.selLayer].id, NMPhotos.LayerId());
+        // A photo pin shrinks with its tier as the map zooms out; the reticle box follows the drawn picture.
+        let photoK = isPhoto ? NMTiers.Scale(this.api.layers[c.selLayer].EffectiveTier(), this.camera.mpp) : 1.0;
         this.reticle.Update(l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5, c.selKind >= 0, c.selX, c.selY, isPhoto,
-            NMItemRenderer.ThumbZoom(this.camera.mpp), dt);
+            NMItemRenderer.ThumbZoom(this.camera.mpp) * photoK, dt);
         if this.input.act {
             this.input.act = false;
             this.Activate();
@@ -1062,27 +1059,6 @@ public class NightMapSystem extends ScriptableSystem {
         this.routes.Update(this.camera, p.X, p.Y, dt, l.mapW, l.mapH);
     }
 
-    // True when the selected cluster's displayed total or category counts differ from the cached ones.
-    private func ClusterStale() -> Bool {
-        let c = this.crosshair;
-        if c.selKind != 1 || c.sel < 0 {
-            return false;
-        }
-        let slot = this.renderer.candSlot[c.sel];
-        let n = this.renderer.clCatN[slot];
-        if this.renderer.clTotal[slot] != this.cacheTotal || n != this.cacheN {
-            return true;
-        }
-        let k = 0;
-        while k < n {
-            if this.renderer.clCats[slot * 6 + k] != this.cacheCats[k] || this.renderer.clCatCount[slot * 6 + k] != this.cacheCounts[k] {
-                return true;
-            }
-            k += 1;
-        }
-        return false;
-    }
-
     private func RefreshTooltip(changed: Bool) {
         this.RefreshSidebar(changed);
         this.drawer.SetEmpty(!this.tooltip.IsShown() && !this.drawer.IsShown());
@@ -1119,23 +1095,6 @@ public class NightMapSystem extends ScriptableSystem {
                 d = this.DefaultDetails(L, c.selItem);
             }
             this.tooltip.ShowDetails(d, d.hasColor ? d.color : this.api.catColor[L.catGlobal[L.cat[c.selItem]]]);
-        } else if c.selKind == 1 && c.sel >= 0 {
-            let slot = this.renderer.candSlot[c.sel];
-            let cats: array<Int32>;
-            let counts: array<Int32>;
-            let k = 0;
-            while k < this.renderer.clCatN[slot] {
-                ArrayPush(cats, this.renderer.clCats[slot * 6 + k]);
-                ArrayPush(counts, this.renderer.clCatCount[slot * 6 + k]);
-                k += 1;
-            }
-            this.cacheTotal = this.renderer.clTotal[slot];
-            this.cacheN = this.renderer.clCatN[slot];
-            this.cacheCats = cats;
-            this.cacheCounts = counts;
-            let s = this.Settings();
-            this.tooltip.ShowCluster(this.renderer.clTotal[slot], IsDefined(s) ? NMInput.KeyName(s.keyAct) : "ACT");
-            this.drawer.Hide();
         } else {
             this.tooltip.Hide();
             this.drawer.Hide();
@@ -1177,12 +1136,6 @@ public class NightMapSystem extends ScriptableSystem {
             if IsDefined(L.listener) && L.IsAlive(c.selItem) {
                 L.listener.OnActivated(c.selItem);
             }
-        } else if c.selKind == 1 && c.sel >= 0 {
-            let slot = this.renderer.candSlot[c.sel];
-            let l = this.panel.layout;
-            let target = this.renderer.clWorld[slot] / (0.6 * MinF(l.mapW, l.mapH));
-            this.camera.follow = false;
-            this.camera.EaseTo(this.renderer.clWx[slot], this.renderer.clWy[slot], target, 300.0);
         }
     }
 

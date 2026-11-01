@@ -3,7 +3,7 @@ module NightMap
 // Selection state; picks the nearest candidate to the map-area centre within SelectRadius (no reticle is drawn).
 public class NMCrosshair {
     public let sel: Int32;
-    public let selKind: Int32;
+    public let selKind: Int32;   // 0 an item, -1 nothing
     public let selLayer: Int32;
     public let selItem: Int32;
     public let selX: Float;
@@ -19,7 +19,7 @@ public class NMCrosshair {
     }
 
     // Nearest candidate within radius; the previous selection is kept while it is within 4 units of the
-    // nearest one (prevents flicker). Chips are identified by layer+item, clusters by their pyramid level + block (key in the item slot).
+    // nearest one (prevents flicker). Candidates are items (kind 0), identified by layer + item.
     // reach[i], when present, widens the radius for that candidate: a big photo pin's centre sits far from its tip.
     public static func Pick(xs: array<Float>, ys: array<Float>, reach: array<Float>, kinds: array<Int32>, layers: array<Int32>, items: array<Int32>,
                             cx: Float, cy: Float, radius: Float, prevKind: Int32, prevLayer: Int32, prevItem: Int32) -> Int32 {
@@ -81,11 +81,8 @@ public class NMCrosshair {
         this.selX = x;
         this.selY = y;
         r.selChip.SetVisible(kind == 0);
-        r.selCluster.SetVisible(kind == 1);
         if kind == 0 {
             r.selChip.SetTranslation(new Vector2(x, y));
-        } else if kind == 1 {
-            r.selCluster.SetTranslation(new Vector2(x, y));
         }
         return changed;
     }

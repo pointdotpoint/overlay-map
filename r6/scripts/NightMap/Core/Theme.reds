@@ -47,21 +47,14 @@ public abstract class NMTheme {
     public static func ShadowColor() -> HDRColor { return new HDRColor(0.0, 0.0, 0.0, 1.0); }
     public static func ChipSize() -> Float { return 112.0; }
     public static func ChipSelSize() -> Float { return 136.0; }
-    public static func ClusterSize() -> Float { return 176.0; }
-    public static func ClusterSelSize() -> Float { return 200.0; }
-    public static func MiniSize() -> Float { return 80.0; }
     public static func IconSize() -> Float { return 48.0; }
     public static func PlayerSize() -> Float { return 112.0; }
     public static func BracketSize() -> Float { return 110.0; }
-    public static func MiniOffsetY() -> Float { return -106.0; }
-    public static func MiniSpacing() -> Float { return 67.0; }
 
     public static func HintHeight() -> Float { return 110.0; }
     public static func SelectRadius() -> Float { return 100.0; }
-    public static func ClusterSpacing() -> Float { return 192.0; }
     public static func ChipBudget() -> Int32 { return 300; }
     public static func SnapMs() -> Float { return 150.0; }   // ease onto the focused marker when panning stops
-    public static func ClusterBudget() -> Int32 { return 80; }
     public static func MaxGlobalCategories() -> Int32 { return 64; }
 
     // 1.0 if ink rotates clockwise for positive angles; verified at Checkpoint 2.

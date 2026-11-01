@@ -80,3 +80,10 @@ def test_chip_vertex0_has_no_dark_speck():
     for xy in [(66, 54), (67, 53)]:   # lower-right vertex, just outside the stroke
         r, g, b, a = chip.getpixel(xy)
         assert not (a > 200 and r < 200), (xy, (r, g, b, a))
+
+
+def test_cluster_parts_removed():
+    # Clustering is gone (visual overhaul, spec section 7): no hex count badge, its rim or the mini-icon backing.
+    assert "cluster" not in SIZES and "cluster_sel" not in SIZES and "mini" not in SIZES
+    _, parts = build_ui_atlas()
+    assert not {"cluster", "cluster_sel", "mini"} & set(parts)

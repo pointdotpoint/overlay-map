@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 SS = 4  # supersampling factor
 SIZES = {
-    "plate": 224, "chip": 72, "chip_sel": 136, "cluster": 176, "cluster_sel": 200, "mini": 80,
+    "plate": 224, "chip": 72, "chip_sel": 136,
     "ring": 216, "player": 112,
     "bracket_tl": 110, "bracket_tr": 110, "bracket_bl": 110, "bracket_br": 110,
     "icon_quest": 48, "icon_gig": 48, "icon_vendor": 48, "icon_ft": 48, "icon_undisc": 48, "icon_dot": 24,
@@ -17,7 +17,7 @@ SIZES = {
     "icon_c_skill": 64, "icon_strike": 64,
 }
 # hex radius / stroke width per hex part (4K units)
-_HEX = {"chip": (34, 4), "chip_sel": (60, 7), "cluster": (79, 6), "cluster_sel": (91, 7), "mini": (34, 4)}
+_HEX = {"chip": (34, 4), "chip_sel": (60, 7)}
 _FILL = (41, 41, 41, 235)     # white * 0.16 value, 92% alpha -> tinted dark fill
 _WHITE = (255, 255, 255, 255)
 _DARK = (4, 6, 10)             # near-black plate/chip fill (tint multiplies, so it stays near black)

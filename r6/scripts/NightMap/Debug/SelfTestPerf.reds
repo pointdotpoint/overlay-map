@@ -1,54 +1,32 @@
 module NightMap
 
 // Self-tests for the renderer's cost work (occupied-cell lists, shared ring order). Called from NMSelfTest.Run().
-// The old per-cell scan is kept reachable through NMItemRenderer.forceScan and is the reference behaviour.
+// The full ring-order cell scan is kept reachable through NMItemRenderer.forceScan and is the reference behaviour.
 public class NMRendSnap {
     public let chips: Int32;
-    public let clusters: Int32;
     public let candX: array<Float>;
     public let candY: array<Float>;
     public let candKind: array<Int32>;
     public let candLayer: array<Int32>;
     public let candItem: array<Int32>;
     public let candSlot: array<Int32>;
-    public let clWx: array<Float>;
-    public let clWy: array<Float>;
-    public let clTotal: array<Int32>;
-    public let clKey: array<Int32>;
-    public let clCats: array<Int32>;
-    public let clCatCount: array<Int32>;
 
     public static func Take(r: ref<NMItemRenderer>) -> ref<NMRendSnap> {
         let s = new NMRendSnap();
         s.chips = r.chipsUsed;
-        s.clusters = r.clustersUsed;
         s.candX = r.candX;
         s.candY = r.candY;
         s.candKind = r.candKind;
         s.candLayer = r.candLayer;
         s.candItem = r.candItem;
         s.candSlot = r.candSlot;
-        let i = 0;
-        while i < r.clustersUsed {
-            ArrayPush(s.clWx, r.clWx[i]);
-            ArrayPush(s.clWy, r.clWy[i]);
-            ArrayPush(s.clTotal, r.clTotal[i]);
-            ArrayPush(s.clKey, r.clKey[i]);
-            let k = 0;
-            while k < 6 {
-                ArrayPush(s.clCats, r.clCats[i * 6 + k]);
-                ArrayPush(s.clCatCount, r.clCatCount[i * 6 + k]);
-                k += 1;
-            }
-            i += 1;
-        }
         return s;
     }
 
     // "" when identical (exact float equality), else the first difference.
     public static func Diff(a: ref<NMRendSnap>, b: ref<NMRendSnap>) -> String {
-        if a.chips != b.chips || a.clusters != b.clusters {
-            return "counts " + ToString(a.chips) + "/" + ToString(a.clusters) + " vs " + ToString(b.chips) + "/" + ToString(b.clusters);
+        if a.chips != b.chips {
+            return "counts " + ToString(a.chips) + " vs " + ToString(b.chips);
         }
         let n = ArraySize(a.candX);
         let i = 0;
@@ -56,20 +34,6 @@ public class NMRendSnap {
             if a.candX[i] != b.candX[i] || a.candY[i] != b.candY[i] || a.candKind[i] != b.candKind[i]
                 || a.candLayer[i] != b.candLayer[i] || a.candItem[i] != b.candItem[i] || a.candSlot[i] != b.candSlot[i] {
                 return "cand " + ToString(i);
-            }
-            i += 1;
-        }
-        i = 0;
-        while i < a.clusters {
-            if a.clWx[i] != b.clWx[i] || a.clWy[i] != b.clWy[i] || a.clTotal[i] != b.clTotal[i] || a.clKey[i] != b.clKey[i] {
-                return "cluster " + ToString(i);
-            }
-            let k = 0;
-            while k < 6 {
-                if a.clCats[i * 6 + k] != b.clCats[i * 6 + k] || a.clCatCount[i * 6 + k] != b.clCatCount[i * 6 + k] {
-                    return "cluster cats " + ToString(i);
-                }
-                k += 1;
             }
             i += 1;
         }
@@ -155,7 +119,7 @@ public abstract class NMPerfTests {
     }
 
     // Several layers (dense Debug content plus sparse icon layers, one mutated), several zooms and centres: the
-    // occupied-list path must give exactly the scan path's output (counts, positions, keys, categories).
+    // occupied-list path must give exactly the full ring scan's output (counts, positions, items, slots, order).
     private static func EquivalenceCases(t: ref<NMSelfTest>) {
         let api = NightMap.Create();
         api.SetWorld(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
@@ -170,6 +134,7 @@ public abstract class NMPerfTests {
         sp.SetCategory(n"test.s1b", "S1B", NMTheme.Pink());
         let sp2 = api.CreateLayer(n"test.sparse2", "Sparse 2", 30);
         sp2.SetCategory(n"test.s2a", "S2A", NMTheme.Cyan());
+        sp2.SetTier(NightMapTier.Major);   // the only layer left at the far zooms
         let ids: array<Int32>;
         let i = 0;
         while i < 120 {
@@ -213,7 +178,8 @@ public abstract class NMPerfTests {
         let cy: array<Float> = [(bounds.minY + bounds.maxY) * 0.5, minY + 5000.0, minY + 5000.0];
         let bad = "";
         let runs = 0;
-        let sawCluster = false;
+        let sawCapped = false;
+        let sawFar = false;
         let sawChip = false;
         let c = 0;
         while c < 3 {
@@ -232,28 +198,28 @@ public abstract class NMPerfTests {
                 if NotEquals(d, "") {
                     bad += "c" + ToString(c) + " mpp " + FloatToStringPrec(m, 1) + ": " + d + "; ";
                 }
-                if ref0.clusters > 0 { sawCluster = true; }
+                if ref0.chips >= NMTheme.ChipBudget() { sawCapped = true; }
+                if m >= 8.0 && ref0.chips > 0 && ref0.chips < NMTheme.ChipBudget() { sawFar = true; }
                 if ref0.chips > 0 { sawChip = true; }
                 runs += 1;
             }
             c += 1;
         }
         t.Check("perf.occ_identical_to_scan", Equals(bad, "") && runs == 21, bad);
-        t.Check("perf.equivalence_exercised", sawCluster && sawChip && dbg.count == 3000, "");
+        t.Check("perf.equivalence_exercised", sawCapped && sawFar && sawChip && dbg.count == 3000, ToString(sawCapped) + ToString(sawFar) + ToString(sawChip));
         // The wide layer must really have > 150 occupied level-0 cells (the old 64 cap's territory) over the city.
         t.Check("perf.wide_layer_exceeds_old_cap", wide.occN[0] > 150 && Equals(NMPerfTests.OccErr(wide), ""), ToString(wide.occN[0]));
-        // Conservation with the sparse path: at 16 m/unit every alive item of every layer is drawn once.
+        // Far zoom costs less than it draws: at 16 m/unit the Minor layers (3,000 debug items among them) are skipped
+        // whole, and every Major item is placed once.
         cam.SetCenter((bounds.minX + bounds.maxX) * 0.5, (bounds.minY + bounds.maxY) * 0.5);
         cam.SetMpp(16.0);
         r.Invalidate();
         r.Update(cam, 1880.0, 1480.0);
-        let total = r.chipsUsed;
-        let k = 0;
-        while k < r.clustersUsed {
-            total += r.clTotal[k];
-            k += 1;
+        let others = 0;
+        for li in r.candLayer {
+            if li != sp2.index { others += 1; }
         }
-        t.Check("perf.conservation_all_layers", total == dbg.count + sp.count + sp2.count + wide.count, ToString(total) + " of " + ToString(dbg.count + sp.count + sp2.count + wide.count));
+        t.Check("perf.far_zoom_major_only", r.chipsUsed == sp2.count && others == 0, ToString(r.chipsUsed) + " of " + ToString(sp2.count) + ", others " + ToString(others));
     }
 
     // ---- selection grow vs slot reuse (renderer slots are reassigned in placement order) ----

@@ -29,9 +29,6 @@ PATCHES = [
     (RENDERER, "            ic.SetAtlasResource(this.icon.atlas);\n",
      "            ic.SetAtlasResource(this.icon.atlas);\n            this.soakIconLoads += 1;\n"
      "            this.soakLoadAt = p;\n"),
-    (RENDERER, "                        this.miniIcon[mi].SetAtlasResource(this.api.catAtlas[g2]);\n",
-     "                        this.miniIcon[mi].SetAtlasResource(this.api.catAtlas[g2]);\n"
-     "                        this.soakIconLoads += 1;\n                        this.soakLoadAt = new Vector2(x, y);\n"),
 ]
 
 

@@ -180,14 +180,6 @@ public class NMTooltip {
         this.Present();
     }
 
-    public func ShowCluster(total: Int32, actKey: String) {
-        this.Layout(false, 0, true);
-        this.bar.SetTintColor(NMTheme.Cyan());
-        this.title.SetText(ToString(total) + " MARKERS");
-        this.SetAction(actKey, "Zoom");
-        this.Present();
-    }
-
     private func Present() {
         this.shown = true;
         this.root.SetVisible(true);

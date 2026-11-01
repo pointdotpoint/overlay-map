@@ -658,32 +658,38 @@ public class NMSelfTest {
         for m in mpps {
             cam.SetMpp(m);
             r.Update(cam, 1880.0, 1480.0);
-            if r.chipsUsed > NMTheme.ChipBudget() || r.clustersUsed > NMTheme.ClusterBudget() {
+            if r.chipsUsed > NMTheme.ChipBudget() {
                 ok = false;
-                detail += "mpp " + this.F(m) + ": chips " + ToString(r.chipsUsed) + " clusters " + ToString(r.clustersUsed) + "; ";
+                detail += "mpp " + this.F(m) + ": chips " + ToString(r.chipsUsed) + "; ";
             }
-            if ArraySize(r.candX) != r.chipsUsed + r.clustersUsed {
+            if ArraySize(r.candX) != r.chipsUsed {
                 ok = false;
                 detail += "candidates mismatch at mpp " + this.F(m) + "; ";
             }
         }
         this.Check("renderer.budgets", ok, detail);
-        // Whole city in view at 16 m/unit: every item is drawn exactly once, as a chip or inside a cluster.
+        // Whole city in view at 16 m/unit: the Minor debug layer is hidden; promoted to Major it fills the budget
+        // and no item is drawn twice.
         cam.SetCenter((bounds.minX + bounds.maxX) * 0.5, (bounds.minY + bounds.maxY) * 0.5);
         cam.SetMpp(16.0);
         r.Update(cam, 1880.0, 1480.0);
-        let total = r.chipsUsed;
-        let k = 0;
-        while k < r.clustersUsed {
-            total += r.clTotal[k];
-            k += 1;
-        }
-        this.Check("renderer.conservation_overview", total == 3000, ToString(total) + " of 3000 (chips " + ToString(r.chipsUsed) + ")");
-        this.Check("renderer.idle_skips_relayout", !r.Update(cam, 1880.0, 1480.0), "");
+        let minorChips = r.chipsUsed;
         let L = api.GetLayer(NMDebugLayer.Id());
+        L.SetTier(NightMapTier.Major);
+        r.Update(cam, 1880.0, 1480.0);
+        let seen: array<Bool>;
+        ArrayResize(seen, ArraySize(L.alive));
+        let dup = 0;
+        for item in r.candItem {
+            if seen[item] { dup += 1; }
+            seen[item] = true;
+        }
+        this.Check("renderer.overview_tiers", minorChips == 0 && r.chipsUsed == NMTheme.ChipBudget() && dup == 0,
+            "minor " + ToString(minorChips) + " major " + ToString(r.chipsUsed) + " dup " + ToString(dup));
+        this.Check("renderer.idle_skips_relayout", !r.Update(cam, 1880.0, 1480.0), "");
         L.SetVisible(false);
         r.Update(cam, 1880.0, 1480.0);
-        this.Check("renderer.hidden_layer_draws_nothing", r.chipsUsed == 0 && r.clustersUsed == 0, ToString(r.chipsUsed) + "/" + ToString(r.clustersUsed));
+        this.Check("renderer.hidden_layer_draws_nothing", r.chipsUsed == 0 && ArraySize(r.candX) == 0, ToString(r.chipsUsed) + "/" + ToString(ArraySize(r.candX)));
     }
 
     private func VersionCases() {
@@ -729,9 +735,9 @@ public class NMSelfTest {
     private func PickCases() {
         let xs: array<Float> = [100.0, 130.0, 300.0];
         let ys: array<Float> = [100.0, 100.0, 100.0];
-        let kinds: array<Int32> = [0, 0, 1];
-        let layers: array<Int32> = [0, 0, -1];
-        let items: array<Int32> = [5, 6, -1];
+        let kinds: array<Int32> = [0, 0, 0];
+        let layers: array<Int32> = [0, 0, 1];
+        let items: array<Int32> = [5, 6, 9];
         let noReach: array<Float>;
         this.Check("pick.nearest", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 114.0, 100.0, 50.0, -1, -1, -1) == 0, "");
         this.Check("pick.sticky_within_4px", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 116.0, 100.0, 50.0, 0, 0, 5) == 0, "");
@@ -743,11 +749,11 @@ public class NMSelfTest {
         for x in xs { ArrayPush(reach, 200.0); }
         this.Check("pick.reach_widens", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 1000.0, 1000.0, 50.0, -1, -1, -1) == -1
             && NMCrosshair.Pick(xs, ys, reach, kinds, layers, items, xs[0], ys[0] + 240.0, 50.0, -1, -1, -1) == 0, "");
-        this.Check("pick.cluster", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 290.0, 100.0, 50.0, 1, -1, -1) == 2, "");
-        // clusters are identified by key (item slot), not position: stays selected after a pan of 3 units, drops on a different key
-        let cItems: array<Int32> = [5, 6, 200010003];
-        this.Check("pick.cluster_sticky_by_key", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, cItems, 292.0, 100.0, 50.0, 1, -1, 200010003) == 2, "");
-        this.Check("pick.cluster_other_key_no_stick", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, cItems, 292.0, 100.0, 50.0, 1, -1, 200010004) == 2, "");
+        // Every candidate is an item (kind 0), identified by layer + item. A lone item is picked away from the others;
+        // the selected item is kept within 4 units of the nearest one, but only the same item on the same layer.
+        this.Check("pick.lone_item", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 290.0, 100.0, 50.0, 0, 0, 5) == 2, "");
+        this.Check("pick.sticky_by_identity", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 114.5, 100.0, 50.0, 0, 0, 6) == 1, "");
+        this.Check("pick.other_layer_no_stick", NMCrosshair.Pick(xs, ys, noReach, kinds, layers, items, 114.5, 100.0, 50.0, 0, 1, 6) == 0, "");
         let empty: array<Float>;
         let emptyI: array<Int32>;
         this.Check("pick.empty_candidates", NMCrosshair.Pick(empty, empty, empty, emptyI, emptyI, emptyI, 0.0, 0.0, 50.0, 0, 0, 5) == -1, "");
