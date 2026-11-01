@@ -1,0 +1,101 @@
+{
+ "Data": {
+  "RootChunk": {
+   "nodes": [
+    {
+     "Data": {
+      "$type": "MinimapDataNode",
+      "allInteriorShapes": 0,
+      "encodedShapesRef": {
+       "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "string",
+        "$value": "base\\worlds\\03_night_city\\sectors\\_generated\\minimap\\resources\\a31_31_32_c80_80_160.cminimap"
+       },
+       "Flags": "Embedded"
+      }
+     }
+    }
+   ],
+   "nodeData": {
+    "Data": [
+     {
+      "$type": "worldCompiledNodeInstanceSetupInfo",
+      "nodeIdx": "0",
+      "transform": {
+       "$type": "Transform",
+       "orientation": {
+        "$type": "Quaternion",
+        "i": 0,
+        "j": 0,
+        "k": 0,
+        "r": 1
+       },
+       "position": {
+        "$type": "Vector4",
+        "W": 0,
+        "X": -128.0,
+        "Y": 384.0,
+        "Z": 0
+       }
+      },
+      "scale": {
+       "$type": "Vector3",
+       "X": 1,
+       "Y": 1,
+       "Z": 1
+      }
+     }
+    ]
+   }
+  },
+  "EmbeddedFiles": [
+   {
+    "FileName": {
+     "$type": "ResourcePath",
+     "$storage": "string",
+     "$value": "base\\worlds\\03_night_city\\sectors\\_generated\\minimap\\resources\\a31_31_32_c80_80_160.cminimap"
+    },
+    "Content": {
+     "$type": "minimapEncodedShapes",
+     "BoxQuantizationBias": {
+      "$type": "Vector3",
+      "X": -25.9332161,
+      "Y": -10.1290073,
+      "Z": 0
+     },
+     "BoxQuantizationScale": {
+      "$type": "Vector3",
+      "X": 40.888916,
+      "Y": 27.6732578,
+      "Z": 1
+     },
+     "Buffer": {
+      "BufferId": "45",
+      "Flags": 7471104,
+      "Bytes": "AAAAAAYAAAAGAAAABAABAAAABwAAAAcA4zhBQm/rcUEAAERCGFXtQNbDKUIAAERCAAABAAEAAQCM+rJBCrafQAAAREIAAIA/e/V6QiyoAkIAAEhCAACAPwRA8cAlqAJCAABEQgAAgD+N+rJBh99QQgAASEIAAIA/AAAAAAAAAAAAAAAAAAAYAAAAAAAAALv8/v///7pEQQMAAP7/JLj/////AAAAAP//AAABAAEAGir1qBG/bPI="
+     },
+     "cookingPlatform": "PLATFORM_PC",
+     "NumBorderPoints": 2,
+     "NumFillPoints": 3,
+     "NumOwners": 1,
+     "NumPoints": 0,
+     "NumShapes": 2,
+     "NumSpatialBuckets": 2,
+     "NumUniqueGeometry": 2,
+     "QuantizationBias": {
+      "$type": "Vector2",
+      "X": -14.9557018,
+      "Y": -9.77704239
+     },
+     "QuantizationScale": {
+      "$type": "Vector2",
+      "X": 29.9114037,
+      "Y": 19.5540848
+     },
+     "Version": 4294901800
+    }
+   }
+  ]
+ }
+}

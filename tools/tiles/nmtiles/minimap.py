@@ -25,8 +25,9 @@ from typing import Callable
 
 import numpy as np
 
+MAJOR_WIDTH_M = 16.0        # metres: a road shape at least this wide (classify_width) is a major road (arterial, highway)
 ROAD_THICKNESS = 3.0        # metres: area / max bbox extent at or above this is a road, below it a stroke
-DECODE_VERSION = 3           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
+DECODE_VERSION = 4           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
 GROUND_Z, ELEVATED_Z, ELEVATED_MAX_THICK = 15.0, 80.0, 25.0   # spec 11.6 road rule
 LODS = (3, 4)               # sector LODs that carry the minimap geometry we use (spike 2: both, disjoint paths)
 # SECTOR_RE also matches z = -1 sectors (exterior_x_y_-1_*, about 1.3% of the triangles). They are included on
@@ -131,29 +132,43 @@ def decode_shapes(root: dict) -> list[DecodedShape]:
     return out
 
 
+def classify_width(tris: np.ndarray) -> float:
+    """Metres: area / max bbox extent of the shape's triangles (0 for an empty or degenerate shape)."""
+    t = np.asarray(tris, np.float64)
+    if len(t) == 0:
+        return 0.0
+    area = 0.5 * np.abs((t[:, 1, 0] - t[:, 0, 0]) * (t[:, 2, 1] - t[:, 0, 1])
+                        - (t[:, 2, 0] - t[:, 0, 0]) * (t[:, 1, 1] - t[:, 0, 1])).sum()
+    ext = max(np.ptp(t[:, :, 0]), np.ptp(t[:, :, 1]))
+    return float(area / ext) if ext > 0 else 0.0
+
+
 def classify(tris: np.ndarray, z: float = 0.0, thickness: float = ROAD_THICKNESS) -> str:
     """'road' when thick >= 3 m and (z < 15 or (z < 80 and thick < 25)) (spec 11.6), else 'stroke' (building geometry).
 
     thick = area / max bbox extent; z = the shape's instance elevation (C.z)."""
-    t = np.asarray(tris, np.float64)
-    if len(t) == 0:
-        return "stroke"
-    area = 0.5 * np.abs((t[:, 1, 0] - t[:, 0, 0]) * (t[:, 2, 1] - t[:, 0, 1])
-                        - (t[:, 2, 0] - t[:, 0, 0]) * (t[:, 1, 1] - t[:, 0, 1])).sum()
-    ext = max(np.ptp(t[:, :, 0]), np.ptp(t[:, :, 1]))
-    if ext <= 0:
-        return "stroke"
-    thick = area / ext
+    thick = classify_width(tris)
     return "road" if thick >= thickness and (z < GROUND_Z or (z < ELEVATED_Z and thick < ELEVATED_MAX_THICK)) else "stroke"
+
+
+def _node_index(nd: dict) -> int | None:
+    """Node index of a nodeData entry: ``NodeIndex`` (WolvenKit 8) or ``nodeIdx``, a string (WolvenKit 10)."""
+    v = nd.get("NodeIndex", nd.get("nodeIdx"))
+    return None if v is None else int(v)
+
+
+def _node_position(nd: dict) -> dict:
+    return nd.get("Position") or (nd.get("transform") or {}).get("position") or {}
 
 
 def _check_identity(nd: dict) -> None:
     """Node rotation must be identity and scale 1 (true for all 12.4k nodes): world xy = node xy + local xy."""
-    o, sc = nd.get("Orientation") or {}, nd.get("Scale") or {}
+    o = nd.get("Orientation") or (nd.get("transform") or {}).get("orientation") or {}
+    sc = nd.get("Scale") or nd.get("scale") or {}
     q = [float(o.get(k, d)) for k, d in (("i", 0), ("j", 0), ("k", 0), ("r", 1))]
     v = [float(sc.get(k, 1)) for k in "XYZ"]
     if not (np.allclose(q, [0, 0, 0, 1], atol=1e-4) and np.allclose(v, 1, atol=1e-4)):
-        raise ValueError(f"minimap node {nd.get('NodeIndex')} has non-identity transform (orientation {q}, scale {v}); "
+        raise ValueError(f"minimap node {_node_index(nd)} has non-identity transform (orientation {q}, scale {v}); "
                          "the decoder assumes identity rotation and unit scale")
 
 
@@ -168,30 +183,34 @@ def sector_nodes(sector_json: dict) -> list[tuple[tuple[float, float, float], di
     nodes = {i: n["Data"] for i, n in enumerate(root["nodes"]) if n["Data"]["$type"] == "MinimapDataNode"}
     out = []
     for nd in root["nodeData"]["Data"]:
-        node = nodes.get(nd["NodeIndex"])
+        node = nodes.get(_node_index(nd))
         if node is None or node.get("allInteriorShapes"):
             continue
         _check_identity(nd)
         content = embedded.get(node["encodedShapesRef"]["DepotPath"]["$value"])
         if content is None or _is_empty(content):
             continue
-        pos = nd["Position"]
+        pos = _node_position(nd)
         out.append(((float(pos["X"]), float(pos["Y"]), float(pos.get("Z", 0.0))), content))
     return out
 
 
-def decode_sector(sector_json: dict) -> tuple[np.ndarray, np.ndarray, int]:
-    """World-space (road, stroke, n_nodes) for one sector. Rotation is identity and scale 1 for all nodes."""
-    road, stroke, nodes = [], [], 0
+def decode_sector(sector_json: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+    """World-space (road_minor, road_major, stroke, n_nodes) for one sector; a road shape is major when its
+    classify_width >= MAJOR_WIDTH_M. Rotation is identity and scale 1 for all nodes."""
+    road, major, stroke, nodes = [], [], [], 0
     for (px, py, pz), enc in sector_nodes(sector_json):
         nodes += 1
         off = np.array([px, py], np.float32)
         for sh in decode_shapes(enc):
             if len(sh.tris) == 0:
                 continue
-            (road if classify(sh.tris, sh.z + pz) == "road" else stroke).append(sh.tris + off)
+            if classify(sh.tris, sh.z + pz) != "road":
+                stroke.append(sh.tris + off)
+            else:
+                (major if classify_width(sh.tris) >= MAJOR_WIDTH_M else road).append(sh.tris + off)
     cat = lambda xs: np.concatenate(xs).astype(np.float32) if xs else np.zeros((0, 3, 2), np.float32)
-    return cat(road), cat(stroke), nodes
+    return cat(road), cat(major), cat(stroke), nodes
 
 
 # --------------------------------------------------------------------------------------- sector list / precedence
@@ -209,8 +228,14 @@ def resolve_sectors(base: list[str], ep1: list[str]) -> dict[str, tuple[str, str
     return out
 
 
+def wolvenkit_exe() -> str:
+    """WolvenKit CLI executable: env NIGHTMAP_WOLVENKIT, default ``WolvenKit.CLI`` (8.19 cannot read the current
+    game's LOD-3 sectors; use WolvenKit 10)."""
+    return os.path.expanduser(os.environ.get("NIGHTMAP_WOLVENKIT") or "WolvenKit.CLI")
+
+
 def _wk(*args: str, check: bool = True) -> subprocess.CompletedProcess:
-    r = subprocess.run(["WolvenKit.CLI", *args], capture_output=True, text=True)
+    r = subprocess.run([wolvenkit_exe(), *args], capture_output=True, text=True)
     if check and r.returncode != 0:
         raise RuntimeError(f"WolvenKit.CLI {' '.join(args[:2])} failed (rc {r.returncode}): {r.stderr[-500:] or r.stdout[-500:]}")
     return r
@@ -232,7 +257,7 @@ def archive_key(archives: list[Path]) -> str:
 
 def npz_key(arc_key: str) -> str:
     """Key of the final npz: archives plus everything that changes the decoded result."""
-    return hashlib.sha256(f"{arc_key}|v{DECODE_VERSION}|road{ROAD_THICKNESS}/{GROUND_Z}/{ELEVATED_Z}/{ELEVATED_MAX_THICK}|lods{LODS}".encode()).hexdigest()[:16]
+    return hashlib.sha256(f"{arc_key}|v{DECODE_VERSION}|road{ROAD_THICKNESS}/{MAJOR_WIDTH_M}/{GROUND_Z}/{ELEVATED_Z}/{ELEVATED_MAX_THICK}|lods{LODS}".encode()).hexdigest()[:16]
 
 
 def json_ok(path: Path) -> bool:
@@ -264,6 +289,25 @@ def _convert_once(src: str, out: Path) -> bool:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _convert_dir(src_dir: Path, out: Path, names: set[str]) -> int:
+    """Convert a whole extracted directory in one WolvenKit call (per-file calls cost 8-25 s each). Every output is
+    validated with json_ok; only complete ones replace the final name. Returns the number of sectors kept."""
+    tmp = out / ".tmp_batch"
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir(parents=True)
+    kept = 0
+    try:
+        _wk("convert", "s", str(src_dir), "-o", str(tmp), check=False)
+        for n in names:
+            produced = tmp / (n + ".json")
+            if json_ok(produced):
+                os.replace(produced, out / (n + ".json"))
+                kept += 1
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return kept
+
+
 def _convert_one(args: tuple[str, str]) -> bool:
     src, out_dir = args
     out = Path(out_dir)
@@ -273,7 +317,7 @@ def _convert_one(args: tuple[str, str]) -> bool:
     return _convert_once(src, out) or _convert_once(src, out)      # one retry
 
 
-def _decode_file(path: str) -> tuple[np.ndarray, np.ndarray, int]:
+def _decode_file(path: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
     with open(path) as fh:
         return decode_sector(json.load(fh))
 
@@ -282,7 +326,7 @@ def _decode_file(path: str) -> tuple[np.ndarray, np.ndarray, int]:
 
 def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = print,
               workers: int | None = None) -> dict[str, np.ndarray]:
-    """All minimap triangles of the city in world xy: ``{"road": (N,3,2), "stroke": (K,3,2)}`` float32.
+    """All minimap triangles of the city in world xy: ``{"road": (N,3,2) minor roads, "road_major": (M,3,2), "stroke": (K,3,2)}`` float32.
 
     ``cache_dir`` holds ``json_base/`` + ``json_ep1/`` (converted sectors), ``sec_*/`` (extracted CR2W) and
     ``minimap_city.npz``; everything is keyed by the source archives' size + mtime and rebuilt when they change.
@@ -313,8 +357,8 @@ def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = prin
         npz.unlink()
     if npz.exists():
         z = np.load(npz)
-        log(f"cached {npz.name}: road {len(z['road'])} stroke {len(z['stroke'])}")
-        return {"road": z["road"], "stroke": z["stroke"]}
+        log(f"cached {npz.name}: road {len(z['road'])} major {len(z['road_major'])} stroke {len(z['stroke'])}")
+        return {"road": z["road"], "road_major": z["road_major"], "stroke": z["stroke"]}
 
     base_list = list_archive(base_arc)
     ep1_list = [p for a in ep1_arcs for p in list_archive(a)]
@@ -347,31 +391,38 @@ def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = prin
             else:
                 failed.append(f"{s}:{n} (not extracted)")
     if jobs:
-        log(f"converting {len(jobs)} sectors with {workers} workers")
-        done = 0
-        with ThreadPoolExecutor(workers) as ex:
-            for (n, _, _), ok in zip(jobs, ex.map(_convert_one, [(j[1], j[2]) for j in jobs])):
-                done += 1
-                if not ok:
-                    failed.append(f"{n} (convert failed twice)")
-                if done % 50 == 0:
-                    log(f"  converted {done}/{len(jobs)}  ({time.time() - t0:.0f}s)")
+        log(f"converting {len(jobs)} sectors, one WolvenKit call per directory ({wolvenkit_exe()})")
+        by_dir: dict[tuple[str, str], set[str]] = {}
+        for n, src, out_dir in jobs:
+            by_dir.setdefault((str(Path(src).parent), out_dir), set()).add(Path(src).name)
+        for (src_dir, out_dir), names in sorted(by_dir.items()):
+            Path(out_dir).mkdir(parents=True, exist_ok=True)
+            kept = _convert_dir(Path(src_dir), Path(out_dir), names)
+            log(f"  {src_dir}: {kept}/{len(names)} converted ({time.time() - t0:.0f}s)")
+        redo = [j for j in jobs if not json_ok(Path(j[2]) / (Path(j[1]).name + ".json"))]
+        if redo:
+            log(f"retrying {len(redo)} failed sectors one by one")
+            with ThreadPoolExecutor(workers) as ex:
+                for (n, _, _), ok in zip(redo, ex.map(_convert_one, [(j[1], j[2]) for j in redo])):
+                    if not ok:
+                        failed.append(f"{n} (convert failed)")
 
     files = [str(json_dirs[src] / f"{n}.json") for n, (src, _) in sorted(sectors.items())]
     failed += [f"{f} (missing)" for f in files if not json_ok(Path(f))]
     if failed:
         raise RuntimeError(f"{len(failed)} sectors failed; not writing the npz:\n  " + "\n  ".join(sorted(set(failed))))
-    road, stroke, nodes = [], [], 0
+    road, major, stroke, nodes = [], [], [], 0
     with ProcessPoolExecutor(workers) as ex:
-        for r, s, n in ex.map(_decode_file, files, chunksize=4):
+        for r, m, s, n in ex.map(_decode_file, files, chunksize=4):
             road.append(r)
+            major.append(m)
             stroke.append(s)
             nodes += n
-    out = {"road": np.concatenate(road).astype(np.float32), "stroke": np.concatenate(stroke).astype(np.float32)}
+    out = {"road": np.concatenate(road).astype(np.float32), "road_major": np.concatenate(major).astype(np.float32), "stroke": np.concatenate(stroke).astype(np.float32)}
     tmp = cache_dir / "minimap_city.tmp.npz"
     np.savez_compressed(tmp, **out)
     os.replace(tmp, npz)
     nkey_file.write_text(nkey + "\n")
-    log(f"sectors {len(files)}, nodes {nodes}, road tris {len(out['road'])}, stroke tris {len(out['stroke'])}, "
+    log(f"sectors {len(files)}, nodes {nodes}, road tris {len(out['road'])}, major {len(out['road_major'])}, stroke tris {len(out['stroke'])}, "
         f"npz {npz.stat().st_size / 1e6:.1f} MB, {time.time() - t0:.0f}s")
     return out

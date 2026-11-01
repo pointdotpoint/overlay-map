@@ -48,13 +48,14 @@ def main(argv: list[str] | None = None) -> int:
     game = args.game.resolve()
     out = args.out
     city = load_city(game, out / "minimap_cache", workers=args.jobs)
-    fp = load_or_build(city["road"], city["stroke"], out / "minimap_cache" / "footprints.npz", args.jobs)
+    fp = load_or_build(city["road"], city["stroke"], out / "minimap_cache" / "footprints.npz", args.jobs,
+                         road_major=city["road_major"])
     if not fp.polys:
         raise SystemExit("error: no building footprints were produced")
-    pts = np.concatenate(fp.polys + [city["road"].reshape(-1, 2)])
+    pts = np.concatenate(fp.polys + [city["road"].reshape(-1, 2), city["road_major"].reshape(-1, 2)])
     bounds = (float(pts[:, 0].min()), float(pts[:, 1].min()), float(pts[:, 0].max()), float(pts[:, 1].max()))
     del pts
-    print(f"road tris={len(city['road'])} building tris={len(city['stroke'])} footprints={len(fp.polys)} "
+    print(f"road tris={len(city['road'])} major={len(city['road_major'])} building tris={len(city['stroke'])} footprints={len(fp.polys)} "
           f"bounds={bounds}", flush=True)
 
     png_dir = out / "png"
@@ -65,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     for li, mpp in enumerate(float(x) for x in args.levels.split(",")):
         t_lv = time.time()
         grid = level_grid(bounds, mpp)
-        src = make_sources(city["road"], fp.polys, max(grid.tile_world, 256.0))
+        src = make_sources(city["road"], fp.polys, max(grid.tile_world, 256.0), city["road_major"])
         tiles = render_level_tiles(src, grid, li, png_dir, args.jobs)
         del src
         for s, cells in tiles.items():

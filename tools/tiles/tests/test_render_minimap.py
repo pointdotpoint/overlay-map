@@ -16,16 +16,16 @@ def box(x0, y0, x1, y1):
     return np.array([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], np.float64)
 
 
-def src(road=NOROAD, polys=()):
-    return make_sources(road, list(polys), GRID.tile_world)
+def src(road=NOROAD, polys=(), major=NOROAD):
+    return make_sources(road, list(polys), GRID.tile_world, major)
 
 
 def alpha(img):
     return np.asarray(img)[:, :, 3]
 
 
-def test_sets_are_in_draw_order():
-    assert SETS == ("glow", "road", "bfill", "outline")
+def test_sets_order():
+    assert SETS == ("glow", "bfill", "outline", "road_minor", "road_major")
 
 
 def test_tri_index_returns_overlapping_bboxes_and_nothing_far():
@@ -44,10 +44,10 @@ def test_tri_index_returns_overlapping_bboxes_and_nothing_far():
 
 def test_road_triangle_paints_centroid_and_leaves_far_pixels_clear():
     out = render_tile(src(road=tri((100, 900), (200, 900), (150, 1000))), GRID, 0, 0)
-    assert set(out) == {"road"}
-    a = alpha(out["road"])
+    assert set(out) == {"road_minor"}
+    a = alpha(out["road_minor"])
     assert a.shape == (512, 512) and a[int(1024 - 933), 150] == 255
-    assert (np.asarray(out["road"])[91, 150, :3] == 255).all()                # white mask
+    assert (np.asarray(out["road_minor"])[91, 150, :3] == 255).all()                # white mask
     assert a[300:, 300:].max() == 0 and a[:, 400:].max() == 0
 
 
@@ -77,7 +77,7 @@ def test_adjacent_tiles_agree_with_one_big_render_for_fractional_vertices():
     l, r = render_tile(s, GRID, 0, 0), render_tile(s, GRID, 1, 0)
     big = LevelGrid(1.0, 0.0, 1024.0, 1, 1, 1024)
     whole = render_tile(make_sources(road, polys, big.tile_world), big, 0, 0)
-    for name in ("road", "bfill", "outline"):      # glow needs mpp >= 2: covered below
+    for name in ("road_minor", "bfill", "outline"):      # glow needs mpp >= 2: covered below
         left, right = alpha(l[name]).astype(int), alpha(r[name]).astype(int)
         assert left[:, 511].max() > 0 and right[:, 0].max() > 0, name        # painted on both sides of the shared edge
         top = alpha(whole[name]).astype(int)[:512]
@@ -94,8 +94,12 @@ def test_render_is_deterministic():
 GRID2 = LevelGrid(2.0, 0.0, 2048.0, 2, 2, 512)    # tile (0,0): x in [0,1024), y in (1024,2048]; world y = 2048 - 2 * row
 
 
-def src2(road=NOROAD, polys=()):
-    return make_sources(road, list(polys), GRID2.tile_world)
+def src2(road=NOROAD, polys=(), major=NOROAD):
+    return make_sources(road, list(polys), GRID2.tile_world, major)
+
+
+def quad(x0, y0, x1, y1):
+    return np.array([[(x0, y0), (x1, y0), (x1, y1)], [(x0, y0), (x1, y1), (x0, y1)]], np.float32)
 
 
 def test_glow_exists_only_at_levels_with_mpp_at_least_two():
@@ -105,23 +109,43 @@ def test_glow_exists_only_at_levels_with_mpp_at_least_two():
         road = tri((50 * mpp, 1000 * mpp), (150 * mpp, 1000 * mpp), (100 * mpp, 900 * mpp))   # px (50..150, 24..124)
         foot = [box(200 * mpp, 800 * mpp, 300 * mpp, 900 * mpp)]
         out = render_tile(make_sources(road, foot, g.tile_world), g, 0, 0)
-        assert {"road", "bfill", "outline"} <= set(out)
+        assert {"road_minor", "bfill", "outline"} <= set(out)
         have.append("glow" in out)
     assert have == [False, False, True, True, True, True]
     assert GLOW_MIN_MPP == 2.0
 
 
-def test_glow_is_a_soft_halo_around_the_outline_and_road_rim():
-    out = render_tile(src2(tri((1200 - 600, 1800), (1800 - 600, 1800), (1500 - 600, 2000)), [box(200, 1200, 500, 1500)]), GRID2, 0, 0)
-    g, line = alpha(out["glow"]).astype(int), alpha(out["outline"]).astype(int)
+def test_glow_is_a_soft_halo_around_the_road_rim():
+    out = render_tile(src2(major=quad(200, 1200, 500, 1500)), GRID2, 0, 0)
+    g = alpha(out["glow"]).astype(int)
     assert (np.asarray(out["glow"])[..., :3] == 255).all()                    # white mask like every other set
-    assert (g > 0).sum() > 3 * (line > 0).sum()                               # much wider than the 1 px outline
-    row, edge = (2048 - 1350) // 2, 200 // 2                                  # footprint centre row, its left outline column
-    assert g[row, edge] > 150                                                 # bright on the outline
+    row, edge = (2048 - 1350) // 2, 200 // 2                                  # road centre row, its left rim column
+    assert g[row, edge] > 150                                                 # bright on the rim
     assert 0 < g[row, edge - 3] < g[row, edge - 1]                            # falls off with distance
     assert g[row, edge - 14] == 0                                             # ~28 m away: bloom has ended
     assert g[row, 175] == 0                                                   # deep interior is not glowing
     assert g.max() <= 255
+
+
+def test_glow_from_roads_only():
+    out = render_tile(src2(polys=[box(200, 1200, 500, 1500)]), GRID2, 0, 0)
+    assert "outline" in out and "bfill" in out and "glow" not in out
+
+
+def test_glow_weights_major_over_minor():
+    major = alpha(render_tile(src2(major=quad(200, 1200, 500, 1500)), GRID2, 0, 0)["glow"]).astype(int)
+    minor = alpha(render_tile(src2(road=quad(200, 1200, 500, 1500)), GRID2, 0, 0)["glow"]).astype(int)
+    assert 0 < minor.max() < major.max() * 0.5
+
+
+def test_render_tile_splits_roads():
+    s = src(road=quad(100, 600, 200, 606), major=quad(300, 700, 340, 720))   # 6 m narrow, 20 m wide
+    out = render_tile(s, GRID, 0, 0)
+    assert set(out) == {"road_minor", "road_major"}
+    mn, mj = alpha(out["road_minor"]), alpha(out["road_major"])
+    assert mn[1024 - 603, 150] == 255 and mj[1024 - 603, 150] == 0
+    assert mj[1024 - 710, 320] == 255 and mn[1024 - 710, 320] == 0
+    assert mn[:, 250:].max() == 0 and mj[:, :250].max() == 0
 
 
 def test_glow_stitches_across_a_tile_edge_and_is_deterministic():
@@ -151,7 +175,7 @@ def test_margin_change_leaves_the_other_sets_identical():
     finally:
         rm.GLOW_MIN_MPP = old
     assert "glow" in a and "glow" not in b
-    for name in ("road", "bfill", "outline"):
+    for name in ("road_minor", "bfill", "outline"):
         assert a[name].tobytes() == b[name].tobytes(), name
 
 

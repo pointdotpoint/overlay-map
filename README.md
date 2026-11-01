@@ -12,10 +12,12 @@ Hologram-style 2D world map overlay for Cyberpunk 2077 (redscript + Codeware). O
 - Mod Settings (optional): keybinds and settings
 - RedIMGRetriever (optional): image items
 
-To build tiles: WolvenKit.CLI, Wine + `texconv.exe`, Python 3 with numpy, Pillow, scipy and shapely.
+To build tiles: WolvenKit CLI (the build runs the executable named by `NIGHTMAP_WOLVENKIT`, default `WolvenKit.CLI`), Wine + `texconv.exe`, Python 3 with numpy, Pillow, scipy and shapely.
 
 ## Build & install
     cd tools/tiles && python3 -m nmtiles.build --game ~/cyberpunk_symlink   # tiles + UI atlas -> archive + manifest
+    # WolvenKit.CLI 8.19 cannot read the LOD-3 EP1 sectors of game 2.31+ (0-byte JSON). Use WolvenKit 10:
+    NIGHTMAP_WOLVENKIT=~/.local/share/nightmap-tools/wk10 python3 -m nmtiles.build --game ~/cyberpunk_symlink
     tools/check.sh                                                          # offline redscript compile
     tools/install.sh                                                        # check + copy into the game
 

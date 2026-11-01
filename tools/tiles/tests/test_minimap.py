@@ -6,7 +6,7 @@ import numpy as np
 
 import pytest
 
-from nmtiles.minimap import (_DT_D, classify, decode_sector, decode_shapes, fill_ranges, quantize, resolve_sectors,
+from nmtiles.minimap import (_DT_D, _check_identity, _node_index, wolvenkit_exe, MAJOR_WIDTH_M, classify, classify_width, decode_sector, decode_shapes, fill_ranges, quantize, resolve_sectors,
                              sector_nodes)
 
 SAMPLE = Path(__file__).parent / "data" / "minimap_sample.json"
@@ -146,16 +146,16 @@ def test_instance_offset_and_node_translation():
                             "encodedShapesRef": {"DepotPath": {"$value": "a"}}}}],
         "nodeData": {"Data": [{"NodeIndex": 0, "Position": {"X": 100.0, "Y": 200.0, "Z": 0.0}}]}},
         "EmbeddedFiles": [{"FileName": {"$value": "a"}, "Content": root}]}}
-    road, stroke, nodes = decode_sector(sector)
-    assert nodes == 1 and len(stroke) == 0
+    road, major, stroke, nodes = decode_sector(sector)
+    assert nodes == 1 and len(stroke) == 0 and len(major) == 0
     np.testing.assert_allclose(road[0], [(110, 220), (120, 220), (110, 230)])        # node position added, thickness 5 -> road
     # thin triangle -> stroke; a shape with zero triangles is dropped
     thin = synth_root([(0, 0), (20, 0), (0, 1)], (0.0, 0.0, 0.0))
     sector["Data"]["EmbeddedFiles"][0]["Content"] = thin
-    road, stroke, _ = decode_sector(sector)
-    assert len(road) == 0 and len(stroke) == 1
+    road, major, stroke, _ = decode_sector(sector)
+    assert len(road) + len(major) == 0 and len(stroke) == 1
     sector["Data"]["EmbeddedFiles"][0]["Content"] = synth_root([(0, 0), (20, 0), (0, 1)], (0.0, 0.0, 0.0), d=(0, 0, 0, 0))
-    road, stroke, _ = decode_sector(sector)
+    road, major, stroke, _ = decode_sector(sector)
     assert len(road) == 0 and len(stroke) == 0
     # non-identity node transform is an error
     sector["Data"]["EmbeddedFiles"][0]["Content"] = root
@@ -187,7 +187,84 @@ def test_node_z_is_added_before_classifying():
             "nodeData": {"Data": [{"NodeIndex": 0, "Position": {"X": 0.0, "Y": 0.0, "Z": node_z}}]}},
             "EmbeddedFiles": [{"FileName": {"$value": "a"}, "Content": root}]}}
 
-    road, stroke, _ = decode_sector(sector(0.0))
-    assert len(road) == 1 and len(stroke) == 0
-    road, stroke, _ = decode_sector(sector(64.0))
-    assert len(road) == 0 and len(stroke) == 1
+    road, major, stroke, _ = decode_sector(sector(0.0))
+    assert len(road) + len(major) == 1 and len(stroke) == 0   # width 30 m: a major road
+    road, major, stroke, _ = decode_sector(sector(64.0))
+    assert len(road) + len(major) == 0 and len(stroke) == 1
+
+
+def _rect(w, h):
+    return np.array([[(0, 0), (w, 0), (w, h)], [(0, 0), (w, h), (0, h)]], np.float32)
+
+
+def test_classify_width_wide_vs_narrow():
+    assert abs(classify_width(_rect(40, 20)) - 20.0) < 0.5
+    assert abs(classify_width(_rect(40, 6)) - 6.0) < 0.5
+    assert classify_width(np.zeros((0, 3, 2), np.float32)) == 0.0
+
+
+def test_decode_sector_keeps_major_and_minor_roads_apart():
+    def sector(root):
+        return {"Data": {"RootChunk": {
+            "nodes": [{"Data": {"$type": "MinimapDataNode", "allInteriorShapes": False,
+                                "encodedShapesRef": {"DepotPath": {"$value": "a"}}}}],
+            "nodeData": {"Data": [{"NodeIndex": 0, "Position": {"X": 0.0, "Y": 0.0, "Z": 0.0}}]}},
+            "EmbeddedFiles": [{"FileName": {"$value": "a"}, "Content": root}]}}
+    wide = synth_root([(0, 0), (60, 0), (0, 60)], (0.0, 0.0, 0.0))      # width 30 m (ground)
+    narrow = synth_root([(0, 0), (20, 0), (0, 10)], (0.0, 0.0, 0.0))    # width 5 m
+    road, major, stroke, _ = decode_sector(sector(wide))
+    assert len(road) == 0 and len(major) == 1 and len(stroke) == 0
+    road, major, stroke, _ = decode_sector(sector(narrow))
+    assert len(road) == 1 and len(major) == 0 and len(stroke) == 0
+    assert 5.0 < MAJOR_WIDTH_M < 30.0
+
+
+def test_wolvenkit10_schema_sector_decodes():
+    """Trimmed real WolvenKit 10 output: nodeData uses a string nodeIdx, transform.position / orientation and scale."""
+    import json
+    from pathlib import Path
+    sector = json.loads((Path(__file__).parent / "fixtures" / "sector_wk10_trim.json").read_text())
+    nd = sector["Data"]["RootChunk"]["nodeData"]["Data"][0]
+    assert isinstance(nd["nodeIdx"], str) and "NodeIndex" not in nd and "Position" not in nd
+    road, major, stroke, nodes = decode_sector(sector)
+    assert nodes == 1 and len(road) + len(major) + len(stroke) > 0
+    pos = nd["transform"]["position"]
+    allv = np.concatenate([road, major, stroke]).reshape(-1, 2)
+    assert abs(allv[:, 0].mean() - pos["X"]) < 600 and abs(allv[:, 1].mean() - pos["Y"]) < 600      # offset applied
+
+
+def test_wolvenkit10_node_lookup_and_transform_check():
+    nd = {"nodeIdx": "7", "transform": {"position": {"X": 1.0, "Y": 2.0, "Z": 3.0, "W": 0},
+                                        "orientation": {"i": 0, "j": 0, "k": 0, "r": 1}}, "scale": {"X": 1, "Y": 1, "Z": 1}}
+    assert _node_index(nd) == 7 and _node_index({"NodeIndex": 4}) == 4
+    _check_identity(nd)
+    nd["transform"]["orientation"] = {"i": 0, "j": 0, "k": 0.7, "r": 0.7}
+    with pytest.raises(ValueError, match="non-identity"):
+        _check_identity(nd)
+    nd["transform"]["orientation"] = {"i": 0, "j": 0, "k": 0, "r": 1}
+    nd["scale"] = {"X": 2, "Y": 1, "Z": 1}
+    with pytest.raises(ValueError, match="non-identity"):
+        _check_identity(nd)
+
+
+def test_wolvenkit_executable_comes_from_env(monkeypatch):
+    monkeypatch.delenv("NIGHTMAP_WOLVENKIT", raising=False)
+    assert wolvenkit_exe() == "WolvenKit.CLI"
+    monkeypatch.setenv("NIGHTMAP_WOLVENKIT", "~/x/wk10")
+    assert wolvenkit_exe().endswith("/x/wk10") and not wolvenkit_exe().startswith("~")
+
+
+def test_convert_dir_keeps_only_complete_outputs(tmp_path, monkeypatch):
+    from nmtiles import minimap
+    src, out = tmp_path / "src", tmp_path / "out"
+    src.mkdir(); out.mkdir()
+
+    def fake(*args, check=True):
+        o = Path(args[args.index("-o") + 1])
+        (o / "a.streamingsector.json").write_text('{"x": 1}')
+        (o / "b.streamingsector.json").write_text("")          # WolvenKit 8: 0 bytes, rc 0
+        return None
+    monkeypatch.setattr(minimap, "_wk", fake)
+    kept = minimap._convert_dir(src, out, {"a.streamingsector", "b.streamingsector"})
+    assert kept == 1 and (out / "a.streamingsector.json").exists() and not (out / "b.streamingsector.json").exists()
+    assert not (out / ".tmp_batch").exists()

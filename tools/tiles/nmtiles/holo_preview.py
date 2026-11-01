@@ -20,9 +20,10 @@ GLOW_OFFSET = 2
 PREVIEWS = (("close", 0.5), ("far", 4.0))
 ACCENT = (0x4f, 0xe3, 0xff)
 SETS = (            # set, rgb, opacity (NMTheme.TileTint / TileOpacity, cyan)
-    ("road", (0x1e, 0x8c, 0x96), 0.55),
     ("bfill", (0x9f, 0xf3, 0xff), 0.12),
     ("outline", (0x9f, 0xf3, 0xff), 0.90),
+    ("road_minor", (0x2a, 0x86, 0xd8), 0.60),
+    ("road_major", (0x8f, 0xdc, 0xff), 0.90),
 )
 PANEL_BG = (0x08, 0x12, 0x1a)
 PANEL_OPACITY = 0.45

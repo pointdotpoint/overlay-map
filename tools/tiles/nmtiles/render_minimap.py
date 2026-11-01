@@ -1,11 +1,12 @@
 """Colourless mask tiles (white RGB, alpha = coverage) from the game's minimap geometry (spec 11.6).
 
 One tile set per class, in draw order; the runtime tints them with SetTintColor from NMTheme:
-  glow     blurred road edges + footprint outlines (levels with mpp >= GLOW_MIN_MPP only; the runtime draws it from a
-           level 2 steps coarser than the camera's, upscaled, so bilinear filtering makes the bloom soft)
-  road     minimap road triangles
+  glow     blurred road rims (major at full gain, minor at GLOW_MINOR_WEIGHT; buildings do not glow); levels with
+           mpp >= GLOW_MIN_MPP only; the runtime draws it from a level 2 steps coarser than the camera's, upscaled,
+           so bilinear filtering makes the bloom soft
   bfill    building footprint fill
   outline  footprint exterior as a 1 px line at the level's resolution (drawn at 2x, width 2, downsampled)
+  road_minor / road_major  minimap road triangles, split by shape width (minimap.MAJOR_WIDTH_M)
 Every tile is rendered independently at SS x and downsampled (LANCZOS), with a margin that is cropped away afterwards,
 so neighbouring tiles agree along their shared edge and no whole-level image ever exists.
 """
@@ -23,7 +24,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from nmtiles.render import LevelGrid
 
-SETS = ("glow", "road", "bfill", "outline")      # draw order, back to front
+SETS = ("glow", "bfill", "outline", "road_minor", "road_major")      # draw order, back to front: roads over buildings
 SS = 2
 DEFAULT_JOBS = 4
 GLOW_MIN_MPP = 2.0                                       # glow tiles exist only at m/px >= this (L2..L5)
@@ -36,6 +37,7 @@ def glow_gain(mpp: float) -> float:
     otherwise the far zoom reads as haze, not glow."""
     return GLOW_GAIN * math.sqrt(GLOW_MIN_MPP / max(mpp, GLOW_MIN_MPP))
 
+GLOW_MINOR_WEIGHT = 0.35                                 # minor-road rim strength in the glow, relative to major
 GLOW_MARGIN = math.ceil(3 * GLOW_RADIUS) + 3             # >= 3 sigma plus the LANCZOS support
 EDGE_MARGIN = 3                                          # px: >= the LANCZOS support, so the kernel sees the neighbouring tile
 BATCH = 100_000                                          # primitives drawn per Python list conversion (bounded memory)
@@ -86,14 +88,16 @@ class TriIndex:
 
 @dataclass
 class TileSources:
-    road: TriIndex
+    road: TriIndex                  # minor roads
+    road_major: TriIndex
     foot: TriIndex                  # over the footprints' bboxes, as (n, 2, 2) corner pairs
     polys: list[np.ndarray]         # footprint exteriors, world xy
 
 
-def make_sources(road: np.ndarray, polys: list[np.ndarray], cell: float) -> TileSources:
+def make_sources(road: np.ndarray, polys: list[np.ndarray], cell: float, road_major: np.ndarray | None = None) -> TileSources:
     boxes = np.array([[p.min(axis=0), p.max(axis=0)] for p in polys], np.float64).reshape(-1, 2, 2)
-    return TileSources(TriIndex(road, cell), TriIndex(boxes, cell), polys)
+    major = np.zeros((0, 3, 2), np.float32) if road_major is None else road_major
+    return TileSources(TriIndex(road, cell), TriIndex(major, cell), TriIndex(boxes, cell), polys)
 
 
 def _window(grid: LevelGrid, ix: int, iy: int, margin: int) -> tuple[float, float, float, float, int]:
@@ -163,17 +167,16 @@ def _road_edge(road: np.ndarray) -> np.ndarray:
     return road - np.minimum(road, eroded)
 
 
-def _glow(road: np.ndarray | None, line: np.ndarray | None, gain: float = GLOW_GAIN) -> np.ndarray | None:
-    """Blurred max(road rim, footprint outline), lifted by GLOW_GAIN; margin included."""
-    parts = []
-    if road is not None:
-        parts.append(_road_edge(road))
-    if line is not None:
-        parts.append(line)
-    if not parts:
+def _glow(major: np.ndarray | None, minor: np.ndarray | None, gain: float = GLOW_GAIN) -> np.ndarray | None:
+    """Blurred road rims, lifted by `gain`: major at full gain, minor at GLOW_MINOR_WEIGHT of it; margin included."""
+    if major is None and minor is None:
         return None
-    src = np.maximum.reduce(parts)
-    blurred = np.asarray(Image.fromarray(src).filter(ImageFilter.GaussianBlur(GLOW_RADIUS)))
+    src = np.zeros(((major if major is not None else minor).shape), np.float32)
+    if major is not None:
+        src += _road_edge(major)
+    if minor is not None:
+        src += _road_edge(minor) * GLOW_MINOR_WEIGHT
+    blurred = np.asarray(Image.fromarray(np.minimum(src, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(GLOW_RADIUS)))
     return np.minimum(blurred.astype(np.float32) * gain, 255).astype(np.uint8)
 
 
@@ -190,16 +193,16 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
     # cropped result is identical) and blur it before cropping.
     glow_on = grid.mpp >= GLOW_MIN_MPP
     margin = GLOW_MARGIN if glow_on else EDGE_MARGIN
-    road = _fill_mask(src.road, grid, ix, iy, margin)
-    put("road", None if road is None else _crop(road, margin))
+    minor = _fill_mask(src.road, grid, ix, iy, margin)
+    major = _fill_mask(src.road_major, grid, ix, iy, margin)
+    put("road_minor", None if minor is None else _crop(minor, margin))
+    put("road_major", None if major is None else _crop(major, margin))
     masks = _foot_masks(src, grid, ix, iy, margin)
-    line = None
     if masks is not None:
-        fill, line = masks
-        put("bfill", _crop(fill, margin))
-        put("outline", _crop(line, margin))
+        put("bfill", _crop(masks[0], margin))
+        put("outline", _crop(masks[1], margin))
     if glow_on:
-        g = _glow(road, line, glow_gain(grid.mpp))
+        g = _glow(major, minor, glow_gain(grid.mpp))
         put("glow", None if g is None else _crop(g, margin))
     return out
 
