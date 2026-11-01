@@ -145,8 +145,8 @@ public class NMVanillaCatalog {
     // Draw and declutter priority (higher on top, placed first within a tier): jobs above services, as the vanilla
     // map layers them. NCPD Scanner (the Story filter: hustles, gang watch, stashes) is the exception: the most
     // numerous ambient vanilla category, it goes below services and tarot but above the collectibles (40, over 1,600
-    // shards), so at mid zoom services win the space, NCPD fills the gaps, and the declutter's cull cap runs out in the
-    // collectible layers rather than before NCPD (Task 11 tuning).
+    // shards), so at mid zoom services win the space and NCPD fills the gaps (Task 11 tuning). Each Minor layer has its
+    // own declutter evaluation slice, so this order decides who wins a spot, not who gets evaluated at all.
     public func Priority(i: Int32) -> Int32 {
         let t = this.TypeOf(i);
         if Equals(t, gamedataWorldMapFilter.Quest) { return 90; }

@@ -66,8 +66,14 @@ layer.SetPinStyle(NightMapPinStyle.Icon);
 `NightMapPinStyle.Icon` draws each item like the vanilla world map: the icon over a soft shadow, dimmed to 50 % until it is selected or emphasised, then full strength at 1.3×. `Hex` (the default) draws hologram hex chips.
 
 There is no clustering. As the map zooms out, Minor and Major markers shrink to 70 % and fade out by tier: Minor 4 to
-6 m/unit (an ambient Minor layer 2.5 to 4), Major 24 to 32, Always never. A faded-out marker can't be hovered or selected. A layer of up to 64
+6 m/unit (an ambient Minor layer 2.5 to 4), Major 24 to 32 (past the map's widest zoom of 16, so Major markers stay
+visible at every zoom), Always never. A faded-out marker can't be hovered or selected. A layer of up to 64
 items is scanned in full on every relayout; larger layers are placed cell by cell, nearest the view centre first.
+
+Markers don't overlap. Layers are placed in tier order (Always, then Major, then Minor), and by priority within a tier;
+a marker that would overlap one already placed, or the district title and scale bar, is skipped. The selected marker and
+Always markers are never skipped. To bound the cost, Major layers together stop after 160 skipped markers, and each Minor
+layer stops after 24 of its own, so a dense layer shows its markers nearest the view centre.
 
 ## Tooltip and activation
 ```swift
@@ -91,5 +97,6 @@ Limits: 6 rows, 3 actions (extras are ignored). The hover tooltip shows the cate
 
 ## Performance contract
 Items cost nothing until visible, and a layer faded out by its tier costs nothing at all. At most 300 markers are
-drawn at once, whatever the item count; the nearest to the view centre win.
+drawn at once, whatever the item count; higher tiers and priorities are placed first, and within a layer the
+nearest to the view centre win.
 The perf suite gates the 50,000-item scenario at +3 ms avg / +6 ms p95 over the closed baseline (see `tools/results.py`).
