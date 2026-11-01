@@ -36,17 +36,28 @@
      "pad": "VIEW"
     },
     {
-     "wait": 1.5
+     "wait": 2.0
+    },
+    {
+     "shot": "view_tap_pause"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "cmd": "pauses",
+     "expect": "^pauses 1$"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
     },
     {
      "cmd": "is_open",
      "expect": "^closed"
-    },
-    {
-     "cmd": "in_menu"
-    },
-    {
-     "shot": "view_tap"
     },
     {
      "cmd": "last_keys",

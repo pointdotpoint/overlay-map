@@ -556,6 +556,9 @@
             + "|pad " + (this.padOwned ? "owned" : "free") + " ctx " + (this.padCtx ? "held" : "free");
     }
 
+    // Pause menus NightMap opened for a View tap.
+    public func Soak_Pauses() -> String { return "pauses " + IntToString(this.padPauses); }
+
     // Which keys the game itself reports, for telling "the key never arrived" from "the map ignored it".
     private let soakKeys: String;
 
@@ -579,7 +582,7 @@
 
     private cb func Soak_OnAxis(evt: ref<AxisInputEvent>) {
         let k = ToString(evt.GetKey());
-        if StrBeginsWith(k, "IK_Pad") && StrLen(this.soakAxis) < 1500 {
+        if StrBeginsWith(k, "IK_Pad") && AbsF(evt.GetValue()) > 0.05 && StrLen(this.soakAxis) < 1500 {
             this.soakAxis += k + "=" + FloatToStringPrec(evt.GetValue(), 2) + " ";
         }
     }

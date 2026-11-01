@@ -44,6 +44,9 @@ public class NightMapSystem extends ScriptableSystem {
     private let padCtxToken: Int32;   // invalidates a scheduled release when the map takes the pad again
     private let padReleaseWait: Bool; // closed by a pad button: release the context after that button's release
     private let padPolling: Bool;
+    private let padPauseSuppressed: Bool;   // the game's pause menu was held back for this View press
+    private let padPauses: Int32;           // pause menus NightMap opened for a View tap (harness counter)
+    private let padListener: wref<GameObject>;
     private let isOpen: Bool;
     private let loopAlive: Bool;
     private let panel: ref<NMPanel>;
@@ -259,6 +262,46 @@ public class NightMapSystem extends ScriptableSystem {
         this.HandleDebug(s);
     }
 
+    // View is also the game's pause button, and the pause menu opens on its release. On the press, hold that release
+    // back (as the game's own phone and radio popups do); a tap then opens the pause menu here, a hold opens the map,
+    // and closing the map with View doesn't pause. Escape is untouched: only a press while View is down counts.
+    private func OnPlayerAttach(request: ref<PlayerAttachRequest>) {
+        let player = request.owner;
+        if IsDefined(player) && player.IsPlayer() {
+            if IsDefined(this.padListener) {
+                this.padListener.UnregisterInputListener(this, n"OpenPauseMenu");
+            }
+            player.RegisterInputListener(this, n"OpenPauseMenu");
+            this.padListener = player;
+        }
+    }
+
+    private func OnPlayerDetach(request: ref<PlayerDetachRequest>) {
+        if IsDefined(this.padListener) {
+            this.padListener.UnregisterInputListener(this, n"OpenPauseMenu");
+            this.padListener = null;
+        }
+    }
+
+    protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsumer) -> Bool {
+        if ListenerAction.IsAction(action, n"OpenPauseMenu") && Equals(ListenerAction.GetType(action), gameinputActionType.BUTTON_PRESSED)
+            && IsDefined(this.pad) && this.pad.IsHeld(EInputKey.IK_Pad_Back_Select) {
+            let s = this.Settings();
+            if IsDefined(s) && Equals(s.padOpen, NightMapPadOpen.HoldView) {
+                ListenerActionConsumer.DontSendReleaseEvent(consumer);
+                this.padPauseSuppressed = true;
+            }
+        }
+        return false;
+    }
+
+    private func OpenPauseMenu() {
+        let e = new inkMenuInstance_SpawnEvent();
+        e.Init(n"OnOpenPauseMenu");
+        GameInstance.GetUISystem(this.GetGameInstance()).QueueEvent(e);
+        this.padPauses += 1;
+    }
+
     // Sticks and triggers. Mouse axes arrive here every frame too: the pad check comes first and costs an int compare.
     private cb func OnAxisInput(evt: ref<AxisInputEvent>) {
         let key = evt.GetKey();
@@ -269,6 +312,13 @@ public class NightMapSystem extends ScriptableSystem {
 
     private func OnPadButton(s: ref<NightMapSettings>, key: EInputKey, action: EInputAction) {
         this.pad.Button(key, action, NMClock.NowMs(), this.isOpen, this.padFromPad, this.padOwned, s.holdToShow, true);
+        if Equals(key, EInputKey.IK_Pad_Back_Select) && Equals(action, EInputAction.IACT_Release) {
+            if this.pad.tap && this.padPauseSuppressed {
+                this.OpenPauseMenu();
+            }
+            this.pad.tap = false;
+            this.padPauseSuppressed = false;
+        }
         if !this.isOpen && this.padReleaseWait && this.pad.HeldCount() == 0 {
             this.padReleaseWait = false;
             this.SchedulePadRelease(0.1);

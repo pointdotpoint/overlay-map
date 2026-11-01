@@ -357,14 +357,15 @@ public class NMSelfTest {
         let p = new NMPad();
         p.Button(VIEW, press, 1000.0, false, false, false, false, true);
         p.Button(VIEW, release, 1200.0, false, false, false, false, true);
-        this.Check("pad.view_tap_no_open", !p.PollHold(1600.0, false, false, false) && !p.Waiting(), "");
+        this.Check("pad.view_tap_no_open", !p.PollHold(1600.0, false, false, false) && !p.Waiting() && p.tap, "");
+        p.tap = false;
         p.Button(VIEW, press, 2000.0, false, false, false, false, true);
         let early = p.PollHold(2499.0, false, false, false);
         let at = p.PollHold(2500.0, false, false, false);
         let again = p.PollHold(2600.0, false, false, false);
         this.Check("pad.view_hold_opens", !early && at && !again && p.Waiting() && !p.HoldPending(), ToString(early) + ToString(at) + ToString(again));
         p.Button(VIEW, release, 2700.0, true, true, true, false, true);
-        this.Check("pad.view_release_after_open_keeps_open", !p.close && !p.Waiting(), "");
+        this.Check("pad.view_release_after_open_keeps_open", !p.close && !p.Waiting() && !p.tap, "");
         // While the map owns the pad: buttons map to actions, and View or B close.
         p.Button(A, press, 3000.0, true, true, true, false, true);
         p.Button(X, press, 3000.0, true, true, true, false, true);
@@ -452,6 +453,7 @@ public class NMSelfTest {
         hc.Button(B, release, 0.0, false, false, false, false, true);
         let one = hc.HeldCount();
         hc.Button(VIEW, release, 0.0, false, false, false, true, true);
+        this.Check("pad.is_held", !hc.IsHeld(B) && !hc.IsHeld(VIEW), "");
         this.Check("pad.held_count", two == 2 && one == 1 && hc.HeldCount() == 0, IntToString(two) + "," + IntToString(one));
         // After opening: a stick or trigger still held from gameplay doesn't move the map until let go once.
         let g = new NMPad();

@@ -11,6 +11,7 @@ public class NMPad {
     public let filter: Bool;
     public let recenter: Bool;
     public let close: Bool;
+    public let tap: Bool;               // View tapped (released before the hold): the game's pause menu should open
     public let lastWasPad: Bool;
     private let lx: Float;
     private let ly: Float;
@@ -72,6 +73,9 @@ public class NMPad {
             }
             let wasDown = this.viewDown;
             this.viewDown = false;
+            if wasDown && !this.holdFired {
+                this.tap = true;
+            }
             if wasDown && holdToShow && mapOpen && fromPad && this.holdFired {
                 this.close = true;
                 return true;
@@ -108,6 +112,13 @@ public class NMPad {
     }
 
     // Pad buttons still down: the game gets the pad back only once this is 0, so no release reaches it.
+    public func IsHeld(key: EInputKey) -> Bool {
+        for k in this.held {
+            if Equals(k, key) { return true; }
+        }
+        return false;
+    }
+
     public func HeldCount() -> Int32 {
         return ArraySize(this.held);
     }
@@ -201,6 +212,7 @@ public class NMPad {
         this.filter = false;
         this.recenter = false;
         this.close = false;
+        this.tap = false;
         this.lx = 0.0;
         this.ly = 0.0;
         this.lt = 0.0;

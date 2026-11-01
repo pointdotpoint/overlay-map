@@ -29,6 +29,7 @@ public abstract class NMSoak {
         if Equals(command, "last_axis") { return sys.Soak_LastAxis(); }
         if Equals(command, "in_menu") { return sys.Soak_InMenu(); }
         if Equals(command, "cam") { return sys.Soak_Cam(); }
+        if Equals(command, "pauses") { return sys.Soak_Pauses(); }
         if Equals(command, "vmark") { return sys.Soak_VMark(); }
         if Equals(command, "vdist") { return sys.Soak_VDist(); }
         if Equals(command, "cmark") { return sys.Soak_CMark(); }
