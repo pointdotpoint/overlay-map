@@ -130,3 +130,15 @@ def test_line_is_opaque_in_the_middle_and_fades_to_zero_on_both_sides():
     assert (col[5:11] == 255).all()                           # opaque core
     assert np.array_equal(col, col[::-1])                     # symmetric
     assert (np.diff(col[:8]) >= 0).all() and 0 < col[1] < 255 # a ramp, not a step
+
+
+def test_rings_have_four_circles():
+    img, parts = build_holo_atlas()
+    assert SIZES["holo_rings"] == (256, 256)
+    a = part(img, parts, "holo_rings")[..., 3].astype(int)
+    row = a[128]
+    peaks = [x for x in range(1, 255) if row[x] > 100 and row[x] >= row[x - 1] and row[x] > row[x + 1]]
+    assert len(peaks) == 8
+    centre = 127.5
+    assert sorted(round(abs(x - centre)) for x in peaks) == [32, 32, 64, 64, 96, 96, 124, 124]
+    assert a[128, 128] == 0 and a[0, 0] == 0

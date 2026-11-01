@@ -7,6 +7,7 @@ Tileable parts are periodic in both axes, so the first row/column continues the 
   holo_grid   48x48    2x2 px dot every 24 px (dot grid)
   holo_noise  256x256  fine random noise (wrap-around smoothed, so it tiles)
 Others:
+  holo_rings 256x256   four concentric rings, radii 32/64/96/124 px, 2 px (stretched; faint ambient texture)
   holo_vignette 256x256 radial alpha, 0 at the centre to 1 at the corners
   holo_bar    512x160  scan band: alpha rises from 0 to a bright core and back to 0 (vertical gradient)
   holo_edge_t/_b 16x64, holo_edge_l/_r 64x16  soft glowing frame line, bright on the outer pixel row, fading inward;
@@ -23,13 +24,13 @@ from PIL import Image
 ATLAS_W, ATLAS_H = 1024, 512
 SIZES = {   # name -> (w, h)
     "holo_scan": (64, 64), "holo_grid": (48, 48), "holo_noise": (256, 256), "holo_bar": (512, 160),
-    "holo_halo": (128, 128), "holo_line": (16, 16), "holo_vignette": (256, 256),
+    "holo_halo": (128, 128), "holo_line": (16, 16), "holo_vignette": (256, 256), "holo_rings": (256, 256),
     "holo_edge_t": (16, 64), "holo_edge_b": (16, 64), "holo_edge_l": (64, 16), "holo_edge_r": (64, 16),
 }
 TILEABLE = {"holo_scan": 4, "holo_grid": 24, "holo_noise": 256}     # name -> period in px (both axes)
 # Fixed layout (4 px gaps so bilinear sampling never bleeds a neighbour in).
 LAYOUT = {
-    "holo_grid": (0, 0), "holo_noise": (260, 0), "holo_halo": (520, 0), "holo_scan": (652, 0),
+    "holo_grid": (870, 0), "holo_rings": (0, 0), "holo_noise": (260, 0), "holo_halo": (520, 0), "holo_scan": (652, 0),
     "holo_edge_t": (720, 0), "holo_edge_b": (740, 0), "holo_edge_l": (760, 0), "holo_edge_r": (760, 20),
     "holo_bar": (0, 260), "holo_line": (840, 0), "holo_vignette": (520, 132),
 }
@@ -57,6 +58,17 @@ def _grid() -> Image.Image:
         for x in (0, 24):
             a[y:y + 2, x:x + 2] = 255
     return _white(a)
+
+
+def _rings() -> Image.Image:
+    """Four concentric rings (radii 32, 64, 96, 124 px, 2 px wide, antialiased)."""
+    n = 256
+    y, x = np.mgrid[0:n, 0:n].astype(np.float32)
+    r = np.hypot(x - (n - 1) / 2, y - (n - 1) / 2)
+    a = np.zeros((n, n), np.float32)
+    for rad in (32, 64, 96, 124):
+        a = np.maximum(a, np.clip(1.0 - (np.abs(r - rad) - 0.5), 0.0, 1.0))   # 2 px wide: full within 1 px
+    return _white(a * 255.0)
 
 
 def _vignette() -> Image.Image:
@@ -125,6 +137,8 @@ def _render(name: str) -> Image.Image:
         return _grid()
     if name == "holo_noise":
         return _noise()
+    if name == "holo_rings":
+        return _rings()
     if name == "holo_vignette":
         return _vignette()
     if name == "holo_bar":
