@@ -22,6 +22,16 @@ public class NightMapPadPoll extends DelayCallback {
     }
 }
 
+public class NightMapPadPauseCheck extends DelayCallback {
+    public let system: wref<NightMapSystem>;
+
+    public func Call() {
+        if IsDefined(this.system) {
+            this.system.PadPauseCheck();
+        }
+    }
+}
+
 // Gives the game its actions back after the map closed, once the closing button's release has gone by.
 public class NightMapPadRelease extends DelayCallback {
     public let system: wref<NightMapSystem>;
@@ -283,16 +293,29 @@ public class NightMapSystem extends ScriptableSystem {
         }
     }
 
+    // The action can arrive before or after the raw View press, so the pad is also recognised by the game's own
+    // last-used-device flag. If no View press shows up after all, the pause menu opens anyway (PadPauseCheck).
     protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsumer) -> Bool {
         if ListenerAction.IsAction(action, n"OpenPauseMenu") && Equals(ListenerAction.GetType(action), gameinputActionType.BUTTON_PRESSED)
-            && IsDefined(this.pad) && this.pad.IsHeld(EInputKey.IK_Pad_Back_Select) {
+            && IsDefined(this.pad) && (this.pad.IsHeld(EInputKey.IK_Pad_Back_Select) || (IsDefined(this.padListener) && this.padListener.PlayerLastUsedPad())) {
             let s = this.Settings();
             if IsDefined(s) && Equals(s.padOpen, NightMapPadOpen.HoldView) {
                 ListenerActionConsumer.DontSendReleaseEvent(consumer);
                 this.padPauseSuppressed = true;
+                let cb = new NightMapPadPauseCheck();
+                cb.system = this;
+                GameInstance.GetDelaySystem(this.GetGameInstance()).DelayCallback(cb, 0.3, false);
             }
         }
         return false;
+    }
+
+    // The pause menu was held back but View is not down: it wasn't a View press after all, so open it now.
+    public func PadPauseCheck() {
+        if this.padPauseSuppressed && !this.pad.IsHeld(EInputKey.IK_Pad_Back_Select) {
+            this.padPauseSuppressed = false;
+            this.OpenPauseMenu();
+        }
     }
 
     private func OpenPauseMenu() {
