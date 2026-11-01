@@ -46,6 +46,8 @@ public abstract class NMTheme {
     // The dark plate behind a vanilla icon (spec 5.1): disc to half its radius, falloff beyond, ring and a faint glow in
     // the icon colour. Sized so the ring hugs the visible glyph (~1.3x its radius; mappin art is padded in its 64 box).
     public static func PlateSize() -> Float { return 152.0; }
+    // Declutter: two markers collide when their centres are closer than this times the sum of their visible radii.
+    public static func DeclutterOverlap() -> Float { return 0.75; }
     public static func PlateOpacity() -> Float { return 1.0; }    // times the icon's own opacity
     public static func IconSize() -> Float { return 24.0; }       // a hex chip's centre dot
     public static func PlayerSize() -> Float { return 112.0; }

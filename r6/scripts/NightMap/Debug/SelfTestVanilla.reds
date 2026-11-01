@@ -91,6 +91,7 @@ public abstract class NMVanillaTests {
         let h = H.Add(NightMapItem.Create(new Vector4(-1820.0, 150.0, 0.0, 1.0), n"h", NMTheme.UiAtlas(), n"icon_dot"));
         let canvas = new inkCanvas();
         let r = NMItemRenderer.Create(api, canvas, 1.0);
+        r.noDeclutter = true;   // the four pins sit 20 m apart on purpose: this checks styles, not the declutter
         let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
         cam.SetCenter(-1800.0, 150.0);
         cam.SetMpp(0.5);

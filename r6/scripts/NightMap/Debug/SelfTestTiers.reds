@@ -76,6 +76,7 @@ public abstract class NMTierTests {
             i += 1;
         }
         let r = NMItemRenderer.Create(api, new inkCanvas(), 1.0);
+        r.noDeclutter = true;   // placement order and budget only; NMDeclutterTests covers the overlap skipping
         let cam = NMTierTests.Cam();
         cam.SetMpp(16.0);
         r.Update(cam, w, h);
@@ -222,6 +223,7 @@ public abstract class NMTierTests {
             i += 1;
         }
         let r7 = NMItemRenderer.Create(api7, new inkCanvas(), 1.0);
+        r7.noDeclutter = true;   // the budget order, with the 400 Minor items packed far closer than a pin apart
         let cam7 = NMTierTests.Cam();
         cam7.SetMpp(1.0);
         r7.Update(cam7, w, h);

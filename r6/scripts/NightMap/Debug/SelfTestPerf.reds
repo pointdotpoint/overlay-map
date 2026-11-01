@@ -213,13 +213,22 @@ public abstract class NMPerfTests {
         // whole, and every Major item is placed once.
         cam.SetCenter((bounds.minX + bounds.maxX) * 0.5, (bounds.minY + bounds.maxY) * 0.5);
         cam.SetMpp(16.0);
+        r.noDeclutter = true;   // every Major item once; with the declutter on, overlapping ones are culled instead
         r.Invalidate();
         r.Update(cam, 1880.0, 1480.0);
         let others = 0;
         for li in r.candLayer {
             if li != sp2.index { others += 1; }
         }
-        t.Check("perf.far_zoom_major_only", r.chipsUsed == sp2.count && others == 0, ToString(r.chipsUsed) + " of " + ToString(sp2.count) + ", others " + ToString(others));
+        let all = r.chipsUsed;
+        r.noDeclutter = false;
+        r.Invalidate();
+        r.Update(cam, 1880.0, 1480.0);
+        for li in r.candLayer {
+            if li != sp2.index { others += 1; }
+        }
+        t.Check("perf.far_zoom_major_only", all == sp2.count && others == 0 && r.chipsUsed > 0 && r.chipsUsed + r.culled <= sp2.count,
+            ToString(all) + " of " + ToString(sp2.count) + ", decluttered " + ToString(r.chipsUsed) + " culled " + ToString(r.culled) + ", others " + ToString(others));
     }
 
     // ---- selection grow vs slot reuse (renderer slots are reassigned in placement order) ----

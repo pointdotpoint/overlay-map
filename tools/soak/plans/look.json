@@ -30,6 +30,9 @@
      "shot": "z0.5"
     },
     {
+     "cmd": "counts"
+    },
+    {
      "cmd": "zoom 2"
     },
     {
@@ -37,6 +40,9 @@
     },
     {
      "shot": "z2"
+    },
+    {
+     "cmd": "counts"
     },
     {
      "cmd": "zoom 8"
@@ -48,6 +54,9 @@
      "shot": "z8"
     },
     {
+     "cmd": "counts"
+    },
+    {
      "cmd": "zoom 16"
     },
     {
@@ -55,6 +64,9 @@
     },
     {
      "shot": "z16"
+    },
+    {
+     "cmd": "counts"
     }
    ]
   }

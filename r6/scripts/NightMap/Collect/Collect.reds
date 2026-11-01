@@ -17,6 +17,11 @@ public abstract class NMCollectCats {
     public static func Shard() -> Int32 { return 0; }
     public static func Tarot() -> Int32 { return 1; }
 
+    // Layer priority: below every vanilla layer, except tarot, which sits just above the vanilla tarot markers
+    // (NMVanillaCatalog.Priority, 55). A tarot spot and its vanilla marker share a spot, and the declutter keeps only
+    // the first placed; the collectible carries the card's name and the collected state.
+    public static func Priority(c: Int32) -> Int32 { return c == NMCollectCats.Tarot() ? 56 : 40; }
+
     public static func Of(code: String) -> Int32 { return StrFindFirst(NMCollectCats.Codes(), code); }
 
     public static func Name(c: Int32) -> String {
@@ -266,7 +271,7 @@ public class NMCollect extends IScriptable {
         let layers: array<ref<NightMapLayer>>;
         c = 0;
         while c < NMCollectCats.Count() {
-            let L = api.CreateLayer(NMCollectCats.LayerId(c), NMCollectCats.Name(c), 40);
+            let L = api.CreateLayer(NMCollectCats.LayerId(c), NMCollectCats.Name(c), NMCollectCats.Priority(c));
             L.SetTier(NightMapTier.Minor);
             L.SetPinStyle(NightMapPinStyle.Hex);   // small hex chips with a centre dot (spec 2026-11-01 section 5.3)
             L.SetCategory(NMCollectCats.Category(c), NMCollectCats.Name(c), NMCollectCats.Color(c));

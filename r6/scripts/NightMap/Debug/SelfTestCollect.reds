@@ -23,6 +23,7 @@ public abstract class NMCollectTests {
         let b = L.Add(NightMapItem.Create(new Vector4(-1780.0, 150.0, 0.0, 1.0), n"t", NMTheme.MappinAtlas(), n"quest"));
         let canvas = new inkCanvas();
         let r = NMItemRenderer.Create(api, canvas, 1.0);
+        r.noDeclutter = true;   // the pins sit 20 m apart on purpose: this checks styles, not the declutter
         let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
         cam.SetCenter(-1800.0, 150.0);
         cam.SetMpp(0.5);
@@ -168,6 +169,7 @@ public abstract class NMCollectTests {
         let b = L.Add(NightMapItem.Create(new Vector4(-1780.0, 150.0, 0.0, 1.0), n"t", NMTheme.UiAtlas(), n"icon_c_tarot"));
         let canvas = new inkCanvas();
         let r = NMItemRenderer.Create(api, canvas, 1.0);
+        r.noDeclutter = true;   // the pins sit 20 m apart on purpose: this checks the scratch, not the declutter
         let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
         cam.SetCenter(-1800.0, 150.0);
         cam.SetMpp(0.5);
@@ -204,6 +206,7 @@ public abstract class NMCollectTests {
         let id = 0;
         while id < ArraySize(L.alive) && !L.alive[id] { id += 1; }
         let r = NMItemRenderer.Create(api, new inkCanvas(), 1.0);
+        r.noDeclutter = true;   // the centred spot's look, even where a cell-mate placed first would cull it
         let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY()), 0.5, 16.0);
         if id < ArraySize(L.alive) {
             cam.SetCenter(L.px[id], L.py[id]);

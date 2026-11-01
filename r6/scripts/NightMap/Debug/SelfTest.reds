@@ -31,6 +31,7 @@ public class NMSelfTest {
         NMPhotoTests.Run(this);
         NMCollectTests.Run(this);
         NMTierTests.Run(this);
+        NMDeclutterTests.Run(this);
         NMPerfTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
@@ -672,6 +673,7 @@ public class NMSelfTest {
         // and no item is drawn twice.
         cam.SetCenter((bounds.minX + bounds.maxX) * 0.5, (bounds.minY + bounds.maxY) * 0.5);
         cam.SetMpp(16.0);
+        r.noDeclutter = true;   // the budget fill, not the overlap skipping (NMDeclutterTests)
         r.Update(cam, 1880.0, 1480.0);
         let minorChips = r.chipsUsed;
         let L = api.GetLayer(NMDebugLayer.Id());

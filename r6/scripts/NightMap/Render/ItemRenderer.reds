@@ -23,7 +23,8 @@ public class NMIconRef {
 // Draws every visible layer as individual pins through a fixed widget pool (ChipBudget slots), culled to the view.
 // No clustering: each layer's tier (NMTiers, spec 2026-11-01 section 7) scales its pins down and fades them out as
 // the map zooms out; a fully faded layer is skipped whole. Small layers are scanned item by item, larger ones cell by
-// cell nearest-first, so the budget keeps the pins around the view centre.
+// cell nearest-first, so the budget keeps the pins around the view centre. In that order, a pin that would overlap
+// one already placed is skipped (declutter), so a more important marker wins and piles thin out as the map zooms out.
 // Relayout happens only when the camera or the API revision changed.
 public class NMItemRenderer {
     private let api: wref<NightMap>;
@@ -90,6 +91,35 @@ public class NMItemRenderer {
     public let chipsUsed: Int32;
     public let pendingImages: Int32;
     public let relayouts: Int32;
+    // Declutter: a marker that collides on screen with one already placed this relayout is skipped (no slot, no
+    // candidate). Placed markers go into a spatial hash over the view, rebuilt per relayout in reused arrays.
+    public let culled: Int32;       // items skipped by the declutter in the last relayout
+    public let noDeclutter: Bool;   // test hook: place every item as before the declutter (budget and order tests)
+    private let curAlways: Bool;    // the layer being placed is Always tier: never culled
+    private let keepLayer: Int32;   // the selection (layer + item): never culled while selected
+    private let keepItem: Int32;
+    private let hHead: array<Int32>;   // per hash cell: last placed marker in it, -1 none
+    private let hNext: array<Int32>;   // per placed marker: the previous one in its cell
+    private let hX: array<Float>;
+    private let hY: array<Float>;
+    private let hR: array<Float>;
+    private let hN: Int32;
+    private let hCols: Int32;
+    private let hRows: Int32;
+    private let hCell: Float;
+    private let hOrg: Float;           // the grid starts at (hOrg, hOrg): the view's top-left minus the cull margin
+    private let hK: Float;             // DeclutterOverlap, read once per relayout
+    private let hRmax: Float;          // largest DeclutterOverlap x radius placed so far this relayout
+    private let cellMiss: Int32;       // consecutive culls that end the walk of one level-0 cell (its pile is full)
+    private let cullLimit: Int32;      // CullCap for the layer being placed (no limit for Always or noDeclutter)
+    private let chipCap: Int32;        // NMTheme.ChipBudget(), read once (the walk loops test it per item)
+    // Visible radii of the layer being placed (UI scale x tier scale), and a photo picture's lift above its spot.
+    private let rChip: Float;
+    private let rDot: Float;
+    private let rPlate: Float;
+    private let rPlateEmph: Float;
+    private let rPhoto: Float;
+    private let photoLift: Float;
 
     public static func Create(api: ref<NightMap>, parent: ref<inkCanvas>, scale: Float) -> ref<NMItemRenderer> {
         let r = new NMItemRenderer();
@@ -135,6 +165,9 @@ public class NMItemRenderer {
         r.growSlot = -1;
         r.growLayer = -1;
         r.growItem = -1;
+        r.keepLayer = -1;
+        r.keepItem = -1;
+        r.chipCap = NMTheme.ChipBudget();
         r.thumbPlan = NMThumbPlan.Create(NMPhotos.ThumbCap());
         i = 0;
         while i < NMPhotos.ThumbCap() {
@@ -171,6 +204,11 @@ public class NMItemRenderer {
     public static func ThumbH() -> Float { return 61.5; }
     public static func PhotoEdge() -> Float { return 4.5; }
     public static func PhotoPtr() -> Float { return 21.0; }
+
+    // How far a photo pin's thumbnail centre sits above the spot (s: UI scale x tier scale).
+    public static func PhotoLift(s: Float, thumbZoom: Float) -> Float {
+        return NMItemRenderer.PhotoPtr() * s * 0.7071 + NMItemRenderer.PhotoEdge() * s + NMItemRenderer.ThumbH() * s * thumbZoom * 0.5;
+    }
 
     public func OnThumb(hash: Uint32, size: Vector2, err: Int32) {
         this.thumbLoading = null;
@@ -258,7 +296,7 @@ public class NMItemRenderer {
         let th = NMItemRenderer.ThumbH() * s * this.thumbZoom;
         let ed = NMItemRenderer.PhotoEdge() * s;
         let half = NMItemRenderer.PhotoPtr() * s * 0.7071;
-        let c = new Vector2(p.X, p.Y - half - ed - th * 0.5);   // thumbnail centre; the point's tip sits on p
+        let c = new Vector2(p.X, p.Y - NMItemRenderer.PhotoLift(s, this.thumbZoom));   // thumbnail centre; the point's tip sits on p
         let ready = this.thumbPlan.IsReady(ts);
         if ready {
             let im = this.thumbImg[ts];
@@ -319,6 +357,7 @@ public class NMItemRenderer {
         ArrayClear(this.candSlot);
         this.chipsUsed = 0;
         this.pendingImages = 0;
+        this.BeginDeclutter(viewW, viewH);
         let order: array<Int32> = this.LayerOrder();
         // Same level-0 range and ring centre for every layer. The ring order itself is built on first use: sparse
         // layers never need it, and over the whole city it is ~9,000 cells.
@@ -328,12 +367,16 @@ public class NMItemRenderer {
         this.ringBuilt = false;
         for li in order {
             let L = api.layers[li];
-            if L.VisibleAt(cam.mpp) && L.count > 0 && this.chipsUsed < NMTheme.ChipBudget() {
-                let tier = L.EffectiveTier();
+            let tier = L.EffectiveTier();
+            this.curAlways = tier <= 0;
+            this.cullLimit = this.curAlways || this.noDeclutter ? 2147483647 : NMItemRenderer.CullCap();
+            if L.VisibleAt(cam.mpp) && L.count > 0 && !this.Saturated() {
                 let f = NMTiers.Fade(tier, cam.mpp);
                 if f > 0.0 {   // fully faded: skipped whole, not a candidate (spec 7.2)
                     this.curFade = f;
                     this.curScale = NMTiers.Scale(tier, cam.mpp);
+                    this.cellMiss = this.noDeclutter ? 2147483647 : this.CellMissCap(cam.mpp);
+                    this.LayerRadii();
                     if L.count <= NMItemRenderer.ScanAllMax() {
                         this.PlaceAllOf(L, cam, viewW, viewH);
                     } else {
@@ -345,6 +388,123 @@ public class NMItemRenderer {
         this.HideUnused();
         this.FinishThumbs();
         return true;
+    }
+
+    // ---- declutter: a spatial hash of this relayout's placed markers over the view plus the cull margin ----
+
+    // Empties the hash for a relayout. A cell is twice the largest possible radius, so any collision distance
+    // (DeclutterOverlap x (rA + rB) <= 2 x the largest radius) reaches at most the neighbouring cells.
+    private func BeginDeclutter(viewW: Float, viewH: Float) {
+        this.culled = 0;
+        this.hN = 0;
+        this.hRmax = 0.0;
+        this.hK = NMTheme.DeclutterOverlap();
+        let m = 60.0 * this.scale;
+        let plate = NMTheme.PlateSize() * 0.25 * NMTheme.VanillaEmphScale();
+        let biggest = MaxF(MaxF(plate, NMTheme.ChipSize() * 0.5), MaxF(NMTheme.DotSize() * 0.5, NMItemRenderer.ThumbW() * 0.5 * this.thumbZoom));
+        this.hCell = MaxF(2.0 * biggest * this.scale, 1.0);
+        this.hOrg = -m;
+        this.hCols = Max(1, CeilF((viewW + 2.0 * m) / this.hCell));
+        this.hRows = Max(1, CeilF((viewH + 2.0 * m) / this.hCell));
+        let n = this.hCols * this.hRows;
+        if ArraySize(this.hHead) != n {
+            ArrayResize(this.hHead, n);
+        }
+        let i = 0;
+        while i < n {
+            this.hHead[i] = -1;
+            i += 1;
+        }
+    }
+
+    // Declutter work bounds. Culled items cost a test but draw nothing, so a dense layer at a far zoom would otherwise
+    // be walked item by item until the chip budget fills (tens of thousands of tests per relayout).
+    // 1. A level-0 cell's chain stops after CellMissCap consecutive culls: about as many markers as fit in the cell
+    //    on screen, at least 2, so a cell smaller than a marker gives up after two misses while a cell many markers
+    //    across (close zoom) keeps looking.
+    // 2. After CullCap culls in one relayout only Always-tier items are still placed (they never cull).
+    public static func CullCap() -> Int32 { return NMTheme.ChipBudget(); }
+
+    private func LayerRadii() {
+        let s = this.scale * this.curScale;
+        this.rChip = NMTheme.ChipSize() * 0.5 * s;
+        this.rDot = NMTheme.DotSize() * 0.5 * s;
+        this.rPlate = NMTheme.PlateSize() * 0.25 * s;
+        this.rPlateEmph = this.rPlate * NMTheme.VanillaEmphScale();
+        this.rPhoto = NMItemRenderer.ThumbW() * 0.5 * s * this.thumbZoom;
+        this.photoLift = NMItemRenderer.PhotoLift(s, this.thumbZoom);
+    }
+
+    private func CellMissCap(mpp: Float) -> Int32 {
+        let cellPx = NMGrid.CellSize(0) / MaxF(mpp, 0.0001);
+        let d = MaxF(this.hK * NMTheme.ChipSize() * this.scale * this.curScale, 1.0);   // two nominal radii, overlapped
+        let fit = cellPx / d;
+        return Max(2, Cast<Int32>(MinF(fit * fit, 1000000.0)));
+    }
+
+    // True when nothing more can be placed for the current layer: the chip budget is spent, or the cull cap is hit
+    // and the layer is not Always tier.
+    private func Saturated() -> Bool {
+        return this.chipsUsed >= this.chipCap || this.culled >= this.cullLimit;
+    }
+
+    // Hash cell of a screen coordinate on one axis. Points beyond the grid (a photo's picture above the view) clamp
+    // to the border cells; clamping never moves two points within one cell of each other further apart.
+    private func HashCol(v: Float, n: Int32) -> Int32 {
+        return Clamp(FloorF((v - this.hOrg) / this.hCell), 0, n - 1);
+    }
+
+    // True when a marker of radius r at (x, y) collides with one already placed. Only the cells its collision reach
+    // (DeclutterOverlap x (r + the largest radius placed so far)) touches are walked: within the 3 x 3 neighbourhood,
+    // usually 2 x 2 of it. hR holds radii already times DeclutterOverlap.
+    private func Collides(x: Float, y: Float, r: Float) -> Bool {
+        let kr = this.hK * r;
+        let reach = kr + this.hRmax;
+        let o = this.hOrg;
+        let c = this.hCell;
+        let x0 = Clamp(FloorF((x - reach - o) / c), 0, this.hCols - 1);
+        let x1 = Clamp(FloorF((x + reach - o) / c), 0, this.hCols - 1);
+        let y0 = Clamp(FloorF((y - reach - o) / c), 0, this.hRows - 1);
+        let y1 = Clamp(FloorF((y + reach - o) / c), 0, this.hRows - 1);
+        let cy = y0;
+        while cy <= y1 {
+            let cx = x0;
+            while cx <= x1 {
+                let j = this.hHead[cy * this.hCols + cx];
+                while j >= 0 {
+                    let dx = this.hX[j] - x;
+                    let dy = this.hY[j] - y;
+                    let lim = kr + this.hR[j];
+                    if dx * dx + dy * dy < lim * lim {
+                        return true;
+                    }
+                    j = this.hNext[j];
+                }
+                cx += 1;
+            }
+            cy += 1;
+        }
+        return false;
+    }
+
+    private func Occupy(x: Float, y: Float, r: Float) {
+        let cell = this.HashCol(y, this.hRows) * this.hCols + this.HashCol(x, this.hCols);
+        r = this.hK * r;
+        if r > this.hRmax { this.hRmax = r; }
+        let j = this.hN;
+        if j < ArraySize(this.hX) {
+            this.hX[j] = x;
+            this.hY[j] = y;
+            this.hR[j] = r;
+            this.hNext[j] = this.hHead[cell];
+        } else {
+            ArrayPush(this.hX, x);
+            ArrayPush(this.hY, y);
+            ArrayPush(this.hR, r);
+            ArrayPush(this.hNext, this.hHead[cell]);
+        }
+        this.hHead[cell] = j;
+        this.hN = j + 1;
     }
 
     // Layers up to this many items are scanned item by item; larger ones cell by cell, nearest first.
@@ -436,14 +596,13 @@ public class NMItemRenderer {
         return FloorF((cam.cx - NMGrid.OriginX()) / cs);
     }
 
-    // Level-0 cells of the relayout's range, nearest ring first, until the chip budget is spent. A layer occupying few
+    // Level-0 cells of the relayout's range, nearest ring first, until Saturated (budget or cull cap). A layer occupying few
     // of those cells walks its occupied list instead of the whole range: the list is ascending (row-major), so a stable
     // bucket by ring gives exactly the ring order. forceScan always walks the full ring order (the reference).
     private func PlaceCellsOf(L: ref<NightMapLayer>, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
         let rg = this.indRg;
         let side = NMGrid.Side(0);
         let base = NMGrid.Base(0);
-        let budget = NMTheme.ChipBudget();
         let on = L.occN[0];
         let area = (rg[2] - rg[0] + 1) * (rg[3] - rg[1] + 1);
         if !this.forceScan && on * 2 < area {
@@ -481,12 +640,8 @@ public class NMItemRenderer {
                 k += 1;
             }
             k = 0;
-            while k < n && this.chipsUsed < budget {
-                let id = L.head[this.sOrd[k]];
-                while id >= 0 {
-                    this.PlaceChip(L, id, cam, viewW, viewH);
-                    id = L.nextIn[id * 3];
-                }
+            while k < n && !this.Saturated() {
+                this.PlaceChain(L, L.head[this.sOrd[k]], cam, viewW, viewH);
                 k += 1;
             }
             return;
@@ -497,20 +652,28 @@ public class NMItemRenderer {
         }
         let n2 = ArraySize(this.ordX);
         let i = 0;
-        while i < n2 && this.chipsUsed < budget {
-            let id = L.head[base + this.ordY[i] * side + this.ordX[i]];
-            while id >= 0 {
-                this.PlaceChip(L, id, cam, viewW, viewH);
-                id = L.nextIn[id * 3];
-            }
+        while i < n2 && !this.Saturated() {
+            this.PlaceChain(L, L.head[base + this.ordY[i] * side + this.ordX[i]], cam, viewW, viewH);
             i += 1;
+        }
+    }
+
+    // One level-0 cell's items, until the cell's pile is full (cellMiss consecutive culls).
+    private func PlaceChain(L: ref<NightMapLayer>, id: Int32, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
+        let miss = 0;
+        while id >= 0 && miss < this.cellMiss && this.chipsUsed < this.chipCap && this.culled < this.cullLimit {
+            let before = this.culled;
+            this.PlaceChip(L, id, cam, viewW, viewH);
+            miss = this.culled > before ? miss + 1 : 0;
+            id = L.nextIn[id * 3];
         }
     }
 
     // Small layers (ScanAllMax items or fewer) scan every alive item per relayout.
     private func PlaceAllOf(L: ref<NightMapLayer>, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
         let id = 0;
-        while id < ArraySize(L.alive) {
+        let n = ArraySize(L.alive);
+        while id < n && this.chipsUsed < this.chipCap && this.culled < this.cullLimit {
             if L.alive[id] {
                 this.PlaceChip(L, id, cam, viewW, viewH);
             }
@@ -653,7 +816,9 @@ public class NMItemRenderer {
             layer = this.candLayer[cand];
             item = this.candItem[cand];
         }
-        let photo = slot >= 0 && this.chipStyle[slot] == 3 ? slot : -1;
+        this.keepLayer = layer;   // the declutter never culls the selection, so it can't vanish under the reticle
+        this.keepItem = item;
+        let photo =slot >= 0 && this.chipStyle[slot] == 3 ? slot : -1;
         if photo != this.photoSel {
             if this.photoSel >= 0 && this.photoSel < ArraySize(this.photoColor) {
                 this.PaintPhoto(this.photoSel, this.photoColor[this.photoSel]);
@@ -693,14 +858,43 @@ public class NMItemRenderer {
         return a.Red == b.Red && a.Green == b.Green && a.Blue == b.Blue && a.Alpha == b.Alpha;
     }
 
+    // The declutter test of one item at screen point p, before it takes a slot. Returns false (and counts it culled)
+    // when it collides with a marker already placed; Always-tier items and the selection are placed regardless.
+    // Either way a placed item occupies its visible circle: icon pins the plate's ring (PlateSize / 4, emphasised and
+    // selected ones grown), hex chips and dots half their size, photo pins half the picture's width around its centre.
+    private func Declutter(L: ref<NightMapLayer>, id: Int32, style: Int32, p: Vector2) -> Bool {
+        let y = p.Y;
+        let kept = L.index == this.keepLayer && id == this.keepItem;
+        let r = this.rChip;
+        if style == 3 {
+            r = this.rPhoto;
+            y -= this.photoLift;
+        } else if style == 4 {
+            r = this.rDot;
+        } else if style != 0 {
+            r = style == 2 || kept ? this.rPlateEmph : this.rPlate;
+        }
+        let x = p.X;
+        if !this.curAlways && !kept && this.Collides(x, y, r) {
+            this.culled += 1;
+            return false;
+        }
+        this.Occupy(x, y, r);
+        return true;
+    }
+
     private func PlaceChip(L: ref<NightMapLayer>, id: Int32, cam: ref<NMCamera>, viewW: Float, viewH: Float) -> Bool {
-        if this.chipsUsed >= NMTheme.ChipBudget() {
+        if this.chipsUsed >= this.chipCap {
             return false;
         }
         let p = cam.WorldToMap(L.px[id], L.py[id]);
         let m = 60.0 * this.scale;
         if p.X < -m || p.X > viewW + m || p.Y < -m || p.Y > viewH + m {
             return false;
+        }
+        let style = L.shot[id] != 0u ? 3 : (L.dot[id] ? 4 : (L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0));
+        if !this.noDeclutter && !this.Declutter(L, id, style, p) {
+            return false;   // collides with a more important marker: no slot, no candidate
         }
         let slot = NMTheme.ChipBudget() - 1 - this.chipsUsed;
         this.chipsUsed += 1;
@@ -712,7 +906,6 @@ public class NMItemRenderer {
         }
         let g = L.catGlobal[L.cat[id]];
         let color = this.api.catColor[g];
-        let style = L.shot[id] != 0u ? 3 : (L.dot[id] ? 4 : (L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0));
         if this.chipStyle[slot] != style {
             let wasPhoto = this.chipStyle[slot] == 3;
             let wasDot = this.chipStyle[slot] == 4;

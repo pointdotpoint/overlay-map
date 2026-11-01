@@ -642,7 +642,7 @@
     public func Soak_Counts() -> String {
         if !IsDefined(this.renderer) { return "map closed"; }
         return "chips " + IntToString(this.renderer.chipsUsed)
-            + "|mpp " + FloatToStringPrec(this.camera.mpp, 2);
+            + "|mpp " + FloatToStringPrec(this.camera.mpp, 2) + "|culled " + IntToString(this.renderer.culled);
     }
 
     public func Soak_SeedPhotos(n: Int32) -> String {
