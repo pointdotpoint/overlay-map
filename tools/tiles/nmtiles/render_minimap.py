@@ -42,6 +42,10 @@ def glow_gain(mpp: float) -> float:
 GLOW_MINOR_WEIGHT = 0.35                                 # minor-road rim strength in the glow, relative to major
 BRIDGE_EXTENT = 1.5 * MAJOR_WIDTH_M                      # m: a minor piece up to this long between major pieces is promoted
 GLOW_MARGIN = math.ceil(3 * GLOW_RADIUS) + 3             # >= 3 sigma plus the LANCZOS support
+DOT_PITCH_PX = 8                                         # building fill dot matrix: pitch and dot size in px
+DOT_SIZE_PX = 3
+FILL_BASE = 0.45                                         # fill alpha between dots, relative to the dots
+TILE_PX = 512                                            # tile pitch the dot grid is anchored to
 EDGE_MARGIN = 3                                          # px: >= the LANCZOS support, so the kernel sees the neighbouring tile
 BATCH = 100_000                                          # primitives drawn per Python list conversion (bounded memory)
 
@@ -203,6 +207,21 @@ def _glow(major: np.ndarray | None, minor: np.ndarray | None, gain: float = GLOW
     return np.minimum(blurred.astype(np.float32) * gain, 255).astype(np.uint8)
 
 
+def dot_pattern(ix: int, iy: int, size: int) -> np.ndarray:
+    """Dot matrix 0..1 for a size x size tile, anchored to the global pixel grid (tile pitch TILE_PX); rows stagger."""
+    x = ix * TILE_PX + np.arange(size)[None, :]
+    y = iy * TILE_PX + np.arange(size)[:, None]
+    row = y // DOT_PITCH_PX
+    inx = ((x - (row % 2) * (DOT_PITCH_PX // 2)) % DOT_PITCH_PX) < DOT_SIZE_PX
+    iny = (y % DOT_PITCH_PX) < DOT_SIZE_PX
+    return (inx & iny).astype(np.float32)
+
+
+def _dot_fill(fill: np.ndarray, ix: int, iy: int) -> np.ndarray:
+    d = dot_pattern(ix, iy, fill.shape[0])
+    return np.rint(fill * (FILL_BASE + (1 - FILL_BASE) * d)).astype(np.uint8)
+
+
 def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str, Image.Image]:
     """The non-empty mask tiles of tile (ix, iy), by set name. An empty dict means: write nothing."""
     out: dict[str, Image.Image] = {}
@@ -224,7 +243,7 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
     put("road_major", None if major is None else _crop(major, margin))
     masks = _foot_masks(src, grid, ix, iy, margin)
     if masks is not None:
-        put("bfill", _crop(masks[0], margin))
+        put("bfill", _dot_fill(_crop(masks[0], margin), ix, iy))
         put("outline", _crop(masks[1], margin))
     if glow_on:
         g = _glow(major, minor, glow_gain(grid.mpp))

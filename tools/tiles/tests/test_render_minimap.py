@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from nmtiles.render import LevelGrid
-from nmtiles.render_minimap import GLOW_MIN_MPP, SETS, TileSources, TriIndex, make_sources, render_tile
+from nmtiles.render_minimap import DOT_PITCH_PX, FILL_BASE, GLOW_MIN_MPP, SETS, TileSources, TriIndex, dot_pattern, make_sources, render_tile
 
 # 2x2 tiles of 512 px at 1 m/px: tile (ix, iy) covers x in [512 ix, 512 ix + 512), y in (1024 - 512 (iy+1), 1024 - 512 iy]
 GRID = LevelGrid(1.0, 0.0, 1024.0, 2, 2, 512)
@@ -57,7 +57,7 @@ def test_footprint_gives_fill_and_outline_and_empty_tiles_are_none():
     out = render_tile(s, GRID, 0, 0)
     assert set(out) == {"bfill", "outline"}
     fill, line = (alpha(out[k]) for k in ("bfill", "outline"))
-    assert fill[1024 - 850, 150] == 255 and line[1024 - 850, 150] == 0     # interior
+    assert fill[1024 - 850, 150] >= round(FILL_BASE * 255) - 1 and line[1024 - 850, 150] == 0     # interior
     assert line[1024 - 850, 100] > 100                                         # outline on the edge
     assert render_tile(s, GRID, 1, 1) == {} and render_tile(src(), GRID, 0, 0) == {}
 
@@ -224,3 +224,20 @@ def test_promotion_stitches_across_tile_edges():
         got = np.hstack([alpha(l[name]), alpha(r[name])]).astype(int)
         assert np.abs(got - alpha(whole[name]).astype(int)[:512]).max() <= 2
     assert "road_minor" not in l and "road_minor" not in r
+
+
+def test_dot_pattern_is_seamless():
+    assert np.array_equal(dot_pattern(0, 0, 520)[:512, 512], dot_pattern(1, 0, 512)[:, 0])
+
+
+def test_dot_pattern_pitch():
+    d = dot_pattern(0, 0, 64)
+    assert DOT_PITCH_PX == 8
+    assert [int(v) for v in d[0, :16]] == [1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0]
+    assert [int(v) for v in d[8, :16]] == [0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0]
+
+
+def test_bfill_has_floor_and_dots():
+    out = render_tile(src(polys=[box(-10, 500, 600, 1100)]), GRID, 0, 0)
+    a = alpha(out["bfill"])
+    assert a.min() == pytest.approx(FILL_BASE * 255, abs=1) and a.max() == 255
