@@ -5,6 +5,11 @@ public enum NightMapHoloColor {
     Green = 1
 }
 
+public enum NightMapPadOpen {
+    HoldView = 0,
+    Off = 1
+}
+
 public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Keys")
@@ -84,92 +89,101 @@ public class NightMapSettings extends ScriptableSystem {
     public let keyTeleport: EInputKey = EInputKey.IK_NumPeriod;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Controller")
+    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Open map button")
+    @runtimeProperty("ModSettings.description", "Hold View for half a second to open the map; a tap still does what it does in the game. While the map is open it takes the controller: left stick pans, LT/RT zoom, A acts, X teleports, Y cycles the filter, R3 follows V, B closes. Off: NightMap ignores the controller.")
+    @runtimeProperty("ModSettings.displayValues.HoldView", "Hold View")
+    @runtimeProperty("ModSettings.displayValues.Off", "Off")
+    public let padOpen: NightMapPadOpen = NightMapPadOpen.HoldView;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Jobs")
     @runtimeProperty("ModSettings.description", "Show main and side job markers.")
     public let filterJobs: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Gigs")
     @runtimeProperty("ModSettings.description", "Show gig and fixer markers.")
     public let filterGigs: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Cyberpsycho Sighting")
     @runtimeProperty("ModSettings.description", "Show cyberpsycho sightings.")
     public let filterPsycho: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "NCPD Scanner")
     @runtimeProperty("ModSettings.description", "Show NCPD scanner hustles, stashes and outposts.")
     public let filterNcpd: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Fast Travel")
     @runtimeProperty("ModSettings.description", "Show fast-travel points and NCART stations.")
     public let filterFastTravel: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Ripperdoc")
     @runtimeProperty("ModSettings.description", "Show ripperdocs.")
     public let filterRipperdoc: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Vendor")
     @runtimeProperty("ModSettings.description", "Show vendors.")
     public let filterVendor: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Autofixer")
     @runtimeProperty("ModSettings.description", "Show vehicles for sale.")
     public let filterAutofixer: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Drop Point")
     @runtimeProperty("ModSettings.description", "Show drop points.")
     public let filterDropPoint: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Apartment for Rent")
     @runtimeProperty("ModSettings.description", "Show apartments for rent.")
     public let filterApartmentRent: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "TAROT")
     @runtimeProperty("ModSettings.description", "Show tarot graffiti.")
     public let filterTarot: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
-    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Your Apartments")
     @runtimeProperty("ModSettings.description", "Show your apartments, vehicles and waypoint.")
     public let filterYourProperty: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
-    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Panel opacity")
     @runtimeProperty("ModSettings.description", "Background opacity of the map panel; low values let the world show through (applies on next open).")
     @runtimeProperty("ModSettings.step", "0.02")
@@ -179,7 +193,7 @@ public class NightMapSettings extends ScriptableSystem {
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
-    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Hologram colour")
     @runtimeProperty("ModSettings.description", "Tints the map tiles, overlays, frame and header text (applies on next open).")
     @runtimeProperty("ModSettings.displayValues.Cyan", "Cyan")
@@ -188,98 +202,98 @@ public class NightMapSettings extends ScriptableSystem {
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
-    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Hologram effects")
     @runtimeProperty("ModSettings.description", "Glow, grid, scanlines, noise, scan bar, edge glow and marker halos, with their animations. Off looks like the plain map (applies on next open).")
     public let hologramEffects: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
-    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "GPS routes")
     @runtimeProperty("ModSettings.description", "Show the waypoint and quest routes from the minimap.")
     public let showRoutes: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
-    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Photo pins")
     @runtimeProperty("ModSettings.description", "Show a thumbnail pin where each photo mode shot was taken (shows in the ALL filter view).")
     public let showPhotos: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
-    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Hide HUD while open")
     @runtimeProperty("ModSettings.description", "Fade out the game's HUD (minimap, quest tracker, hotkeys, prompts) while the map is open.")
     public let hideHud: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
-    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Hold key to show")
     @runtimeProperty("ModSettings.description", "Show the map only while the toggle key is held, instead of pressing it to open and again to close.")
     public let holdToShow: Bool = false;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
-    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Teleport key")
     @runtimeProperty("ModSettings.description", "Teleport from NightMap to any spot on the map: fast travels on a fast travel marker, teleports anywhere else.")
     public let teleportEnabled: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Collectibles")
-    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.category.order", "4")
     @runtimeProperty("ModSettings.displayName", "Shards")
     @runtimeProperty("ModSettings.description", "Show shards to read.")
     public let collectShards: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Collectibles")
-    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.category.order", "4")
     @runtimeProperty("ModSettings.displayName", "Tarot")
     @runtimeProperty("ModSettings.description", "Show tarot card graffiti.")
     public let collectTarot: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Collectibles")
-    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.category.order", "4")
     @runtimeProperty("ModSettings.displayName", "Iconic weapons")
     @runtimeProperty("ModSettings.description", "Show iconic weapons lying in the world.")
     public let collectWeapons: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Collectibles")
-    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.category.order", "4")
     @runtimeProperty("ModSettings.displayName", "Cyberware")
     @runtimeProperty("ModSettings.description", "Show legendary cyberware lying in the world.")
     public let collectCyberware: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Collectibles")
-    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.category.order", "4")
     @runtimeProperty("ModSettings.displayName", "Clothing")
     @runtimeProperty("ModSettings.description", "Show legendary clothing lying in the world.")
     public let collectClothing: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Collectibles")
-    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.category.order", "4")
     @runtimeProperty("ModSettings.displayName", "Skill shards")
     @runtimeProperty("ModSettings.description", "Show skill and perk shards.")
     public let collectSkill: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Collectibles")
-    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.category.order", "4")
     @runtimeProperty("ModSettings.displayName", "Show collected")
     @runtimeProperty("ModSettings.description", "Keep collected ones on the map, scratched out and faded.")
     public let collectShowCollected: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Debug")
-    @runtimeProperty("ModSettings.category.order", "4")
+    @runtimeProperty("ModSettings.category.order", "5")
     @runtimeProperty("ModSettings.displayName", "Debug tools")
     @runtimeProperty("ModSettings.description", "Enables the debug key chords and the clip probe.")
     public let debug: Bool = false;

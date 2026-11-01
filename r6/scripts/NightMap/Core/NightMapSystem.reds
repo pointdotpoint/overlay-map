@@ -11,9 +11,39 @@ public class NightMapFrame extends DelayCallback {
 }
 
 // Owns the overlay. Zero work while closed: only the Input/Key callback stays registered.
+// Polls the View hold while it is down (the frame loop only runs while the map is open).
+public class NightMapPadPoll extends DelayCallback {
+    public let system: wref<NightMapSystem>;
+
+    public func Call() {
+        if IsDefined(this.system) {
+            this.system.PadPoll();
+        }
+    }
+}
+
+// Gives the game its actions back after the map closed, once the closing button's release has gone by.
+public class NightMapPadRelease extends DelayCallback {
+    public let system: wref<NightMapSystem>;
+    public let token: Int32;
+
+    public func Call() {
+        if IsDefined(this.system) {
+            this.system.PadReleaseCtx(this.token);
+        }
+    }
+}
+
 public class NightMapSystem extends ScriptableSystem {
     private let api: ref<NightMap>;
     private let input: ref<NMInput>;
+    private let pad: ref<NMPad>;
+    private let padFromPad: Bool;     // the open map was opened with the pad
+    private let padOwned: Bool;       // the map holds the pad: the game's actions are held off
+    private let padCtx: Bool;         // UIGameContext.ModalPopup pushed by NightMap
+    private let padCtxToken: Int32;   // invalidates a scheduled release when the map takes the pad again
+    private let padReleaseWait: Bool; // closed by a pad button: release the context after that button's release
+    private let padPolling: Bool;
     private let isOpen: Bool;
     private let loopAlive: Bool;
     private let panel: ref<NMPanel>;
@@ -76,7 +106,9 @@ public class NightMapSystem extends ScriptableSystem {
         this.vanilla = NMVanilla.Create(this.api, this.GetGameInstance());
         this.collect = new NMCollect();
         this.input = new NMInput();
+        this.pad = new NMPad();
         GameInstance.GetCallbackSystem().RegisterCallback(n"Input/Key", this, n"OnKeyInput");
+        GameInstance.GetCallbackSystem().RegisterCallback(n"Input/Axis", this, n"OnAxisInput");
         NMLog.Info("loaded (tiles " + (NMTileManifest.Available() ? "present" : "missing") + ", precise clock " + ToString(NMClock.Precise()) + ")");
     }
 
@@ -88,7 +120,9 @@ public class NightMapSystem extends ScriptableSystem {
     // Loading a save or quitting to menu ends the session: tear the overlay down so nothing is orphaned.
     private func OnDetach() {
         GameInstance.GetCallbackSystem().UnregisterCallback(n"Input/Key", this);
+        GameInstance.GetCallbackSystem().UnregisterCallback(n"Input/Axis", this);
         this.Close();
+        this.PadReleaseCtx(this.padCtxToken);
     }
 
     public static func Get(gi: GameInstance) -> ref<NightMapSystem> {
@@ -205,7 +239,15 @@ public class NightMapSystem extends ScriptableSystem {
         if !IsDefined(s) {
             return;
         }
-        this.input.Handle(s, evt.GetKey(), evt.GetAction(), evt.IsShiftDown(), evt.IsControlDown(), evt.IsAltDown(), this.isOpen);
+        let key = evt.GetKey();
+        if NMPad.IsPad(key) && Equals(s.padOpen, NightMapPadOpen.HoldView) {
+            this.OnPadButton(s, key, evt.GetAction());
+            return;
+        }
+        let used = this.input.Handle(s, key, evt.GetAction(), evt.IsShiftDown(), evt.IsControlDown(), evt.IsAltDown(), this.isOpen);
+        if used && this.isOpen {
+            this.pad.lastWasPad = false;
+        }
         if this.input.toggle {
             this.input.toggle = false;
             if this.isOpen {
@@ -215,6 +257,98 @@ public class NightMapSystem extends ScriptableSystem {
             }
         }
         this.HandleDebug(s);
+    }
+
+    // Sticks and triggers. Mouse axes arrive here every frame too: the pad check comes first and costs an int compare.
+    private cb func OnAxisInput(evt: ref<AxisInputEvent>) {
+        let key = evt.GetKey();
+        if NMPad.IsPad(key) {
+            this.pad.Axis(key, evt.GetValue());
+        }
+    }
+
+    private func OnPadButton(s: ref<NightMapSettings>, key: EInputKey, action: EInputAction) {
+        if !this.isOpen && this.padReleaseWait && Equals(action, EInputAction.IACT_Release) {
+            this.padReleaseWait = false;
+            this.SchedulePadRelease(0.1);
+        }
+        this.pad.Button(key, action, NMClock.NowMs(), this.isOpen, this.padFromPad, this.padOwned, s.holdToShow, true);
+        if this.pad.close {
+            this.pad.close = false;
+            this.padReleaseWait = Equals(action, EInputAction.IACT_Press);
+            this.Close();
+            return;
+        }
+        if this.pad.act { this.pad.act = false; this.input.act = true; }
+        if this.pad.teleport {
+            this.pad.teleport = false;
+            if s.teleportEnabled { this.input.teleport = true; }
+        }
+        if this.pad.filter { this.pad.filter = false; this.input.filter = true; }
+        if this.pad.recenter { this.pad.recenter = false; this.input.recenter = true; }
+        if this.pad.HoldPending() && !this.padPolling {
+            this.padPolling = true;
+            this.SchedulePadPoll();
+        }
+    }
+
+    private func SchedulePadPoll() {
+        let cb = new NightMapPadPoll();
+        cb.system = this;
+        GameInstance.GetDelaySystem(this.GetGameInstance()).DelayCallback(cb, 0.05, false);
+    }
+
+    public func PadPoll() {
+        this.padPolling = false;
+        if this.pad.PollHold(NMClock.NowMs(), this.isOpen, this.padFromPad, this.padOwned) {
+            if this.isOpen {
+                this.Close();
+            } else {
+                this.OpenFromPad();
+            }
+            return;
+        }
+        if this.pad.HoldPending() {
+            this.padPolling = true;
+            this.SchedulePadPoll();
+        }
+    }
+
+    // Opened by holding View. In a car with pass-through on, the map opens without taking the pad.
+    private func OpenFromPad() {
+        this.Open();
+        if !this.isOpen {
+            return;
+        }
+        this.padFromPad = true;
+        this.pad.lastWasPad = true;
+        this.pad.ClearAxes();
+        let player = GetPlayer(this.GetGameInstance());
+        let inCar = IsDefined(player) && IsDefined(GetMountedVehicle(player));
+        if !(inCar && NMPad.CarPassThrough()) {
+            this.padOwned = true;
+            this.padCtxToken += 1;
+            if !this.padCtx {
+                this.padCtx = true;
+                GameInstance.GetUISystem(this.GetGameInstance()).PushGameContext(UIGameContext.ModalPopup);
+            }
+        }
+    }
+
+    private func SchedulePadRelease(seconds: Float) {
+        let cb = new NightMapPadRelease();
+        cb.system = this;
+        cb.token = this.padCtxToken;
+        GameInstance.GetDelaySystem(this.GetGameInstance()).DelayCallback(cb, seconds, false);
+    }
+
+    public func PadReleaseCtx(token: Int32) {
+        if !this.padCtx || token != this.padCtxToken || this.padOwned {
+            return;
+        }
+        this.padCtx = false;
+        this.padReleaseWait = false;
+        GameInstance.GetUISystem(this.GetGameInstance()).PopGameContext(UIGameContext.ModalPopup);
     }
 
     // Debug chords: self-test, debug layer, perf suite, calibration dump.
@@ -517,6 +651,15 @@ public class NightMapSystem extends ScriptableSystem {
         if IsDefined(this.input) {
             this.input.ResetHeld();
         }
+        if IsDefined(this.pad) {
+            this.pad.ClearAxes();
+        }
+        this.padFromPad = false;
+        if this.padOwned {
+            this.padOwned = false;
+            // Closed by a pad button: wait for its release (OnPadButton), with a fallback; else release shortly.
+            this.SchedulePadRelease(this.padReleaseWait ? 1.5 : 0.1);
+        }
         this.OnClosing();
         if IsDefined(this.hud) {
             this.hud.Restore();
@@ -590,6 +733,10 @@ public class NightMapSystem extends ScriptableSystem {
 
     private func DriveCamera(dt: Float) {
         let pan = this.input.PanVector();
+        if this.padOwned {
+            let pp = this.pad.PanVector();
+            pan = new Vector2(ClampF(pan.X + pp.X, -1.0, 1.0), ClampF(pan.Y + pp.Y, -1.0, 1.0));
+        }
         let panning = pan.X != 0.0 || pan.Y != 0.0;
         let c = this.crosshair;
         if NMInput.SnapOnRelease(this.wasPanning, panning, IsDefined(c) && c.selKind >= 0) {
@@ -611,6 +758,10 @@ public class NightMapSystem extends ScriptableSystem {
         }
         if this.input.zoomOut {
             this.camera.ZoomBy(1.0 / PowF(NMTheme.ZoomRatePerSecond(), dt / 1000.0));
+        }
+        let padZoom = this.padOwned ? this.pad.ZoomRate() : 0.0;
+        if padZoom != 0.0 {
+            this.camera.ZoomBy(PowF(NMTheme.ZoomRatePerSecond(), padZoom * dt / 1000.0));
         }
         if this.input.recenter {
             this.input.recenter = false;
@@ -994,6 +1145,11 @@ public class NightMapSystem extends ScriptableSystem {
         this.UpdateScale();
         if IsDefined(s) {
             let hint = NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView), this.TeleportLabel());
+            if this.padOwned && this.pad.lastWasPad {
+                hint = NMPad.HintText(NMVanillaFilters.ViewName(this.filterView), this.TeleportLabel(), s.teleportEnabled, s.holdToShow);
+            } else if this.padFromPad && !this.padOwned {
+                hint = NMPad.PassThroughHint(hint);
+            }
             if this.input.arrowSeen {
                 hint += "   ·   ARROW KEYS IGNORED - TURN NUMLOCK ON";
             }

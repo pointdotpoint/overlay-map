@@ -362,7 +362,7 @@ public class NMSelfTest {
         let early = p.PollHold(2499.0, false, false, false);
         let at = p.PollHold(2500.0, false, false, false);
         let again = p.PollHold(2600.0, false, false, false);
-        this.Check("pad.view_hold_opens", !early && at && !again && p.Waiting(), ToString(early) + ToString(at) + ToString(again));
+        this.Check("pad.view_hold_opens", !early && at && !again && p.Waiting() && !p.HoldPending(), ToString(early) + ToString(at) + ToString(again));
         p.Button(VIEW, release, 2700.0, true, true, true, false, true);
         this.Check("pad.view_release_after_open_keeps_open", !p.close && !p.Waiting(), "");
         // While the map owns the pad: buttons map to actions, and View or B close.

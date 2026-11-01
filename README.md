@@ -47,6 +47,7 @@ UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only
 ## Using it
 - `'` open/close · Numpad 8/4/6/2 (7/9/1/3) pan · Numpad +/- zoom · Numpad 5 follow V · Numpad 0 act. Every key can be rebound in Mod Settings → NightMap.
 - Arrow keys are never used (they steer vehicles). Keep NumLock on.
+- Controller: hold View for half a second to open the map (a tap still does what it does in the game). While it is open the map takes the controller, so V stops: left stick pans, LT/RT zoom, A acts, X teleports, Y cycles the filter, R3 follows V, B (or View) closes. In a car the car coasts meanwhile. A map opened with the keyboard ignores the controller, so you can drive with a pad and use the numpad map. Mod Settings → NightMap → Controller → Open map button (Hold View / Off).
 - Zoom crossfades between six baked levels, from 0.5 m/px (single buildings) to 16 m/px (the whole city).
 - The game's own map markers (quests, gigs, NCPD, vendors, fast travel, …) appear with their vanilla icons. Move the map so a marker is nearest the centre to see its tooltip; `Numpad 0` tracks its quest, or clears your vanilla waypoint. Setting new waypoints comes with the optional native plugin (later).
 - `Numpad /` cycles the markers shown: All → Jobs (quests, gigs, psycho) → Services (ripperdoc, vendors, autofixer, drop points, fast travel, your property), like the vanilla quick lists; NCPD scanner and apartments to rent show only in All. Mod Settings → NightMap → Map filters turns each vanilla category on or off.

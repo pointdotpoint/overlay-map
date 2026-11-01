@@ -106,7 +106,20 @@ public class NMPad {
         return true;
     }
 
-    // View is down and its hold still matters: the system keeps polling meanwhile.
+    // View is down and its hold has not fired yet: the system keeps polling meanwhile.
+    public func HoldPending() -> Bool {
+        return this.viewDown && !this.holdFired;
+    }
+
+    // Sticks and triggers back to rest (the map opened or closed; a stick held for walking must not pan).
+    public func ClearAxes() {
+        this.lx = 0.0;
+        this.ly = 0.0;
+        this.lt = 0.0;
+        this.rt = 0.0;
+    }
+
+    // View is down: its release may still matter (Hold to show).
     public func Waiting() -> Bool {
         return this.viewDown;
     }
