@@ -190,6 +190,7 @@ public abstract class NMPerfTests {
                 r.Invalidate();
                 r.Update(cam, 1880.0, 1480.0);
                 let ref0 = NMRendSnap.Take(r);
+                let stops0 = r.capStops;
                 r.forceScan = false;
                 r.Invalidate();
                 r.Update(cam, 1880.0, 1480.0);
@@ -198,7 +199,7 @@ public abstract class NMPerfTests {
                 if NotEquals(d, "") {
                     bad += "c" + ToString(c) + " mpp " + FloatToStringPrec(m, 1) + ": " + d + "; ";
                 }
-                if ref0.chips >= NMTheme.ChipBudget() { sawCapped = true; }
+                if ref0.chips >= NMTheme.ChipBudget() || stops0 > 0 { sawCapped = true; }   // the chip budget or a cull cap ended a walk
                 if m >= 8.0 && ref0.chips > 0 && ref0.chips < NMTheme.ChipBudget() { sawFar = true; }
                 if ref0.chips > 0 { sawChip = true; }
                 runs += 1;

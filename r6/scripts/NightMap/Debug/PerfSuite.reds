@@ -20,6 +20,8 @@ public class NMPerfSuite {
     private let setupMs: Float;
     private let samples: array<Float>;
     private let script: array<Float>;
+    private let tiles: array<Float>;   // the tile layers' share of script (sys.perfTileMs)
+    private let items: array<Float>;   // the item relayout's share (sys.perfItemMs)
     private let savedFollow: Bool;
     private let savedMpp: Float;
     private let savedX: Float;
@@ -106,6 +108,8 @@ public class NMPerfSuite {
                 this.frames = 0;
                 ArrayClear(this.samples);
                 ArrayClear(this.script);
+                ArrayClear(this.tiles);
+                ArrayClear(this.items);
                 sys.Vanilla().ResetPollStats();   // poll_ms_max covers the measured frames only
                 sys.Gps().ResetReadStats();       // route_read_ms_max likewise
                 this.routeDrawn = this.routeRows[this.idx] && IsDefined(sys.Routes()) && sys.Routes().HasRoute();
@@ -129,6 +133,8 @@ public class NMPerfSuite {
         }
         ArrayPush(this.samples, dt);
         ArrayPush(this.script, scriptMs);
+        ArrayPush(this.tiles, this.shows[this.idx] ? sys.perfTileMs : 0.0);
+        ArrayPush(this.items, this.shows[this.idx] ? sys.perfItemMs : 0.0);
         if this.frames >= 300 {
             this.Report(sys);
             this.idx += 1;
@@ -152,6 +158,7 @@ public class NMPerfSuite {
         NMLog.Info("RESULT|" + this.names[this.idx] + "|items=" + ToString(this.counts[this.idx]) + "|frames=" + ToString(ArraySize(this.samples))
             + "|setup_ms=" + FloatToStringPrec(this.setupMs, 1) + "|" + NMPerfSuite.Stats("frame", this.samples, true) + "|" + NMPerfSuite.Stats("script", this.script, false)
             + "|script_max=" + FloatToStringPrec(NMPerfSuite.MaxOf(this.script), 3)
+            + "|" + NMPerfSuite.Stats("tiles", this.tiles, false) + "|" + NMPerfSuite.Stats("items", this.items, false)
             + "|poll_ms_max=" + FloatToStringPrec(this.vanillas[this.idx] ? sys.Vanilla().pollMsMax : 0.0, 3)
             + "|route_drawn=" + (this.routeDrawn ? "1" : "0")
             + "|route_read_ms_max=" + FloatToStringPrec(this.routeRows[this.idx] ? sys.Gps().readMsMax : 0.0, 3));

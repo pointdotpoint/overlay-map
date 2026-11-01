@@ -163,7 +163,7 @@ public abstract class NMDeclutterTests {
             "close " + ToString(close) + " " + NMDeclutterTests.Info(r7));
 
         // 8. Work bounds: a pile of 500 items on one spot stops after the cell's miss cap, and piles in 600 cells
-        // stop testing at CullCap culls.
+        // stop testing at CullCap culls (a Major layer has only the relayout's bound).
         let api8 = NMDeclutterTests.Api();
         let L8 = NMDeclutterTests.Layer(api8, n"test.dc.pile", 5, NightMapTier.Minor);
         i = 0;
@@ -252,6 +252,23 @@ public abstract class NMDeclutterTests {
         let still11 = c11.selLayer == sel.index && c11.selItem == selId;
         t.Check("declutter.selected_survives_cap", picked11 && capped && kept11 && still11,
             ToString(picked11) + ToString(capped) + ToString(kept11) + ToString(still11) + " " + NMDeclutterTests.Info(r11));
+
+        // 11. A Minor layer's cull cap is its own: a dense high-priority Minor layer that spends its LayerCullCap culls
+        // doesn't starve a later, lower-priority one, whose lone item away from the piles is still placed.
+        let api13 = NMDeclutterTests.Api();
+        let dense = NMDeclutterTests.Layer(api13, n"test.dc.densefirst", 90, NightMapTier.Minor);
+        i = 0;
+        while i < 300 * 12 {
+            let dc = i / 12;   // 12 items in each of 300 cells, the left half of the 30 x 20 block
+            NMDeclutterTests.At(dense, Cast<Float>(dc % 15 - 15) * 250.0 + 125.0, Cast<Float>(dc / 15 - 10) * 250.0 + 125.0);
+            i += 1;
+        }
+        let lone = NMDeclutterTests.Layer(api13, n"test.dc.lonelater", 5, NightMapTier.Minor);
+        let loneId = NMDeclutterTests.At(lone, 3000.0, 0.0);
+        let r13 = NMItemRenderer.Create(api13, new inkCanvas(), 1.0);
+        r13.Update(NMDeclutterTests.Cam(4.0), w, h);
+        t.Check("declutter.cap_per_layer", r13.culled == NMItemRenderer.LayerCullCap()
+            && NMDeclutterTests.Placed(r13, lone, loneId), NMDeclutterTests.Info(r13));
 
         // 12. The header is reserved: a pile of Minor and Major items inside the panel's padded title rect is culled,
         // an Always item there stays, and an item just outside the rect is placed. Rects come from a real panel

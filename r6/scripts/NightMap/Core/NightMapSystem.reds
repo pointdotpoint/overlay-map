@@ -82,6 +82,8 @@ public class NightMapSystem extends ScriptableSystem {
     private let scaleRev: Int32;
     private let perf: ref<NMPerfSuite>;
     private let perfHidden: Bool;
+    public let perfTileMs: Float;   // this frame's tile layers and item relayout, timed only while the perf suite runs
+    public let perfItemMs: Float;
     private let versionLogged: Bool;
     private let layerEpoch: Int32;
     private let imageRetries: Int32;
@@ -981,9 +983,12 @@ public class NightMapSystem extends ScriptableSystem {
         }
         let l = this.panel.layout;
         this.vanilla.Tick(NMClock.NowMs(), false);
+        let prof = IsDefined(this.perf) && this.perf.running;
+        let tp = prof ? NMClock.NowMs() : 0.0;
         if IsDefined(this.layers) {
             this.layers.Update(this.camera, dt);
         }
+        if prof { this.perfTileMs = NMClock.NowMs() - tp; }
         if this.api.revision != this.imageRev {
             this.imageRev = this.api.revision;
             this.imageRetries = 0;
@@ -1003,7 +1008,9 @@ public class NightMapSystem extends ScriptableSystem {
         if this.Photos().Revision() != this.Photos().SyncedRevision() {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
         }
+        let ip = prof ? NMClock.NowMs() : 0.0;
         let relaid = this.renderer.UpdateFor(this.camera, l);
+        if prof { this.perfItemMs = NMClock.NowMs() - ip; }
         if relaid {
             // mapW, not viewW: the focus is the map-area centre less the sidebar shift, i.e. the middle of the culled view
             // (NMCrosshair.FocusX, pick.focus_mid_view).

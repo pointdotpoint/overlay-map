@@ -45,6 +45,8 @@ public class NMTileLayer extends NMMapLayer {
     private let slotAtlas: array<ref<ResourceToken>>;
     private let slotTexture: array<ref<ResourceToken>>;
     private let slotWaiting: array<Bool>;
+    private let waitList: array<Int32>;   // slots that may be waiting: Reveal walks these, not the whole pool, every frame
+    private let inWait: array<Bool>;      // the slot has an entry in waitList
     private let slotAskedMs: array<Float>;
     private let slotFrames: array<Int32>;
     private let lvWaiting: array<Int32>;
@@ -345,6 +347,8 @@ public class NMTileLayer extends NMMapLayer {
             return;
         }
         this.Preload(cam, lv + 1);
+        // A level's slots all lie in its last range, so a range that only grew (zooming out within the level) frees none.
+        let grew = shown && ix0 <= this.rIx0[lv] && ix1 >= this.rIx1[lv] && iy0 <= this.rIy0[lv] && iy1 >= this.rIy1[lv];
         this.rSet[lv] = true;
         this.rIx0[lv] = ix0;
         this.rIx1[lv] = ix1;
@@ -352,7 +356,7 @@ public class NMTileLayer extends NMMapLayer {
         this.rIy1[lv] = iy1;
         // Free the slots of this level that scrolled out of view.
         let s = 0;
-        while s < ArraySize(this.pool) {
+        while !grew && s < ArraySize(this.pool) {
             if this.slotKey[s] >= 0 && this.slotLv[s] == lv
                 && (this.slotIx[s] < ix0 || this.slotIx[s] > ix1 || this.slotIy[s] < iy0 || this.slotIy[s] > iy1) {
                 this.ReleaseSlot(s);
@@ -379,6 +383,10 @@ public class NMTileLayer extends NMMapLayer {
                         this.slotAtlas[slot] = depot.LoadResource(ResRef.FromString(path));
                         this.slotTexture[slot] = depot.LoadResource(ResRef.FromString(StrReplace(path, ".inkatlas", ".xbm")));
                         this.slotWaiting[slot] = true;
+                        if !this.inWait[slot] {
+                            ArrayPush(this.waitList, slot);
+                            this.inWait[slot] = true;
+                        }
                         this.slotAskedMs[slot] = this.nowMs;
                         this.slotFrames[slot] = 0;
                         this.lvWaiting[lv] += 1;
@@ -448,6 +456,7 @@ public class NMTileLayer extends NMMapLayer {
         ArrayPush(this.slotAtlas, null);
         ArrayPush(this.slotTexture, null);
         ArrayPush(this.slotWaiting, false);
+        ArrayPush(this.inWait, false);
         ArrayPush(this.slotAskedMs, 0.0);
         ArrayPush(this.slotFrames, 0);
         ArrayPush(this.slotKey, -1);
@@ -462,8 +471,13 @@ public class NMTileLayer extends NMMapLayer {
         if this.waiting == 0 {
             return;
         }
-        let s = 0;
-        while s < ArraySize(this.pool) {
+        // waitList keeps the slots in the order they started waiting; entries whose slot stopped waiting (shown here or
+        // released) drop out as the list is compacted.
+        let keep = 0;
+        let i = 0;
+        let n = ArraySize(this.waitList);
+        while i < n {
+            let s = this.waitList[i];
             if this.slotWaiting[s] {
                 if !this.holdLoads && this.slotAtlas[s].IsFinished() && this.slotTexture[s].IsFinished() {
                     this.slotFrames[s] += 1;
@@ -473,8 +487,15 @@ public class NMTileLayer extends NMMapLayer {
                     this.pool[s].SetVisible(true);
                 }
             }
-            s += 1;
+            if this.slotWaiting[s] {
+                this.waitList[keep] = s;
+                keep += 1;
+            } else {
+                this.inWait[s] = false;
+            }
+            i += 1;
         }
+        ArrayResize(this.waitList, keep);
     }
 
     private func StopWaiting(s: Int32) {

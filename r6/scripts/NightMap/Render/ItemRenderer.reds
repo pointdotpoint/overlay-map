@@ -49,6 +49,7 @@ public class NMItemRenderer {
     // A scratch over a struck item's icon, created on the slot's first struck item.
     public let chipStrike: array<ref<inkImage>>;
     public let strikeOn: array<Bool>;
+    private let strikeStale: array<Bool>;   // the slot's size, scale, opacity or tint changed since its strike copied them
     // Thumbnails are held by shot hash in NMThumbPlan slots, each with its own image (never a chip's icon).
     private let thumbPlan: ref<NMThumbPlan>;
     private let thumbImg: array<ref<inkImage>>;
@@ -94,6 +95,7 @@ public class NMItemRenderer {
     // Declutter: a marker that collides on screen with one already placed this relayout is skipped (no slot, no
     // candidate). Placed markers go into a spatial hash over the view, rebuilt per relayout in reused arrays.
     public let culled: Int32;       // items skipped by the declutter in the last relayout
+    public let capStops: Int32;     // layers whose walk the cull cap ended in the last relayout (tests)
     public let noDeclutter: Bool;   // test hook: place every item as before the declutter (budget and order tests)
     private let curAlways: Bool;    // the layer being placed is Always tier: never culled
     private let keepLayer: Int32;   // the selection (layer + item): never culled while selected
@@ -113,7 +115,7 @@ public class NMItemRenderer {
     private let hK: Float;             // DeclutterOverlap, read once per relayout
     private let hRmax: Float;          // largest DeclutterOverlap x radius placed so far this relayout
     private let cellMiss: Int32;       // consecutive culls that end the walk of one level-0 cell (its pile is full)
-    private let cullLimit: Int32;      // CullCap for the layer being placed (no limit for Always or noDeclutter)
+    private let cullLimit: Int32;      // the culled count where the layer being placed stops (no limit for Always or noDeclutter)
     private let chipCap: Int32;        // NMTheme.ChipBudget(), read once (the walk loops test it per item)
     // Visible radii of the layer being placed (UI scale x tier scale), and a photo picture's lift above its spot.
     private let rChip: Float;
@@ -159,6 +161,7 @@ public class NMItemRenderer {
             ArrayPush(r.photoOn, false);
             ArrayPush(r.chipStrike, null);
             ArrayPush(r.strikeOn, false);
+            ArrayPush(r.strikeStale, true);
             ArrayPush(r.photoColor, NMTheme.Cyan());
             let e = 0;
             while e < 4 { ArrayPush(r.photoEdge, null); e += 1; }
@@ -379,7 +382,8 @@ public class NMItemRenderer {
             let L = api.layers[li];
             let tier = L.EffectiveTier();
             this.curAlways = tier <= 0;
-            this.cullLimit = this.curAlways || this.noDeclutter ? 2147483647 : NMItemRenderer.CullCap();
+            this.cullLimit = this.curAlways || this.noDeclutter ? 2147483647
+                : (tier == 1 ? NMItemRenderer.CullCap() : Min(this.culled + NMItemRenderer.LayerCullCap(), NMItemRenderer.CullCap()));
             if L.VisibleAt(cam.mpp) && L.count > 0 && !this.Saturated() {
                 let f = NMTiers.Fade(tier, cam.mpp);
                 if f > 0.0 {   // fully faded: skipped whole, not a candidate (spec 7.2)
@@ -392,6 +396,7 @@ public class NMItemRenderer {
                     } else {
                         this.PlaceCellsOf(L, cam, viewW, viewH);
                     }
+                    if this.culled >= this.cullLimit { this.capStops += 1; }
                 }
             }
         }
@@ -424,6 +429,7 @@ public class NMItemRenderer {
     // (DeclutterOverlap x (rA + rB) <= 2 x the largest radius) reaches at most the neighbouring cells.
     private func BeginDeclutter(viewW: Float, viewH: Float) {
         this.culled = 0;
+        this.capStops = 0;
         this.hN = 0;
         this.hRmax = 0.0;
         this.hK = NMTheme.DeclutterOverlap();
@@ -486,9 +492,15 @@ public class NMItemRenderer {
     // 1. A level-0 cell's chain stops after CellMissCap culls with no placement in between (items outside the view
     //    neither count nor reset): about as many markers as fit in the cell on screen, at least 2, so a cell smaller
     //    than a marker gives up after two misses while a cell many markers across (close zoom) keeps looking.
-    // 2. After CullCap culls in one relayout only Always-tier items are still placed (they never cull). The selection
-    //    is placed before any layer (PlaceKept), so neither bound can drop it.
-    public static func CullCap() -> Int32 { return NMTheme.ChipBudget(); }
+    // 2. A Minor layer stops after LayerCullCap culls of its own, so dense Minor layers walked first (vendors, drop
+    //    points) can't use up the evaluation of the ones after them (the collectibles, last by priority). Major layers
+    //    (fast travel, quests: all a far view shows) have only the relayout's bound: after CullCap culls in one relayout
+    //    only Always-tier items are still placed (they never cull). The selection is placed before any layer
+    //    (PlaceKept), so no bound can drop it.
+    // Task 11, measured with NMPerfSuite: a cull costs about as much as a placement, and one cap of 300 per relayout
+    // kept the real-marker sweep (vanilla_open) over main's frame time while starving the collectibles at mid zoom.
+    public static func LayerCullCap() -> Int32 { return 40; }
+    public static func CullCap() -> Int32 { return 4 * NMItemRenderer.LayerCullCap(); }
 
     private func LayerRadii() {
         let s = this.scale * this.curScale;
@@ -777,7 +789,7 @@ public class NMItemRenderer {
         if this.api.catHasIcon[g] {
             ic.atlas = this.api.catAtlas[g];
             ic.part = this.api.catPart[g];
-            ic.key = "cat" + ToString(g);
+            ic.key = this.api.catKey[g];
             return;
         }
         ic.atlas = NMTheme.UiAtlas();
@@ -857,11 +869,16 @@ public class NMItemRenderer {
             this.chipStrike[slot] = NMUi.Image(this.parent, n"icon_strike", 0.0, 0.0, NMTheme.VanillaIconSize() * this.scale, tint, true);
         }
         let st = this.chipStrike[slot];
-        let ic = style == 0 ? this.chipBg[slot] : this.chipIcon[slot];
-        st.SetSize(ic.GetSize());
-        st.SetScale(ic.GetScale());
-        st.SetOpacity(ic.GetOpacity());
-        st.SetTintColor(tint);
+        // Only the position changes from frame to frame; the rest is copied when the slot's look changed (PlaceChip
+        // marks it stale; SetGrow keeps a shown strike in step itself).
+        if !this.strikeOn[slot] || this.strikeStale[slot] {
+            let ic = style == 0 ? this.chipBg[slot] : this.chipIcon[slot];
+            st.SetSize(ic.GetSize());
+            st.SetScale(ic.GetScale());
+            st.SetOpacity(ic.GetOpacity());
+            st.SetTintColor(tint);
+            this.strikeStale[slot] = false;
+        }
         st.SetTranslation(p);
         if !this.strikeOn[slot] {
             st.SetVisible(true);
@@ -957,7 +974,7 @@ public class NMItemRenderer {
             r = style == 2 || kept ? this.rPlateEmph : this.rPlate;
         }
         let x = p.X;
-        if !this.curAlways && !kept && (this.InReserved(x, y, r) || this.Collides(x, y, r)) {
+        if !this.curAlways && !kept && (this.Collides(x, y, r) || this.InReserved(x, y, r)) {   // most culls collide
             this.culled += 1;
             return false;
         }
@@ -995,6 +1012,7 @@ public class NMItemRenderer {
             let wasPhoto = this.chipStyle[slot] == 3;
             let wasDot = this.chipStyle[slot] == 4;
             this.ApplyChipStyle(slot, style);
+            this.strikeStale[slot] = true;
             this.chipTintOk[slot] = false;  // force the tint refresh below
             this.chipAlpha[slot] = -1.0;    // force the opacity refresh below
             if wasPhoto || wasDot {
@@ -1026,6 +1044,7 @@ public class NMItemRenderer {
         if !this.chipTintOk[slot] || !NMItemRenderer.SameColor(this.chipTintIc[slot], icTint) {
             ic.SetTintColor(icTint);
             this.chipTintIc[slot] = icTint;
+            this.strikeStale[slot] = true;
         }
         this.chipTintOk[slot] = true;
         this.ResolveIcon(L, id);
@@ -1042,6 +1061,7 @@ public class NMItemRenderer {
         let k = this.curScale;
         if this.chipK[slot] != k {
             this.chipK[slot] = k;
+            this.strikeStale[slot] = true;
             if slot == this.growSlot {
                 this.SetGrow(slot, this.growT);
             } else {
@@ -1052,6 +1072,7 @@ public class NMItemRenderer {
         let item = L.opacity * L.alpha[id] * this.curFade;
         let a = style == 1 ? item * NMTheme.VanillaIdleOpacity() : item;
         if this.chipAlpha[slot] != a {
+            this.strikeStale[slot] = true;
             // The idle dim is the icon's only (spec 5.1): the plate keeps the item's alpha so its disc cuts out the city.
             bg.SetOpacity(style == 0 ? a : item * NMTheme.PlateOpacity());
             ic.SetOpacity(a);
