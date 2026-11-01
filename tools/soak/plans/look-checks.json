@@ -1,0 +1,158 @@
+{
+ "name": "look-checks",
+ "runs": [
+  {
+   "name": "probe",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_layer Vanilla.Quest 1",
+     "expect": "^ok"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "act",
+     "expect": "^ok"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "selected"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "zoom 2"
+    },
+    {
+     "wait": 8
+    },
+    {
+     "shot": "route_z2"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "cmd": "set effects 0",
+     "expect": "^effects false"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "zoom 2"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "effects_off_z2"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "cmd": "set effects 1",
+     "expect": "^effects true"
+    },
+    {
+     "cmd": "set theme green",
+     "expect": "^theme 1"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "green_z2"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "cmd": "set theme cyan",
+     "expect": "^theme 0"
+    },
+    {
+     "cmd": "set opacity 0.3",
+     "expect": "^opacity 0.30"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "opacity030_z2"
+    },
+    {
+     "cmd": "zoom 0.5"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "opacity030_z0.5"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "cmd": "set opacity 0.92",
+     "expect": "^opacity 0.92"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_photo 1",
+     "expect": "^ok"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "photo_pin_z1"
+    }
+   ]
+  }
+ ]
+}

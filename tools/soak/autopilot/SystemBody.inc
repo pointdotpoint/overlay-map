@@ -121,6 +121,7 @@
     }
 
     private func Soak_Frame(dt: Float) {
+        this.Soak_PerfFrame();
         if this.soakMode > 0 && IsDefined(this.renderer) {
             this.Soak_ModeFrame(dt);
             return;
@@ -645,9 +646,105 @@
             + "|mpp " + FloatToStringPrec(this.camera.mpp, 2) + "|culled " + IntToString(this.renderer.culled);
     }
 
+    // The ACT key's effect without a key event (tracks the selected vanilla marker, as NUM 0 does).
+    public func Soak_Act() -> String {
+        if !this.isOpen { return "map closed"; }
+        this.input.act = true;
+        return "ok";
+    }
+
+    // Centres the map on the item of the first layer whose id contains `part` nearest to V (a hover for look shots).
+    public func Soak_FocusLayer(part: String, mpp: Float) -> String {
+        if !IsDefined(this.camera) { return "map closed"; }
+        let here = GetPlayer(this.GetGameInstance()).GetWorldPosition();
+        for L in this.api.layers {
+            if L.count > 0 && StrContains(NameToString(L.id), part) {
+                let best = -1;
+                let bestD = 0.0;
+                let i = 0;
+                while i < ArraySize(L.alive) {
+                    if L.alive[i] {
+                        let dx = L.px[i] - here.X;
+                        let dy = L.py[i] - here.Y;
+                        let d = dx * dx + dy * dy;
+                        if best < 0 || d < bestD {
+                            best = i;
+                            bestD = d;
+                        }
+                    }
+                    i += 1;
+                }
+                if best >= 0 {
+                    this.camera.follow = false;
+                    this.camera.SetMpp(mpp);
+                    this.camera.SetCenter(L.px[best], L.py[best]);
+                    return "ok|" + NameToString(L.id) + "|" + FloatToStringPrec(SqrtF(bestD), 0) + "m";
+                }
+            }
+        }
+        return "none";
+    }
+
+    // Per layer with items: id, effective tier, priority, items, markers placed in the last relayout. For density tuning.
+    public func Soak_Layers() -> String {
+        if !IsDefined(this.renderer) { return "map closed"; }
+        let placed: array<Int32>;
+        ArrayResize(placed, ArraySize(this.api.layers));
+        for li in this.renderer.candLayer {
+            if li >= 0 && li < ArraySize(placed) { placed[li] += 1; }
+        }
+        let out = "mpp " + FloatToStringPrec(this.camera.mpp, 2) + "|culled " + IntToString(this.renderer.culled);
+        let i = 0;
+        while i < ArraySize(this.api.layers) {
+            let L = this.api.layers[i];
+            if L.count > 0 {
+                out += "|" + NameToString(L.id) + ":" + IntToString(L.EffectiveTier()) + ":" + IntToString(L.priority)
+                    + ":" + IntToString(L.count) + ":" + IntToString(placed[i]);
+            }
+            i += 1;
+        }
+        return out;
+    }
+
     public func Soak_SeedPhotos(n: Int32) -> String {
         this.Photos().SeedForPerf(n);
         return "seeded";
+    }
+
+    // Look checks: a setting changed in memory (the harness restores the settings file after the campaign). The panel
+    // reads these on open, so close and open after a change. effects 0|1, theme cyan|green, opacity <float>.
+    public func Soak_Set(name: String, value: String) -> String {
+        let s = this.Settings();
+        if !IsDefined(s) { return "no settings"; }
+        if Equals(name, "effects") { s.hologramEffects = Equals(value, "1"); return "effects " + ToString(s.hologramEffects); }
+        if Equals(name, "theme") {
+            s.holoColor = Equals(value, "green") ? NightMapHoloColor.Green : NightMapHoloColor.Cyan;
+            return "theme " + ToString(NMTheme.ThemeIndex(s.holoColor));
+        }
+        if Equals(name, "opacity") { s.panelOpacity = StringToFloat(value); return "opacity " + FloatToStringPrec(s.panelOpacity, 2); }
+        return "unknown setting";
+    }
+
+    // NMPerfSuite without the debug chord: opens the map, starts the suite, and reports perf_done once it ends. The
+    // RESULT| and PERF| lines go to CET's gamelog.log, which the harness keeps with the run (gamelog-tail.log).
+    private let soakPerfWatch: Bool;
+
+    public func Soak_Perf() -> String {
+        if !NMClock.Precise() { return "no precise clock"; }
+        if !this.isOpen { this.Open(); }
+        if !this.isOpen { return "not open"; }
+        this.perf = new NMPerfSuite();
+        this.perf.Start();
+        this.soakPerfWatch = true;
+        return "started";
+    }
+
+    // Soak_Frame runs only while the panel draws: the suite's hidden scenarios skip it, and the end restores it.
+    private func Soak_PerfFrame() {
+        if this.soakPerfWatch && IsDefined(this.perf) && !this.perf.running {
+            this.soakPerfWatch = false;
+            NMSoak.Report("perf_done", "suite done");
+        }
     }
 
     public func Soak_StartZoomLoop(tag: String, seconds: Float, holds: Int32) -> String {

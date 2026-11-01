@@ -170,6 +170,9 @@ public class SoakChannel extends ScriptableService {
         if !this.m_worldReported {
             this.m_worldReported = true;
             this.State("world", "");
+            // A third-party mod's first-run notice (Immersive Third Person) opens a tutorial popup over the game about
+            // 20 s in, until its quest fact is set in the save; the harness never saves, so mark it seen per session.
+            GameInstance.GetQuestsSystem(GetGameInstance()).SetFact(n"immersive_third_person_notice_seen", 1);
         }
         this.Beat("world", this.PositionText());
         let command = this.Command();

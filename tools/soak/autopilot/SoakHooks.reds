@@ -21,6 +21,18 @@ public abstract class NMSoak {
         if Equals(command, "focus_ft far") { return sys.Soak_FocusFastTravel(); }
         if Equals(command, "selected") { return sys.Soak_Selected(); }
         if Equals(command, "counts") { return sys.Soak_Counts(); }
+        if Equals(command, "layers") { return sys.Soak_Layers(); }
+        if Equals(command, "act") { return sys.Soak_Act(); }
+        if Equals(command, "desc_probe") { return NMSoakDesc.Add(sys); }
+        if StrBeginsWith(command, "focus_layer ") {
+            let fl = StrSplit(command, " ");
+            return sys.Soak_FocusLayer(fl[1], StringToFloat(fl[2]));
+        }
+        if Equals(command, "perf") { return sys.Soak_Perf(); }
+        if StrBeginsWith(command, "set ") {
+            let sv = StrSplit(command, " ");
+            return sys.Soak_Set(sv[1], sv[2]);
+        }
         if Equals(command, "is_open") { return sys.Soak_IsOpen(); }
         if Equals(command, "watch_keys") { return sys.Soak_WatchKeys(); }
         if Equals(command, "last_keys") { return sys.Soak_LastKeys(); }
@@ -324,5 +336,31 @@ public class NMSoakSaves extends IScriptable {
         let l = NMSoakSaves.Listener();
         if !l.ready { return "no list"; }
         return ArrayContains(l.saves, NMSoakSaves.NewName()) ? "present" : "absent";
+    }
+}
+
+// A look check for the sidebar card's three-line description cap: one Always-tier marker next to V whose details carry a
+// long description (no loaded vanilla marker has one), centred under the reticle.
+public class NMSoakDesc extends NightMapLayerListener {
+    public func GetDetails(id: Int32) -> ref<NightMapDetails> {
+        let desc = "Wakako wants a shipment intercepted before it reaches the checkpoint. The convoy leaves Japantown at dusk; "
+            + "stop it before the bridge, keep the cargo intact and bring the driver back alive for questioning.";
+        return NightMapDetails.Create("Gig", "Shoot to Thrill").WithDescription(desc).AddRow("Distance", "640 M")
+            .AddAction("NUM 0", "Track").AddAction("NUM .", "Fast travel");
+    }
+
+    public static func Add(sys: ref<NightMapSystem>) -> String {
+        if !IsDefined(sys.Camera()) { return "map closed"; }
+        let p = GetPlayer(GetGameInstance()).GetWorldPosition();
+        let L = sys.Api().CreateLayer(n"Soak.Desc", "Soak", 99);
+        L.SetTier(NightMapTier.Always);
+        L.SetCategory(n"soak.desc", "GIG", NMTheme.Cyan());
+        L.Add(NightMapItem.Create(new Vector4(p.X + 40.0, p.Y + 40.0, p.Z, 1.0), n"soak.desc", NMTheme.UiAtlas(), n"icon_dot"));
+        L.SetListener(new NMSoakDesc());
+        let cam = sys.Camera();
+        cam.follow = false;
+        cam.SetMpp(1.0);
+        cam.SetCenter(p.X + 40.0, p.Y + 40.0);
+        return "ok";
     }
 }
