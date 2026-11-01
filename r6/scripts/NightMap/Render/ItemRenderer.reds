@@ -98,6 +98,7 @@ public class NMItemRenderer {
     private let curAlways: Bool;    // the layer being placed is Always tier: never culled
     private let keepLayer: Int32;   // the selection (layer + item): never culled while selected
     private let keepItem: Int32;
+    private let keptPlaced: Bool;   // this relayout placed the selection up front; the layer walk skips it
     private let hHead: array<Int32>;   // per hash cell: last placed marker in it, -1 none
     private let hNext: array<Int32>;   // per placed marker: the previous one in its cell
     private let hX: array<Float>;
@@ -365,6 +366,7 @@ public class NMItemRenderer {
         this.ringCx = Clamp(this.CenterCell(0, cam, false), this.indRg[0], this.indRg[2]);
         this.ringCy = Clamp(this.CenterCell(0, cam, true), this.indRg[1], this.indRg[3]);
         this.ringBuilt = false;
+        this.PlaceKept(cam, viewW, viewH);
         for li in order {
             let L = api.layers[li];
             let tier = L.EffectiveTier();
@@ -388,6 +390,24 @@ public class NMItemRenderer {
         this.HideUnused();
         this.FinishThumbs();
         return true;
+    }
+
+    // Rule 2: the selection is placed (and occupies its space) before every layer, like an Always item, so neither
+    // the cull cap, a cell's miss cap nor a full budget can drop it under the reticle. It still follows its layer's
+    // visibility and tier fade.
+    private func PlaceKept(cam: ref<NMCamera>, viewW: Float, viewH: Float) {
+        this.keptPlaced = false;
+        if this.noDeclutter || this.keepLayer < 0 || this.keepLayer >= ArraySize(this.api.layers) { return; }
+        let L = this.api.layers[this.keepLayer];
+        if !L.IsAlive(this.keepItem) || !L.VisibleAt(cam.mpp) { return; }
+        let tier = L.EffectiveTier();
+        let f = NMTiers.Fade(tier, cam.mpp);
+        if f <= 0.0 { return; }
+        this.curFade = f;
+        this.curScale = NMTiers.Scale(tier, cam.mpp);
+        this.curAlways = tier <= 0;
+        this.LayerRadii();
+        this.keptPlaced = this.PlaceChip(L, this.keepItem, cam, viewW, viewH);
     }
 
     // ---- declutter: a spatial hash of this relayout's placed markers over the view plus the cull margin ----
@@ -419,10 +439,11 @@ public class NMItemRenderer {
 
     // Declutter work bounds. Culled items cost a test but draw nothing, so a dense layer at a far zoom would otherwise
     // be walked item by item until the chip budget fills (tens of thousands of tests per relayout).
-    // 1. A level-0 cell's chain stops after CellMissCap consecutive culls: about as many markers as fit in the cell
-    //    on screen, at least 2, so a cell smaller than a marker gives up after two misses while a cell many markers
-    //    across (close zoom) keeps looking.
-    // 2. After CullCap culls in one relayout only Always-tier items are still placed (they never cull).
+    // 1. A level-0 cell's chain stops after CellMissCap culls with no placement in between (items outside the view
+    //    neither count nor reset): about as many markers as fit in the cell on screen, at least 2, so a cell smaller
+    //    than a marker gives up after two misses while a cell many markers across (close zoom) keeps looking.
+    // 2. After CullCap culls in one relayout only Always-tier items are still placed (they never cull). The selection
+    //    is placed before any layer (PlaceKept), so neither bound can drop it.
     public static func CullCap() -> Int32 { return NMTheme.ChipBudget(); }
 
     private func LayerRadii() {
@@ -658,13 +679,19 @@ public class NMItemRenderer {
         }
     }
 
-    // One level-0 cell's items, until the cell's pile is full (cellMiss consecutive culls).
+    // One level-0 cell's items, until the cell's pile is full: cellMiss culls with no placement in between. Items
+    // outside the view (or the selection, placed up front) neither count as a miss nor reset the count.
     private func PlaceChain(L: ref<NightMapLayer>, id: Int32, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
         let miss = 0;
         while id >= 0 && miss < this.cellMiss && this.chipsUsed < this.chipCap && this.culled < this.cullLimit {
-            let before = this.culled;
+            let culledBefore = this.culled;
+            let usedBefore = this.chipsUsed;
             this.PlaceChip(L, id, cam, viewW, viewH);
-            miss = this.culled > before ? miss + 1 : 0;
+            if this.chipsUsed > usedBefore {
+                miss = 0;
+            } else if this.culled > culledBefore {
+                miss += 1;
+            }
             id = L.nextIn[id * 3];
         }
     }
@@ -818,7 +845,7 @@ public class NMItemRenderer {
         }
         this.keepLayer = layer;   // the declutter never culls the selection, so it can't vanish under the reticle
         this.keepItem = item;
-        let photo =slot >= 0 && this.chipStyle[slot] == 3 ? slot : -1;
+        let photo = slot >= 0 && this.chipStyle[slot] == 3 ? slot : -1;
         if photo != this.photoSel {
             if this.photoSel >= 0 && this.photoSel < ArraySize(this.photoColor) {
                 this.PaintPhoto(this.photoSel, this.photoColor[this.photoSel]);
@@ -886,6 +913,9 @@ public class NMItemRenderer {
     private func PlaceChip(L: ref<NightMapLayer>, id: Int32, cam: ref<NMCamera>, viewW: Float, viewH: Float) -> Bool {
         if this.chipsUsed >= this.chipCap {
             return false;
+        }
+        if this.keptPlaced && id == this.keepItem && L.index == this.keepLayer {
+            return false;   // the selection, already placed up front
         }
         let p = cam.WorldToMap(L.px[id], L.py[id]);
         let m = 60.0 * this.scale;

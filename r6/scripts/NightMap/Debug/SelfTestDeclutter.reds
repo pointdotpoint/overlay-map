@@ -94,7 +94,8 @@ public abstract class NMDeclutterTests {
             && r4.culled == 1, NMDeclutterTests.Info(r4));
 
         // 5. The selected item is never culled while selected: select a Minor pin, then a Major item appears on the
-        // same spot. Once the selection is dropped, the next relayout culls it.
+        // same spot. The selection is placed first and keeps its space (the Major item is culled); once the selection
+        // is dropped, the next relayout goes by tier again and culls the Minor pin.
         let api5 = NMDeclutterTests.Api();
         let s5 = NMDeclutterTests.Layer(api5, n"test.dc.sel", 5, NightMapTier.Minor);
         s5.SetPinStyle(NightMapPinStyle.Icon);
@@ -109,7 +110,7 @@ public abstract class NMDeclutterTests {
         let m5 = NMDeclutterTests.Layer(api5, n"test.dc.selmajor", 1, NightMapTier.Major);
         let m5Id = NMDeclutterTests.At(m5, 0.0, 0.0);
         let relaid = r5.Update(cam5, w, h);
-        let kept = NMDeclutterTests.Placed(r5, s5, sId) && NMDeclutterTests.Placed(r5, m5, m5Id) && r5.culled == 0;
+        let kept = NMDeclutterTests.Placed(r5, s5, sId) && !NMDeclutterTests.Placed(r5, m5, m5Id) && r5.culled == 1;
         c5.Update(r5, w, h, 1.0, 0.0);
         r5.ApplySelection(c5.sel, c5.selKind, 16.0);
         let still = c5.selLayer == s5.index && c5.selItem == sId;
@@ -190,28 +191,67 @@ public abstract class NMDeclutterTests {
         // 9. A tarot collectible and the vanilla tarot marker sit on one spot; the collectible (name, collected
         // state) must win the declutter, so its layer outranks the vanilla tarot layer. Other collectibles stay below
         // every vanilla layer.
-        let cat = NMVanillaCatalog.Build();
+        let vapi = NMDeclutterTests.Api();
+        let v = NMVanilla.Create(vapi, GetGameInstance());
+        let empty: array<ref<IMappin>>;
+        v.PollFrom(empty, 0ul);
         let vt = -1;
+        let vTier = -1;
         let ci = 0;
-        while ci < cat.Count() {
-            if Equals(cat.TypeOf(ci), gamedataWorldMapFilter.TarotFilter) { vt = cat.Priority(ci); }
+        while ci < v.catalog.Count() {
+            if Equals(v.catalog.TypeOf(ci), gamedataWorldMapFilter.TarotFilter) {
+                let vl = v.LayerForSlot(ci);
+                if IsDefined(vl) {
+                    vt = vl.priority;
+                    vTier = vl.tier;
+                }
+            }
             ci += 1;
         }
         let capi = NMDeclutterTests.Api();
         let col = new NMCollect();
         col.Sync(capi, 0, null);
-        let tp = capi.GetLayer(NMCollectCats.LayerId(NMCollectCats.Tarot())).priority;
+        let ctl = capi.GetLayer(NMCollectCats.LayerId(NMCollectCats.Tarot()));
+        let tp = ctl.priority;
         let sp = capi.GetLayer(NMCollectCats.LayerId(NMCollectCats.Shard())).priority;
         let api10 = NMDeclutterTests.Api();
-        let van = NMDeclutterTests.Layer(api10, n"test.dc.vtarot", vt, NightMapTier.Minor);
+        let van = NMDeclutterTests.Layer(api10, n"test.dc.vtarot", vt, IntEnum<NightMapTier>(Max(vTier, 0)));
         van.SetPinStyle(NightMapPinStyle.Icon);
-        let tar = NMDeclutterTests.Layer(api10, n"test.dc.ctarot", tp, NightMapTier.Minor);
+        let tar = NMDeclutterTests.Layer(api10, n"test.dc.ctarot", tp, IntEnum<NightMapTier>(ctl.tier));
         let vId = NMDeclutterTests.At(van, 0.0, 0.0);
         let tId = NMDeclutterTests.At(tar, 4.0, 0.0);
         let rc = NMItemRenderer.Create(api10, new inkCanvas(), 1.0);
         rc.Update(NMDeclutterTests.Cam(0.5), w, h);
-        t.Check("declutter.collect_tarot_wins", vt > 0 && tp > vt && sp < 50 && NMDeclutterTests.Placed(rc, tar, tId) && !NMDeclutterTests.Placed(rc, van, vId),
-            "vanilla " + ToString(vt) + " tarot " + ToString(tp) + " shard " + ToString(sp) + " " + NMDeclutterTests.Info(rc));
+        t.Check("declutter.collect_tarot_wins", vt > 0 && vTier >= 0 && tp > vt && sp < 50 && NMDeclutterTests.Placed(rc, tar, tId) && !NMDeclutterTests.Placed(rc, van, vId),
+            "vanilla " + ToString(vt) + " tier " + ToString(vTier) + " tarot " + ToString(tp) + " tier " + ToString(ctl.tier) + " shard " + ToString(sp) + " " + NMDeclutterTests.Info(rc));
+
+        // 10. The selection survives a saturated relayout: higher-priority piles spend the cull cap before the
+        // selected item's low-priority layer is reached, and it must still be placed (it is placed first).
+        let api11 = NMDeclutterTests.Api();
+        let sel = NMDeclutterTests.Layer(api11, n"test.dc.capsel", 1, NightMapTier.Major);
+        let selId = NMDeclutterTests.At(sel, 0.0, 0.0);
+        let r11 = NMItemRenderer.Create(api11, new inkCanvas(), 1.0);
+        let c11 = NMCrosshair.Create();
+        let cam11 = NMDeclutterTests.Cam(16.0);
+        r11.Update(cam11, w, h);
+        c11.Update(r11, w, h, 1.0, 0.0);
+        r11.ApplySelection(c11.sel, c11.selKind, 16.0);
+        let picked11 = c11.selKind == 0 && c11.selLayer == sel.index && c11.selItem == selId;
+        let piles = NMDeclutterTests.Layer(api11, n"test.dc.cappiles", 90, NightMapTier.Major);
+        i = 0;
+        while i < 600 * 6 {
+            let pc = i / 6;
+            NMDeclutterTests.At(piles, Cast<Float>(pc % 30 - 15) * 250.0 + 125.0, Cast<Float>(pc / 30 - 10) * 250.0 + 125.0);
+            i += 1;
+        }
+        r11.Update(cam11, w, h);
+        let kept11 = NMDeclutterTests.Placed(r11, sel, selId);
+        let capped = r11.culled == NMItemRenderer.CullCap();
+        c11.Update(r11, w, h, 1.0, 0.0);
+        r11.ApplySelection(c11.sel, c11.selKind, 16.0);
+        let still11 = c11.selLayer == sel.index && c11.selItem == selId;
+        t.Check("declutter.selected_survives_cap", picked11 && capped && kept11 && still11,
+            ToString(picked11) + ToString(capped) + ToString(kept11) + ToString(still11) + " " + NMDeclutterTests.Info(r11));
         NMDeclutterTests.Cost();
     }
 
