@@ -513,6 +513,49 @@
 
     public func Soak_IsOpen() -> String { return this.isOpen ? "open" : "closed"; }
 
+    private let soakMarkV: Vector4;
+    private let soakMarkCx: Float;
+    private let soakMarkCy: Float;
+    private let soakMarkMpp: Float;
+
+    public func Soak_VMark() -> String {
+        this.soakMarkV = GetPlayer(this.GetGameInstance()).GetWorldPosition();
+        return "marked";
+    }
+
+    // Distance V moved since vmark: "still 0.1" under half a metre, else "moved 3.4".
+    public func Soak_VDist() -> String {
+        let d = Vector4.Distance(this.soakMarkV, GetPlayer(this.GetGameInstance()).GetWorldPosition());
+        return (d < 0.5 ? "still " : "moved ") + FloatToStringPrec(d, 1);
+    }
+
+    public func Soak_CMark() -> String {
+        if !IsDefined(this.camera) || !this.isOpen { return "map closed"; }
+        this.soakMarkCx = this.camera.cx;
+        this.soakMarkCy = this.camera.cy;
+        this.soakMarkMpp = this.camera.mpp;
+        return "marked";
+    }
+
+    // Camera change since cmark: "pan <metres> dx <m> dy <m> zoom <in|out|same> <ratio>".
+    public func Soak_CDist() -> String {
+        if !IsDefined(this.camera) || !this.isOpen { return "map closed"; }
+        let dx = this.camera.cx - this.soakMarkCx;
+        let dy = this.camera.cy - this.soakMarkCy;
+        let r = this.camera.mpp / this.soakMarkMpp;
+        let z = r < 0.95 ? "in" : (r > 1.05 ? "out" : "same");
+        return "pan " + FloatToStringPrec(SqrtF(dx * dx + dy * dy), 0) + " dx " + FloatToStringPrec(dx, 0) + " dy " + FloatToStringPrec(dy, 0)
+            + " zoom " + z + " " + FloatToStringPrec(r, 2);
+    }
+
+    // Camera centre, zoom and follow, plus the pad state: "cam x y mpp follow|pad owned ctx".
+    public func Soak_Cam() -> String {
+        if !IsDefined(this.camera) || !this.isOpen { return "map closed|pad " + (this.padOwned ? "owned" : "free") + " ctx " + (this.padCtx ? "held" : "free"); }
+        let x = this.camera.cx; let y = this.camera.cy; let m = this.camera.mpp;
+        return "cam " + FloatToStringPrec(x, 1) + " " + FloatToStringPrec(y, 1) + " " + FloatToStringPrec(m, 3) + " " + (this.camera.follow ? "follow" : "free")
+            + "|pad " + (this.padOwned ? "owned" : "free") + " ctx " + (this.padCtx ? "held" : "free");
+    }
+
     // Which keys the game itself reports, for telling "the key never arrived" from "the map ignored it".
     private let soakKeys: String;
 

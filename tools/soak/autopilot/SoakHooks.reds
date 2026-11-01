@@ -28,6 +28,11 @@ public abstract class NMSoak {
         if Equals(command, "watch_axis") { return sys.Soak_WatchAxis(); }
         if Equals(command, "last_axis") { return sys.Soak_LastAxis(); }
         if Equals(command, "in_menu") { return sys.Soak_InMenu(); }
+        if Equals(command, "cam") { return sys.Soak_Cam(); }
+        if Equals(command, "vmark") { return sys.Soak_VMark(); }
+        if Equals(command, "vdist") { return sys.Soak_VDist(); }
+        if Equals(command, "cmark") { return sys.Soak_CMark(); }
+        if Equals(command, "cdist") { return sys.Soak_CDist(); }
         if Equals(command, "hold_ctx on") { return sys.Soak_HoldCtx(true); }
         if Equals(command, "hold_ctx off") { return sys.Soak_HoldCtx(false); }
         // Bind StrSplit to a local: indexing a call temporary reads garbage in-game.
