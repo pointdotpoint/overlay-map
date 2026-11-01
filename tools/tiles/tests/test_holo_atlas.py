@@ -12,7 +12,7 @@ def test_parts_sizes_bounds_and_no_overlap():
     assert img.size == (ATLAS_W, ATLAS_H) == (1024, 512) and img.mode == "RGBA"
     assert set(parts) == set(SIZES)
     assert {"holo_scan", "holo_grid", "holo_noise", "holo_bar", "holo_halo"} <= set(parts)
-    assert SIZES["holo_scan"] == (64, 64) and SIZES["holo_grid"] == (256, 256) and SIZES["holo_noise"] == (256, 256)
+    assert SIZES["holo_scan"] == (64, 64) and SIZES["holo_grid"] == (48, 48) and SIZES["holo_noise"] == (256, 256)
     assert SIZES["holo_bar"] == (512, 160) and SIZES["holo_halo"] == (128, 128)
     rects = []
     for name, (l, t, r, b) in parts.items():
@@ -48,18 +48,28 @@ def test_scan_is_one_pixel_line_every_four_and_tiles_seamlessly():
     assert (a == a[:, :1]).all()                       # constant along x: columns tile trivially
 
 
-def test_grid_lines_every_64_and_seamless():
+def test_holo_grid_is_dot_grid():
     img, parts = build_holo_atlas()
     a = part(img, parts, "holo_grid")[..., 3]
-    assert (a[0, :] == 255).all() and (a[:, 0] == 255).all()                   # first row/column is a line ...
-    assert a[63, 1:64].max() == 0 and a[1:63, 1:63].max() == 0                # ... and the cell is empty
-    for y in (0, 64, 128, 192):
-        assert (a[y, :] == 255).all()
-    for x in (0, 64, 128, 192):
-        assert (a[:, x] == 255).all()
-    assert (a == 255).sum() == 4 * 256 + 4 * 256 - 16                          # nothing but the 4+4 lines
-    # period 64 in both axes: shifting by one period reproduces the image, so the wrap continues the pattern
-    assert np.array_equal(a, np.roll(a, 64, 0)) and np.array_equal(a, np.roll(a, 64, 1))
+    assert a.shape == (48, 48)
+    assert a[0, 0] > 0 and a[12, 12] == 0
+    assert (a[0:2, 0:2] == 255).all() and (a > 0).sum() == 4 * 4          # four 2x2 dots per 48x48 tile
+    for y, x in ((0, 24), (24, 0), (24, 24)):
+        assert (a[y:y + 2, x:x + 2] == 255).all()
+    # period 24 in both axes, so the wrap continues the pattern (seamless tiling)
+    assert np.array_equal(a, np.roll(a, 24, 0)) and np.array_equal(a, np.roll(a, 24, 1))
+    big = np.tile(a, (3, 3))
+    assert np.array_equal(big[:, 48:96], big[:, 96:144]) and np.array_equal(big[48:96], big[96:144])
+
+
+def test_vignette_is_clear_in_the_centre_and_opaque_at_the_corners():
+    img, parts = build_holo_atlas()
+    assert SIZES["holo_vignette"] == (256, 256)
+    a = part(img, parts, "holo_vignette")[..., 3].astype(int)
+    assert a[127:129, 127:129].max() <= 3
+    assert a[0, 0] >= 250 and a[0, 255] >= 250 and a[255, 0] >= 250 and a[255, 255] >= 250
+    assert a[128, 128] < a[128, 200] < a[128, 255] <= a[0, 0]
+    assert abs(int(a[40, 128]) - int(a[128, 40])) <= 2
 
 
 def test_noise_is_seamless_and_not_flat():
@@ -78,7 +88,7 @@ def test_tileable_periods_are_declared_and_hold():
     for name, period in TILEABLE.items():
         a = part(img, parts, name)[..., 3]
         assert a.shape[0] % period == 0 and a.shape[1] % period == 0, name
-    assert TILEABLE == {"holo_scan": 4, "holo_grid": 64, "holo_noise": 256}
+    assert TILEABLE == {"holo_scan": 4, "holo_grid": 24, "holo_noise": 256}
 
 
 def test_bar_is_transparent_bright_transparent_vertical_gradient():

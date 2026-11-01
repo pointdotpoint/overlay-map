@@ -4,9 +4,10 @@ Separate from ui_atlas.py (whose size/space tests are fixed). Everything is dete
 
 Tileable parts are periodic in both axes, so the first row/column continues the last one:
   holo_scan   64x64    1 px line every 4 px
-  holo_grid   256x256  1 px lines every 64 px
+  holo_grid   48x48    2x2 px dot every 24 px (dot grid)
   holo_noise  256x256  fine random noise (wrap-around smoothed, so it tiles)
 Others:
+  holo_vignette 256x256 radial alpha, 0 at the centre to 1 at the corners
   holo_bar    512x160  scan band: alpha rises from 0 to a bright core and back to 0 (vertical gradient)
   holo_edge_t/_b 16x64, holo_edge_l/_r 64x16  soft glowing frame line, bright on the outer pixel row, fading inward;
                        stretched along their length (they are uniform that way)
@@ -21,16 +22,16 @@ from PIL import Image
 
 ATLAS_W, ATLAS_H = 1024, 512
 SIZES = {   # name -> (w, h)
-    "holo_scan": (64, 64), "holo_grid": (256, 256), "holo_noise": (256, 256), "holo_bar": (512, 160),
-    "holo_halo": (128, 128), "holo_line": (16, 16),
+    "holo_scan": (64, 64), "holo_grid": (48, 48), "holo_noise": (256, 256), "holo_bar": (512, 160),
+    "holo_halo": (128, 128), "holo_line": (16, 16), "holo_vignette": (256, 256),
     "holo_edge_t": (16, 64), "holo_edge_b": (16, 64), "holo_edge_l": (64, 16), "holo_edge_r": (64, 16),
 }
-TILEABLE = {"holo_scan": 4, "holo_grid": 64, "holo_noise": 256}     # name -> period in px (both axes)
+TILEABLE = {"holo_scan": 4, "holo_grid": 24, "holo_noise": 256}     # name -> period in px (both axes)
 # Fixed layout (4 px gaps so bilinear sampling never bleeds a neighbour in).
 LAYOUT = {
     "holo_grid": (0, 0), "holo_noise": (260, 0), "holo_halo": (520, 0), "holo_scan": (652, 0),
     "holo_edge_t": (720, 0), "holo_edge_b": (740, 0), "holo_edge_l": (760, 0), "holo_edge_r": (760, 20),
-    "holo_bar": (0, 260), "holo_line": (840, 0),
+    "holo_bar": (0, 260), "holo_line": (840, 0), "holo_vignette": (520, 132),
 }
 NOISE_SEED = 20261015
 
@@ -50,10 +51,19 @@ def _scan() -> Image.Image:
 
 
 def _grid() -> Image.Image:
-    a = np.zeros((256, 256), np.float32)
-    a[::64, :] = 255
-    a[:, ::64] = 255
+    """Dot grid: a 2x2 px dot every 24 px (the 48x48 tile holds 2x2 dots; period 24 in both axes)."""
+    a = np.zeros((48, 48), np.float32)
+    for y in (0, 24):
+        for x in (0, 24):
+            a[y:y + 2, x:x + 2] = 255
     return _white(a)
+
+
+def _vignette() -> Image.Image:
+    n = 256
+    y, x = np.mgrid[0:n, 0:n].astype(np.float32)
+    r = np.hypot(x - (n - 1) / 2, y - (n - 1) / 2) / (np.hypot(n - 1, n - 1) / 2)   # 0 centre .. 1 corners
+    return _white(np.clip(r, 0.0, 1.0) ** 2 * 255.0)
 
 
 def _noise() -> Image.Image:
@@ -115,6 +125,8 @@ def _render(name: str) -> Image.Image:
         return _grid()
     if name == "holo_noise":
         return _noise()
+    if name == "holo_vignette":
+        return _vignette()
     if name == "holo_bar":
         return _bar()
     if name == "holo_halo":

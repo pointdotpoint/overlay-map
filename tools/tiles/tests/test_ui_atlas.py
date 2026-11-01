@@ -24,9 +24,40 @@ def test_chip_is_pointy_top_hexagon():
     img, parts = build_ui_atlas()
     chip = img.crop(parts["chip"])
     s = chip.size[0]
+    assert s == 72
     a = chip.getchannel("A")
-    assert a.getpixel((s // 2, 9)) > 0          # vertex near the top centre
-    assert a.getpixel((10, 12)) == 0            # top-left corner empty
+    assert a.getpixel((s // 2, 5)) > 0          # vertex near the top centre
+    assert a.getpixel((5, 6)) == 0              # top-left corner empty
+
+
+def test_plate_ring_white_disc_dark():
+    img, parts = build_ui_atlas()
+    plate = img.crop(parts["plate"])
+    assert plate.size == (224, 224) and SIZES["plate"] == 224
+    r, g, b, a = plate.getpixel((112, 112))
+    assert max(r, g, b) <= 10 and a > 200
+    r, g, b, a = plate.getpixel((112 + 56, 112))
+    assert min(r, g, b) >= 240 and a >= 240
+    assert plate.getpixel((112 + 80, 112))[3] < plate.getpixel((112 + 40, 112))[3]   # falls off outward
+    assert plate.getpixel((0, 0))[3] == 0
+
+
+def test_chip_dark_fill_white_edge():
+    img, parts = build_ui_atlas()
+    chip = img.crop(parts["chip"])
+    r, g, b, a = chip.getpixel((36, 36))
+    assert max(r, g, b) <= 10 and 215 <= a <= 235
+    assert min(chip.getpixel((36, 3))[:3]) >= 240 and chip.getpixel((36, 3))[3] >= 240
+
+
+def test_icon_dot_is_solid_disc_and_brackets_exist():
+    img, parts = build_ui_atlas()
+    assert SIZES["icon_dot"] == 24
+    dot = img.crop(parts["icon_dot"])
+    assert dot.getpixel((12, 12)) == (255, 255, 255, 255) and dot.getpixel((0, 0))[3] == 0
+    tl = img.crop(parts["bracket_tl"]).getchannel("A")
+    assert tl.getpixel((60, 11)) > 200 and tl.getpixel((11, 60)) > 200 and tl.getpixel((70, 70)) == 0
+    assert 0 < tl.getpixel((60, 4)) < 255      # soft glow around the stroke
 
 
 def test_atlas_is_deterministic():
@@ -46,6 +77,6 @@ def test_glow_halo_is_pure_white():
 def test_chip_vertex0_has_no_dark_speck():
     img, parts = build_ui_atlas()
     chip = img.crop(parts["chip"])
-    for xy in [(96, 79), (96, 80)]:   # lower-right vertex, just outside the stroke
+    for xy in [(66, 54), (67, 53)]:   # lower-right vertex, just outside the stroke
         r, g, b, a = chip.getpixel(xy)
         assert not (a > 200 and r < 200), (xy, (r, g, b, a))

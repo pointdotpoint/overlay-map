@@ -3,22 +3,25 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 SS = 4  # supersampling factor
 SIZES = {
-    "chip": 112, "chip_sel": 136, "cluster": 176, "cluster_sel": 200, "mini": 80,
+    "plate": 224, "chip": 72, "chip_sel": 136, "cluster": 176, "cluster_sel": 200, "mini": 80,
     "ring": 216, "player": 112,
     "bracket_tl": 110, "bracket_tr": 110, "bracket_bl": 110, "bracket_br": 110,
-    "icon_quest": 48, "icon_gig": 48, "icon_vendor": 48, "icon_ft": 48, "icon_undisc": 48, "icon_dot": 48,
+    "icon_quest": 48, "icon_gig": 48, "icon_vendor": 48, "icon_ft": 48, "icon_undisc": 48, "icon_dot": 24,
     # collectibles (NMTheme.VanillaIconSize) and the scratch drawn over a collected one
     "icon_c_shard": 64, "icon_c_tarot": 64, "icon_c_weapon": 64, "icon_c_cyber": 64, "icon_c_cloth": 64,
     "icon_c_skill": 64, "icon_strike": 64,
 }
 # hex radius / stroke width per hex part (4K units)
-_HEX = {"chip": (48, 5), "chip_sel": (60, 7), "cluster": (79, 6), "cluster_sel": (91, 7), "mini": (34, 4)}
+_HEX = {"chip": (34, 4), "chip_sel": (60, 7), "cluster": (79, 6), "cluster_sel": (91, 7), "mini": (34, 4)}
 _FILL = (41, 41, 41, 235)     # white * 0.16 value, 92% alpha -> tinted dark fill
 _WHITE = (255, 255, 255, 255)
+_DARK = (4, 6, 10)             # near-black plate/chip fill (tint multiplies, so it stays near black)
+_CHIP_FILL = _DARK + (225,)
 
 
 def _hex_points(cx: float, cy: float, r: float) -> list[tuple[float, float]]:
@@ -35,10 +38,10 @@ def _down(img: Image.Image, size: int) -> Image.Image:
     return img.resize((size, size), Image.LANCZOS)
 
 
-def _hex(size: int, r: int, stroke: int) -> Image.Image:
+def _hex(size: int, r: int, stroke: int, fill=_FILL) -> Image.Image:
     img, d = _canvas(size)
     c = size * SS / 2
-    d.polygon(_hex_points(c, c, r * SS), fill=_FILL)
+    d.polygon(_hex_points(c, c, r * SS), fill=fill)
     pts = _hex_points(c, c, (r - stroke / 2) * SS)
     d.line(pts + [pts[0], pts[1]], fill=_WHITE, width=stroke * SS, joint="curve")
     return _down(img, size)
@@ -59,6 +62,22 @@ def _ring(size: int) -> Image.Image:
     return _glow(_down(img, size), 3)
 
 
+def _plate(size: int) -> Image.Image:
+    """Dark disc to half the radius, soft falloff to the rim, white 4 px ring at half the radius."""
+    n = size * SS
+    y, x = np.mgrid[0:n, 0:n].astype(np.float32)
+    r = np.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) / (n / 2)          # 0 centre .. 1 rim
+    t = np.clip((r - 0.5) / 0.5, 0.0, 1.0)
+    alpha = 235.0 * (1.0 - t) ** 2
+    ring = (np.abs(r - 0.5) * (n / 2) <= 2 * SS)
+    out = np.zeros((n, n, 4), np.float32)
+    out[..., :3] = _DARK
+    out[..., 3] = alpha
+    out[ring] = (255, 255, 255, 255)
+    img = Image.fromarray(np.rint(out).astype(np.uint8), "RGBA")
+    return _down(img, size)
+
+
 def _player(size: int) -> Image.Image:
     img, d = _canvas(size)
     c = size * SS / 2
@@ -70,10 +89,10 @@ def _player(size: int) -> Image.Image:
 
 def _bracket(size: int, corner: str) -> Image.Image:
     img, d = _canvas(size)
-    s, t, pad = size * SS, 9 * SS, 8 * SS
+    s, t, pad = size * SS, 3 * SS, 10 * SS
     d.rectangle((pad, pad, s - pad, pad + t), fill=_WHITE)       # horizontal arm (top-left form)
     d.rectangle((pad, pad, pad + t, s - pad), fill=_WHITE)       # vertical arm
-    img = _glow(_down(img, size), 3)
+    img = _glow(_down(img, size), 3)   # ~6 px soft spread
     if corner == "tr":
         img = img.transpose(Image.FLIP_LEFT_RIGHT)
     elif corner == "bl":
@@ -143,13 +162,17 @@ def _icon(size: int, kind: str) -> Image.Image:
         for half, fill in ((2.3, (0, 0, 0, 255)), (1.2, _WHITE)):
             o = half / math.sqrt(2)
             d.polygon([P(3 - o, 21 - o), P(21 - o, 3 - o), P(21 + o, 3 + o), P(3 + o, 21 + o)], fill=fill)
-    else:  # dot
-        d.ellipse((7 * k, 7 * k, 17 * k, 17 * k), fill=_WHITE)
+    else:  # dot: a solid disc
+        d.ellipse((0, 0, 24 * k - 1, 24 * k - 1), fill=_WHITE)
     return _down(img, size)
 
 
 def _render(name: str) -> Image.Image:
     size = SIZES[name]
+    if name == "plate":
+        return _plate(size)
+    if name == "chip":
+        return _hex(size, *_HEX[name], fill=_CHIP_FILL)
     if name in _HEX:
         return _hex(size, *_HEX[name])
     if name == "ring":
