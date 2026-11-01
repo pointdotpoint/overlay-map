@@ -162,14 +162,11 @@ public class NMPad {
     }
 
     // The map opened or closed: a stick held for walking, or a trigger held for driving, must not move the map
-    // until it has been let go once. Values keep arriving every frame while held, so this is a gate, not a reset.
+    // until it has been let go once. Only an input held right now is gated: one at rest sends no events, so a gate on
+    // it would swallow its first use.
     public func ClearAxes() {
-        this.lx = 0.0;
-        this.ly = 0.0;
-        this.lt = 0.0;
-        this.rt = 0.0;
-        this.stickGated = true;
-        this.triggerGated = true;
+        this.stickGated = SqrtF(this.lx * this.lx + this.ly * this.ly) >= NMPad.StickDeadzone();
+        this.triggerGated = this.lt >= NMPad.TriggerDeadzone() || this.rt >= NMPad.TriggerDeadzone();
     }
 
     // View is down: its release may still matter (Hold to show).

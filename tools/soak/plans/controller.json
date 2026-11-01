@@ -25,6 +25,9 @@
      "cmd": "watch_keys"
     },
     {
+     "cmd": "watch_axis"
+    },
+    {
      "cmd": "in_menu",
      "expect": "^game"
     },
@@ -141,6 +144,9 @@
      "cmd": "cmark"
     },
     {
+     "cmd": "last_axis"
+    },
+    {
      "padaxis": "RT",
      "value": 1.0
     },
@@ -153,6 +159,9 @@
     },
     {
      "wait": 0.5
+    },
+    {
+     "cmd": "last_axis"
     },
     {
      "cmd": "cdist",

@@ -469,6 +469,12 @@ public class NMSelfTest {
         g.Axis(EInputKey.IK_Pad_LeftAxisY, 1.0);
         g.Axis(EInputKey.IK_Pad_RightTrigger, 1.0);
         let gAfter = g.PanVector();
+        let rest = new NMPad();
+        rest.ClearAxes();
+        rest.Axis(EInputKey.IK_Pad_RightTrigger, 1.0);
+        rest.Axis(EInputKey.IK_Pad_LeftAxisX, 1.0);
+        let restPan = rest.PanVector();
+        this.Check("pad.no_gate_when_at_rest", this.Near(rest.ZoomRate(), 1.0, 0.001) && this.Near(restPan.X, 1.0, 0.001), this.F(rest.ZoomRate()));
         this.Check("pad.gate_after_open", gHeld.Y == 0.0 && zHeld == 0.0 && this.Near(gAfter.Y, -1.0, 0.001) && this.Near(g.ZoomRate(), 1.0, 0.001),
             this.F(gHeld.Y) + "," + this.F(zHeld) + "," + this.F(gAfter.Y));
         // Hint copy.
