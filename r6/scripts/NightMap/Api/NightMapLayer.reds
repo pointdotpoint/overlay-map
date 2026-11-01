@@ -27,6 +27,7 @@ public class NightMapLayer {
     public let clustering: Bool = true;
     public let tier: Int32 = 2;
     public let promoted: Bool;
+    public let ambient: Bool;   // a Minor layer that fades out earlier (SetAmbient)
     public let pinStyle: Int32;
     public let listener: ref<NightMapLayerListener>;
     public let revision: Int32;
@@ -249,6 +250,13 @@ public class NightMapLayer {
 
     public func SetTier(t: NightMapTier) {
         this.tier = EnumInt(t);
+        this.Touch();
+    }
+
+    // Ambient: a numerous background category (vanilla NCPD Scanner) whose Minor markers fade out before the other Minor
+    // ones (NMTiers.LayerFade), so mid zoom keeps the space for services and collectibles. No effect on Major/Always.
+    public func SetAmbient(on: Bool) {
+        this.ambient = on;
         this.Touch();
     }
 

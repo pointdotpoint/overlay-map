@@ -385,7 +385,7 @@ public class NMItemRenderer {
             this.cullLimit = this.curAlways || this.noDeclutter ? 2147483647
                 : (tier == 1 ? NMItemRenderer.CullCap() : Min(this.culled + NMItemRenderer.LayerCullCap(), NMItemRenderer.CullCap()));
             if L.VisibleAt(cam.mpp) && L.count > 0 && !this.Saturated() {
-                let f = NMTiers.Fade(tier, cam.mpp);
+                let f = NMTiers.LayerFade(L, cam.mpp);
                 if f > 0.0 {   // fully faded: skipped whole, not a candidate (spec 7.2)
                     this.curFade = f;
                     this.curScale = NMTiers.Scale(tier, cam.mpp);
@@ -414,7 +414,7 @@ public class NMItemRenderer {
         let L = this.api.layers[this.keepLayer];
         if !L.IsAlive(this.keepItem) || !L.VisibleAt(cam.mpp) { return; }
         let tier = L.EffectiveTier();
-        let f = NMTiers.Fade(tier, cam.mpp);
+        let f = NMTiers.LayerFade(L, cam.mpp);
         if f <= 0.0 { return; }
         this.curFade = f;
         this.curScale = NMTiers.Scale(tier, cam.mpp);

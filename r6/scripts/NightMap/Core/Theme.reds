@@ -47,7 +47,8 @@ public abstract class NMTheme {
     // the icon colour. Sized so the ring hugs the visible glyph (~1.3x its radius; mappin art is padded in its 64 box).
     public static func PlateSize() -> Float { return 152.0; }
     // Declutter: two markers collide when their centres are closer than this times the sum of their visible radii.
-    public static func DeclutterOverlap() -> Float { return 0.75; }
+    // 1.0: plate rings may touch but never overlap (0.75 let neighbours stack into walls at mid zoom; Task 11).
+    public static func DeclutterOverlap() -> Float { return 1.0; }
     public static func PlateOpacity() -> Float { return 1.0; }    // times the icon's own opacity
     public static func IconSize() -> Float { return 24.0; }       // a hex chip's centre dot
     public static func PlayerSize() -> Float { return 112.0; }
@@ -127,14 +128,25 @@ public abstract class NMTheme {
         return new HDRColor(0.847, 0.957, 1.0, 1.0);                     // #d8f4ff
     }
     public static func HoloScanColor() -> HDRColor { return new HDRColor(0.0, 0.0, 0.0, 1.0); }
+    // Accent overlays over a near-black map. Ink blends in linear light, where a few percent of the bright accent
+    // already lifts the dark map visibly (.04 noise read as an sRGB teal wash of ~+30), so these sit far below the
+    // sRGB mockup's numbers. Tuned in-game (Task 11).
     public static func HoloGridOpacity() -> Float { return 0.08; }
     public static func HoloScanOpacity() -> Float { return 0.14; }
-    public static func RingsOpacity() -> Float { return 0.10; }
+    public static func RingsOpacity() -> Float { return 0.05; }   // at close zoom; RingsFade thins them out further
     public static func VignetteOpacity() -> Float { return 0.55; }
     public static func RingsSize() -> Float { return 1440.0; }   // 4K units across
-    public static func HoloNoiseOpacity() -> Float { return 0.04; }   // the flicker animation moves it between 0.027 and 0.047
-    public static func HoloBarOpacity() -> Float { return 0.12; }
-    public static func HoloEdgeOpacity() -> Float { return 0.6; }
+    // The range rings keep their screen size, so zoomed out they span districts: 1 up to 1 m/unit, linear in log2(mpp)
+    // down to 0.2 at 8 m/unit and beyond (an ambient texture, not a target over the city).
+    public static func RingsFade(mpp: Float) -> Float {
+        if mpp <= 1.0 { return 1.0; }
+        if mpp >= 8.0 { return 0.2; }
+        return 1.0 - 0.8 * (LogF(mpp) / LogF(2.0)) / 3.0;
+    }
+    public static func HoloNoiseOpacity() -> Float { return 0.008; }   // the flicker moves it between 0.68x and 1.18x
+    public static func HoloBarOpacity() -> Float { return 0.035; }
+    public static func HoloBarHeight() -> Float { return 0.06; }        // of the map height
+    public static func HoloEdgeOpacity() -> Float { return 0.3; }
     public static func HoloBracketGain() -> Float { return 1.25; }   // brackets brighten with HDR gain (bloom not verified)
     public static func ScanPeriod() -> Float { return 4.0; }          // holo_scan line spacing in 4K units
     public static func DefaultPanelOpacity() -> Float { return 0.92; }   // nearly opaque (spec 4.5); keep equal to NightMapSettings.panelOpacity

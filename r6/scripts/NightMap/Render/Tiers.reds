@@ -13,6 +13,13 @@ public abstract class NMTiers {
         return NMTiers.Ramp(mpp, 4.0, 6.0);
     }
 
+    // A layer's fade: its effective tier's, except an ambient Minor layer (SetAmbient), which is gone by mid zoom.
+    public static func LayerFade(L: ref<NightMapLayer>, mpp: Float) -> Float {
+        let tier = L.EffectiveTier();
+        if tier == 2 && L.ambient { return NMTiers.Ramp(mpp, 2.5, 4.0); }
+        return NMTiers.Fade(tier, mpp);
+    }
+
     // 1.0 at mpp <= 2, linear in log2(mpp) down to 0.7 at mpp >= 8. Always-tier markers keep full size.
     public static func Scale(tier: Int32, mpp: Float) -> Float {
         if tier <= 0 || mpp <= 2.0 { return 1.0; }

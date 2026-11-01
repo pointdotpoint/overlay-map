@@ -87,7 +87,10 @@ public abstract class NMHoloTests {
         let lumFxG = NMHoloTests.Lum("road_major", 1) > NMHoloTests.Lum("road_minor", 1) && NMHoloTests.Lum("road_minor", 1) > NMHoloTests.Lum("outline", 1) && NMHoloTests.Lum("outline", 1) > NMHoloTests.Lum("bfill", 1);
         t.Check("theme.roads_brighter_than_buildings", lumFx && lumFxG,
             t.F(NMHoloTests.Lum("road_major", 0)) + "/" + t.F(NMHoloTests.Lum("bfill", 0)) + "/" + t.F(NMHoloTests.Lum("outline", 0)));
-        t.Check("theme.overlay_opacities", t.Near(NMTheme.RingsOpacity(), 0.10, 0.0001) && t.Near(NMTheme.VignetteOpacity(), 0.55, 0.0001), "");
+        t.Check("theme.overlay_opacities", t.Near(NMTheme.RingsOpacity(), 0.05, 0.0001) && t.Near(NMTheme.VignetteOpacity(), 0.55, 0.0001)
+            && t.Near(NMTheme.HoloBarOpacity(), 0.035, 0.0001) && t.Near(NMTheme.HoloEdgeOpacity(), 0.3, 0.0001), "");
+        t.Check("theme.rings_fade_with_zoom", NMTheme.RingsFade(0.5) == 1.0 && NMTheme.RingsFade(1.0) == 1.0 && t.Near(NMTheme.RingsFade(16.0), 0.2, 0.0001)
+            && NMTheme.RingsFade(2.0) > NMTheme.RingsFade(4.0) && NMTheme.RingsFade(4.0) > NMTheme.RingsFade(8.0), t.F(NMTheme.RingsFade(4.0)));
         t.Check("holo.glow_opacity", t.Near(NMTheme.TileOpacity("glow"), 0.50, 0.0001), "");
         t.Check("holo.panel_opacity_default", t.Near(NMTheme.DefaultPanelOpacity(), 0.92, 0.0001), t.F(NMTheme.DefaultPanelOpacity()));
         t.Check("holo.theme_index", NMTheme.ThemeIndex(NightMapHoloColor.Cyan) == 0 && NMTheme.ThemeIndex(NightMapHoloColor.Green) == 1, "");
@@ -117,7 +120,7 @@ public abstract class NMHoloTests {
         on.AddEdges(canvas, 1880.0, 1480.0);
         t.Check("holo.effects_on_builds_overlays", IsDefined(on.grid) && IsDefined(on.scan) && IsDefined(on.noise) && IsDefined(on.bar) && IsDefined(on.vignette) && ArraySize(on.edges) == 4, "");
         t.Check("holo.overlay_opacities", t.Near(on.grid.GetOpacity(), 0.08, 0.0001) && t.Near(on.scan.GetOpacity(), 0.14, 0.0001) && t.Near(on.vignette.GetOpacity(), 0.55, 0.0001)
-            && t.Near(on.noise.GetOpacity(), 0.04, 0.0001) && t.Near(on.bar.GetOpacity(), 0.0, 0.0001), "");
+            && t.Near(on.noise.GetOpacity(), 0.008, 0.0001) && t.Near(on.bar.GetOpacity(), 0.0, 0.0001), "");
         t.Check("holo.scan_period_is_native", t.Near(on.ScanPeriod(), 4.0, 0.0001) && t.Near(on.scan.GetHeight(), 1480.0 + 4.0, 0.01), t.F(on.ScanPeriod()));
         // A whole panel with effects off: the Part 1 look, no overlay widgets, no animations, the see-through default opacity.
         let host = new inkCanvas();

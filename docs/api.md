@@ -59,13 +59,14 @@ layer.SetOpacity(0.6);
 layer.SetZoomRange(0.5, 4.0);     // only shown while the camera is between 0.5 and 4 meters per unit
 layer.SetClustering(false);       // deprecated and ignored: there is no clustering any more
 layer.SetTier(NightMapTier.Major); // Always / Major / Minor (default Minor): Minor markers fade out first when zooming out
+layer.SetAmbient(true);           // a numerous background Minor layer: fades out at 2.5 to 4 m/unit, before other Minor ones
 layer.SetPinStyle(NightMapPinStyle.Icon);
 ```
 
 `NightMapPinStyle.Icon` draws each item like the vanilla world map: the icon over a soft shadow, dimmed to 50 % until it is selected or emphasised, then full strength at 1.3×. `Hex` (the default) draws hologram hex chips.
 
 There is no clustering. As the map zooms out, Minor and Major markers shrink to 70 % and fade out by tier: Minor 4 to
-6 m/unit, Major 24 to 32, Always never. A faded-out marker can't be hovered or selected. A layer of up to 64
+6 m/unit (an ambient Minor layer 2.5 to 4), Major 24 to 32, Always never. A faded-out marker can't be hovered or selected. A layer of up to 64
 items is scanned in full on every relayout; larger layers are placed cell by cell, nearest the view centre first.
 
 ## Tooltip and activation

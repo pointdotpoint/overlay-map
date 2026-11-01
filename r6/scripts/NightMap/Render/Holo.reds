@@ -36,7 +36,7 @@ public class NMHolo {
 
     // One period of the scanline texture (a tiled part repeats at its native size, so no scale term); the scanline loop translates by exactly this much.
     public func ScanPeriod() -> Float { return NMTheme.ScanPeriod(); }
-    public func BarHeight() -> Float { return this.mapH * 0.14; }
+    public func BarHeight() -> Float { return this.mapH * NMTheme.HoloBarHeight(); }
     public func ProxyCount() -> Int32 { return ArraySize(this.proxies); }
 
     public func AddGrid(parent: wref<inkCompoundWidget>) {
@@ -145,13 +145,14 @@ public class NMHolo {
             dBar.AddInterpolator(NMHolo.Fade(0.0, 0.0, 5.9, 0.1));
             this.Loop(this.bar, dBar);
         }
-        // Noise flicker: hard steps between 0.027 and 0.047, five per second.
+        // Noise flicker: hard steps between 0.68x and 1.18x the noise opacity, five per second.
         if IsDefined(this.noise) {
-            let steps: array<Float> = [0.04, 0.027, 0.047, 0.033, 0.043, 0.03];
+            let steps: array<Float> = [1.0, 0.675, 1.175, 0.825, 1.075, 0.75];
+            let n0 = NMTheme.HoloNoiseOpacity();
             let dNoise = new inkAnimDef();
             let i = 0;
             while i < ArraySize(steps) {
-                dNoise.AddInterpolator(NMHolo.Fade(steps[i], steps[i], Cast<Float>(i) * 0.2, 0.2));
+                dNoise.AddInterpolator(NMHolo.Fade(n0 * steps[i], n0 * steps[i], Cast<Float>(i) * 0.2, 0.2));
                 i += 1;
             }
             this.Loop(this.noise, dNoise);

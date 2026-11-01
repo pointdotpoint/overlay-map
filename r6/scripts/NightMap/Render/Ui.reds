@@ -75,6 +75,7 @@ public abstract class NMUi {
         let k = NMUi.Text(parent, NMTheme.BodyFont(), n"Medium", Cast<Int32>(26.0 * s), NMTheme.HeaderTitle(theme));
         k.SetAnchorPoint(new Vector2(0.5, 0.0));   // centred: the box width is an estimate, the text's is not
         k.SetTranslation(new Vector2(kw * 0.5, 8.0 * s));
+        k.SetTracking(Cast<Int32>(NMUi.KeyTracking() * s));   // Rajdhani's space is narrow: "8 4 6 2" read as "8462"
         k.SetText(key);
         NMUi.KeyLabel(parent, label, kw + NMUi.KeycapGap() * s, s);
         return NMUi.KeycapWidth(key, label, s);
@@ -83,9 +84,18 @@ public abstract class NMUi {
     public static func KeycapHeight() -> Float { return 46.0; }   // 4K units
     public static func KeycapGap() -> Float { return 16.0; }      // 4K units between the box and its label
 
-    // Estimated widths at scale s (Rajdhani caps at 0.55 em, see NMTooltip.FitChars).
+    public static func KeyTracking() -> Float { return 4.0; }   // 4K units of letter spacing in a keycap
+
+    // Estimated widths at scale s (Rajdhani caps at 0.55 em, see NMTooltip.FitChars; a space is about 0.25 em).
     public static func KeyBoxWidth(key: String, s: Float) -> Float {
-        return (24.0 + 17.0 * Cast<Float>(StrLen(key))) * s;
+        let n = StrLen(key);
+        let spaces = 0;
+        let i = 0;
+        while i < n {
+            if Equals(StrMid(key, i, 1), " ") { spaces += 1; }
+            i += 1;
+        }
+        return (24.0 + 17.0 * Cast<Float>(n - spaces) + 7.0 * Cast<Float>(spaces) + NMUi.KeyTracking() * Cast<Float>(n)) * s;
     }
     public static func KeyLabelWidth(label: String, s: Float) -> Float {
         return Cast<Float>(StrLen(label)) * (28.0 * 0.55 + 3.0) * s;

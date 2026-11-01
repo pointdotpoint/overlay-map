@@ -68,6 +68,7 @@ public class NMVanilla extends NMVanillaSink {
             L.SetPinStyle(NightMapPinStyle.Icon);
             let ty = this.catalog.TypeOf(i);
             L.SetTier(!this.catalog.IsOther(i) && (Equals(ty, gamedataWorldMapFilter.Quest) || Equals(ty, gamedataWorldMapFilter.FastTravel)) ? NightMapTier.Major : NightMapTier.Minor);
+            L.SetAmbient(!this.catalog.IsOther(i) && Equals(ty, gamedataWorldMapFilter.Story));   // NCPD Scanner: gone by mid zoom
             let cat = this.catalog.CategoryName(i);
             let isOther = this.catalog.IsOther(i);
             let first = isOther ? gamedataMappinVariant.Invalid : this.catalog.firstVariant[i];

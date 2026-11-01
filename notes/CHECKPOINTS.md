@@ -139,3 +139,106 @@ V once three probes agree. `tools/soak/plans/teleport.json` passed (20261030-171
 at full health: streets, badlands, a 633 m roof, hills, the sea and a lake. Japantown's open shaft (-600, 1400) has no
 surface and sends V back to the start. Long jumps hold the game's black streaming screen for about 3 to 10 s. Not covered by
 the harness: a vehicle teleport. Self-tests failing are the same three as before.
+
+## Visual overhaul, Task 11: tune, measure, record (2026-11-01, branch visual-overhaul)
+
+### Perf gate (NMPerfSuite, main vs branch)
+
+New harness command `perf` (`tools/soak/plans/perf.json`) starts the suite without the debug chord and reports
+`perf_done`; the `RESULT|` and `PERF|` lines land in the run's `gamelog-tail.log`. Main ran from a `git worktree` of
+`main` with only the harness additions copied in (removed afterwards; `main` untouched). Save QuickSave-7 for every run.
+Raw lines: `.scratch/perf-main.txt`, `.scratch/perf-branch.txt` (final), earlier runs in `.scratch/perf-*-run*.txt`.
+
+At the Task 10 head (6fd15ed) the branch failed the gate: open_empty +7 % avg / +17 % p95, vanilla_open +5 % / +14 %,
+panzoom +18 % / +50 %, items_50000 +39 % / +141 % (one branch run against three main runs). Causes, measured with a new
+per-frame breakdown in the suite (`tiles_avg|p95`, `items_avg|p95`):
+
+- **Item relayout.** The declutter evaluated up to 300 culls per relayout, and every placed or culled marker costs a
+  few µs of script. Fix: Minor layers stop at 40 culls each (`LayerCullCap`), 160 per relayout (`CullCap`; Major
+  layers only that total, so the far view still fills with fast travel). A per-layer cap of 300 (1,200 total) was
+  tried and measured worse (+40 % script p95). Also: a struck item's overlay is restyled only when its slot changed,
+  the category icon key is cached, and the collision test runs before the header test.
+- **The fifth tile set** (Task 1's road_minor + road_major split, 5 sets against main's 4). Proven by a run without
+  road_minor: panzoom fell to −2 % / −5 %. Fix: a tile set's reveal pass walks only its waiting slots, not its whole
+  pool, every frame, and a range that only grew skips the release scan. The extra set's texture streaming remains.
+
+Final code, 2 runs each side, interleaved. The game environment changed during the task (a ReShade VHS preset and
+Immersive Third Person were installed at about 11:20 to 11:45; frame times are GPU-bound at about 24 ms in these runs,
+against about 10 ms earlier). Both sides ran under the same conditions:
+
+| scenario | main avg | branch avg | Δ avg | main p95 | branch p95 | Δ p95 | main script avg | branch script avg |
+|---|---|---|---|---|---|---|---|---|
+| closed_baseline | 22.94 | 23.73 | +3.5 % | 24.20 | 26.25 | +8.5 % | 0.00 | 0.00 |
+| open_empty | 25.69 | 24.80 | -3.4 % | 32.43 | 27.59 | -14.9 % | 2.04 | 1.87 |
+| vanilla_open | 26.08 | 24.72 | -5.2 % | 32.97 | 27.76 | -15.8 % | 3.11 | 3.03 |
+| route_open | 24.86 | 24.46 | -1.6 % | 27.89 | 27.74 | -0.5 % | 2.04 | 1.81 |
+| photos_500 | 29.49 | 24.70 | -16.3 % | 44.06 | 29.46 | -33.1 % | 6.58 | 2.33 |
+| items_5000 | 26.01 | 24.59 | -5.4 % | 32.77 | 28.64 | -12.6 % | 4.85 | 2.87 |
+| items_20000 | 25.78 | 24.76 | -4.0 % | 33.46 | 28.60 | -14.5 % | 4.85 | 2.51 |
+| items_50000 | 25.25 | 24.45 | -3.2 % | 29.45 | 27.34 | -7.2 % | 4.70 | 2.39 |
+| idle_0p5 | 24.48 | 24.21 | -1.1 % | 27.39 | 26.49 | -3.3 % | 0.08 | 0.08 |
+| idle_2 | 25.15 | 24.42 | -2.9 % | 29.62 | 28.00 | -5.5 % | 0.09 | 0.09 |
+| idle_8 | 25.42 | 24.60 | -3.2 % | 30.63 | 28.23 | -7.9 % | 0.09 | 0.09 |
+| panzoom_0p5_16 | 24.63 | 24.91 | +1.2 % | 27.30 | 29.23 | +7.1 % | 2.05 | 2.07 |
+| closed_end | 23.68 | 23.40 | -1.2 % | 26.94 | 25.96 | -3.6 % | 0.00 | 0.00 |
+
+Every mean is within +5 %. Two p95 values are above +5 %: closed_baseline (+8.5 %, no mod code runs there, so this is
+noise) and panzoom (+7.1 %). The script time, which is stable from run to run, is at or below main everywhere except
+panzoom (2.07 against 2.05 avg; p95 7.08 against 5.98 ms, the extra tile set). Before the environment changed (frames at
+about 10 ms), three main runs against the tuned branch before the tile-layer fix gave, as the mean over the closed
+baseline: open_empty +1.70 against +1.26 ms, vanilla_open +1.76 / +1.82, panzoom +1.27 / +1.46, items_50000 +1.96 / +3.81.
+Run-to-run p95 noise was about ±10 % on idle scenarios with identical script cost.
+
+### Tuned values
+
+| what | old → new | why |
+|---|---|---|
+| `RingsOpacity` | 0.10 → 0.05, × `RingsFade` (1 up to 1 m/unit, linear in log2 down to 0.2 at 8+) | read as a target over the city at z8/z16; ink blends in linear light |
+| `HoloNoiseOpacity` | 0.04 → 0.008 (flicker steps now 0.68–1.18 × it) | .04 lifted the dark map to an sRGB teal of about (25, 56, 66) |
+| `HoloBarOpacity`, bar height | 0.12 → 0.035; 0.14 → 0.06 of the map height (`HoloBarHeight`) | a bright band at whole-city zoom |
+| `HoloEdgeOpacity` | 0.6 → 0.3 | heavier than frame.jpg |
+| `DeclutterOverlap` | 0.75 → 1.0 | plate rings may touch, never overlap; z2 placed markers 187 → 120 |
+| NCPD Scanner (Story filter) priority | 80 → 45 | was placed before services and collectibles at mid zoom |
+| NCPD Scanner fade | Minor 4–6 → ambient 2.5–4 m/unit (`NightMapLayer.SetAmbient`, `NMTiers.LayerFade`) | z4 was a wall of teal NCPD icons; mid zoom keeps vendors and collectibles |
+| declutter cull cap | 300 per relayout → 40 per Minor layer, 160 per relayout | perf gate (above), and collectibles were starved at z2/z4 |
+| hint keycaps | letter-spacing 0 → 4 (4K units), width estimate counts spaces at 7 | PAN read "8462" |
+| `NMTiers` thresholds, minimum scale | unchanged (Minor 4–6, Major 24–32, 0.7 at 8+) | z8/z16 already show only Major + tracked |
+
+Placed markers per zoom (look run 20261101-120243): z0.5 23, z2 120, z4 110, z8 60 (quests 9, fast travel 51), z16 25
+(quests 7, fast travel 18).
+
+### Screenshots
+
+- Before (6fd15ed, run 20261101-101330-look): `.scratch/shots/before/` z0.5, z2, z8, z16, filter.
+- After, clean environment, overlays tuned (run 20261101-105458-look): `.scratch/shots/after-clean/`.
+- After, final code (run 20261101-120243-look, the user's ReShade VHS preset on): `.scratch/shots/after-final/`
+  z0.5, z2, z4, z8, z16, filter, gig_hover, ncpd_hover, desc_hover.
+- Checks (`tools/soak/plans/look-checks.json`): `.scratch/shots/checks/` effects_off_z2, green_z2, opacity030_z2,
+  opacity030_z0.5, photo_pin_z1 (run 20261101-105919), route_z2 (20261101-120603), desc_hover (20261101-113644).
+
+The sidebar description cap is verified in game: a 200-character description (soak `desc_probe`) wraps to three lines
+with an ellipsis and stays above the rows.
+
+### Road split (Task 1)
+
+Width threshold: a minimap road shape is major when `classify_width` (area / longest bounding-box extent) is at least
+`MAJOR_WIDTH_M` = 16 m. Short-gap promotion: minor pieces in a gap of the major mask no wider than 1.5 × 16 m
+(junction squares, short pieces between two major segments) move to road_major, so arterials read as continuous lines.
+
+### Not built
+
+- The optional leader line from a marker to the sidebar card (spec §5.2). Candidate for later.
+- The optional open animation (spec §8). Candidate for later.
+
+### Campaigns
+
+regression 20261101-130814 pass, `TEST|SUMMARY|passed=455|failed=0`; collect 20261101-123215 pass (3 runs); teleport
+20261101-124027 pass (455 / 0); fast-travel 20261101-124930 pass (3 runs); render 20261101-130308 pass (455 / 0);
+controller 20261101-125746: hold pass, pad-1 coverage_fail at step 84 (`vdist: still 0`), the known View-close
+movement lock from main. The pad hint bar's keycaps show in controller pad_open.png.
+
+### Harness notes
+
+- A first-run popup from Immersive Third Person (its quest fact is never saved by the harness) covered the screen
+  about 20 s into every run; the bootstrap now sets `immersive_third_person_notice_seen` per session.
+- New soak commands: `perf`, `set effects|theme|opacity`, `layers`, `focus_layer <id part> <mpp>`, `act`, `desc_probe`.

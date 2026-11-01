@@ -4,6 +4,7 @@ public class NMPlayerMarker {
     private let img: ref<inkImage>;
     private let rings: ref<inkImage>;
     private let shown: Bool;
+    private let ringsK: Float;   // the RingsFade last applied (Create draws them at 1)
 
     public static func Create(parent: ref<inkCanvas>, scale: Float, effects: Bool, theme: Int32) -> ref<NMPlayerMarker> {
         let m = new NMPlayerMarker();
@@ -12,6 +13,7 @@ public class NMPlayerMarker {
             m.rings = NMUi.HoloImage(parent, n"holo_rings", 0.0, 0.0, rs, rs, NMTheme.HoloAccent(theme), NMTheme.RingsOpacity(), inkBrushTileType.NoTile);
             m.rings.SetAnchorPoint(new Vector2(0.5, 0.5));
             m.rings.SetVisible(false);
+            m.ringsK = 1.0;
         }
         m.img = NMUi.Image(parent, n"player", 0.0, 0.0, NMTheme.PlayerSize() * scale, NMTheme.VanillaStateColor(n"Player"), true);
         m.img.SetRenderTransformPivot(new Vector2(0.5, 0.5));
@@ -35,6 +37,11 @@ public class NMPlayerMarker {
                 this.img.SetTranslation(p);
                 if IsDefined(this.rings) {
                     this.rings.SetTranslation(p);
+                    let k = NMTheme.RingsFade(cam.mpp);
+                    if AbsF(k - this.ringsK) > 0.01 {
+                        this.ringsK = k;
+                        this.rings.SetOpacity(NMTheme.RingsOpacity() * k);
+                    }
                 }
                 this.img.SetRotation(NMMath.HeadingDeg(fwd.X, fwd.Y) * NMTheme.PlayerRotationSign());
             }

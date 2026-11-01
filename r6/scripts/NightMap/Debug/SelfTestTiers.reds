@@ -13,6 +13,13 @@ public abstract class NMTierTests {
         a.SetTier(NightMapTier.Always);
         m.SetPromoted(true);
         t.Check("tier.promoted_effective", m.EffectiveTier() == 1 && a.EffectiveTier() == 0 && m.tier == 2, "");
+        let amb = api.CreateLayer(n"Tier.Amb", "Amb", 12);
+        amb.SetAmbient(true);
+        let ambOk = NMTiers.LayerFade(amb, 2.5) == 1.0 && t.Near(NMTiers.LayerFade(amb, 3.25), 0.5, 0.001) && NMTiers.LayerFade(amb, 4.0) == 0.0
+            && NMTiers.LayerFade(a, 16.0) == 1.0;
+        amb.SetPromoted(true);
+        ambOk = ambOk && NMTiers.LayerFade(amb, 16.0) == 1.0;   // promoted by a filter: Major, the ambient fade no longer applies
+        t.Check("tier.ambient_fades_early", ambOk, t.F(NMTiers.LayerFade(amb, 3.25)));
         let rev = api.revision;
         m.SetPromoted(false);
         m.SetPromoted(true);
@@ -24,7 +31,8 @@ public abstract class NMTierTests {
         let q = v.LayerForSlot(v.catalog.FilterIndexOf(gamedataMappinVariant.DefaultQuestVariant));
         let ft = v.LayerForSlot(v.catalog.FilterIndexOf(gamedataMappinVariant.FastTravelVariant));
         let gigs = v.LayerForSlot(v.catalog.FilterIndexOf(gamedataMappinVariant.RetrievingVariant));
-        let assigned = q.tier == 1 && ft.tier == 1 && v.pinned.tier == 0 && gigs.tier == 2;
+        let ncpd = v.LayerForSlot(v.catalog.FilterIndexOf(gamedataMappinVariant.GangWatchVariant));
+        let assigned = q.tier == 1 && ft.tier == 1 && v.pinned.tier == 0 && gigs.tier == 2 && ncpd.tier == 2 && ncpd.ambient && !gigs.ambient && !ft.ambient;
         v.ApplyFilters(1, s);
         let on = gigs.promoted && gigs.EffectiveTier() == 1;
         v.ApplyFilters(0, s);

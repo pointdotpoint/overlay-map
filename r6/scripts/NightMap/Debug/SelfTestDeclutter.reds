@@ -47,7 +47,7 @@ public abstract class NMDeclutterTests {
     public static func Run(t: ref<NMSelfTest>) {
         let w = NMDeclutterTests.W();
         let h = NMDeclutterTests.H();
-        t.Check("declutter.token", t.Near(NMTheme.DeclutterOverlap(), 0.75, 0.0001), t.F(NMTheme.DeclutterOverlap()));
+        t.Check("declutter.token", t.Near(NMTheme.DeclutterOverlap(), 1.0, 0.0001), t.F(NMTheme.DeclutterOverlap()));
 
         // 1. Two Minor items of one layer on the same spot: one is drawn, the other skipped without a slot.
         let api = NMDeclutterTests.Api();
