@@ -30,6 +30,17 @@ public abstract class NMSoak {
         if Equals(command, "in_menu") { return sys.Soak_InMenu(); }
         if Equals(command, "cam") { return sys.Soak_Cam(); }
         if Equals(command, "pauses") { return sys.Soak_Pauses(); }
+        if Equals(command, "uictx on") { return sys.Soak_UiCtx(true); }
+        if Equals(command, "uictx off") { return sys.Soak_UiCtx(false); }
+        if Equals(command, "yaw") { return sys.Soak_Yaw(); }
+        if StrBeginsWith(command, "se_on ") {
+            let sa = StrSplit(command, " ");
+            return sys.Soak_Se(sa[1], true);
+        }
+        if StrBeginsWith(command, "se_off ") {
+            let sb = StrSplit(command, " ");
+            return sys.Soak_Se(sb[1], false);
+        }
         if Equals(command, "vmark") { return sys.Soak_VMark(); }
         if Equals(command, "vdist") { return sys.Soak_VDist(); }
         if Equals(command, "cmark") { return sys.Soak_CMark(); }

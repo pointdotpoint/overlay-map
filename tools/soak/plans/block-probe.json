@@ -1,0 +1,286 @@
+{
+ "name": "block-probe",
+ "runs": [
+  {
+   "name": "probe",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padaxis": "RX",
+     "value": 1.0
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "padaxis": "RX",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "shot": "base"
+    },
+    {
+     "cmd": "uictx on"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padaxis": "RX",
+     "value": 1.0
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "padaxis": "RX",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "shot": "uictx"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "pad": "A"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "uictx off"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padaxis": "RX",
+     "value": 1.0
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "padaxis": "RX",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "shot": "uictx_off"
+    },
+    {
+     "cmd": "se_on NoMovement"
+    },
+    {
+     "cmd": "se_on NoCameraControl"
+    },
+    {
+     "cmd": "se_on NoJump"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padaxis": "RX",
+     "value": 1.0
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "padaxis": "RX",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "shot": "se"
+    },
+    {
+     "cmd": "se_off NoMovement"
+    },
+    {
+     "cmd": "se_off NoCameraControl"
+    },
+    {
+     "cmd": "se_off NoJump"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "padaxis": "RX",
+     "value": 1.0
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "padaxis": "RX",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "shot": "se_off"
+    }
+   ]
+  }
+ ]
+}

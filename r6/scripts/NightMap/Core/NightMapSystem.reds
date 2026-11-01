@@ -380,6 +380,7 @@ public class NightMapSystem extends ScriptableSystem {
             if !this.padCtx {
                 this.padCtx = true;
                 GameInstance.GetUISystem(this.GetGameInstance()).PushGameContext(UIGameContext.ModalPopup);
+                this.SetPlayerUiContext(true);
             }
         }
     }
@@ -399,6 +400,20 @@ public class NightMapSystem extends ScriptableSystem {
         this.padReleaseWait = false;
         this.pad.ClearHeld();
         GameInstance.GetUISystem(this.GetGameInstance()).PopGameContext(UIGameContext.ModalPopup);
+        this.SetPlayerUiContext(false);
+    }
+
+    // The player state machine's UI input context, as the game's non-pausing tutorial popups use it: V doesn't walk,
+    // look, jump or fight while it is on, and the game keeps running. (The modal popup context alone left V walking.)
+    private func SetPlayerUiContext(on: Bool) {
+        let player = GetPlayer(this.GetGameInstance());
+        if !IsDefined(player) {
+            return;
+        }
+        let e = new PSMPostponedParameterBool();
+        e.id = on ? n"OnUIContextActive" : n"OnUIContextInactive";
+        e.value = true;
+        player.QueueEvent(e);
     }
 
     // Debug chords: self-test, debug layer, perf suite, calibration dump.

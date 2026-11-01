@@ -556,6 +556,29 @@
             + "|pad " + (this.padOwned ? "owned" : "free") + " ctx " + (this.padCtx ? "held" : "free");
     }
 
+    // Probe: the player state machine's UI input context, as non-pausing tutorial popups use it.
+    public func Soak_UiCtx(on: Bool) -> String {
+        let e = new PSMPostponedParameterBool();
+        e.id = on ? n"OnUIContextActive" : n"OnUIContextInactive";
+        e.value = true;
+        GetPlayer(this.GetGameInstance()).QueueEvent(e);
+        return on ? "ui on" : "ui off";
+    }
+
+    public func Soak_Se(name: String, on: Bool) -> String {
+        let player = GetPlayer(this.GetGameInstance());
+        let id = TDBID.Create("GameplayRestriction." + name);
+        if on { StatusEffectHelper.ApplyStatusEffect(player, id); } else { StatusEffectHelper.RemoveStatusEffect(player, id); }
+        return (on ? "se on " : "se off ") + name;
+    }
+
+    // Camera heading in degrees (0 = +Y), for telling whether the right stick still turns the view.
+    public func Soak_Yaw() -> String {
+        let f = GameInstance.GetCameraSystem(this.GetGameInstance()).GetActiveCameraForward();
+        let fx = f.X; let fy = f.Y;
+        return "yaw " + FloatToStringPrec(Rad2Deg(AtanF(fx, fy)), 1);
+    }
+
     // Pause menus NightMap opened for a View tap.
     public func Soak_Pauses() -> String { return "pauses " + IntToString(this.padPauses); }
 
