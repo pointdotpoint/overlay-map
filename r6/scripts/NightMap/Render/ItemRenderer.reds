@@ -99,6 +99,7 @@ public class NMItemRenderer {
     private let keepLayer: Int32;   // the selection (layer + item): never culled while selected
     private let keepItem: Int32;
     private let keptPlaced: Bool;   // this relayout placed the selection up front; the layer walk skips it
+    private let reserved: array<ref<NMRect>>;   // screen areas markers keep clear of (the panel header), padded
     private let hHead: array<Int32>;   // per hash cell: last placed marker in it, -1 none
     private let hNext: array<Int32>;   // per placed marker: the previous one in its cell
     private let hX: array<Float>;
@@ -435,6 +436,42 @@ public class NMItemRenderer {
             this.hHead[i] = -1;
             i += 1;
         }
+    }
+
+    // Screen rectangles (map coordinates) that culled markers keep clear of, like a marker placed before every layer:
+    // the panel's header text. Always-tier items and the selection are placed regardless. A change relays out.
+    public func SetReserved(rects: array<ref<NMRect>>) {
+        if NMItemRenderer.SameRects(this.reserved, rects) {
+            return;
+        }
+        this.reserved = rects;
+        this.Invalidate();
+    }
+
+    private static func SameRects(a: array<ref<NMRect>>, b: array<ref<NMRect>>) -> Bool {
+        if ArraySize(a) != ArraySize(b) {
+            return false;
+        }
+        let i = 0;
+        while i < ArraySize(a) {
+            if a[i].minX != b[i].minX || a[i].minY != b[i].minY || a[i].maxX != b[i].maxX || a[i].maxY != b[i].maxY {
+                return false;
+            }
+            i += 1;
+        }
+        return true;
+    }
+
+    // True when a marker's visible circle (radius r at x, y) touches a reserved rectangle.
+    private func InReserved(x: Float, y: Float, r: Float) -> Bool {
+        for q in this.reserved {
+            let dx = MaxF(MaxF(q.minX - x, 0.0), x - q.maxX);
+            let dy = MaxF(MaxF(q.minY - y, 0.0), y - q.maxY);
+            if dx * dx + dy * dy < r * r {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Declutter work bounds. Culled items cost a test but draw nothing, so a dense layer at a far zoom would otherwise
@@ -886,7 +923,8 @@ public class NMItemRenderer {
     }
 
     // The declutter test of one item at screen point p, before it takes a slot. Returns false (and counts it culled)
-    // when it collides with a marker already placed; Always-tier items and the selection are placed regardless.
+    // when it collides with a marker already placed or a reserved area; Always-tier items and the selection are placed
+    // regardless.
     // Either way a placed item occupies its visible circle: icon pins the plate's ring (PlateSize / 4, emphasised and
     // selected ones grown), hex chips and dots half their size, photo pins half the picture's width around its centre.
     private func Declutter(L: ref<NightMapLayer>, id: Int32, style: Int32, p: Vector2) -> Bool {
@@ -902,7 +940,7 @@ public class NMItemRenderer {
             r = style == 2 || kept ? this.rPlateEmph : this.rPlate;
         }
         let x = p.X;
-        if !this.curAlways && !kept && this.Collides(x, y, r) {
+        if !this.curAlways && !kept && (this.InReserved(x, y, r) || this.Collides(x, y, r)) {
             this.culled += 1;
             return false;
         }

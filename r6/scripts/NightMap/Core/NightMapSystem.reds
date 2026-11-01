@@ -1197,6 +1197,9 @@ public class NightMapSystem extends ScriptableSystem {
             this.hdrQuestObjective = objective;
         }
         this.UpdateScale();
+        if IsDefined(this.renderer) {
+            this.renderer.SetReserved(this.panel.HeaderRects());   // markers keep clear of the header text
+        }
         if IsDefined(s) {
             let hint = NMInput.HintText(s, NMVanillaFilters.ViewName(this.filterView), this.TeleportLabel());
             if this.padOwned && this.pad.lastWasPad {

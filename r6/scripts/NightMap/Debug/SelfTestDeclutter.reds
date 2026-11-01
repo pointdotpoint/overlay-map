@@ -252,6 +252,45 @@ public abstract class NMDeclutterTests {
         let still11 = c11.selLayer == sel.index && c11.selItem == selId;
         t.Check("declutter.selected_survives_cap", picked11 && capped && kept11 && still11,
             ToString(picked11) + ToString(capped) + ToString(kept11) + ToString(still11) + " " + NMDeclutterTests.Info(r11));
+
+        // 12. The header is reserved: a pile of Minor and Major items inside the panel's padded title rect is culled,
+        // an Always item there stays, and an item just outside the rect is placed. Rects come from a real panel
+        // (scale 1, so map units are 4K units) with a district name set.
+        let layout12 = NMPanelLayout.Compute(3840.0, 2160.0);
+        let panel12 = NMPanel.Build(new inkCanvas(), layout12, NMTheme.DefaultPanelOpacity(), 0, false);
+        panel12.districtTitle.SetText("VISTA DEL REY");
+        let rects = panel12.HeaderRects();
+        panel12.Destroy();
+        let q = rects[0];
+        let padOk = ArraySize(rects) == 2 && t.Near(q.minX, 88.0 - NMTheme.HeaderPad(), 0.5) && t.Near(q.minY, 80.0 - NMTheme.HeaderPad(), 0.5)
+            && q.maxX > 88.0 + 300.0 && rects[1].maxX <= layout12.viewW;
+        let api12 = NMDeclutterTests.Api();
+        let mi12 = NMDeclutterTests.Layer(api12, n"test.dc.resminor", 50, NightMapTier.Minor);
+        let ma12 = NMDeclutterTests.Layer(api12, n"test.dc.resmajor", 40, NightMapTier.Major);
+        let al12 = NMDeclutterTests.Layer(api12, n"test.dc.resalways", 1, NightMapTier.Always);
+        let cam12 = NMDeclutterTests.Cam(2.0);
+        let cy = (q.minY + q.maxY) * 0.5;
+        let xs: array<Float> = [q.minX + 4.0, q.minX + 120.0, (q.minX + q.maxX) * 0.5, q.maxX - 120.0, q.maxX - 4.0];
+        for x in xs {
+            let wp = cam12.MapToWorld(x, cy);
+            NMDeclutterTests.At(mi12, wp.X, wp.Y);
+            NMDeclutterTests.At(ma12, wp.X, wp.Y);
+        }
+        let ac = cam12.MapToWorld(q.minX + 300.0, cy);
+        let aId = NMDeclutterTests.At(al12, ac.X, ac.Y);
+        let out = cam12.MapToWorld(q.maxX + NMTheme.ChipSize() * 0.5 + 4.0, cy);   // its circle clears the rect
+        let outId = NMDeclutterTests.At(mi12, out.X, out.Y);
+        let r12 = NMItemRenderer.Create(api12, new inkCanvas(), 1.0);
+        r12.SetReserved(rects);
+        r12.Update(cam12, w, h);
+        let anyIn = false;
+        let k = 0;
+        while k < ArraySize(xs) {   // ids 0..4 of both layers are the pile; the Minor layer's id 5 is the outside one
+            if NMDeclutterTests.Placed(r12, mi12, k) || NMDeclutterTests.Placed(r12, ma12, k) { anyIn = true; }
+            k += 1;
+        }
+        t.Check("declutter.header_reserved", padOk && !anyIn && NMDeclutterTests.Placed(r12, al12, aId) && NMDeclutterTests.Placed(r12, mi12, outId),
+            ToString(padOk) + ToString(anyIn) + " rect " + t.F(q.minX) + "," + t.F(q.minY) + "-" + t.F(q.maxX) + "," + t.F(q.maxY) + " " + NMDeclutterTests.Info(r12));
         NMDeclutterTests.Cost();
     }
 

@@ -163,6 +163,44 @@ public class NMPanel {
     public static func ScaleBarMax(scale: Float) -> Float { return 336.0 * scale; }
     public static func ScaleBarThickness(scale: Float) -> Float { return 4.0 * scale; }   // 2 px at 1080p
 
+    // Screen areas the markers keep clear of (NMItemRenderer.SetReserved): the district title with its sub line, and
+    // the scale bar with its label, each padded. Text sizes come from ink once laid out, else an estimate.
+    public func HeaderRects() -> array<ref<NMRect>> {
+        let s = this.layout.scale;
+        let pad = NMTheme.HeaderPad() * s;
+        let rects: array<ref<NMRect>>;
+        let tp = this.districtTitle.GetTranslation();
+        let ts = NMPanel.TextSize(this.districtTitle);
+        let w = ts.X;
+        let bottom = tp.Y + ts.Y;
+        if this.districtSub.IsVisible() {
+            let sp = this.districtSub.GetTranslation();
+            let ss = NMPanel.TextSize(this.districtSub);
+            w = MaxF(w, sp.X - tp.X + ss.X);
+            bottom = sp.Y + ss.Y;
+        }
+        if w > 0.0 {
+            ArrayPush(rects, NMRect.Create(tp.X - pad, tp.Y - pad, tp.X + w + pad, bottom + pad));
+        }
+        let b = this.scaleBar.GetTranslation();
+        let lp = this.scaleLabel.GetTranslation();   // the label's top centre
+        let ls = NMPanel.TextSize(this.scaleLabel);
+        ArrayPush(rects, NMRect.Create(MinF(b.X, lp.X - ls.X * 0.5) - pad, b.Y - pad,
+            MaxF(b.X + NMPanel.ScaleBarMax(s), lp.X + ls.X * 0.5) + pad, lp.Y + ls.Y + pad));
+        return rects;
+    }
+
+    // A text widget's laid-out size; before ink lays it out, a conservative estimate from its length and font size.
+    private static func TextSize(t: ref<inkText>) -> Vector2 {
+        let d = t.GetDesiredSize();
+        if d.X > 0.0 && d.Y > 0.0 {
+            return d;
+        }
+        let size = Cast<Float>(t.GetFontSize());
+        let n = Cast<Float>(StrLen(t.GetText()));
+        return new Vector2(n * (size * 0.6 + Cast<Float>(t.GetTracking())), size * 1.2);
+    }
+
     // The bar keeps its left end; the right tick and the centred label follow its length.
     public func SetScaleBar(len: Float) {
         let s = this.layout.scale;
