@@ -148,8 +148,7 @@ public abstract class NMHoloTests {
     }
 
     private static func RendererCases(t: ref<NMSelfTest>) {
-        NMHoloTests.PlateCase(t, true, "plate.effects_on");
-        NMHoloTests.PlateCase(t, false, "plate.effects_off");
+        NMHoloTests.PlateCase(t);
         // Player arrow in the vanilla player colour; reticle brackets in the light bracket colour, green mirrored.
         let canvas = new inkCanvas();
         let mk = NMPlayerMarker.Create(canvas, 1.0, true, 0);
@@ -168,15 +167,16 @@ public abstract class NMHoloTests {
         return AbsF(a.Red - b.Red) < 0.002 && AbsF(a.Green - b.Green) < 0.002 && AbsF(a.Blue - b.Blue) < 0.002;
     }
 
-    // Icon-style pins sit on the dark plate with the ring in the icon's own colour, with effects on and off alike.
-    private static func PlateCase(t: ref<NMSelfTest>, effects: Bool, name: String) {
+    // Icon-style pins sit on the dark plate with the ring in the icon's own colour. The renderer takes no effects
+    // setting at all, so this one look holds with hologram effects on and off.
+    private static func PlateCase(t: ref<NMSelfTest>) {
+        let name = "plate.icon_background";
         let api = NMVanillaTests.TestApi();
         let L = api.CreateLayer(n"test.plate", "Plate", 5);
         L.SetPinStyle(NightMapPinStyle.Icon);
         let ft = NMTheme.VanillaStateColor(n"FastTravel");
         L.Add(NightMapItem.Create(new Vector4(-1800.0, 150.0, 0.0, 1.0), n"v", NMTheme.MappinAtlas(), n"fast_travel").WithTint(ft));
         let r = NMItemRenderer.Create(api, new inkCanvas(), 1.0);
-        r.SetHalo(effects);
         let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
         cam.SetCenter(-1800.0, 150.0);
         cam.SetMpp(0.5);
@@ -193,16 +193,14 @@ public abstract class NMHoloTests {
         t.Check(name, Equals(part, n"plate") && NMHoloTests.SameRgb(tint, ft) && bg.IsVisible() && t.Near(size.X, NMTheme.PlateSize(), 0.01)
             // The idle 50 % dims the icon only: the plate keeps the item's own alpha so its disc still cuts out the city.
             && t.Near(r.chipIcon[s].GetOpacity(), NMTheme.VanillaIdleOpacity(), 0.001) && t.Near(bg.GetOpacity(), 1.0 * NMTheme.PlateOpacity(), 0.001)
-            && t.Near(NMTheme.PlateSize(), 224.0, 0.001)
+            && t.Near(NMTheme.PlateSize(), 152.0, 0.001)
             && t.Near(NMTheme.PlateOpacity(), 1.0, 0.001),
             NameToString(part) + " " + t.F(tint.Red) + "," + t.F(tint.Green) + "," + t.F(tint.Blue) + " size " + t.F(size.X) + " op " + t.F(bg.GetOpacity()));
-        if effects {
-            // The selection grow brings the icon to full strength; the plate's opacity stays put.
-            r.ApplySelection(0, 0, NMTheme.VanillaGrowMs() * 0.5);
-            let mid = bg.GetOpacity();
-            r.ApplySelection(0, 0, NMTheme.VanillaGrowMs());
-            t.Check("plate.steady_on_grow", t.Near(mid, NMTheme.PlateOpacity(), 0.001) && t.Near(bg.GetOpacity(), NMTheme.PlateOpacity(), 0.001)
-                && t.Near(r.chipIcon[s].GetOpacity(), 1.0, 0.001), t.F(mid) + " " + t.F(bg.GetOpacity()));
-        }
+        // The selection grow brings the icon to full strength; the plate's opacity stays put.
+        r.ApplySelection(0, 0, NMTheme.VanillaGrowMs() * 0.5);
+        let mid = bg.GetOpacity();
+        r.ApplySelection(0, 0, NMTheme.VanillaGrowMs());
+        t.Check("plate.steady_on_grow", t.Near(mid, NMTheme.PlateOpacity(), 0.001) && t.Near(bg.GetOpacity(), NMTheme.PlateOpacity(), 0.001)
+            && t.Near(r.chipIcon[s].GetOpacity(), 1.0, 0.001), t.F(mid) + " " + t.F(bg.GetOpacity()));
     }
 }

@@ -551,14 +551,12 @@ public class NMItemRenderer {
         ic.key = "dot";
     }
 
-    // Tier scale of the slot a candidate drew into (1 for photo pins, which scale their own widgets, or no candidate).
+    // The tier scale (chipK) of the slot a candidate drew into; 1 for no candidate. Photo slots keep chipK at 1 (their
+    // widgets take the tier scale directly), and NightMapSystem forces the reticle's scale to 1 for them anyway.
     public func CandScale(cand: Int32) -> Float {
         if cand < 0 || cand >= ArraySize(this.candSlot) { return 1.0; }
         return this.chipK[this.candSlot[cand]];
     }
-
-    // No-op: icon pins sit on the same dark plate with effects on and off (spec 2026-11-01 section 5.1).
-    public func SetHalo(on: Bool) {}
 
     // Switches a pooled chip between the hex chip (0: collectibles, our pins) and the vanilla icon on its plate
     // (1 idle, 2 emphasised). The plate is a dark disc with a white ring, tinted with the icon colour in PlaceChip.

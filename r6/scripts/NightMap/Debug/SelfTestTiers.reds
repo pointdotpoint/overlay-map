@@ -191,7 +191,9 @@ public abstract class NMTierTests {
         r6.ApplySelection(c6.sel, c6.selKind, 16.0);
         let rimK = NMTierTests.ScaleOf(r6.selChip);
         let candK = r6.CandScale(c6.sel);
-        t.Check("render.sel_rim_tier_scale", c6.selKind == 0 && r6.selChip.IsVisible() && ks < 1.0 && t.Near(rimK, ks, 0.001) && t.Near(candK, ks, 0.001),
+        let rimSize: Vector2 = r6.selChip.GetSize();
+        t.Check("render.sel_rim_tier_scale", c6.selKind == 0 && r6.selChip.IsVisible() && ks < 1.0 && t.Near(rimK, ks, 0.001) && t.Near(candK, ks, 0.001)
+            && t.Near(rimSize.X, NMTheme.ChipSelSize(), 0.01) && t.Near(NMTheme.ChipSelSize(), 92.0, 0.001),
             t.F(rimK) + " cand " + t.F(candK) + " k " + t.F(ks));
         let full = NMReticle.BoxFor(true, false, 1.0, 1.0);
         let small = NMReticle.BoxFor(true, false, 1.0, ks);

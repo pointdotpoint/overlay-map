@@ -31,15 +31,28 @@ def test_chip_is_pointy_top_hexagon():
 
 
 def test_plate_ring_white_disc_dark():
+    """Spec 5.1: near-black disc, ring at ~70 % in white (tinted to the icon colour), a faint white glow on the ring,
+    a dark falloff outward. Sized so the ring hugs a vanilla glyph (~1.3x its visible radius)."""
     img, parts = build_ui_atlas()
     plate = img.crop(parts["plate"])
-    assert plate.size == (224, 224) and SIZES["plate"] == 224
-    r, g, b, a = plate.getpixel((112, 112))
-    assert max(r, g, b) <= 10 and a > 200
-    r, g, b, a = plate.getpixel((112 + 56, 112))
-    assert min(r, g, b) >= 240 and a >= 240
-    assert plate.getpixel((112 + 80, 112))[3] < plate.getpixel((112 + 40, 112))[3]   # falls off outward
+    s = SIZES["plate"]
+    c, ring = s // 2, s // 4
+    assert plate.size == (s, s) and s == 152
+    r, g, b, a = plate.getpixel((c, c))
+    assert max(r, g, b) <= 10 and a >= 240                      # the disc cuts out the city
+    r, g, b, a = plate.getpixel((c + ring, c))                  # the ring: 70 % white over the disc -> ~70 % grey
+    assert 175 <= min(r, g, b) and max(r, g, b) <= 220 and a >= 240
+    r, g, b, a = plate.getpixel((c + ring + 4, c))              # just outside: the glow lifts the dark falloff
+    assert max(r, g, b) >= 25 and a < 240
+    r, g, b, _ = plate.getpixel((c + ring - 4, c))              # just inside: a faint inner glow, then near black
+    assert 25 < max(r, g, b) < 120
+    assert max(plate.getpixel((c + ring - 12, c))[:3]) <= 12
+    assert plate.getpixel((c + ring + 20, c))[3] < plate.getpixel((c + ring - 10, c))[3]   # falls off outward
     assert plate.getpixel((0, 0))[3] == 0
+
+
+def test_chip_sel_is_proportional_to_chip():
+    assert SIZES["chip_sel"] == 92 and SIZES["chip"] == 72
 
 
 def test_chip_dark_fill_white_edge():

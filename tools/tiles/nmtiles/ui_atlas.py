@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 SS = 4  # supersampling factor
 SIZES = {
-    "plate": 224, "chip": 72, "chip_sel": 136,
+    "plate": 152, "chip": 72, "chip_sel": 92,
     "ring": 216, "player": 112,
     "bracket_tl": 110, "bracket_tr": 110, "bracket_bl": 110, "bracket_br": 110,
     "icon_quest": 48, "icon_gig": 48, "icon_vendor": 48, "icon_ft": 48, "icon_undisc": 48, "icon_dot": 24,
@@ -17,7 +17,7 @@ SIZES = {
     "icon_c_skill": 64, "icon_strike": 64,
 }
 # hex radius / stroke width per hex part (4K units)
-_HEX = {"chip": (34, 4), "chip_sel": (60, 7)}
+_HEX = {"chip": (34, 4), "chip_sel": (41, 5)}
 _FILL = (41, 41, 41, 235)     # white * 0.16 value, 92% alpha -> tinted dark fill
 _WHITE = (255, 255, 255, 255)
 _DARK = (4, 6, 10)             # near-black plate/chip fill (tint multiplies, so it stays near black)
@@ -62,19 +62,32 @@ def _ring(size: int) -> Image.Image:
     return _glow(_down(img, size), 3)
 
 
+def _over(dst: np.ndarray, rgb: float, alpha: np.ndarray) -> None:
+    """Composites a flat grey layer with per-pixel alpha (0..1) over dst (float RGBA, alpha 0..1), in place."""
+    out_a = alpha + dst[..., 3] * (1.0 - alpha)
+    safe = np.where(out_a > 0, out_a, 1.0)
+    for ch in range(3):
+        dst[..., ch] = (rgb * alpha + dst[..., ch] * dst[..., 3] * (1.0 - alpha)) / safe
+    dst[..., 3] = out_a
+
+
 def _plate(size: int) -> Image.Image:
-    """Dark disc to half the radius, soft falloff to the rim, white 4 px ring at half the radius."""
+    """Spec 5.1, tinted in game with the icon colour: a near-black disc to half the radius that cuts out the city, a
+    dark falloff to the rim, a faint white glow around the ring (the icon's own glow once tinted), and a 4-unit white
+    ring at ~70 %."""
     n = size * SS
     y, x = np.mgrid[0:n, 0:n].astype(np.float32)
-    r = np.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) / (n / 2)          # 0 centre .. 1 rim
-    t = np.clip((r - 0.5) / 0.5, 0.0, 1.0)
-    alpha = 235.0 * (1.0 - t) ** 2
-    ring = (np.abs(r - 0.5) * (n / 2) <= 2 * SS)
+    d = np.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) / SS            # distance from the centre, in units
+    ring_r = size / 4.0
+    t = np.clip((d - ring_r) / (size / 2.0 - ring_r), 0.0, 1.0)
     out = np.zeros((n, n, 4), np.float32)
-    out[..., :3] = _DARK
-    out[..., 3] = alpha
-    out[ring] = (255, 255, 255, 255)
-    img = Image.fromarray(np.rint(out).astype(np.uint8), "RGBA")
+    out[..., :3] = np.array(_DARK, np.float32)
+    out[..., 3] = np.where(d <= ring_r, 245.0, 235.0 * (1.0 - t) ** 2) / 255.0
+    glow = 80.0 / 255.0 * np.exp(-((d - ring_r) / 5.0) ** 2)       # soft, ~5 units each side of the ring
+    _over(out, 255.0, glow)
+    _over(out, 255.0, (np.abs(d - ring_r) <= 2.0).astype(np.float32) * (178.0 / 255.0))
+    out[..., 3] *= 255.0
+    img = Image.fromarray(np.rint(np.clip(out, 0, 255)).astype(np.uint8), "RGBA")
     return _down(img, size)
 
 

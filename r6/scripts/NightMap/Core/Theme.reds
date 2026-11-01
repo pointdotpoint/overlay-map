@@ -42,9 +42,10 @@ public abstract class NMTheme {
         return new HDRColor(1.0, 1.0, 1.0, 1.0);   // ServicePoint, Vehicle, VehicleForPurchase and anything unknown
     }
     public static func ChipSize() -> Float { return 72.0; }       // hex chip (collectibles, our pins)
-    public static func ChipSelSize() -> Float { return 136.0; }
-    // The dark plate behind a vanilla icon (spec 5.1): disc to half its radius, falloff beyond, ring in the icon colour.
-    public static func PlateSize() -> Float { return 224.0; }
+    public static func ChipSelSize() -> Float { return 92.0; }    // selection rim around a hex chip
+    // The dark plate behind a vanilla icon (spec 5.1): disc to half its radius, falloff beyond, ring and a faint glow in
+    // the icon colour. Sized so the ring hugs the visible glyph (~1.3x its radius; mappin art is padded in its 64 box).
+    public static func PlateSize() -> Float { return 152.0; }
     public static func PlateOpacity() -> Float { return 1.0; }    // times the icon's own opacity
     public static func IconSize() -> Float { return 24.0; }       // a hex chip's centre dot
     public static func PlayerSize() -> Float { return 112.0; }
