@@ -43,6 +43,7 @@ public class NMPanel {
     public let overlay: ref<inkCanvas>;
     public let districtTitle: ref<inkText>;   // top-left header: the district
     public let districtSub: ref<inkText>;     // under it: the filter view, hidden on ALL
+    public let headerScrim: ref<inkImage>;    // soft dark backing behind the title, over the markers
     public let warning: ref<inkText>;
     public let questTitle: ref<inkText>;
     public let questObjective: ref<inkText>;
@@ -73,6 +74,7 @@ public class NMPanel {
         area.SetConstrainContentPosition(false);
         area.SetUseInternalMask(true);
         area.SetInteractive(false);
+        area.SetName(n"MapView");
         area.Reparent(p.root);
         p.mapContent = new inkCanvas();
         p.mapContent.SetSize(new Vector2(layout.mapW, layout.mapH));
@@ -84,6 +86,12 @@ public class NMPanel {
         p.holo.AddNoise(p.mapContent);                                                     // over the tiles, under the markers
         p.routes = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);           // GPS routes, under the markers
         p.items = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
+        p.items.SetName(n"Items");
+        // Soft dark scrim behind the district title (over the routes, markers and photo pins, under the player arrow),
+        // clipped by the viewport. It is part of the frame, so it stays with effects off.
+        p.headerScrim = NMUi.HoloImage(p.mapContent, n"holo_halo", -540.0 * s, -240.0 * s, 2000.0 * s, 760.0 * s,
+            NMTheme.HoloBackground(theme), NMTheme.HeaderScrimOpacity(), inkBrushTileType.NoTile);
+        p.headerScrim.SetName(n"HeaderScrim");
         p.holo.AddScan(p.mapContent);                                                      // over the markers, under the overlay
         p.holo.AddBar(p.mapContent);                                                       // over the markers, under the player arrow
         p.overlay = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
@@ -97,10 +105,12 @@ public class NMPanel {
         p.districtTitle = NMUi.Text(p.root, NMTheme.BodyFont(), n"Bold", Cast<Int32>(68.0 * s), NMTheme.HeaderTitle(theme));
         p.districtTitle.SetTranslation(new Vector2(88.0 * s, 80.0 * s));
         p.districtTitle.SetTracking(Cast<Int32>(8.0 * s));
+        p.districtTitle.SetName(n"DistrictTitle");
         p.districtSub = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(32.0 * s), NMTheme.HoloAccent(theme));
         p.districtSub.SetTranslation(new Vector2(90.0 * s, 164.0 * s));
         p.districtSub.SetTracking(Cast<Int32>(6.0 * s));
         p.districtSub.SetVisible(false);
+        p.districtSub.SetName(n"DistrictSub");
 
         // Tracked quest and objective in the bottom-right corner of the map area, right-aligned (until the sidebar
         // tracking block takes them). A vertical panel stacks them from the bottom, so a two-line objective leaves no gap.
@@ -128,6 +138,8 @@ public class NMPanel {
         p.scaleLabel = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Text());
         p.scaleLabel.SetAnchorPoint(new Vector2(0.5, 0.0));
         p.scaleLabel.SetTracking(Cast<Int32>(4.0 * s));
+        p.scaleBar.SetName(n"ScaleBar");
+        p.scaleLabel.SetName(n"ScaleLabel");
         p.SetScaleBar(NMPanel.ScaleBarMax(s));
 
         // Frame outline, edge glow and glowing corner brackets (brightened with HDR gain when effects are on).

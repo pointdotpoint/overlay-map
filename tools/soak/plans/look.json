@@ -67,6 +67,21 @@
     },
     {
      "cmd": "counts"
+    },
+    {
+     "cmd": "zoom 2"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "key": "KP_Divide"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "filter"
     }
    ]
   }

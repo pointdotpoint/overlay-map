@@ -46,6 +46,18 @@ public class NMSelfTest {
         }
     }
 
+    public static func ChildIndex(parent: ref<inkCompoundWidget>, name: CName) -> Int32 {
+        let n = parent.GetNumChildren();
+        let i = 0;
+        while i < n {
+            if Equals(parent.GetWidgetByIndex(i).GetName(), name) {
+                return i;
+            }
+            i += 1;
+        }
+        return -1;
+    }
+
     public func Near(a: Float, b: Float, eps: Float) -> Bool {
         return AbsF(a - b) <= eps;
     }
@@ -509,6 +521,7 @@ public class NMSelfTest {
         let fsizes: array<Vector2> = [new Vector2(3840.0, 2160.0), new Vector2(1920.0, 1080.0)];
         let titleOk = true;
         let barOk = true;
+        let zOk = true;
         let fdetail = "";
         for sz in fsizes {
             let fl = NMPanelLayout.Compute(sz.X, sz.Y);
@@ -525,13 +538,32 @@ public class NMSelfTest {
                 barOk = false;
                 fdetail += "bar " + this.F(right) + "/" + this.F(fl.viewW) + " ";
             }
+            // Z-order: the header and scale bar come after the map viewport under the panel root (so above every
+            // marker, route and photo pin), and the scrim comes after the routes and items inside the viewport.
+            let view = NMSelfTest.ChildIndex(panel.root, n"MapView");
+            let names: array<CName> = [n"DistrictTitle", n"DistrictSub", n"ScaleBar", n"ScaleLabel"];
+            for nm in names {
+                let i = NMSelfTest.ChildIndex(panel.root, nm);
+                if view < 0 || i <= view {
+                    zOk = false;
+                    fdetail += "z " + NameToString(nm) + "=" + ToString(i) + " view=" + ToString(view) + " ";
+                }
+            }
+            let scrim = NMSelfTest.ChildIndex(panel.mapContent, n"HeaderScrim");
+            let items = NMSelfTest.ChildIndex(panel.mapContent, n"Items");
+            if items < 0 || scrim <= items {
+                zOk = false;
+                fdetail += "scrim=" + ToString(scrim) + " items=" + ToString(items) + " ";
+            }
             panel.Destroy();
         }
+        this.Check("layout.header_above_markers", zOk, fdetail);
         this.Check("layout.district_top_left", titleOk, fdetail);
         this.Check("layout.scale_bar_in_view", barOk, fdetail);
         this.Check("settings.panel_opacity_migrates", this.Near(NMTheme.MigratePanelOpacity(0.45), 0.92, 0.0001)
-            && this.Near(NMTheme.MigratePanelOpacity(0.6), 0.6, 0.0001) && this.Near(NMTheme.MigratePanelOpacity(0.92), 0.92, 0.0001),
-            this.F(NMTheme.MigratePanelOpacity(0.45)) + " " + this.F(NMTheme.MigratePanelOpacity(0.6)));
+            && this.Near(NMTheme.MigratePanelOpacity(0.6), 0.6, 0.0001) && this.Near(NMTheme.MigratePanelOpacity(0.92), 0.92, 0.0001)
+            && this.Near(NMTheme.MigratePanelOpacity(0.449), 0.449, 0.0001) && this.Near(NMTheme.MigratePanelOpacity(0.451), 0.451, 0.0001),
+            this.F(NMTheme.MigratePanelOpacity(0.45)) + " " + this.F(NMTheme.MigratePanelOpacity(0.6)) + " " + this.F(NMTheme.MigratePanelOpacity(0.449)) + " " + this.F(NMTheme.MigratePanelOpacity(0.451)));
     }
 
     private func TileCases() {

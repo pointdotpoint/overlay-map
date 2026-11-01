@@ -1167,8 +1167,8 @@ public class NightMapSystem extends ScriptableSystem {
         }
         let filter = this.filterView == 0 ? "" : "FILTER · " + NMVanillaFilters.ViewName(this.filterView);
         if NotEquals(filter, this.hdrFilter) {
+            this.panel.districtSub.SetText(filter);
             this.panel.districtSub.SetVisible(StrLen(filter) > 0);
-            if StrLen(filter) > 0 { this.panel.districtSub.SetText(filter); }
             this.hdrFilter = filter;
         }
         let q = NMQuestHeader.Read(this.GetGameInstance());

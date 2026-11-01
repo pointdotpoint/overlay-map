@@ -5,11 +5,11 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parents[1] / "r6" / "scripts" / "NightMap"
 
 
-def test_panel_opacity_default_is_see_through_and_matches_theme():
+def test_panel_opacity_default_is_nearly_opaque_and_matches_theme():
     settings = (SCRIPTS / "Core" / "Settings.reds").read_text()
     theme = (SCRIPTS / "Core" / "Theme.reds").read_text()
-    assert re.search(r"public let panelOpacity: Float = 0\.45;", settings)
-    assert re.search(r"func DefaultPanelOpacity\(\) -> Float \{ return 0\.45; \}", theme)
+    assert re.search(r"public let panelOpacity: Float = 0\.92;", settings)
+    assert re.search(r"func DefaultPanelOpacity\(\) -> Float \{ return 0\.92; \}", theme)
 
 
 def _block(src: str, field: str) -> str:

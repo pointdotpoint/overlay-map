@@ -86,6 +86,7 @@ public abstract class NMTheme {
         if theme == 1 { return new HDRColor(0.902, 1.0, 0.925, 1.0); }  // #e6ffec
         return new HDRColor(0.902, 0.969, 1.0, 1.0);                     // #e6f7ff
     }
+    public static func HeaderScrimOpacity() -> Float { return 0.6; }   // holo_halo behind the title, map-background tint
     // Corner brackets: the highlight colour; with effects on it gets HDR gain so it reads brighter than the frame.
     public static func BracketColor(theme: Int32, effects: Bool) -> HDRColor {
         let c = NMTheme.HoloHighlight(theme);
@@ -115,7 +116,7 @@ public abstract class NMTheme {
     // The old default (0.45) becomes the new one. The 0.02 slider step from 0.3 can't produce 0.45, so a saved 0.45 is
     // never the player's choice; any other value is kept.
     public static func MigratePanelOpacity(saved: Float) -> Float {
-        return AbsF(saved - 0.45) < 0.001 ? NMTheme.DefaultPanelOpacity() : saved;
+        return AbsF(saved - 0.45) < 0.0005 ? NMTheme.DefaultPanelOpacity() : saved;   // float 0.449 is 0.0009999 away
     }
     // The glow layer draws a level this many steps coarser than the camera's, upscaled (bilinear = soft bloom).
     public static func GlowLevelOffset() -> Int32 { return 2; }
