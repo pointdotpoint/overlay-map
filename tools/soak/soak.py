@@ -26,6 +26,9 @@ from soak.preflight import run_preflight, waive  # noqa: E402
 from soak.runner import Runner  # noqa: E402
 from soak.snapshot import Snapshot, latest_unrestored, prune  # noqa: E402
 
+# Preflight runs once, at a campaign's start. A game still running then is either the last campaign's, already
+# killed and finishing its exit, or one the player started; wait briefly for the first, never minutes for the second.
+CLOSING_WAIT = 30.0
 CLOUD_HELP = "waive the Steam Cloud check (the bootstrap blocks fast travel's autosave)"
 DESKTOP_HELP = "drive the game on the desktop (takes focus; the PC can't be used) instead of headless gamescope"
 
@@ -48,7 +51,7 @@ def main(argv: list[str]) -> int:
     paths = default_paths()
     game = GameControl(gamescope=None if getattr(args, "desktop", False) else paths.wrapper_state, lock=paths.lock)
     waived = {"steam cloud off"} if getattr(args, "allow_cloud", False) else set()
-    preflight = lambda *a, **k: waive(run_preflight(*a, **{"closing_wait": 600.0, **k}), waived)  # noqa: E731
+    preflight = lambda *a, **k: waive(run_preflight(*a, **{"closing_wait": CLOSING_WAIT, **k}), waived)  # noqa: E731
 
     if args.cmd == "preflight":
         lock = DeployLock(paths.lock)

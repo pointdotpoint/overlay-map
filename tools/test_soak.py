@@ -360,3 +360,9 @@ def test_ported_supervisor_tests(script):
     env = dict(os.environ, PYTHONPATH=str(TOOLS))
     r = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, timeout=120, env=env)
     assert r.returncode == 0 and "RESULT: PASS" in r.stdout, r.stdout[-800:] + r.stderr[-1500:]
+
+
+def test_cli_waits_briefly_for_a_running_game():
+    """A player's open game must fail preflight in seconds, not after a ten-minute wait."""
+    import soak.soak as cli
+    assert cli.CLOSING_WAIT <= 60.0

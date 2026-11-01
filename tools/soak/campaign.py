@@ -1,5 +1,6 @@
 """A campaign: lock, preflight, snapshot, then for each run: verify the install, stage, install,
-reset data, run, check saves, collect. Always: release keys, kill the game, restore, unlock, report."""
+reset data, run, check saves, collect. Always: release keys, kill the game it launched (never one already
+running when it started), restore, unlock, report."""
 from __future__ import annotations
 
 import dataclasses
@@ -57,10 +58,12 @@ def run_campaign(plan: dict, save: str, paths: Paths, game, *, runner, lock, pre
     restored = True
     lock.acquire(f"nightmap soak campaign {name}")
     snapshot = Snapshot(paths, name)
+    owns_game = False   # a game running before preflight passed is the player's: never kill it
     try:
         failed = [c for c in preflight(paths, save, game, lock_free=True) if not c.ok]
         if failed:
             raise CampaignStop("preflight failed: " + "; ".join(f"{c.name} ({c.detail})" for c in failed))
+        owns_game = True    # preflight saw no game, so any game from here on is one this campaign launched
         snapshot.take()
         infra_streak = 0
         for spec, k in run_order(plan):
@@ -104,7 +107,7 @@ def run_campaign(plan: dict, save: str, paths: Paths, game, *, runner, lock, pre
         stopped = str(e)
     finally:
         game.release_all()
-        if game.running() or (hasattr(game, "session_alive") and game.session_alive()):
+        if owns_game and (game.running() or (hasattr(game, "session_alive") and game.session_alive())):
             game.kill()
         if snapshot.journal.get("taken"):
             restored = snapshot.restore()
