@@ -442,6 +442,33 @@ public class NMSelfTest {
         t.Reset();
         let r0 = t.PanVector();
         this.Check("pad.reset_clears_axes", t.ZoomRate() == 0.0 && r0.X == 0.0 && r0.Y == 0.0, "");
+        // Held buttons: counted by press and release, axes excluded, repeated presses counted once.
+        let hc = new NMPad();
+        hc.Button(B, press, 0.0, true, true, true, false, true);
+        hc.Button(B, press, 0.0, true, true, true, false, true);
+        hc.Button(VIEW, press, 0.0, true, true, true, true, true);
+        hc.Button(EInputKey.IK_Pad_LeftAxisX, press, 0.0, true, true, true, false, true);
+        let two = hc.HeldCount();
+        hc.Button(B, release, 0.0, false, false, false, false, true);
+        let one = hc.HeldCount();
+        hc.Button(VIEW, release, 0.0, false, false, false, true, true);
+        this.Check("pad.held_count", two == 2 && one == 1 && hc.HeldCount() == 0, IntToString(two) + "," + IntToString(one));
+        // After opening: a stick or trigger still held from gameplay doesn't move the map until let go once.
+        let g = new NMPad();
+        g.Axis(EInputKey.IK_Pad_LeftAxisY, 1.0);
+        g.Axis(EInputKey.IK_Pad_RightTrigger, 1.0);
+        g.ClearAxes();
+        g.Axis(EInputKey.IK_Pad_LeftAxisY, 1.0);
+        g.Axis(EInputKey.IK_Pad_RightTrigger, 1.0);
+        let gHeld = g.PanVector();
+        let zHeld = g.ZoomRate();
+        g.Axis(EInputKey.IK_Pad_LeftAxisY, 0.0);
+        g.Axis(EInputKey.IK_Pad_RightTrigger, 0.0);
+        g.Axis(EInputKey.IK_Pad_LeftAxisY, 1.0);
+        g.Axis(EInputKey.IK_Pad_RightTrigger, 1.0);
+        let gAfter = g.PanVector();
+        this.Check("pad.gate_after_open", gHeld.Y == 0.0 && zHeld == 0.0 && this.Near(gAfter.Y, -1.0, 0.001) && this.Near(g.ZoomRate(), 1.0, 0.001),
+            this.F(gHeld.Y) + "," + this.F(zHeld) + "," + this.F(gAfter.Y));
         // Hint copy.
         this.Check("pad.hint_text", Equals(NMPad.HintText("ALL", "TELEPORT", true, false),
             "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT   ·   X TELEPORT   ·   Y FILTER: ALL   ·   B CLOSE"), NMPad.HintText("ALL", "TELEPORT", true, false));

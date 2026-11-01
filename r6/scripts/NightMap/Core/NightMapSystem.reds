@@ -240,7 +240,7 @@ public class NightMapSystem extends ScriptableSystem {
             return;
         }
         let key = evt.GetKey();
-        if NMPad.IsPad(key) && Equals(s.padOpen, NightMapPadOpen.HoldView) {
+        if NMPad.IsPad(key) && (Equals(s.padOpen, NightMapPadOpen.HoldView) || this.padOwned || this.padCtx) {
             this.OnPadButton(s, key, evt.GetAction());
             return;
         }
@@ -268,14 +268,13 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private func OnPadButton(s: ref<NightMapSettings>, key: EInputKey, action: EInputAction) {
-        if !this.isOpen && this.padReleaseWait && Equals(action, EInputAction.IACT_Release) {
+        this.pad.Button(key, action, NMClock.NowMs(), this.isOpen, this.padFromPad, this.padOwned, s.holdToShow, true);
+        if !this.isOpen && this.padReleaseWait && this.pad.HeldCount() == 0 {
             this.padReleaseWait = false;
             this.SchedulePadRelease(0.1);
         }
-        this.pad.Button(key, action, NMClock.NowMs(), this.isOpen, this.padFromPad, this.padOwned, s.holdToShow, true);
         if this.pad.close {
             this.pad.close = false;
-            this.padReleaseWait = Equals(action, EInputAction.IACT_Press);
             this.Close();
             return;
         }
@@ -348,6 +347,7 @@ public class NightMapSystem extends ScriptableSystem {
         }
         this.padCtx = false;
         this.padReleaseWait = false;
+        this.pad.ClearHeld();
         GameInstance.GetUISystem(this.GetGameInstance()).PopGameContext(UIGameContext.ModalPopup);
     }
 
@@ -657,7 +657,9 @@ public class NightMapSystem extends ScriptableSystem {
         this.padFromPad = false;
         if this.padOwned {
             this.padOwned = false;
-            // Closed by a pad button: wait for its release (OnPadButton), with a fallback; else release shortly.
+            // Pad buttons still down (B, View, X that closed it): wait for their release (OnPadButton), with a
+            // fallback in case a release never arrives; else release shortly.
+            this.padReleaseWait = this.pad.HeldCount() > 0;
             this.SchedulePadRelease(this.padReleaseWait ? 1.5 : 0.1);
         }
         this.OnClosing();

@@ -19,6 +19,9 @@ public class NMPad {
     private let viewDown: Bool;
     private let viewDownMs: Float;
     private let holdFired: Bool;
+    private let held: array<EInputKey>;      // pad buttons currently down (EnumInt), axes excluded
+    private let stickGated: Bool;        // after ClearAxes: the stick pans only once it has been back at rest
+    private let triggerGated: Bool;
 
     public static func HoldMs() -> Float = 500.0
     public static func CooldownFrames() -> Int32 = 8
@@ -44,6 +47,7 @@ public class NMPad {
         if !pressed && !released {
             return false;
         }
+        this.TrackHeld(key, pressed);
         if Equals(key, EInputKey.IK_Pad_LeftTrigger) {
             this.lt = pressed ? 1.0 : 0.0;
             return owned;
@@ -86,12 +90,47 @@ public class NMPad {
         return true;
     }
 
+    private func TrackHeld(key: EInputKey, pressed: Bool) {
+        if EnumInt(key) > EnumInt(EInputKey.IK_Pad_RightTrigger) {
+            return;   // axes
+        }
+        let i = -1;
+        let j = 0;
+        while j < ArraySize(this.held) {
+            if Equals(this.held[j], key) { i = j; }
+            j += 1;
+        }
+        if pressed && i < 0 {
+            ArrayPush(this.held, key);
+        } else if !pressed && i >= 0 {
+            ArrayErase(this.held, i);
+        }
+    }
+
+    // Pad buttons still down: the game gets the pad back only once this is 0, so no release reaches it.
+    public func HeldCount() -> Int32 {
+        return ArraySize(this.held);
+    }
+
+    public func ClearHeld() {
+        ArrayClear(this.held);
+    }
+
     // Sticks and triggers (game convention: stick up is positive).
     public func Axis(key: EInputKey, value: Float) {
-        if Equals(key, EInputKey.IK_Pad_LeftAxisX) { this.lx = value; return; }
-        if Equals(key, EInputKey.IK_Pad_LeftAxisY) { this.ly = value; return; }
-        if Equals(key, EInputKey.IK_Pad_LeftTrigger) { this.lt = value; return; }
-        if Equals(key, EInputKey.IK_Pad_RightTrigger) { this.rt = value; }
+        if Equals(key, EInputKey.IK_Pad_LeftAxisX) || Equals(key, EInputKey.IK_Pad_LeftAxisY) {
+            if Equals(key, EInputKey.IK_Pad_LeftAxisX) { this.lx = value; } else { this.ly = value; }
+            if this.stickGated && SqrtF(this.lx * this.lx + this.ly * this.ly) < NMPad.StickDeadzone() {
+                this.stickGated = false;
+            }
+            return;
+        }
+        if Equals(key, EInputKey.IK_Pad_LeftTrigger) || Equals(key, EInputKey.IK_Pad_RightTrigger) {
+            if Equals(key, EInputKey.IK_Pad_LeftTrigger) { this.lt = value; } else { this.rt = value; }
+            if this.triggerGated && this.lt < NMPad.TriggerDeadzone() && this.rt < NMPad.TriggerDeadzone() {
+                this.triggerGated = false;
+            }
+        }
     }
 
     // True once when View has been held for HoldMs: open the map while it is closed, or close a pass-through map.
@@ -111,12 +150,15 @@ public class NMPad {
         return this.viewDown && !this.holdFired;
     }
 
-    // Sticks and triggers back to rest (the map opened or closed; a stick held for walking must not pan).
+    // The map opened or closed: a stick held for walking, or a trigger held for driving, must not move the map
+    // until it has been let go once. Values keep arriving every frame while held, so this is a gate, not a reset.
     public func ClearAxes() {
         this.lx = 0.0;
         this.ly = 0.0;
         this.lt = 0.0;
         this.rt = 0.0;
+        this.stickGated = true;
+        this.triggerGated = true;
     }
 
     // View is down: its release may still matter (Hold to show).
@@ -128,7 +170,7 @@ public class NMPad {
     public func PanVector() -> Vector2 {
         let mag = SqrtF(this.lx * this.lx + this.ly * this.ly);
         let dz = NMPad.StickDeadzone();
-        if mag < dz {
+        if mag < dz || this.stickGated {
             return new Vector2(0.0, 0.0);
         }
         let m = MinF(1.0, (mag - dz) / (1.0 - dz));
@@ -138,6 +180,9 @@ public class NMPad {
 
     // -1..1: positive zooms in (RT), negative out (LT).
     public func ZoomRate() -> Float {
+        if this.triggerGated {
+            return 0.0;
+        }
         return NMPad.TriggerCurve(this.rt) - NMPad.TriggerCurve(this.lt);
     }
 
