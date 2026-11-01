@@ -22,10 +22,7 @@ public abstract class NMTheme {
     public static func MappinAtlas() -> ResRef { return r"base\\gameplay\\gui\\common\\icons\\mappin_icons.inkatlas"; }
     public static func MinimapAtlas() -> ResRef { return r"base\\gameplay\\gui\\widgets\\minimap\\atlas_minimap.inkatlas"; }
     public static func DotSize() -> Float { return 32.0; }                // police dots (4K units)
-    public static func ShadowAtlas() -> ResRef { return r"base\\gameplay\\gui\\common\\shadow_blobs.inkatlas"; }
     public static func VanillaIconSize() -> Float { return 64.0; }        // 4K units, as the vanilla world map
-    public static func VanillaShadowSize() -> Float { return 180.0; }     // soft blob under the icon; tune at checkpoint 4
-    public static func VanillaShadowOpacity() -> Float { return 0.8; }
     public static func VanillaIdleOpacity() -> Float { return 0.5; }      // vanilla Mappin state opacity
     public static func VanillaEmphScale() -> Float { return 1.3; }        // vanilla OnSelect end scale
     public static func VanillaGrowMs() -> Float { return 150.0; }
@@ -44,10 +41,12 @@ public abstract class NMTheme {
         if Equals(state, n"Prevention_LightBlue") { return new HDRColor(0.369, 0.965, 1.0, 1.0); }   // MainColors.Blue #5EF6FF
         return new HDRColor(1.0, 1.0, 1.0, 1.0);   // ServicePoint, Vehicle, VehicleForPurchase and anything unknown
     }
-    public static func ShadowColor() -> HDRColor { return new HDRColor(0.0, 0.0, 0.0, 1.0); }
-    public static func ChipSize() -> Float { return 112.0; }
+    public static func ChipSize() -> Float { return 72.0; }       // hex chip (collectibles, our pins)
     public static func ChipSelSize() -> Float { return 136.0; }
-    public static func IconSize() -> Float { return 48.0; }
+    // The dark plate behind a vanilla icon (spec 5.1): disc to half its radius, falloff beyond, ring in the icon colour.
+    public static func PlateSize() -> Float { return 224.0; }
+    public static func PlateOpacity() -> Float { return 1.0; }    // times the icon's own opacity
+    public static func IconSize() -> Float { return 24.0; }       // a hex chip's centre dot
     public static func PlayerSize() -> Float { return 112.0; }
     public static func BracketSize() -> Float { return 110.0; }
 
@@ -88,6 +87,11 @@ public abstract class NMTheme {
         let g = NMTheme.HoloBracketGain();
         return new HDRColor(c.Red * g, c.Green * g, c.Blue * g, 1.0);
     }
+    // Reticle brackets: light #d8f4ff (spec 5.2), mirrored in green.
+    public static func ReticleColor(theme: Int32) -> HDRColor {
+        if theme == 1 { return new HDRColor(0.847, 1.0, 0.894, 1.0); }  // #d8ffe4
+        return new HDRColor(0.847, 0.957, 1.0, 1.0);                     // #d8f4ff
+    }
     public static func HoloScanColor() -> HDRColor { return new HDRColor(0.0, 0.0, 0.0, 1.0); }
     public static func HoloGridOpacity() -> Float { return 0.08; }
     public static func HoloScanOpacity() -> Float { return 0.14; }
@@ -98,8 +102,6 @@ public abstract class NMTheme {
     public static func HoloBarOpacity() -> Float { return 0.12; }
     public static func HoloEdgeOpacity() -> Float { return 0.6; }
     public static func HoloBracketGain() -> Float { return 1.25; }   // brackets brighten with HDR gain (bloom not verified)
-    public static func HaloOpacity() -> Float { return 0.35; }       // marker halo in the pin's own colour (effects on)
-    public static func HaloSize() -> Float { return 200.0; }
     public static func ScanPeriod() -> Float { return 4.0; }          // holo_scan line spacing in 4K units
     public static func DefaultPanelOpacity() -> Float { return 0.45; }   // see-through; keep equal to NightMapSettings.panelOpacity
     // The glow layer draws a level this many steps coarser than the camera's, upscaled (bilinear = soft bloom).

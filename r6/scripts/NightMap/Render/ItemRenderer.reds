@@ -83,7 +83,6 @@ public class NMItemRenderer {
     private let sRing: array<Int32>;
     private let sStart: array<Int32>;
     private let sOrd: array<Int32>;
-    private let halo: Bool;       // effects on: icon pins get a soft halo in their own colour instead of the dark shadow blob
     public let forceScan: Bool;   // test hook: bypass the occupied-cell lists (reference behaviour: the full ring scan)
     private let icon: ref<NMIconRef>;
     private let lastCamRev: Int32;
@@ -351,14 +350,15 @@ public class NMItemRenderer {
     // Layers up to this many items are scanned item by item; larger ones cell by cell, nearest first.
     public static func ScanAllMax() -> Int32 { return 64; }
 
-    // Layer indices by priority, highest first (highest gets the topmost chip slots).
+    // Layer indices by effective tier (Always, Major, Minor), then priority, highest first. The first placed get the
+    // topmost chip slots, and a big Minor layer can't spend the chip budget before fast travel and quests.
     private func LayerOrder() -> array<Int32> {
         let order: array<Int32>;
         let i = 0;
         while i < ArraySize(this.api.layers) {
             let j = ArraySize(order);
             ArrayPush(order, i);
-            while j > 0 && this.api.layers[order[j - 1]].priority < this.api.layers[i].priority {
+            while j > 0 && NMItemRenderer.PlacesAfter(this.api.layers[order[j - 1]], this.api.layers[i]) {
                 order[j] = order[j - 1];
                 j -= 1;
             }
@@ -366,6 +366,14 @@ public class NMItemRenderer {
             i += 1;
         }
         return order;
+    }
+
+    // True when layer a is placed after layer b: a lower tier (higher EffectiveTier), or the same tier and a lower priority.
+    public static func PlacesAfter(a: ref<NightMapLayer>, b: ref<NightMapLayer>) -> Bool {
+        let ta = a.EffectiveTier();
+        let tb = b.EffectiveTier();
+        if ta != tb { return ta > tb; }
+        return a.priority < b.priority;
     }
 
     // [gx0, gy0, gx1, gy1] of cells at a level intersecting the view plus a margin.
@@ -543,17 +551,17 @@ public class NMItemRenderer {
         ic.key = "dot";
     }
 
-    // Set once right after Create (before the first Update): the per-slot style, size, tint and opacity caches below
-    // already carry the halo, so there is no per-frame work.
-    public func SetHalo(on: Bool) { this.halo = on; }
-    public func HaloOn() -> Bool { return this.halo; }
-
-    // Opacity factor of the blob behind an icon pin: the halo (own colour) or the vanilla dark shadow.
-    private func BlobOpacity() -> Float {
-        return this.halo ? NMTheme.HaloOpacity() : NMTheme.VanillaShadowOpacity();
+    // Tier scale of the slot a candidate drew into (1 for photo pins, which scale their own widgets, or no candidate).
+    public func CandScale(cand: Int32) -> Float {
+        if cand < 0 || cand >= ArraySize(this.candSlot) { return 1.0; }
+        return this.chipK[this.candSlot[cand]];
     }
 
-    // Switches a pooled chip between the hologram hex (0) and the vanilla icon look (1 idle, 2 emphasised).
+    // No-op: icon pins sit on the same dark plate with effects on and off (spec 2026-11-01 section 5.1).
+    public func SetHalo(on: Bool) {}
+
+    // Switches a pooled chip between the hex chip (0: collectibles, our pins) and the vanilla icon on its plate
+    // (1 idle, 2 emphasised). The plate is a dark disc with a white ring, tinted with the icon colour in PlaceChip.
     private func ApplyChipStyle(slot: Int32, style: Int32) {
         let bg = this.chipBg[slot];
         let ic = this.chipIcon[slot];
@@ -579,15 +587,9 @@ public class NMItemRenderer {
             ic.SetSize(new Vector2(NMTheme.IconSize() * this.scale, NMTheme.IconSize() * this.scale));
         } else {
             let k = style == 2 ? NMTheme.VanillaEmphScale() : 1.0;
-            let blob = this.halo ? NMTheme.HaloSize() : NMTheme.VanillaShadowSize();
-            if this.halo {
-                bg.SetAtlasResource(NMTheme.HoloAtlas());
-                bg.SetTexturePart(n"holo_halo");
-            } else {
-                bg.SetAtlasResource(NMTheme.ShadowAtlas());
-                bg.SetTexturePart(n"shadowBlobSquare_big");
-            }
-            bg.SetSize(new Vector2(blob * k * this.scale, blob * k * this.scale));
+            bg.SetAtlasResource(NMTheme.UiAtlas());
+            bg.SetTexturePart(n"plate");
+            bg.SetSize(new Vector2(NMTheme.PlateSize() * k * this.scale, NMTheme.PlateSize() * k * this.scale));
             ic.SetSize(new Vector2(NMTheme.VanillaIconSize() * k * this.scale, NMTheme.VanillaIconSize() * k * this.scale));
         }
         bg.SetScale(new Vector2(1.0, 1.0));
@@ -599,7 +601,8 @@ public class NMItemRenderer {
         this.chipStyle[slot] = style;
     }
 
-    // Shows or hides the slot's scratch; it copies the icon's size, scale and opacity, so call it after those are set.
+    // Shows or hides the slot's scratch; it copies the icon's size, scale and opacity (on a hex chip, the chip's, so the
+    // scratch crosses the whole chip), so call it after those are set.
     private func SetStrike(slot: Int32, on: Bool, style: Int32, p: Vector2, tint: HDRColor) {
         if !on {
             if this.strikeOn[slot] {
@@ -612,7 +615,7 @@ public class NMItemRenderer {
             this.chipStrike[slot] = NMUi.Image(this.parent, n"icon_strike", 0.0, 0.0, NMTheme.VanillaIconSize() * this.scale, tint, true);
         }
         let st = this.chipStrike[slot];
-        let ic = this.chipIcon[slot];
+        let ic = style == 0 ? this.chipBg[slot] : this.chipIcon[slot];
         st.SetSize(ic.GetSize());
         st.SetScale(ic.GetScale());
         st.SetOpacity(ic.GetOpacity());
@@ -638,7 +641,7 @@ public class NMItemRenderer {
             this.chipStrike[slot].SetScale(new Vector2(k, k));
             this.chipStrike[slot].SetOpacity(o);
         }
-        this.chipBg[slot].SetOpacity(o * this.BlobOpacity());
+        this.chipBg[slot].SetOpacity(full * NMTheme.PlateOpacity());   // the plate is never idle-dimmed
     }
 
     // Called every frame after the pick. Icon pins have no selection rim; an idle icon pin grows to the
@@ -739,7 +742,7 @@ public class NMItemRenderer {
             return true;
         }
         let icTint = L.hasTint[id] ? L.tint[id] : color;
-        let bgTint = style == 0 ? color : (this.halo ? icTint : NMTheme.ShadowColor());
+        let bgTint = style == 0 ? color : icTint;   // hex: the category colour; plate: its ring takes the icon colour
         if !this.chipTintOk[slot] || !NMItemRenderer.SameColor(this.chipTintBg[slot], bgTint) {
             bg.SetTintColor(bgTint);
             this.chipTintBg[slot] = bgTint;
@@ -770,12 +773,11 @@ public class NMItemRenderer {
                 ic.SetScale(new Vector2(k, k));
             }
         }
-        let a = L.opacity * L.alpha[id] * this.curFade;
-        if style == 1 {
-            a *= NMTheme.VanillaIdleOpacity();
-        }
+        let item = L.opacity * L.alpha[id] * this.curFade;
+        let a = style == 1 ? item * NMTheme.VanillaIdleOpacity() : item;
         if this.chipAlpha[slot] != a {
-            bg.SetOpacity(style == 0 ? a : a * this.BlobOpacity());
+            // The idle dim is the icon's only (spec 5.1): the plate keeps the item's alpha so its disc cuts out the city.
+            bg.SetOpacity(style == 0 ? a : item * NMTheme.PlateOpacity());
             ic.SetOpacity(a);
             this.chipAlpha[slot] = a;
             if slot == this.growSlot {

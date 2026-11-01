@@ -82,7 +82,9 @@ public class NMCrosshair {
         this.selY = y;
         r.selChip.SetVisible(kind == 0);
         if kind == 0 {
+            let k = r.CandScale(idx);   // the rim shrinks with the pin's tier scale
             r.selChip.SetTranslation(new Vector2(x, y));
+            r.selChip.SetScale(new Vector2(k, k));
         }
         return changed;
     }

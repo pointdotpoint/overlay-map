@@ -5,6 +5,7 @@ public abstract class NMVanillaTests {
     public static func Run(t: ref<NMSelfTest>) {
         NMVanillaTests.PinApiCases(t);
         NMVanillaTests.IconStyleCases(t);
+        NMVanillaTests.PlateCases(t);
         NMVanillaTests.StyleCases(t);
         NMVanillaTests.DiffCases(t);
         NMVanillaTests.LiveCases(t);
@@ -135,6 +136,32 @@ public abstract class NMVanillaTests {
         let sa2 = NMVanillaTests.SlotOf(r, L.index, a);
         let sizeA2 = r.chipBg[sa2].GetSize();
         t.Check("icons.style_switch_resets_size", r.chipStyle[sa2] == 0 && t.Near(sizeA2.X, NMTheme.ChipSize(), 0.01), t.F(sizeA2.X));
+    }
+
+    // The plate follows the icon: an emphasised pin's plate is PlateSize x emphasis x tier scale x HUD scale across.
+    private static func PlateCases(t: ref<NMSelfTest>) {
+        let api = NMVanillaTests.TestApi();
+        let L = api.CreateLayer(n"test.plate.emph", "Plate", 5);
+        L.SetPinStyle(NightMapPinStyle.Icon);
+        L.SetTier(NightMapTier.Major);
+        let b = L.Add(NightMapItem.Create(new Vector4(0.0, 0.0, 0.0, 1.0), n"v", NMTheme.MappinAtlas(), n"quest").WithEmphasis(true));
+        let hud = 0.5;
+        let r = NMItemRenderer.Create(api, new inkCanvas(), hud);
+        let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
+        cam.SetCenter(0.0, 0.0);
+        cam.SetMpp(4.0);
+        r.Update(cam, 1880.0, 1480.0);
+        let s = NMVanillaTests.SlotOf(r, L.index, b);
+        if s < 0 {
+            t.Check("plate.scales_with_emphasis", false, "not placed");
+            return;
+        }
+        let k = NMTiers.Scale(1, 4.0);
+        let size: Vector2 = r.chipBg[s].GetSize();
+        let sc: Vector2 = r.chipBg[s].GetScale();
+        let want = NMTheme.PlateSize() * NMTheme.VanillaEmphScale() * k * hud;
+        t.Check("plate.scales_with_emphasis", r.chipStyle[s] == 2 && k < 1.0 && Equals(r.chipBg[s].GetTexturePart(), n"plate") && t.Near(size.X * sc.X, want, 0.05),
+            t.F(size.X) + " x " + t.F(sc.X) + " want " + t.F(want));
     }
 
     private static func StyleCases(t: ref<NMSelfTest>) {

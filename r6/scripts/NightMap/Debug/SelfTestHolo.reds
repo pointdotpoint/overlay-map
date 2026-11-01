@@ -148,11 +148,61 @@ public abstract class NMHoloTests {
     }
 
     private static func RendererCases(t: ref<NMSelfTest>) {
-        let api = NightMap.Create();
+        NMHoloTests.PlateCase(t, true, "plate.effects_on");
+        NMHoloTests.PlateCase(t, false, "plate.effects_off");
+        // Player arrow in the vanilla player colour; reticle brackets in the light bracket colour, green mirrored.
         let canvas = new inkCanvas();
-        let r = NMItemRenderer.Create(api, canvas, 1.0);
-        t.Check("holo.halo_default_off", !r.HaloOn(), "");
-        r.SetHalo(true);
-        t.Check("holo.halo_on", r.HaloOn() && t.Near(NMTheme.HaloOpacity(), 0.35, 0.0001), "");
+        let mk = NMPlayerMarker.Create(canvas, 1.0, true, 0);
+        let pc: HDRColor = mk.ArrowTint();
+        t.Check("player.tint", NMHoloTests.SameRgb(pc, NMTheme.VanillaStateColor(n"Player")), t.F(pc.Red) + "," + t.F(pc.Green) + "," + t.F(pc.Blue));
+        let rc: HDRColor = NMTheme.ReticleColor(0);
+        let rg: HDRColor = NMTheme.ReticleColor(1);
+        let ret = NMReticle.Create(canvas, 1.0, 0);
+        ret.Update(100.0, 100.0, true, 120.0, 110.0, false, 1.0, 1.0, 16.0);
+        let lc: HDRColor = ret.LegColor();
+        t.Check("reticle.tint", NMHoloTests.SameRgb(lc, rc) && t.Near(rc.Red, 0.847, 0.002) && t.Near(rc.Green, 0.957, 0.002) && t.Near(rc.Blue, 1.0, 0.002)
+            && rg.Green > rg.Blue && rg.Green > rg.Red, t.F(lc.Red) + "," + t.F(lc.Green) + "," + t.F(lc.Blue));
+    }
+
+    public static func SameRgb(a: HDRColor, b: HDRColor) -> Bool {
+        return AbsF(a.Red - b.Red) < 0.002 && AbsF(a.Green - b.Green) < 0.002 && AbsF(a.Blue - b.Blue) < 0.002;
+    }
+
+    // Icon-style pins sit on the dark plate with the ring in the icon's own colour, with effects on and off alike.
+    private static func PlateCase(t: ref<NMSelfTest>, effects: Bool, name: String) {
+        let api = NMVanillaTests.TestApi();
+        let L = api.CreateLayer(n"test.plate", "Plate", 5);
+        L.SetPinStyle(NightMapPinStyle.Icon);
+        let ft = NMTheme.VanillaStateColor(n"FastTravel");
+        L.Add(NightMapItem.Create(new Vector4(-1800.0, 150.0, 0.0, 1.0), n"v", NMTheme.MappinAtlas(), n"fast_travel").WithTint(ft));
+        let r = NMItemRenderer.Create(api, new inkCanvas(), 1.0);
+        r.SetHalo(effects);
+        let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
+        cam.SetCenter(-1800.0, 150.0);
+        cam.SetMpp(0.5);
+        r.Update(cam, 1880.0, 1480.0);
+        if ArraySize(r.candSlot) != 1 {
+            t.Check(name, false, "placed " + ToString(ArraySize(r.candSlot)));
+            return;
+        }
+        let s = r.candSlot[0];
+        let bg = r.chipBg[s];
+        let tint: HDRColor = bg.GetTintColor();
+        let size: Vector2 = bg.GetSize();
+        let part = bg.GetTexturePart();
+        t.Check(name, Equals(part, n"plate") && NMHoloTests.SameRgb(tint, ft) && bg.IsVisible() && t.Near(size.X, NMTheme.PlateSize(), 0.01)
+            // The idle 50 % dims the icon only: the plate keeps the item's own alpha so its disc still cuts out the city.
+            && t.Near(r.chipIcon[s].GetOpacity(), NMTheme.VanillaIdleOpacity(), 0.001) && t.Near(bg.GetOpacity(), 1.0 * NMTheme.PlateOpacity(), 0.001)
+            && t.Near(NMTheme.PlateSize(), 224.0, 0.001)
+            && t.Near(NMTheme.PlateOpacity(), 1.0, 0.001),
+            NameToString(part) + " " + t.F(tint.Red) + "," + t.F(tint.Green) + "," + t.F(tint.Blue) + " size " + t.F(size.X) + " op " + t.F(bg.GetOpacity()));
+        if effects {
+            // The selection grow brings the icon to full strength; the plate's opacity stays put.
+            r.ApplySelection(0, 0, NMTheme.VanillaGrowMs() * 0.5);
+            let mid = bg.GetOpacity();
+            r.ApplySelection(0, 0, NMTheme.VanillaGrowMs());
+            t.Check("plate.steady_on_grow", t.Near(mid, NMTheme.PlateOpacity(), 0.001) && t.Near(bg.GetOpacity(), NMTheme.PlateOpacity(), 0.001)
+                && t.Near(r.chipIcon[s].GetOpacity(), 1.0, 0.001), t.F(mid) + " " + t.F(bg.GetOpacity()));
+        }
     }
 }

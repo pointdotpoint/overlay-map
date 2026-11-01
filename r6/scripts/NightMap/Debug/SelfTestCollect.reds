@@ -8,6 +8,7 @@ public abstract class NMCollectTests {
         NMCollectTests.GameCases(t);
         NMCollectTests.SyncCases(t);
         NMCollectTests.StrikeCases(t);
+        NMCollectTests.ChipCases(t);
         NMCollectTests.PoliceDotCases(t);
     }
 
@@ -142,7 +143,7 @@ public abstract class NMCollectTests {
             i += 1;
         }
         t.Check("collect.seen_struck", c.spots[ws].collected && struck >= 1 && faded, ToString(struck));
-        t.Check("collect.icon_style", W.pinStyle == 1 && W.visible, "");
+        t.Check("collect.hex_style", W.pinStyle == 0 && W.visible, ToString(W.pinStyle));
         let full = W.count;
         c.Sync(api, 1, null);
         t.Check("collect.view_hides", !W.visible, "");
@@ -185,6 +186,67 @@ public abstract class NMCollectTests {
         r.Update(cam, 1880.0, 1480.0);
         let sa2 = NMCollectTests.SlotOf(r, L.index, a);
         t.Check("collect.strike_cleared", sa2 >= 0 && !r.strikeOn[sa2], ToString(sa2));
+    }
+
+    // Collectibles draw as small hex chips (spec 5.3): the chip in the category colour with a centre dot; a collected
+    // one keeps its scratch, across the chip, at the chip's opacity.
+    private static func ChipCases(t: ref<NMSelfTest>) {
+        let api = NMCollectTests.TestApi();
+        let c = new NMCollect();
+        c.Refresh(GetGameInstance(), new inkHashMap());
+        c.Sync(api, 0, null);
+        let k = 1;
+        while k < NMCollectCats.Count() {
+            api.GetLayer(NMCollectCats.LayerId(k)).SetVisible(false);
+            k += 1;
+        }
+        let L = api.GetLayer(NMCollectCats.LayerId(0));
+        let id = 0;
+        while id < ArraySize(L.alive) && !L.alive[id] { id += 1; }
+        let r = NMItemRenderer.Create(api, new inkCanvas(), 1.0);
+        let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY()), 0.5, 16.0);
+        if id < ArraySize(L.alive) {
+            cam.SetCenter(L.px[id], L.py[id]);
+        }
+        cam.SetMpp(0.5);
+        r.Update(cam, 1880.0, 1480.0);
+        let s = id < ArraySize(L.alive) ? NMCollectTests.SlotOf(r, L.index, id) : -1;
+        if s < 0 {
+            t.Check("chip.collect_is_hex", false, "not placed, item " + ToString(id));
+        } else {
+            let bsz: Vector2 = r.chipBg[s].GetSize();
+            let isz: Vector2 = r.chipIcon[s].GetSize();
+            let tint: HDRColor = r.chipBg[s].GetTintColor();
+            t.Check("chip.collect_is_hex", L.pinStyle == 0 && r.chipStyle[s] == 0 && Equals(r.chipBg[s].GetTexturePart(), n"chip")
+                && Equals(r.chipIcon[s].GetTexturePart(), n"icon_dot") && t.Near(bsz.X, NMTheme.ChipSize(), 0.01) && t.Near(isz.X, NMTheme.IconSize(), 0.01)
+                && t.Near(NMTheme.ChipSize(), 72.0, 0.001) && t.Near(NMTheme.IconSize(), 24.0, 0.001) && NMHoloTests.SameRgb(tint, NMCollectCats.Color(0)),
+                ToString(L.pinStyle) + " " + ToString(r.chipStyle[s]) + " " + NameToString(r.chipBg[s].GetTexturePart()) + "/" + NameToString(r.chipIcon[s].GetTexturePart())
+                + " " + t.F(bsz.X) + "/" + t.F(isz.X));
+        }
+        // A collected spot on a hex chip: struck, dimmed, the scratch spans the chip at the chip's opacity.
+        let api2 = NMCollectTests.TestApi();
+        let H = api2.CreateLayer(n"Collect.HexTest", "Test", 40);
+        let sp = new NMCollectSpot();
+        sp.cat = 2;
+        sp.pos = new Vector4(-1800.0, 150.0, 0.0, 1.0);
+        sp.collected = true;
+        let a = H.Add(NMCollect.ItemOf(sp));
+        let r2 = NMItemRenderer.Create(api2, new inkCanvas(), 1.0);
+        let cam2 = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
+        cam2.SetCenter(-1800.0, 150.0);
+        cam2.SetMpp(0.5);
+        r2.Update(cam2, 1880.0, 1480.0);
+        let sa = NMCollectTests.SlotOf(r2, H.index, a);
+        if sa < 0 || !r2.strikeOn[sa] {
+            t.Check("chip.struck_on_hex", false, "slot " + ToString(sa));
+        } else {
+            let st = r2.chipStrike[sa];
+            let ssz: Vector2 = st.GetSize();
+            let csz: Vector2 = r2.chipBg[sa].GetSize();
+            t.Check("chip.struck_on_hex", r2.chipStyle[sa] == 0 && st.IsVisible() && t.Near(st.GetOpacity(), r2.chipBg[sa].GetOpacity(), 0.001)
+                && t.Near(r2.chipAlpha[sa], NMCollect.CollectedOpacity(), 0.001) && t.Near(ssz.X, csz.X, 0.01),
+                t.F(st.GetOpacity()) + " vs " + t.F(r2.chipBg[sa].GetOpacity()) + " size " + t.F(ssz.X) + "/" + t.F(csz.X));
+        }
     }
 
     private static func SlotOf(r: ref<NMItemRenderer>, li: Int32, id: Int32) -> Int32 {

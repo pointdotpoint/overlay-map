@@ -328,8 +328,7 @@ def test_stage_build_overlays_the_hooks_and_stamps_the_id(tmp_path):
         "public class NightMapSystem {\n    private func UpdateModules(dt: Float) {\n    }\n}\n\nclass B {\n}\n")
     (repo / "r6/scripts/NightMap/Render").mkdir()
     (repo / "r6/scripts/NightMap/Render/ItemRenderer.reds").write_text(
-        "public class NMItemRenderer {\n            ic.SetAtlasResource(this.icon.atlas);\n"
-        "                        this.miniIcon[mi].SetAtlasResource(this.api.catAtlas[g2]);\n}\n")
+        "public class NMItemRenderer {\n            ic.SetAtlasResource(this.icon.atlas);\n}\n")
     (repo / "archive/pc/mod").mkdir(parents=True)
     (repo / "archive/pc/mod/NightMap.archive").write_bytes(b"z")
     p = Paths(game=tmp_path, user=tmp_path, steam=tmp_path, soak=tmp_path / "soak", wrapper_state=tmp_path, repo=repo)

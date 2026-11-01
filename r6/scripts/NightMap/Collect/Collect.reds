@@ -55,6 +55,7 @@ public abstract class NMCollectCats {
         return n"other";
     }
 
+    // The category glyph (icon_c_*). The map draws every category as a hex chip with a centre dot instead.
     public static func Part(c: Int32) -> CName {
         switch c {
             case 0: return n"icon_c_shard";
@@ -267,9 +268,9 @@ public class NMCollect extends IScriptable {
         while c < NMCollectCats.Count() {
             let L = api.CreateLayer(NMCollectCats.LayerId(c), NMCollectCats.Name(c), 40);
             L.SetTier(NightMapTier.Minor);
-            L.SetPinStyle(NightMapPinStyle.Icon);
+            L.SetPinStyle(NightMapPinStyle.Hex);   // small hex chips with a centre dot (spec 2026-11-01 section 5.3)
             L.SetCategory(NMCollectCats.Category(c), NMCollectCats.Name(c), NMCollectCats.Color(c));
-            api.SetCategoryIcon(NMCollectCats.Category(c), NMTheme.UiAtlas(), NMCollectCats.Part(c));
+            api.SetCategoryIcon(NMCollectCats.Category(c), NMTheme.UiAtlas(), n"icon_dot");
             L.Clear();
             if ArraySize(this.listeners) <= c {
                 let li = new NMCollectListener();
@@ -295,7 +296,7 @@ public class NMCollect extends IScriptable {
     }
 
     public static func ItemOf(sp: ref<NMCollectSpot>) -> ref<NightMapItem> {
-        return NightMapItem.Create(sp.pos, NMCollectCats.Category(sp.cat), NMTheme.UiAtlas(), NMCollectCats.Part(sp.cat))
+        return NightMapItem.Create(sp.pos, NMCollectCats.Category(sp.cat), NMTheme.UiAtlas(), n"icon_dot")
             .WithTint(NMCollectCats.Color(sp.cat))
             .WithStruck(sp.collected)
             .WithOpacity(sp.collected ? NMCollect.CollectedOpacity() : 1.0);

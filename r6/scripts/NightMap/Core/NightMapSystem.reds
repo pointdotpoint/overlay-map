@@ -876,7 +876,6 @@ public class NightMapSystem extends ScriptableSystem {
         let l = this.panel.layout;
         this.layers = NMLayerStack.Create(this.panel.tiles, this.holoTheme, this.holoEffects);
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, l.scale);
-        this.renderer.SetHalo(this.holoEffects);
         this.renderer.SetShotHandler(this.Photos().Handler());
         this.Photos().SyncLayer(this.api, this.PhotosVisible());
         let t0 = NMClock.NowMs();
@@ -1014,10 +1013,11 @@ public class NightMapSystem extends ScriptableSystem {
         let c = this.crosshair;
         let isPhoto = c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers)
             && Equals(this.api.layers[c.selLayer].id, NMPhotos.LayerId());
-        // A photo pin shrinks with its tier as the map zooms out; the reticle box follows the drawn picture.
+        // A pin shrinks with its tier as the map zooms out; the reticle box follows the drawn picture or the slot's scale.
         let photoK = isPhoto ? NMTiers.Scale(this.api.layers[c.selLayer].EffectiveTier(), this.camera.mpp) : 1.0;
+        let pinK = isPhoto ? 1.0 : this.renderer.CandScale(c.sel);
         this.reticle.Update(l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5, c.selKind >= 0, c.selX, c.selY, isPhoto,
-            NMItemRenderer.ThumbZoom(this.camera.mpp) * photoK, dt);
+            NMItemRenderer.ThumbZoom(this.camera.mpp) * photoK, pinK, dt);
         if this.input.act {
             this.input.act = false;
             this.Activate();

@@ -13,12 +13,13 @@ public class NMPlayerMarker {
             m.rings.SetAnchorPoint(new Vector2(0.5, 0.5));
             m.rings.SetVisible(false);
         }
-        m.img = NMUi.Image(parent, n"player", 0.0, 0.0, NMTheme.PlayerSize() * scale, NMTheme.Cyan(), true);
+        m.img = NMUi.Image(parent, n"player", 0.0, 0.0, NMTheme.PlayerSize() * scale, NMTheme.VanillaStateColor(n"Player"), true);
         m.img.SetRenderTransformPivot(new Vector2(0.5, 0.5));
         m.img.SetVisible(false);
         return m;
     }
 
+    public func ArrowTint() -> HDRColor { return this.img.GetTintColor(); }
     public func HasRings() -> Bool { return IsDefined(this.rings); }
     public func RingsTranslation() -> Vector2 { return this.rings.GetTranslation(); }
     public func ArrowTranslation() -> Vector2 { return this.img.GetTranslation(); }
