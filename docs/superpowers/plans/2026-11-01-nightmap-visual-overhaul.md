@@ -189,6 +189,8 @@ vanilla icons on dark plates, a restyled frame, and tiered scale-and-hide in pla
   - `NMTheme.RingsOpacity() = 0.10`
   - `NMTheme.VignetteOpacity() = 0.55`
   - `NMHolo.AddVignette(parent)`: a stretched `holo_vignette` over the tiles, under the routes; effects only.
+  - Scanlines move above the items, under the overlay canvas. The spec puts them over the whole map, markers
+    included. The noise stays where it is, under the markers.
   - `NMPlayerMarker` owns an optional `rings: ref<inkImage>` (`holo_rings`, 1440 4K units across, accent colour),
     moved with the arrow and created only with effects on.
 
@@ -278,8 +280,8 @@ vanilla icons on dark plates, a restyled frame, and tiered scale-and-hide in pla
 - Produces:
   - `NMItemRenderer.Update` places individual pins only.
   - Per layer: `f = NMTiers.Fade(L.EffectiveTier(), cam.mpp)`. If `f <= 0`, skip the layer. Otherwise place it.
-    Large layers use cell ring order (`PlaceCellsOf`, nearest first); small or always-scanned layers use `PlaceAllOf`.
-    The level-0 ring order is always built.
+    Layers with `count <= 64` use `PlaceAllOf`; larger ones use cell ring order (`PlaceCellsOf`, nearest first). The
+    `clustering` flag no longer matters. The level-0 ring order is always built.
   - Placed opacity is multiplied by `f`. Size is multiplied by `NMTiers.Scale(...)` through the existing
     `SetScale` / `SetGrow` path, so emphasis grow composes with the tier scale.
   - `ChipBudget()` stays at 300 as the cap.
@@ -486,6 +488,8 @@ vanilla icons on dark plates, a restyled frame, and tiered scale-and-hide in pla
 
   Run the `regression.json`, `collect.json`, `teleport.json`, `fast-travel.json` and `controller.json` campaigns. All
   must PASS.
+- Not built: the optional leader line from a marker to the sidebar (spec §5.2) and the optional open animation
+  (spec §8). Both are noted in the checkpoint as candidates.
 - [ ] **Step 5:** Record in `notes/CHECKPOINTS.md`:
   - the perf table (main against branch);
   - the tuned values;
