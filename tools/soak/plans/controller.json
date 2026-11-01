@@ -287,6 +287,27 @@
      "expect": "^game"
     },
     {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist",
+     "expect": "^moved"
+    },
+    {
      "key": "94"
     },
     {
