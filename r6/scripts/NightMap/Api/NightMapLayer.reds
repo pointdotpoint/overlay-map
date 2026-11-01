@@ -1,5 +1,12 @@
 module NightMap
 
+// Which markers hide first when zooming out. Always never hides; Major hides last; Minor hides first.
+public enum NightMapTier {
+    Always = 0,
+    Major = 1,
+    Minor = 2
+}
+
 // How a layer's individual items are drawn. Clusters are always hexes.
 public enum NightMapPinStyle {
     Hex = 0,
@@ -18,6 +25,8 @@ public class NightMapLayer {
     public let minMpp: Float = 0.0;
     public let maxMpp: Float = 100000.0;
     public let clustering: Bool = true;
+    public let tier: Int32 = 2;
+    public let promoted: Bool;
     public let pinStyle: Int32;
     public let listener: ref<NightMapLayerListener>;
     public let revision: Int32;
@@ -236,6 +245,21 @@ public class NightMapLayer {
     public func SetClustering(enabled: Bool) {
         this.clustering = enabled;
         this.Touch();
+    }
+
+    public func SetTier(t: NightMapTier) {
+        this.tier = EnumInt(t);
+        this.Touch();
+    }
+
+    // Filter promotion: a promoted layer is treated as at least Major.
+    public func SetPromoted(on: Bool) {
+        this.promoted = on;
+        this.Touch();
+    }
+
+    public func EffectiveTier() -> Int32 {
+        return this.promoted ? Min(this.tier, 1) : this.tier;
     }
 
     public func SetListener(l: ref<NightMapLayerListener>) {

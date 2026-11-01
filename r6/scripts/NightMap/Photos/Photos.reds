@@ -164,6 +164,7 @@ public class NMPhotos extends IScriptable {
     public func SyncLayer(api: ref<NightMap>, visible: Bool) {
         this.EnsureLoaded();
         let L = api.CreateLayer(NMPhotos.LayerId(), "Photos", 60);
+        L.SetTier(NightMapTier.Minor);
         L.SetClustering(false);
         L.SetCategory(NMPhotos.Category(), "PHOTO", NMTheme.Cyan());
         L.Clear();

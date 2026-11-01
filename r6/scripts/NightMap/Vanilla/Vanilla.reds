@@ -66,6 +66,8 @@ public class NMVanilla extends NMVanillaSink {
         while i <= n {
             let L = this.api.CreateLayer(this.catalog.LayerId(i), this.catalog.DisplayName(i), this.catalog.Priority(i));
             L.SetPinStyle(NightMapPinStyle.Icon);
+            let ty = this.catalog.TypeOf(i);
+            L.SetTier(!this.catalog.IsOther(i) && (Equals(ty, gamedataWorldMapFilter.Quest) || Equals(ty, gamedataWorldMapFilter.FastTravel)) ? NightMapTier.Major : NightMapTier.Minor);
             let cat = this.catalog.CategoryName(i);
             let isOther = this.catalog.IsOther(i);
             let first = isOther ? gamedataMappinVariant.Invalid : this.catalog.firstVariant[i];
@@ -83,6 +85,7 @@ public class NMVanilla extends NMVanillaSink {
         this.pinned = this.api.CreateLayer(n"Vanilla.Pinned", "Tracked", 100);
         this.pinned.SetPinStyle(NightMapPinStyle.Icon);
         this.pinned.SetClustering(false);
+        this.pinned.SetTier(NightMapTier.Always);
         this.pinned.SetCategory(n"vanilla.pinned", "TRACKED", NMTheme.VanillaStateColor(n"Quest"));
         this.api.SetCategoryIcon(n"vanilla.pinned", NMTheme.MappinAtlas(), n"quest");
         this.pinnedListener = new NMVanillaListener();
@@ -115,6 +118,10 @@ public class NMVanilla extends NMVanillaSink {
             let want = this.enabled && NMVanillaFilters.Visible(view, s, this.catalog.TypeOf(i), this.catalog.IsOther(i));
             if NotEquals(this.layers[i].visible, want) {
                 this.layers[i].SetVisible(want);
+            }
+            let promote = view != 0 && NMVanillaFilters.InView(view, this.catalog.TypeOf(i), this.catalog.IsOther(i));
+            if NotEquals(this.layers[i].promoted, promote) {
+                this.layers[i].SetPromoted(promote);
             }
             i += 1;
         }

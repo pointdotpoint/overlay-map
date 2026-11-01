@@ -266,6 +266,7 @@ public class NMCollect extends IScriptable {
         c = 0;
         while c < NMCollectCats.Count() {
             let L = api.CreateLayer(NMCollectCats.LayerId(c), NMCollectCats.Name(c), 40);
+            L.SetTier(NightMapTier.Minor);
             L.SetPinStyle(NightMapPinStyle.Icon);
             L.SetCategory(NMCollectCats.Category(c), NMCollectCats.Name(c), NMCollectCats.Color(c));
             api.SetCategoryIcon(NMCollectCats.Category(c), NMTheme.UiAtlas(), NMCollectCats.Part(c));

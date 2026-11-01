@@ -30,6 +30,7 @@ public class NMSelfTest {
         NMTeleportTests.Run(this);
         NMPhotoTests.Run(this);
         NMCollectTests.Run(this);
+        NMTierTests.Run(this);
         NMPerfTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }

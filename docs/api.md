@@ -57,7 +57,8 @@ layer.Clear();
 layer.SetVisible(false);
 layer.SetOpacity(0.6);
 layer.SetZoomRange(0.5, 4.0);     // only shown while the camera is between 0.5 and 4 meters per unit
-layer.SetClustering(false);       // always individual chips
+layer.SetClustering(false);       // deprecated: ignored once tiers land (no clustering any more)
+layer.SetTier(NightMapTier.Major); // Always / Major / Minor (default Minor): Minor markers fade out first when zooming out
 layer.SetPinStyle(NightMapPinStyle.Icon);
 ```
 
