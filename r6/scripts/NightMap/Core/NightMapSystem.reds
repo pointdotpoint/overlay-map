@@ -117,6 +117,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let cornerDistrict: String;
     private let palette: ref<NMHudPalette>;
     private let mirror: ref<NMMinimapMirror>;
+    private let cornerPerf: ref<NMCornerPerf>;   // Debug on: RESULT|corner lines while the corner runs
     private let panelMirror: ref<NMShapeLayer>;   // vanilla minimap markers, fed by Minimap/Wraps.reds while a view is live   // set while "Follow HUD Painter colours" is on
     private let cornerObjectiveM: Float;   // -1 = nothing tracked (set in PrepareCornerMarkers)
     private let collectSeenMap: ref<inkHashMap>;
@@ -865,7 +866,14 @@ public class NightMapSystem extends ScriptableSystem {
         this.mirror.live = true;
         if this.frameNo % 30 == 0 { this.mirror.Sweep(); }
         if !this.isOpen {
+            let s = this.Settings();
+            let c0 = NMClock.NowMs();
             this.CornerTick(dt);
+            if IsDefined(s) && s.debug {
+                if !IsDefined(this.cornerPerf) { this.cornerPerf = new NMCornerPerf(); }
+                let line = this.cornerPerf.Add(raw, NMClock.NowMs() - c0, this.mirror.Count());
+                if StrLen(line) > 0 { NMLog.Info(line); }
+            }
             this.Schedule();
             return;
         }

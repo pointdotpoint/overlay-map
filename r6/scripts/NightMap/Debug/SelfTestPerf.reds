@@ -43,6 +43,17 @@ public class NMRendSnap {
 
 public abstract class NMPerfTests {
     public static func Run(t: ref<NMSelfTest>) {
+        // Corner profiler: a line every Window() frames, then a fresh window.
+        let cp = new NMCornerPerf();
+        let line = "";
+        let i = 0;
+        while i < NMCornerPerf.Window() {
+            let l = cp.Add(16.0, 0.25, 12);
+            if StrLen(l) > 0 { line = l; }
+            i += 1;
+        }
+        t.Check("perf.corner_window", StrContains(line, "script_avg=0.250") && StrContains(line, "frame_avg=16.000")
+            && StrContains(line, "mirror=12") && cp.Count() == 0, line);
         NMPerfTests.OccupiedCases(t);
         NMPerfTests.EquivalenceCases(t);
         NMPerfTests.GrowReuseCases(t);
