@@ -13,6 +13,8 @@ Others:
   holo_edge_t/_b 16x64, holo_edge_l/_r 64x16  soft glowing frame line, bright on the outer pixel row, fading inward;
                        stretched along their length (they are uniform that way)
   holo_halo   128x128  radial soft glow for marker halos
+  holo_ring   128x128  one antialiased ring at the edge, about 3 px wide (corner minimap Circle frame)
+  holo_disc   128x128  filled antialiased disc (corner minimap circular clip mask)
   holo_line   16x16    antialiased line: opaque core, alpha ramps to 0 on the top and bottom rows; uniform along x
                        (GPS route pieces stretch it along their length, so their rotated edges are smooth)
 """
@@ -26,6 +28,7 @@ SIZES = {   # name -> (w, h)
     "holo_scan": (64, 64), "holo_grid": (48, 48), "holo_noise": (256, 256), "holo_bar": (512, 160),
     "holo_halo": (128, 128), "holo_line": (16, 16), "holo_vignette": (256, 256), "holo_rings": (256, 256),
     "holo_edge_t": (16, 64), "holo_edge_b": (16, 64), "holo_edge_l": (64, 16), "holo_edge_r": (64, 16),
+    "holo_ring": (128, 128), "holo_disc": (128, 128),
 }
 TILEABLE = {"holo_scan": 4, "holo_grid": 24, "holo_noise": 256}     # name -> period in px (both axes)
 # Fixed layout (4 px gaps so bilinear sampling never bleeds a neighbour in).
@@ -33,6 +36,7 @@ LAYOUT = {
     "holo_grid": (870, 0), "holo_rings": (0, 0), "holo_noise": (260, 0), "holo_halo": (520, 0), "holo_scan": (652, 0),
     "holo_edge_t": (720, 0), "holo_edge_b": (740, 0), "holo_edge_l": (760, 0), "holo_edge_r": (760, 20),
     "holo_bar": (0, 260), "holo_line": (840, 0), "holo_vignette": (520, 132),
+    "holo_ring": (780, 132), "holo_disc": (780, 264),
 }
 NOISE_SEED = 20261015
 
@@ -130,7 +134,28 @@ def _line() -> Image.Image:
     return _white(np.tile(prof[:, None], (1, n)))
 
 
+def _radius(n: int) -> np.ndarray:
+    y, x = np.mgrid[0:n, 0:n].astype(np.float32)
+    return np.hypot(x - (n - 1) / 2, y - (n - 1) / 2)
+
+
+def _ring() -> Image.Image:
+    """One ring hugging the edge: full alpha 1.5 px either side of radius 62.5, antialiased."""
+    r = _radius(128)
+    return _white(np.clip(2.0 - np.abs(r - 62.5), 0.0, 1.0) * 255.0)
+
+
+def _disc() -> Image.Image:
+    """Filled disc of radius 63, antialiased edge."""
+    r = _radius(128)
+    return _white(np.clip(63.5 - r, 0.0, 1.0) * 255.0)
+
+
 def _render(name: str) -> Image.Image:
+    if name == "holo_ring":
+        return _ring()
+    if name == "holo_disc":
+        return _disc()
     if name == "holo_scan":
         return _scan()
     if name == "holo_grid":

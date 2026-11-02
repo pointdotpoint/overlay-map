@@ -6,6 +6,7 @@ public abstract class NMCornerTests {
         NMCornerTests.Settings(t);
         NMCornerTests.Layout(t);
         NMCornerTests.Probe(t);
+        NMCornerTests.View(t);
     }
 
     private static func Settings(t: ref<NMSelfTest>) {
@@ -60,5 +61,43 @@ public abstract class NMCornerTests {
             && root.GetWidgetByIndex(1).GetOpacity() == 1.0 && p.FadedCount() == 0, "");
         root.SetVisible(false);
         t.Check("corner.probe_follows_game_hide", !p.ShownByGame(), "");
+    }
+
+    public static func Box() -> ref<NMRect> { return NMRect.Create(3300.0, 100.0, 3700.0, 500.0); }
+
+    private static func BuildStyle(host: ref<inkCanvas>, style: NightMapCornerStyle) -> ref<NMCorner> {
+        let s = new NightMapSettings();
+        s.cornerStyle = style;
+        let cfg = NMCornerConfig.From(s);
+        let l = NMCornerLayout.Compute(NMCornerTests.Box(), style, 1.0, 1.0, 3840.0, 2160.0);
+        return NMCorner.Build(host, l, cfg, NightMap.Create(), 0.4);
+    }
+
+    private static func View(t: ref<NMSelfTest>) {
+        let host = new inkCanvas();
+        host.SetSize(new Vector2(3840.0, 2160.0));
+        let circle = NMCornerTests.BuildStyle(host, NightMapCornerStyle.Circle);
+        let square = NMCornerTests.BuildStyle(host, NightMapCornerStyle.Square);
+        let strip = NMCornerTests.BuildStyle(host, NightMapCornerStyle.SquareStrip);
+        t.Check("corner.style_widgets",
+            circle.HasMask() && !circle.HasStrip() && circle.HasRing() && !circle.HasBrackets()
+            && !square.HasMask() && !square.HasStrip() && square.HasBrackets()
+            && strip.HasStrip() && strip.HasBrackets()
+            && Equals(strip.Root().GetName(), n"NightMapCorner"), "");
+        t.Check("corner.strip_text", Equals(NMCorner.DistanceText(320.0), "320 M") && Equals(NMCorner.DistanceText(1440.0), "1.4 KM")
+            && Equals(NMCorner.DistanceText(-1.0), "") && Equals(NMCorner.DistanceText(14.0), "10 M"), NMCorner.DistanceText(320.0));
+        let a = NMCornerConfig.From(new NightMapSettings());
+        let b = NMCornerConfig.From(new NightMapSettings());
+        let s2 = new NightMapSettings();
+        s2.cornerStyle = NightMapCornerStyle.Circle;
+        t.Check("corner.config_same", a.Same(b) && !a.Same(NMCornerConfig.From(s2)), "");
+        t.Check("corner.never_rotates", strip.MapRotation() == 0.0, "");
+        strip.SetMpp(1.7);
+        t.Check("corner.set_mpp", strip.Mpp() == 1.7, "");
+        strip.Destroy();
+        t.Check("corner.destroy_removes", NMSelfTest.ChildIndex(host, n"NightMapCorner") >= 0
+            && !IsDefined(strip.Root().GetParentWidget()), "");
+        circle.Destroy();
+        square.Destroy();
     }
 }

@@ -142,3 +142,17 @@ def test_rings_have_four_circles():
     centre = 127.5
     assert sorted(round(abs(x - centre)) for x in peaks) == [32, 32, 64, 64, 96, 96, 124, 124]
     assert a[128, 128] == 0 and a[0, 0] == 0
+
+
+def test_corner_ring_and_disc():
+    """Corner minimap: a single antialiased ring at the edge (Circle frame) and a filled disc (circular clip mask)."""
+    import numpy as np
+    img, parts = build_holo_atlas()
+    assert SIZES["holo_ring"] == (128, 128) and SIZES["holo_disc"] == (128, 128)
+    a = np.asarray(img)[..., 3]
+    l, t, r, b = parts["holo_ring"]
+    ring = a[t:b, l:r].astype(int)
+    assert ring[64, 64] == 0 and ring[64, 1] > 200 and ring[64, 126] > 200 and ring[64, 10] == 0
+    l, t, r, b = parts["holo_disc"]
+    disc = a[t:b, l:r].astype(int)
+    assert disc[64, 64] == 255 and disc[0, 0] == 0 and disc[127, 127] == 0 and disc[64, 2] == 255
