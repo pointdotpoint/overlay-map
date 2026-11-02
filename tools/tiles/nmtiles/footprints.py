@@ -1,8 +1,8 @@
 """Clean building footprint polygons from the minimap's building geometry (spec 11.6), computed once city-wide.
 
 Per 500 m tile (150 m margin): union of building triangles buffered 0.3, closing 4, exteriors only, minus the road union
-buffered 0.5, opening 3, simplify 0.6, exteriors, drop pieces < 60 m2. A polygon is kept only by the tile whose core
-contains its representative point, so tile seams neither duplicate nor drop footprints.
+buffered 0.5, opening 3, simplify 0.6, exteriors, drop pieces < 60 m2. Each tile keeps its footprints clipped to its core,
+and a city-wide union joins the parts (and fills courtyards a window cut open), so seams neither duplicate nor drop.
 """
 from __future__ import annotations
 
@@ -17,9 +17,7 @@ import shapely
 
 PARAMS = dict(buf=0.3, close=4.0, road_buf=0.5, road_tri_buf=0.05, open=3.0, simplify=0.6, min_area=60.0)
 TILE, MARGIN = 500.0, 150.0
-VERSION = 2
-MAX_MARGIN = 1200.0     # adaptive window growth cap (m); blocks beyond this are still repaired by the city-wide union
-EDGE_TOUCH = 5.0         # a footprint this close to its window border may have been truncated
+VERSION = 4
 
 
 @dataclass
@@ -44,7 +42,7 @@ class Footprints:
 
 
 def footprint_key(road: np.ndarray, building: np.ndarray, road_major: np.ndarray) -> str:
-    h = hashlib.sha256(f"v{VERSION}|{PARAMS}|{TILE}|{MARGIN}|{MAX_MARGIN}|{EDGE_TOUCH}|{shapely.__version__}".encode())
+    h = hashlib.sha256(f"v{VERSION}|{PARAMS}|{TILE}|{MARGIN}|{shapely.__version__}".encode())
     for a in (road, building, road_major):
         h.update(str(a.shape).encode())
         h.update(np.ascontiguousarray(a).tobytes())
@@ -102,27 +100,24 @@ def _low_priority() -> None:
 
 
 def _tile(cell: tuple[int, int]) -> list[np.ndarray]:
+    """The footprints of one window, clipped to the tile's core. Every tile keeps exactly the part of each footprint
+    that lies in its core, so a footprint spanning tiles is never dropped (an earlier owner-by-representative-point
+    rule lost Dogtown's centre when each tile saw that point in the other); merge_city's union joins the parts."""
     road_idx, bld_idx, ox, oy, tile, margin = _JOB
     ix, iy = cell
     x0, y0 = ox + ix * tile, oy + iy * tile
-    while True:
-        w = (x0 - margin, y0 - margin, x0 + tile + margin, y0 + tile + margin)
-        b = bld_idx.tris[bld_idx.query(*w)]
-        if not len(b):
-            return []
-        r = road_idx.tris[road_idx.query(*w)]
-        owned, grow = [], False
-        for p in clean_window(r, b):
-            rp = p.representative_point()
-            if x0 <= rp.x < x0 + tile and y0 <= rp.y < y0 + tile:
-                owned.append(p)
-                bx0, by0, bx1, by1 = p.bounds
-                grow |= (bx0 < w[0] + EDGE_TOUCH or by0 < w[1] + EDGE_TOUCH
-                         or bx1 > w[2] - EDGE_TOUCH or by1 > w[3] - EDGE_TOUCH)
-        if grow and margin * 2 <= MAX_MARGIN:
-            margin *= 2            # an owned footprint reaches the window border: redo with a larger window
-            continue
-        return [np.asarray(p.exterior.coords)[:-1] for p in owned]
+    w = (x0 - margin, y0 - margin, x0 + tile + margin, y0 + tile + margin)
+    b = bld_idx.tris[bld_idx.query(*w)]
+    if not len(b):
+        return []
+    r = road_idx.tris[road_idx.query(*w)]
+    core = shapely.box(x0, y0, x0 + tile, y0 + tile)
+    out = []
+    for p in clean_window(r, b):
+        for q in shapely.get_parts(p.intersection(core)):
+            if q.geom_type == "Polygon" and not q.is_empty:
+                out.append(np.asarray(q.exterior.coords)[:-1])
+    return out
 
 
 def merge_city(polys: list[np.ndarray]) -> list[np.ndarray]:

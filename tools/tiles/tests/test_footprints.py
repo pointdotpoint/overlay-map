@@ -1,6 +1,7 @@
 import numpy as np
+import shapely
 
-from nmtiles.footprints import Footprints, build_footprints, footprint_key
+from nmtiles.footprints import Footprints, build_footprints, clean_window, footprint_key
 
 
 def rect(x0, y0, x1, y1):
@@ -74,7 +75,22 @@ def test_block_larger_than_a_window_yields_one_polygon_of_correct_area():
 
 
 def test_cut_blocks_in_every_window_are_repaired_by_the_city_union():
-    b = np.concatenate([rect(10, 10, 2600, 70), rect(1200, 10, 1260, 700)])              # longer than MAX_MARGIN reach
+    b = np.concatenate([rect(10, 10, 2600, 70), rect(1200, 10, 1260, 700)])              # longer than any window
     fp = build_footprints(EMPTY, b, tile=500.0, margin=150.0, jobs=1)
     assert _overlaps(fp.polys) < 1e-3
     assert len(fp.polys) == 1
+
+
+def test_a_block_spanning_tiles_is_kept_when_each_tile_sees_its_centre_in_the_other():
+    # Each tile's window cuts this chain of buildings differently; the cut piece's representative point fell in the
+    # neighbour's core both ways, so no tile owned it and no tile widened its window: the whole block vanished
+    # (Dogtown's dense centre, 2026-11-01).
+    def rect(x0, y0, x1, y1):
+        return np.array([[(x0, y0), (x1, y0), (x1, y1)], [(x0, y0), (x1, y1), (x0, y1)]], np.float32)
+    rs = [(100, 100, 223, 363), (191, 344, 283, 547), (264, 426, 567, 455), (461, 443, 878, 800),
+          (730, 528, 1119, 629), (1045, 534, 1461, 616), (1197, 557, 1549, 645)]
+    tris = np.concatenate([rect(*r) for r in rs])
+    none = np.zeros((0, 3, 2), np.float32)
+    truth = sum(p.area for p in clean_window(none, tris))
+    got = sum(shapely.Polygon(p).area for p in build_footprints(none, tris, jobs=1).polys)
+    assert abs(got - truth) < 0.01 * truth
