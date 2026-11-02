@@ -1,6 +1,49 @@
 # NightMap corner minimap — design
 
-Date: 2026-11-02. Status: draft for review.
+Date: 2026-11-02. Status: approved; in implementation (Phase A, Task 1).
+
+## Implementation progress (updated 2026-11-02)
+
+Branch `feat/corner-minimap`. Plan: `docs/superpowers/plans/2026-11-02-nightmap-corner-minimap.md`.
+Ledger: `.superpowers/sdd/2026-11-02-nightmap-corner-minimap/progress.md`. Execution: inline
+(superpowers:executing-plans) — every task implemented in one session, one fresh whole-branch review at the end.
+
+**Done**
+- **Task 1, offline portion (commit `0b8676a`).** The parity-spike instrumentation is built and compiles:
+  - `tools/soak/autopilot/MinimapSpike.reds` — `@wrapMethod`s on `BaseMinimapMappinController` /
+    `MinimapStealthMappinController` / `MinimapSecurityAreaMappinController`, a container stash on
+    `MinimapContainerController.OnPlayerAttach` (chains with `Vanilla/Gps.reds`, since the container is a
+    `inkProjectedHUDGameController` and is **not** reachable via `inkWidget.GetController()`), plus static
+    tree/visibility/palette/mask helpers.
+  - Spike commands wired in `tools/soak/autopilot/SystemBody.inc` + `SoakHooks.reds`: `mm_tree`, `mm_vis`,
+    `mm_reset`, `mm_ctrls`, `mm_stealth`, `mm_zone`, `palette_probe`, `palette_read`, `mask_probe`.
+  - Staged into the campaign build (`tools/soak/paths.py`, `builds.py`, `tools/check.sh --soak`); harness fixture in
+    `tools/test_soak.py` updated. Spike plan: `tools/soak/plans/minimap-spike.json` (one `probe` run).
+  - Verification: `tools/check.sh --soak` and base `tools/check.sh` → COMPILE OK; `python3 -m pytest tools` → green.
+  - The shipping build was installed via `tools/install.sh` at the user's request; the spike is **campaign-only** and
+    is not in the shipping build.
+
+**Blocked / in progress**
+- **Task 1, Step 3 — the in-game parity-spike run.** The user runs this themselves (standing rule: ask before every
+  in-game run). Per save:
+  `python3 -m tools.soak.soak campaign --save <SAVE> tools/soak/plans/minimap-spike.json`.
+  Coverage wanted: open street, hostile gang area (get spotted), restricted/security area, in a vehicle. Results land
+  in `.soak/results/<timestamp>-minimap-spike/`. No results exist yet.
+
+**Next**
+1. When the user hands over the results directory: read `result.json` (command answers), `channel/mm_*.txt` (dumps)
+   and the screenshots.
+2. Write `docs/superpowers/specs/2026-11-02-corner-minimap-spike/FINDINGS.md` — the parity checklist table (one row per
+   vanilla-minimap element: what it shows / vanilla source class+method+atlas / readable from script yes·no·partial /
+   how NightMap gets it) plus the game hiding mechanism, the vanilla box widget path, the mask resource path+result,
+   the palette read-back result, and the vertical-relation thresholds. Any `no`/`partial` row or a failed palette/mask
+   probe goes back to the user with a proposed substitute **before** Tasks 8–11 are finalised.
+3. Commit FINDINGS (`feat(spike): …`), then Task 2 (amend plan Tasks 8–11 to the findings), then proceed task-by-task
+   through Tasks 3–13.
+
+**Open question to settle before Task 6:** the plan stores corner zoom in a `persistent` field on `NightMapSystem`
+(**per-save**); this spec's "Calls made by Claude" says it "persists across game restarts and save loads… stored like
+other settings" (reads **global**). Confirm with the user which scope is wanted before implementing Task 6.
 
 ## Intent
 
