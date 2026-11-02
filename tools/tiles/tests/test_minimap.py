@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from nmtiles.minimap import (_DT_D, _check_identity, _node_index, wolvenkit_exe, MAJOR_WIDTH_M, classify, classify_width, decode_sector, decode_shapes, fill_ranges, quantize, resolve_sectors,
-                             sector_nodes)
+                             sector_nodes, shadowed_base, decode_with_fallback)
 
 SAMPLE = Path(__file__).parent / "data" / "minimap_sample.json"
 
@@ -268,3 +268,35 @@ def test_convert_dir_keeps_only_complete_outputs(tmp_path, monkeypatch):
     kept = minimap._convert_dir(src, out, {"a.streamingsector", "b.streamingsector"})
     assert kept == 1 and (out / "a.streamingsector.json").exists() and not (out / "b.streamingsector.json").exists()
     assert not (out / ".tmp_batch").exists()
+
+
+def test_shadowed_base_lists_base_copies_an_ep1_copy_replaces():
+    base = [r"base\worlds\x\default\exterior_0_0_0_3.streamingsector", r"base\worlds\x\default\exterior_1_0_0_3.streamingsector"]
+    ep1 = [r"base\worlds\x\default\exterior_0_0_0_3.streamingsector", r"base\worlds\x\default\ep1\exterior_1_0_0_3.streamingsector"]
+    assert shadowed_base(base, ep1) == {"exterior_0_0_0_3.streamingsector": base[0].replace("\\", "/")}
+
+
+def _one_node_sector(root):
+    return {"Data": {"RootChunk": {
+        "nodes": [{"Data": {"$type": "MinimapDataNode", "allInteriorShapes": False,
+                            "encodedShapesRef": {"DepotPath": {"$value": "a"}}}}],
+        "nodeData": {"Data": [{"NodeIndex": 0, "Position": {"X": 0.0, "Y": 0.0, "Z": 0.0}}]}},
+        "EmbeddedFiles": [{"FileName": {"$value": "a"}, "Content": root}]}}
+
+
+_EMPTY_SECTOR = {"Data": {"RootChunk": {"nodes": [], "nodeData": {"Data": []}}, "EmbeddedFiles": []}}
+
+
+def test_ep1_copy_without_minimap_nodes_falls_back_to_the_base_copy():
+    # Phantom Liberty re-cooked 22 sectors with no MinimapDataNode at all (Kabuki, Vista del Rey, Dogtown...)
+    base = _one_node_sector(synth_root([(0, 0), (20, 0), (0, 10)], (0.0, 0.0, 0.0)))
+    road, major, stroke, n = decode_with_fallback(_EMPTY_SECTOR, lambda: base)
+    assert n == 1 and len(road) == 1
+
+
+def test_ep1_copy_with_minimap_nodes_wins_over_the_base_copy():
+    ep1 = _one_node_sector(synth_root([(0, 0), (60, 0), (0, 60)], (0.0, 0.0, 0.0)))
+    base = _one_node_sector(synth_root([(0, 0), (20, 0), (0, 10)], (0.0, 0.0, 0.0)))
+    road, major, stroke, n = decode_with_fallback(ep1, lambda: base)
+    assert len(major) == 1 and len(road) == 0
+    assert decode_with_fallback(_EMPTY_SECTOR, None)[3] == 0

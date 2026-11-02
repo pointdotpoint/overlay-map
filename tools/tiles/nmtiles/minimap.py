@@ -27,7 +27,7 @@ import numpy as np
 
 MAJOR_WIDTH_M = 16.0        # metres: a road shape at least this wide (classify_width) is a major road (arterial, highway)
 ROAD_THICKNESS = 3.0        # metres: area / max bbox extent at or above this is a road, below it a stroke
-DECODE_VERSION = 4           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
+DECODE_VERSION = 5           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
 GROUND_Z, ELEVATED_Z, ELEVATED_MAX_THICK = 15.0, 80.0, 25.0   # spec 11.6 road rule
 LODS = (3, 4)               # sector LODs that carry the minimap geometry we use (spike 2: both, disjoint paths)
 # SECTOR_RE also matches z = -1 sectors (exterior_x_y_-1_*, about 1.3% of the triangles). They are included on
@@ -224,7 +224,24 @@ def resolve_sectors(base: list[str], ep1: list[str]) -> dict[str, tuple[str, str
         for p in paths:
             p = p.replace("\\", "/").strip()
             if p:
-                out[p.split("/default/", 1)[1] if "/default/" in p else p.rsplit("/", 1)[-1]] = (src, p)
+                out[_sector_key(p)] = (src, p)
+    return out
+
+
+def _sector_key(p: str) -> str:
+    return p.split("/default/", 1)[1] if "/default/" in p else p.rsplit("/", 1)[-1]
+
+
+def shadowed_base(base: list[str], ep1: list[str]) -> dict[str, str]:
+    """Sector key -> base archive path, for every base sector an EP1 copy replaces. Phantom Liberty re-cooked some
+    sectors without their MinimapDataNodes (22 of them in 2.31: parts of Kabuki, Vista del Rey, Pacifica and all of
+    Dogtown), so the base copy is kept as a fallback for those (decode_with_fallback)."""
+    keys = {_sector_key(p.replace("\\", "/").strip()) for p in ep1 if p.strip()}
+    out = {}
+    for p in base:
+        p = p.replace("\\", "/").strip()
+        if p and _sector_key(p) in keys:
+            out[_sector_key(p)] = p
     return out
 
 
@@ -317,9 +334,23 @@ def _convert_one(args: tuple[str, str]) -> bool:
     return _convert_once(src, out) or _convert_once(src, out)      # one retry
 
 
-def _decode_file(path: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+def decode_with_fallback(primary: dict, fallback: Callable[[], dict] | None) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+    """decode_sector of the winning copy, or of the base copy it replaced (loaded only then) when the winner has no
+    minimap node."""
+    r = decode_sector(primary)
+    if r[3] == 0 and fallback is not None:
+        return decode_sector(fallback())
+    return r
+
+
+def _load(path: str) -> dict:
     with open(path) as fh:
-        return decode_sector(json.load(fh))
+        return json.load(fh)
+
+
+def _decode_file(paths: tuple[str, str | None]) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+    primary, fallback = paths
+    return decode_with_fallback(_load(primary), None if fallback is None else lambda: _load(fallback))
 
 
 # ------------------------------------------------------------------------------------------------ load_city
@@ -365,14 +396,16 @@ def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = prin
     if not base_list or not ep1_list:
         raise RuntimeError(f"sector listing failed: base {len(base_list)}, ep1 {len(ep1_list)} sectors")
     sectors = resolve_sectors(base_list, ep1_list)
+    shadow = shadowed_base(base_list, ep1_list)
     log(f"sectors: base {len(base_list)}, ep1 {len(ep1_list)} -> {len(sectors)} unique "
-        f"({sum(v[0] == 'ep1' for v in sectors.values())} from ep1)")
+        f"({sum(v[0] == 'ep1' for v in sectors.values())} from ep1, {len(shadow)} base copies kept as fallback)")
 
     json_dirs = {s: cache_dir / f"json_{s}" for s in ("base", "ep1")}
     for d in json_dirs.values():
         d.mkdir(exist_ok=True)
     todo = {s: [n for n, (src, _) in sectors.items() if src == s and not json_ok(json_dirs[s] / f"{n}.json")]
             for s in ("base", "ep1")}
+    todo["base"] += [n for n in sorted(shadow) if not json_ok(json_dirs["base"] / f"{n}.json")]
 
     # extract the needed CR2W sectors (one WolvenKit call per archive), then convert them in parallel
     jobs, failed = [], []
@@ -407,8 +440,9 @@ def load_city(game_dir: Path, cache_dir: Path, log: Callable[[str], None] = prin
                     if not ok:
                         failed.append(f"{n} (convert failed)")
 
-    files = [str(json_dirs[src] / f"{n}.json") for n, (src, _) in sorted(sectors.items())]
-    failed += [f"{f} (missing)" for f in files if not json_ok(Path(f))]
+    files = [(str(json_dirs[src] / f"{n}.json"), str(json_dirs["base"] / f"{n}.json") if n in shadow else None)
+             for n, (src, _) in sorted(sectors.items())]
+    failed += [f"{f} (missing)" for pair in files for f in pair if f is not None and not json_ok(Path(f))]
     if failed:
         raise RuntimeError(f"{len(failed)} sectors failed; not writing the npz:\n  " + "\n  ".join(sorted(set(failed))))
     road, major, stroke, nodes = [], [], [], 0
