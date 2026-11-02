@@ -188,11 +188,13 @@ public abstract class NMPerfTests {
                 cam.SetMpp(m);
                 r.forceScan = true;
                 r.Invalidate();
+                r.Forget();   // each walk from scratch: the replay would carry the other walk's pins
                 r.Update(cam, 1880.0, 1480.0);
                 let ref0 = NMRendSnap.Take(r);
                 let stops0 = r.capStops;
                 r.forceScan = false;
                 r.Invalidate();
+                r.Forget();   // each walk from scratch: the replay would carry the other walk's pins
                 r.Update(cam, 1880.0, 1480.0);
                 let got = NMRendSnap.Take(r);
                 let d = NMRendSnap.Diff(ref0, got);
@@ -218,10 +220,12 @@ public abstract class NMPerfTests {
             cam.SetMpp(5.1);
             r.forceScan = true;
             r.Invalidate();
+            r.Forget();   // each walk from scratch: the replay would carry the other walk's pins
             r.Update(cam, 1880.0, 1480.0);
             let bref = NMRendSnap.Take(r);
             r.forceScan = false;
             r.Invalidate();
+            r.Forget();   // each walk from scratch: the replay would carry the other walk's pins
             r.Update(cam, 1880.0, 1480.0);
             let bd = NMRendSnap.Diff(bref, NMRendSnap.Take(r));
             if NotEquals(bd, "") { budgetBad += "c" + ToString(bc) + ": " + bd + "; "; }

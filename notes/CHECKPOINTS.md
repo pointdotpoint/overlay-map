@@ -280,3 +280,24 @@ look 20261101-134657 pass; self-tests `passed=458|failed=0`.
 - A first-run popup from Immersive Third Person (its quest fact is never saved by the harness) covered the screen
   about 20 s into every run; the bootstrap now sets `immersive_third_person_notice_seen` per session.
 - New soak commands: `perf`, `set effects|theme|opacity`, `layers`, `focus_layer <id part> <mpp>`, `act`, `desc_probe`.
+
+## Stable pins while panning (2026-11-02, branch fix/stable-pins)
+
+Bug (user clip): panning near the Pacifica stadium swapped which shard pins showed. The declutter walks a layer's cells
+nearest-first from the view centre's 250 m cell and stops a Minor layer after `LayerCullCap` (24) culls; shard piles
+(up to 58 in one cell) spend that in one cell, so where the walk stopped, and which shards showed, changed whenever
+the centre crossed a cell edge. An offline replay of the walk over the shard data (collectibles only) hit the cap in
+every frame there and swapped 11 shards out and 5 in at x = -1500. Lifting the cap would cost 280 to 500 culls per
+relayout (1 to 2 ms).
+
+Fix: markers persist. At its layer's turn each layer first replays what the last relayout placed (`PlacePrev`), then
+walks its cells; a `placedAt` stamp per item (`NightMap.placeStamp`) keeps every item to one test per relayout.
+`Forget()` gives tests a walk from scratch; the history drops itself when `layerEpoch` changes. In the replay, a pan
+east and back dropped 0 in-view shards (33 before). New self-tests `declutter.pan_keeps_placed`,
+`declutter.fresh_walk_unchanged`, `declutter.persist_yields_to_higher`. Regression 20261102-154719 pass,
+`passed=461|failed=0`.
+
+Perf, 2 runs each side, interleaved, QuickSave-7 (main from a detached worktree, same archive). Frame avg within
+-0.7 % .. +2.1 % everywhere. Script avg: vanilla_open 3.16 -> 3.26 ms (p95 7.36 -> 7.69), panzoom 1.91 -> 2.01
+(p95 5.99 -> 6.04), open_empty 1.72 -> 1.78; the synthetic items_5000/20000/50000 +0.3 to +0.4 ms avg, p95 up to
++1.1 ms (more pins stay placed after a pan, so more chips are drawn).
