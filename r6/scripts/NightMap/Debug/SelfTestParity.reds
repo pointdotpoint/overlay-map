@@ -21,7 +21,20 @@ public abstract class NMParityTests {
         t.Check("parity.enemies_switch", !NMShapeLayer.Wanted(NMMiniKind.Enemy, false, true) && !NMShapeLayer.Wanted(NMMiniKind.Police, true, false)
             && NMShapeLayer.Wanted(NMMiniKind.Device, false, false) && !NMShapeLayer.Wanted(NMMiniKind.Area, true, true), "");
         t.Check("parity.kind_table", NMMinimapWraps.KindOf(n"MinimapStealthMappinController") == EnumInt(NMMiniKind.Enemy)
-            && NMMinimapWraps.KindOf(n"MinimapQuestMappinController") == -1 && NMMinimapWraps.KindOf(n"MinimapPOIMappinController") == -1
+            && NMMinimapWraps.KindOf(n"MinimapRemotePlayerMappinController") == -1
             && NMMinimapWraps.KindOf(n"MinimapPingSystemMappinController") == EnumInt(NMMiniKind.Other), "");
+    
+        // Rim clamping: a point far east of a 400 px circle lands on the circle (inset 10) at angle 90 (pointing east).
+        let rc = NMParity.ClampToRim(1000.0, 200.0, 400.0, 400.0, true, 10.0);
+        t.Check("parity.rim_circle", AbsF(rc.X - 390.0) < 0.01 && AbsF(rc.Y - 200.0) < 0.01
+            && NMParity.IsOff(1000.0, 200.0, 400.0, 400.0, true, 10.0) && !NMParity.IsOff(200.0, 200.0, 400.0, 400.0, true, 10.0)
+            && NMParity.IsOff(395.0, 395.0, 400.0, 400.0, true, 10.0)            // inside the square, outside the circle
+            && AbsF(NMParity.ArrowAngle(1000.0, 200.0, 400.0, 400.0) - 90.0) < 0.01, FloatToStringPrec(rc.X, 2));
+        let rs = NMParity.ClampToRim(200.0, -1000.0, 400.0, 300.0, false, 10.0);
+        t.Check("parity.rim_square", AbsF(rs.X - 200.0) < 0.01 && AbsF(rs.Y - 10.0) < 0.01
+            && !NMParity.IsOff(395.0, 295.0, 400.0, 300.0, false, 0.0) && AbsF(NMParity.ArrowAngle(200.0, -1000.0, 400.0, 300.0)) < 0.01, "");
+        t.Check("parity.vertical", NMParity.VerticalRotation(1) == 0.0 && NMParity.VerticalRotation(-1) == 180.0, "");
+        t.Check("parity.shadow_kind", NMMinimapWraps.KindOf(n"MinimapQuestMappinController") == EnumInt(NMMiniKind.Shadow)
+            && !NMShapeLayer.Wanted(NMMiniKind.Shadow, true, true), "");
     }
 }

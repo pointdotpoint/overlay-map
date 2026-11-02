@@ -15,6 +15,7 @@ Others:
   holo_halo   128x128  radial soft glow for marker halos
   holo_ring   128x128  one antialiased ring at the edge, about 3 px wide (corner minimap Circle frame)
   holo_disc   128x128  filled antialiased disc (corner minimap circular clip mask)
+  holo_arrow  32x32    filled up-pointing triangle (corner minimap rim clamp and above/below arrows)
   holo_line   16x16    antialiased line: opaque core, alpha ramps to 0 on the top and bottom rows; uniform along x
                        (GPS route pieces stretch it along their length, so their rotated edges are smooth)
 """
@@ -28,7 +29,7 @@ SIZES = {   # name -> (w, h)
     "holo_scan": (64, 64), "holo_grid": (48, 48), "holo_noise": (256, 256), "holo_bar": (512, 160),
     "holo_halo": (128, 128), "holo_line": (16, 16), "holo_vignette": (256, 256), "holo_rings": (256, 256),
     "holo_edge_t": (16, 64), "holo_edge_b": (16, 64), "holo_edge_l": (64, 16), "holo_edge_r": (64, 16),
-    "holo_ring": (128, 128), "holo_disc": (128, 128),
+    "holo_ring": (128, 128), "holo_disc": (128, 128), "holo_arrow": (32, 32),
 }
 TILEABLE = {"holo_scan": 4, "holo_grid": 24, "holo_noise": 256}     # name -> period in px (both axes)
 # Fixed layout (4 px gaps so bilinear sampling never bleeds a neighbour in).
@@ -36,7 +37,7 @@ LAYOUT = {
     "holo_grid": (870, 0), "holo_rings": (0, 0), "holo_noise": (260, 0), "holo_halo": (520, 0), "holo_scan": (652, 0),
     "holo_edge_t": (720, 0), "holo_edge_b": (740, 0), "holo_edge_l": (760, 0), "holo_edge_r": (760, 20),
     "holo_bar": (0, 260), "holo_line": (840, 0), "holo_vignette": (520, 132),
-    "holo_ring": (780, 132), "holo_disc": (780, 264),
+    "holo_ring": (780, 132), "holo_disc": (780, 264), "holo_arrow": (912, 132),
 }
 NOISE_SEED = 20261015
 
@@ -151,7 +152,19 @@ def _disc() -> Image.Image:
     return _white(np.clip(63.5 - r, 0.0, 1.0) * 255.0)
 
 
+def _arrow() -> Image.Image:
+    """Up-pointing triangle: apex (16, 2), base from (2, 30) to (30, 30); 4x supersampled edges."""
+    n, k = 32, 4
+    y, x = (np.mgrid[0:n * k, 0:n * k].astype(np.float32) + 0.5) / k
+    half = (y - 2.0) * (14.0 / 28.0)                  # half-width grows from 0 at the apex to 14 at the base
+    inside = (y >= 2.0) & (y <= 30.0) & (np.abs(x - 16.0) <= half)
+    a = inside.reshape(n, k, n, k).mean(axis=(1, 3))
+    return _white(a * 255.0)
+
+
 def _render(name: str) -> Image.Image:
+    if name == "holo_arrow":
+        return _arrow()
     if name == "holo_ring":
         return _ring()
     if name == "holo_disc":

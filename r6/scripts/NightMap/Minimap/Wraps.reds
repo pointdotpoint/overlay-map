@@ -8,8 +8,8 @@ public abstract class NMMinimapWraps {
         return IsDefined(sys) ? sys.Mirror() : null;
     }
 
-    // -1: not copied. Quest / POI markers and police stubs / vehicles already come from the world-map mirroring
-    // (NMVanilla); remote players are multiplayer only.
+    // -1: not copied (remote players: multiplayer only). Shadow: quest / POI markers and police stubs / vehicles already
+    // come from the world-map mirroring (NMVanilla); only their rim clamp and above / below arrow are taken from here.
     public static func KindOf(cls: CName) -> Int32 {
         if Equals(cls, n"MinimapStealthMappinController") { return EnumInt(NMMiniKind.Enemy); }
         if Equals(cls, n"MinimapDeviceMappinController") { return EnumInt(NMMiniKind.Device); }
@@ -17,10 +17,10 @@ public abstract class NMMinimapWraps {
         if Equals(cls, n"MinimapQuestAreaMappinController") { return EnumInt(NMMiniKind.Area); }
         if Equals(cls, n"MinimapSecurityAreaMappinController") { return EnumInt(NMMiniKind.Zone); }
         if Equals(cls, n"MinimapQuestMappinController") || Equals(cls, n"MinimapPOIMappinController")
-            || Equals(cls, n"MinimapStubMappinController") || Equals(cls, n"MinimapPreventionVehicleMappinController")
-            || Equals(cls, n"MinimapRemotePlayerMappinController") {
-            return -1;
+            || Equals(cls, n"MinimapStubMappinController") || Equals(cls, n"MinimapPreventionVehicleMappinController") {
+            return EnumInt(NMMiniKind.Shadow);
         }
+        if Equals(cls, n"MinimapRemotePlayerMappinController") { return -1; }
         return EnumInt(NMMiniKind.Other);   // ping, dynamic events, and anything added later
     }
 
@@ -53,6 +53,7 @@ protected func Update() -> Void {
     e.icon = inkImageRef.Get(this.iconWidget) as inkImage;
     e.tracked = this.IsTracked();
     e.clamped = this.IsClamped();
+    e.clampable = this.ShouldClamp();
     e.vertical = NMMinimapWraps.Vertical(this.GetVerticalRelationToPlayer());
 }
 

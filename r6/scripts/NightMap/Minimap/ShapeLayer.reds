@@ -10,6 +10,12 @@ public class NMShapeLayer {
     private let rings: array<ref<inkImage>>;
     private let cones: array<ref<inkImage>>;
     private let icons: array<ref<inkImage>>;
+    private let arrows: array<ref<inkImage>>;
+    private let arrowCanvas: ref<inkCanvas>;
+    private let round: Bool;      // the view is a disc (Circle style)
+    private let rimInset: Float;  // px inside the rim where clamped markers sit
+    private let scale: Float;     // as NMPanelLayout.scale
+    private let na: Int32;
     private let markerSize: Float;
     public let drawnIcons: Int32;
     public let drawnCones: Int32;
@@ -26,9 +32,20 @@ public class NMShapeLayer {
         l.ringCanvas = NMUi.Canvas(l.root, 0.0, 0.0, size.X, size.Y);
         l.coneCanvas = NMUi.Canvas(l.root, 0.0, 0.0, size.X, size.Y);
         l.iconCanvas = NMUi.Canvas(l.root, 0.0, 0.0, size.X, size.Y);
+        l.arrowCanvas = NMUi.Canvas(l.root, 0.0, 0.0, size.X, size.Y);
+        l.scale = 1.0;
+        l.rimInset = 30.0;
         l.markerSize = markerSize;
         return l;
     }
+
+    public func SetRim(round: Bool, inset: Float, scale: Float) {
+        this.round = round;
+        this.rimInset = inset;
+        this.scale = scale;
+    }
+
+    public static func ArrowSize() -> Float { return 22.0; }   // 4K units
 
     // Kinds shown: enemies (with cones) and police by their switches; devices and the rest always.
     public static func Wanted(kind: NMMiniKind, enemies: Bool, police: Bool) -> Bool {
@@ -88,13 +105,16 @@ public class NMShapeLayer {
         this.ni = 0;
         this.nc = 0;
         this.nr = 0;
+        this.na = 0;
         if IsDefined(mirror) {
             for e in mirror.All() {
-                if NMShapeLayer.Wanted(e.kind, enemies, police) && e.Shown() && !(IsDefined(skip) && IsDefined(skip.Find(e.key))) {
-                    this.Draw(e, cam, viewW, viewH, sMini, camYaw);
+                let shadow = Equals(e.kind, NMMiniKind.Shadow) || (IsDefined(skip) && IsDefined(skip.Find(e.key)));
+                if e.Shown() && (shadow || NMShapeLayer.Wanted(e.kind, enemies, police)) {
+                    this.Draw(e, cam, viewW, viewH, sMini, camYaw, shadow);
                 }
             }
         }
+        NMShapeLayer.Hide(this.arrows, this.na);
         NMShapeLayer.Hide(this.rings, this.nr);
         NMShapeLayer.Hide(this.cones, this.nc);
         NMShapeLayer.Hide(this.icons, this.ni);
@@ -102,12 +122,53 @@ public class NMShapeLayer {
         this.drawnCones = this.nc;
     }
 
-    private func Draw(e: ref<NMMiniEntry>, cam: ref<NMCamera>, viewW: Float, viewH: Float, sMini: Float, camYaw: Float) {
-        let margin = 80.0;
+    private func Arrow(at: Vector2, rotation: Float, tint: HDRColor, opacity: Float) {
+        let a = this.Slot(this.arrows, this.arrowCanvas, this.na);
+        if NotEquals(a.GetTexturePart(), n"holo_arrow") {
+            a.SetAtlasResource(NMTheme.HoloAtlas());
+            a.SetTexturePart(n"holo_arrow");
+            a.SetAnchorPoint(new Vector2(0.5, 0.5));
+            a.SetRenderTransformPivot(new Vector2(0.5, 0.5));
+        }
+        let sz = NMShapeLayer.ArrowSize() * this.scale * this.markerSize;
+        a.SetSize(new Vector2(sz, sz));
+        a.SetTranslation(at);
+        a.SetRotation(rotation);
+        a.SetTintColor(tint);
+        a.SetOpacity(opacity);
+        a.SetVisible(true);
+        this.na += 1;
+    }
+
+    // shadow: NMVanilla draws the marker itself; only its rim clamp and above / below arrow come from here.
+    private func Draw(e: ref<NMMiniEntry>, cam: ref<NMCamera>, viewW: Float, viewH: Float, sMini: Float, camYaw: Float, shadow: Bool) {
         let w = e.Position();
         let p = cam.WorldToMap(w.X, w.Y);
-        if p.X < -margin || p.Y < -margin || p.X > viewW + margin || p.Y > viewH + margin { return; }
         let rootOp = e.root.GetOpacity();
+        let tint = IsDefined(e.icon) ? e.icon.GetTintColor() : NMTheme.HoloAccent(0);
+        if NMParity.IsOff(p.X, p.Y, viewW, viewH, this.round, this.rimInset) {
+            if !(e.clampable || e.tracked) || !IsDefined(e.icon) { return; }
+            let rim = NMParity.ClampToRim(p.X, p.Y, viewW, viewH, this.round, this.rimInset);
+            let icon = this.Slot(this.icons, this.iconCanvas, this.ni);
+            NMShapeLayer.CopyLook(e.icon, icon, rootOp);
+            let s = e.icon.GetSize();
+            icon.SetSize(new Vector2(s.X * this.markerSize, s.Y * this.markerSize));
+            icon.SetAnchorPoint(new Vector2(0.5, 0.5));
+            icon.SetTranslation(rim);
+            icon.SetVisible(true);
+            this.ni += 1;
+            let ang = NMParity.ArrowAngle(p.X, p.Y, viewW, viewH);
+            let r = Deg2Rad(ang);
+            let off = MaxF(s.X, s.Y) * this.markerSize * 0.5;
+            this.Arrow(new Vector2(rim.X + SinF(r) * off, rim.Y - CosF(r) * off), ang, tint, rootOp);
+            return;
+        }
+        if e.vertical != 0 {
+            let s = IsDefined(e.icon) ? e.icon.GetSize() : new Vector2(32.0, 32.0);
+            let off = MaxF(s.X, s.Y) * this.markerSize * 0.5;
+            this.Arrow(new Vector2(p.X + off, p.Y - off), NMParity.VerticalRotation(e.vertical), tint, rootOp);
+        }
+        if shadow { return; }
         if e.radius > 0.0 {
             let ring = this.Slot(this.rings, this.ringCanvas, this.nr);
             if NotEquals(ring.GetTexturePart(), n"holo_ring") {

@@ -32,6 +32,7 @@ public class NMCorner {
     private let shown: Bool;
 
     public static func DefaultMpp() -> Float { return 0.4; }
+    public static func RimInset() -> Float { return 22.0; }       // 4K units: clamped markers sit this far inside the rim
     public static func RingInset() -> Float { return 3.0; }       // 4K units between stacked rings
     public static func BracketScale() -> Float { return 0.45; }   // of NMTheme.BracketSize(), at frame thickness 1
     public static func StripFont() -> Float { return 30.0; }      // 4K units, at text size 1
@@ -103,6 +104,7 @@ public class NMCorner {
         c.routes = NMRouteLayer.Create(c.routesCanvas, s, cfg.effects);
         c.marker = NMPlayerMarker.Create(c.overlay, s * cfg.markerSize, false, th);
         c.mirrorLayer = NMShapeLayer.Create(c.shapes, cfg.markerSize);
+        c.mirrorLayer.SetRim(layout.round, NMCorner.RimInset() * s, s);
         c.shown = true;
         return c;
     }

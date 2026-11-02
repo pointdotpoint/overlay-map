@@ -6,7 +6,8 @@ public enum NMMiniKind {
     Device = 2,
     Other = 3,
     Area = 4,
-    Zone = 5
+    Zone = 5,
+    Shadow = 6   // drawn by NMVanilla already: only its rim clamp and above / below arrow come from here
 }
 
 // One vanilla minimap marker, as its controller drew it. Holds weak refs to the controller's own widgets and re-reads
@@ -26,6 +27,7 @@ public class NMMiniEntry extends IScriptable {
     public let tracked: Bool;
     public let vertical: Int32;         // -1 below, 0 level, 1 above (vanilla's own relation)
     public let clamped: Bool;           // vanilla clamped it to its own rim
+    public let clampable: Bool;         // vanilla keeps it on its rim when off the minimap (tracked objective, ...)
 
     public func Position() -> Vector4 {
         if IsDefined(this.obj) { return this.obj.GetWorldPosition(); }

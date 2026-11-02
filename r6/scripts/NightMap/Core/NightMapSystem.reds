@@ -966,6 +966,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.Gps().BeginOpen();
         this.routes = NMRouteLayer.Create(this.panel.routes, l.scale, this.holoEffects);
         this.panelMirror = NMShapeLayer.Create(this.panel.shapes, 1.0);
+        this.panelMirror.SetRim(false, 40.0 * l.scale, l.scale);
         this.lastRouteReadMs = 0.0;
         if this.RoutesWanted() {
             this.ReadRoutes();   // routes on the first frame, not 500 ms later

@@ -156,3 +156,13 @@ def test_corner_ring_and_disc():
     l, t, r, b = parts["holo_disc"]
     disc = a[t:b, l:r].astype(int)
     assert disc[64, 64] == 255 and disc[0, 0] == 0 and disc[127, 127] == 0 and disc[64, 2] == 255
+
+
+def test_corner_arrow():
+    """Corner minimap: an up-pointing filled triangle for rim clamping and above/below."""
+    import numpy as np
+    img, parts = build_holo_atlas()
+    assert SIZES["holo_arrow"] == (32, 32)
+    l, t, r, b = parts["holo_arrow"]
+    a = np.asarray(img)[t:b, l:r, 3].astype(int)
+    assert a[4, 16] > 128 and a[4, 2] == 0 and a[28, 4] > 128 and a[28, 28] > 128 and a[16, 16] == 255
