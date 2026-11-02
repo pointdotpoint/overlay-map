@@ -2,14 +2,29 @@ module NightMap
 
 // Visual tokens. Sizes are 3840x2160 HUD units and MUST match tools/tiles/nmtiles/ui_atlas.py SIZES.
 public abstract class NMTheme {
-    public static func Cyan() -> HDRColor { return new HDRColor(0.478, 0.941, 1.0, 1.0); }
-    public static func MapBackground() -> HDRColor { return new HDRColor(0.031, 0.071, 0.102, 1.0); }   // #08121a
-    public static func Text() -> HDRColor { return new HDRColor(0.784, 0.965, 1.0, 1.0); }
-    public static func Pink() -> HDRColor { return new HDRColor(1.0, 0.310, 0.847, 1.0); }
-    public static func Yellow() -> HDRColor { return new HDRColor(1.0, 0.878, 0.400, 1.0); }
-    public static func Muted() -> HDRColor { return new HDRColor(0.667, 0.863, 0.922, 1.0); }
-    public static func PanelBg() -> HDRColor { return new HDRColor(0.024, 0.078, 0.118, 1.0); }
-    public static func CardBg() -> HDRColor { return new HDRColor(0.039, 0.157, 0.216, 1.0); }
+    // "Follow HUD Painter colours": the live HUD palette, or null (today's colours). Held by NightMapSystem.
+    public static func Palette() -> ref<NMHudPalette> {
+        let sys = NightMapSystem.Get(GetGameInstance());
+        return IsDefined(sys) ? sys.Palette() : null;
+    }
+    public static func Use(p: ref<NMHudPalette>) {
+        let sys = NightMapSystem.Get(GetGameInstance());
+        if IsDefined(sys) { sys.UsePalette(p); }
+    }
+    // The palette's colour for the role once resolved, else `own`.
+    public static func Pick(role: NMColorRole, own: HDRColor) -> HDRColor {
+        let p = NMTheme.Palette();
+        if IsDefined(p) && p.Has(role) { return p.Get(role); }
+        return own;
+    }
+    public static func Cyan() -> HDRColor { return NMTheme.Pick(NMColorRole.Accent, new HDRColor(0.478, 0.941, 1.0, 1.0)); }
+    public static func MapBackground() -> HDRColor { return NMTheme.Pick(NMColorRole.Background, new HDRColor(0.031, 0.071, 0.102, 1.0)); }   // #08121a
+    public static func Text() -> HDRColor { return NMTheme.Pick(NMColorRole.Text, new HDRColor(0.784, 0.965, 1.0, 1.0)); }
+    public static func Pink() -> HDRColor { return NMTheme.Pick(NMColorRole.Warn, new HDRColor(1.0, 0.310, 0.847, 1.0)); }
+    public static func Yellow() -> HDRColor { return NMTheme.Pick(NMColorRole.Route, new HDRColor(1.0, 0.878, 0.400, 1.0)); }
+    public static func Muted() -> HDRColor { return NMTheme.Pick(NMColorRole.Muted, new HDRColor(0.667, 0.863, 0.922, 1.0)); }
+    public static func PanelBg() -> HDRColor { return NMTheme.Pick(NMColorRole.PanelBg, new HDRColor(0.024, 0.078, 0.118, 1.0)); }
+    public static func CardBg() -> HDRColor { return NMTheme.Pick(NMColorRole.PanelBg, new HDRColor(0.039, 0.157, 0.216, 1.0)); }
     public static func ZoomRatePerSecond() -> Float { return 4.0; }
     public static func CardOpacity() -> Float { return 0.5; }
 
@@ -28,6 +43,15 @@ public abstract class NMTheme {
     public static func VanillaGrowMs() -> Float { return 150.0; }
     // Vanilla map-marker colour per widget state (MappinsGroup.WidgetState). Unknown states are white.
     public static func VanillaStateColor(state: CName) -> HDRColor {
+        let own = NMTheme.VanillaStateColorOwn(state);
+        if Equals(state, n"Quest") { return NMTheme.Pick(NMColorRole.Route, own); }
+        if Equals(state, n"Player") { return NMTheme.Pick(NMColorRole.Player, own); }
+        if Equals(state, n"FastTravel") || Equals(state, n"FastTravelMetro") { return NMTheme.Pick(NMColorRole.FastTravel, own); }
+        if Equals(state, n"Relic") { return NMTheme.Pick(NMColorRole.Relic, own); }
+        if Equals(state, n"Prevention_LightBlue") { return NMTheme.Pick(NMColorRole.Police, own); }
+        return own;
+    }
+    public static func VanillaStateColorOwn(state: CName) -> HDRColor {
         if Equals(state, n"Quest") { return new HDRColor(1.0, 1.0, 0.306, 1.0); }            // #FFFF4E
         if Equals(state, n"Gigs") { return new HDRColor(0.0, 1.0, 0.835, 1.0); }             // #00FFD5
         if Equals(state, n"Default") { return new HDRColor(1.0, 0.443, 0.404, 1.0); }        // #FF7167
@@ -70,25 +94,30 @@ public abstract class NMTheme {
         if Equals(c, NightMapHoloColor.Green) { return 1; }
         return 0;
     }
-    public static func HoloAccent(theme: Int32) -> HDRColor {
+    public static func HoloAccent(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Accent, NMTheme.HoloAccentOwn(theme)); }
+    public static func HoloAccentOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.365, 1.0, 0.541, 1.0); }   // #5dff8a
         return new HDRColor(0.310, 0.890, 1.0, 1.0);                     // #4fe3ff
     }
-    public static func HoloHighlight(theme: Int32) -> HDRColor {
+    public static func HoloHighlight(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Highlight, NMTheme.HoloHighlightOwn(theme)); }
+    public static func HoloHighlightOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.553, 1.0, 0.659, 1.0); }   // #8dffa8
         return NMTheme.Cyan();
     }
-    public static func HoloBackground(theme: Int32) -> HDRColor {
+    public static func HoloBackground(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Background, NMTheme.HoloBackgroundOwn(theme)); }
+    public static func HoloBackgroundOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.016, 0.063, 0.031, 1.0); } // #041008
         return new HDRColor(0.020, 0.051, 0.094, 1.0);                   // #050d18
     }
     // District title in the top-left header (#e6f7ff), mirrored in green.
-    public static func HeaderTitle(theme: Int32) -> HDRColor {
+    public static func HeaderTitle(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Highlight, NMTheme.HeaderTitleOwn(theme)); }
+    public static func HeaderTitleOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.902, 1.0, 0.925, 1.0); }  // #e6ffec
         return new HDRColor(0.902, 0.969, 1.0, 1.0);                     // #e6f7ff
     }
     // Sidebar glass (spec 6): a dark fill over the panel fill, a bright left edge and a soft inner gradient.
-    public static func SidebarBg(theme: Int32) -> HDRColor {
+    public static func SidebarBg(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.PanelBg, NMTheme.SidebarBgOwn(theme)); }
+    public static func SidebarBgOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.012, 0.047, 0.024, 1.0); } // #030c06
         return new HDRColor(0.012, 0.035, 0.071, 1.0);                   // #030912
     }
@@ -98,11 +127,13 @@ public abstract class NMTheme {
     public static func SidebarEdgeOpacity() -> Float { return 0.55; }
     public static func SidebarGradientOpacity() -> Float { return 0.10; }
     // Small uppercase labels (HOVERED, TRACKING) and the card's description text.
-    public static func CardLabel(theme: Int32) -> HDRColor {
+    public static func CardLabel(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Muted, NMTheme.CardLabelOwn(theme)); }
+    public static func CardLabelOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.435, 0.753, 0.541, 1.0); } // #6fc08a
         return new HDRColor(0.435, 0.612, 0.753, 1.0);                   // #6f9cc0
     }
-    public static func CardBody(theme: Int32) -> HDRColor {
+    public static func CardBody(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Text, NMTheme.CardBodyOwn(theme)); }
+    public static func CardBodyOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.710, 0.878, 0.761, 1.0); } // #b5e0c2
         return new HDRColor(0.710, 0.804, 0.878, 1.0);                   // #b5cde0
     }
@@ -161,6 +192,12 @@ public abstract class NMTheme {
     // Tile-set tints. Tiles are colourless masks; these are applied at runtime, so a theme change needs no rebuild.
     // Keys are NMTileManifest.SetName values.
     public static func TileTint(set: String, theme: Int32) -> HDRColor {
+        let own = NMTheme.TileTintOwn(set, theme);
+        if Equals(set, "road_major") || Equals(set, "road_minor") { return NMTheme.Pick(NMColorRole.Road, own); }
+        if Equals(set, "outline") || Equals(set, "glow") { return NMTheme.Pick(NMColorRole.Wall, own); }
+        return NMTheme.Pick(NMColorRole.Floor, own);   // bfill
+    }
+    public static func TileTintOwn(set: String, theme: Int32) -> HDRColor {
         if theme == 1 {   // same lightness and saturation as cyan, hue ~140 degrees
             if Equals(set, "glow") { return new HDRColor(0.184, 1.0, 0.456, 1.0); }          // #2fff74
             if Equals(set, "outline") { return new HDRColor(0.227, 0.816, 0.424, 1.0); }     // #3ad06c

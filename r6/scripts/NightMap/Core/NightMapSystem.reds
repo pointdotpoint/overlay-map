@@ -115,6 +115,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let cornerPollGen: Int32;
     private let cornerRouteMs: Float;
     private let cornerDistrict: String;
+    private let palette: ref<NMHudPalette>;   // set while "Follow HUD Painter colours" is on
     private let cornerObjectiveM: Float;   // -1 = nothing tracked (set in PrepareCornerMarkers)
     private let collectSeenMap: ref<inkHashMap>;
     private let hud: ref<NMHudHider>;     // set while the map is open with "Hide HUD while open" on
@@ -156,6 +157,10 @@ public class NightMapSystem extends ScriptableSystem {
         this.Close();
         this.cornerPollGen += 1;
         this.cornerHost.Detach();
+        if IsDefined(this.palette) {
+            this.palette.Destroy();
+            this.palette = null;
+        }
         this.PadReleaseCtx(this.padCtxToken);
     }
 
@@ -1271,6 +1276,30 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     public func CornerHost() -> ref<NMCornerHost> { return this.cornerHost; }
+    public func Palette() -> ref<NMHudPalette> { return this.palette; }
+    public func UsePalette(p: ref<NMHudPalette>) { this.palette = p; }
+
+    // Follow HUD Painter colours: probes live in the HUD window while the setting is on; a palette change re-tints the
+    // open panel's layers and rebuilds the corner.
+    private func SyncPalette(s: ref<NightMapSettings>) {
+        let want = IsDefined(s) && s.followHudPainter;
+        let changed = false;
+        if want && !IsDefined(this.palette) {
+            let window = this.HudWindow();
+            if IsDefined(window) { this.palette = NMHudPalette.Create(window); }
+        } else if !want && IsDefined(this.palette) {
+            this.palette.Destroy();
+            this.palette = null;
+            changed = true;
+        }
+        if IsDefined(this.palette) && this.palette.Refresh() {
+            changed = true;
+        }
+        if changed {
+            this.ApplyTheme();
+            this.cornerHost.Invalidate();
+        }
+    }
     public func CornerActive() -> Bool { return this.cornerHost.Active(); }
 
     private func ScheduleCornerPoll(seconds: Float) {
@@ -1287,6 +1316,7 @@ public class NightMapSystem extends ScriptableSystem {
         if this.cornerHost.mpp <= 0.0 && this.cornerMpp > 0.0 {
             this.cornerHost.mpp = this.cornerMpp;
         }
+        this.SyncPalette(s);
         let probe = this.cornerHost.Active() ? this.cornerHost.probe : NMMinimapProbe.Find(window, this.Gps().Minimap());
         let r = this.cornerHost.Sync(s, window, probe, this.api);
         if r == 1 || r == 3 {

@@ -12,6 +12,11 @@ public class NMCornerHost {
 
     public func Active() -> Bool { return IsDefined(this.corner); }
 
+    // The next Sync rebuilds the corner (colours changed under it).
+    public func Invalidate() {
+        if this.Active() { this.cfg = new NMCornerConfig(); }
+    }
+
     // 0 nothing, 1 created, 2 destroyed, 3 rebuilt. probe: the live minimap (null while it has not attached).
     public func Sync(s: ref<NightMapSettings>, window: wref<inkCompoundWidget>, probe: ref<NMMinimapProbe>, api: ref<NightMap>) -> Int32 {
         if !IsDefined(s) || !s.replaceMinimap {

@@ -34,5 +34,22 @@ public abstract class NMPaletteTests {
             && q.Get(NMColorRole.Accent).Green == 0.2, "");
         p.Destroy();
         t.Check("palette.destroy_removes_probes", host.GetNumChildren() == 0, "");
+    
+        // NMTheme routing: no palette = today's colours; a palette answers by role.
+        let prev = NMTheme.Palette();
+        NMTheme.Use(null);
+        let c = NMTheme.Cyan();
+        let r = NMTheme.TileTint("road_major", 0);
+        t.Check("palette.off_is_today", c.Red == 0.478 && c.Green == 0.941 && c.Blue == 1.0
+            && r.Red == 0.561 && r.Green == 0.863 && r.Blue == 1.0, "");
+        let f = NMHudPalette.Fixed(new HDRColor(0.5, 0.5, 0.5, 1.0));
+        f.Set(NMColorRole.Accent, new HDRColor(0.9, 0.1, 0.1, 1.0));
+        f.Set(NMColorRole.Floor, new HDRColor(0.1, 0.9, 0.1, 1.0));
+        NMTheme.Use(f);
+        let a = NMTheme.Cyan();
+        let fl = NMTheme.TileTint("bfill", 0);
+        let qc = NMTheme.VanillaStateColor(n"Quest");
+        NMTheme.Use(prev);
+        t.Check("palette.on_routes_roles", a.Red == 0.9 && a.Green == 0.1 && fl.Green == 0.9 && fl.Red == 0.1 && qc.Red == 0.5, "");
     }
 }
