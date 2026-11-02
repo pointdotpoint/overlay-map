@@ -12,6 +12,10 @@ public class NMShapeLayer {
     private let icons: array<ref<inkImage>>;
     private let arrows: array<ref<inkImage>>;
     private let arrowCanvas: ref<inkCanvas>;
+    private let areaCanvas: ref<inkCanvas>;
+    private let areas: array<ref<inkShape>>;
+    private let nz: Int32;
+    private let loggedArea: Bool;
     private let round: Bool;      // the view is a disc (Circle style)
     private let rimInset: Float;  // px inside the rim where clamped markers sit
     private let scale: Float;     // as NMPanelLayout.scale
@@ -29,6 +33,7 @@ public class NMShapeLayer {
         let size = parent.GetSize();
         l.root = NMUi.Canvas(parent, 0.0, 0.0, size.X, size.Y);
         l.root.SetName(n"MinimapMirror");
+        l.areaCanvas = NMUi.Canvas(l.root, 0.0, 0.0, size.X, size.Y);
         l.ringCanvas = NMUi.Canvas(l.root, 0.0, 0.0, size.X, size.Y);
         l.coneCanvas = NMUi.Canvas(l.root, 0.0, 0.0, size.X, size.Y);
         l.iconCanvas = NMUi.Canvas(l.root, 0.0, 0.0, size.X, size.Y);
@@ -51,7 +56,7 @@ public class NMShapeLayer {
     public static func Wanted(kind: NMMiniKind, enemies: Bool, police: Bool) -> Bool {
         if Equals(kind, NMMiniKind.Enemy) { return enemies; }
         if Equals(kind, NMMiniKind.Police) { return police; }
-        return Equals(kind, NMMiniKind.Device) || Equals(kind, NMMiniKind.Other);
+        return Equals(kind, NMMiniKind.Device) || Equals(kind, NMMiniKind.Other) || Equals(kind, NMMiniKind.Area) || Equals(kind, NMMiniKind.Zone);
     }
 
     // Vanilla minimap px -> NightMap px. sMini: vanilla px per metre (NMGps scale, 0 = unknown); fallback: the cone's
@@ -106,6 +111,7 @@ public class NMShapeLayer {
         this.nc = 0;
         this.nr = 0;
         this.na = 0;
+        this.nz = 0;
         if IsDefined(mirror) {
             for e in mirror.All() {
                 let shadow = Equals(e.kind, NMMiniKind.Shadow) || (IsDefined(skip) && IsDefined(skip.Find(e.key)));
@@ -115,6 +121,11 @@ public class NMShapeLayer {
             }
         }
         NMShapeLayer.Hide(this.arrows, this.na);
+        let i = this.nz;
+        while i < ArraySize(this.areas) {
+            if this.areas[i].IsVisible() { this.areas[i].SetVisible(false); }
+            i += 1;
+        }
         NMShapeLayer.Hide(this.rings, this.nr);
         NMShapeLayer.Hide(this.cones, this.nc);
         NMShapeLayer.Hide(this.icons, this.ni);
@@ -143,6 +154,10 @@ public class NMShapeLayer {
     // shadow: NMVanilla draws the marker itself; only its rim clamp and above / below arrow come from here.
     private func Draw(e: ref<NMMiniEntry>, cam: ref<NMCamera>, viewW: Float, viewH: Float, sMini: Float, camYaw: Float, shadow: Bool) {
         let w = e.Position();
+        if Equals(e.kind, NMMiniKind.Area) || Equals(e.kind, NMMiniKind.Zone) {
+            this.DrawArea(e, cam, w, sMini, camYaw);
+            return;
+        }
         let p = cam.WorldToMap(w.X, w.Y);
         let rootOp = e.root.GetOpacity();
         let tint = IsDefined(e.icon) ? e.icon.GetTintColor() : NMTheme.HoloAccent(0);
@@ -207,6 +222,42 @@ public class NMShapeLayer {
             icon.SetVisible(true);
             this.ni += 1;
         }
+    }
+
+    // The vanilla area polygon, vertex by vertex into map px, with its own variant, tint and opacity.
+    private func DrawArea(e: ref<NMMiniEntry>, cam: ref<NMCamera>, w: Vector4, sMini: Float, camYaw: Float) {
+        let src = e.shape as inkShape;
+        if !IsDefined(src) || !src.IsVisible() || sMini <= 0.0 { return; }
+        let vs = src.GetVertexList();
+        if ArraySize(vs) < 3 {
+            if !this.loggedArea {
+                this.loggedArea = true;
+                NMLog.Info("parity|area|no vertices|" + NameToString(e.cls));
+            }
+            return;
+        }
+        let pts: array<Vector2>;
+        for v in vs {
+            let wv = NMParity.AreaToWorld(v, w.X, w.Y, camYaw, sMini);
+            ArrayPush(pts, cam.WorldToMap(wv.X, wv.Y));
+        }
+        let dst: ref<inkShape>;
+        if this.nz < ArraySize(this.areas) {
+            dst = this.areas[this.nz];
+        } else {
+            dst = new inkShape();
+            dst.SetAnchor(inkEAnchor.TopLeft);
+            dst.SetInteractive(false);
+            dst.SetSize(this.root.GetSize());
+            dst.Reparent(this.areaCanvas);
+            ArrayPush(this.areas, dst);
+        }
+        dst.SetVariant(src.GetVariant());
+        dst.SetVertexList(pts);
+        dst.SetTintColor(src.GetTintColor());
+        dst.SetOpacity(src.GetOpacity() * e.root.GetOpacity());
+        dst.SetVisible(true);
+        this.nz += 1;
     }
 
     public func SetVisible(on: Bool) { this.root.SetVisible(on); }

@@ -1394,6 +1394,10 @@ public class NightMapSystem extends ScriptableSystem {
         }
         c.Update(player, dt, reading, color, style, routesOn, this.cornerDistrict, this.cornerObjectiveM);
         c.UpdateMirror(this.mirror, this.Gps().Scale(), this.CameraYaw(), this.vanilla.diff);
+        if this.frameNo % 10 == 0 {
+            let ctrl = this.Gps().Minimap();
+            if IsDefined(ctrl) { c.SetZone(ctrl.NMZone()); }
+        }
     }
 
     public func DistrictName() -> String {

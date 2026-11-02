@@ -38,6 +38,11 @@ public abstract class NMParity {
         return Rad2Deg(AtanF(px - w * 0.5, -(py - h * 0.5)));
     }
 
+    // An area shape vertex (vanilla minimap px, relative to its mappin) to world, with the GPS route transform.
+    public static func AreaToWorld(v: Vector2, mx: Float, my: Float, camYaw: Float, s: Float) -> Vector2 {
+        return NMGps.ToWorld(v, new Vector2(0.0, 0.0), mx, my, camYaw, s);
+    }
+
     // holo_arrow points up: above = 0, below = 180.
     public static func VerticalRotation(v: Int32) -> Float {
         return v < 0 ? 180.0 : 0.0;

@@ -18,6 +18,9 @@ public class NMCorner {
     private let ringCount: Int32;
     private let bracketCount: Int32;
     private let stripBg: ref<inkRectangle>;
+    private let zoneScrim: ref<inkRectangle>;
+    private let zoneText: ref<inkText>;
+    private let zoneKey: String;
     private let stripLeft: ref<inkText>;
     private let stripRight: ref<inkText>;
     private let stripLeftText: String;
@@ -93,6 +96,7 @@ public class NMCorner {
         if layout.stripH > 0.0 {
             c.BuildStrip();
         }
+        c.BuildZoneLabel();
 
         let bounds = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
         c.camera = NMCamera.Create(layout.mapW, layout.mapH, bounds, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
@@ -161,6 +165,66 @@ public class NMCorner {
         this.stripRight.SetTranslation(new Vector2(l.w - pad, y + l.stripH * 0.5));
         this.stripLeftText = "\n";
         this.stripRightText = "\n";
+    }
+
+    // The vanilla minimap's zone line (zone text, autodrive, courier timer) along the top of the map area, inside the box.
+    private func BuildZoneLabel() {
+        let l = this.layout;
+        let s = l.scale;
+        let h = NMCorner.StripFont() * s * this.cfg.textSize * 1.4;
+        let top = l.round ? l.mapY + l.mapH * 0.18 : l.mapY + 4.0 * s * this.cfg.frame;
+        this.zoneScrim = NMUi.Rect(this.frame, l.mapX + l.mapW * 0.15, top, l.mapW * 0.7, h, NMTheme.PanelBg(), 0.7);
+        this.zoneScrim.SetName(n"CornerZoneScrim");
+        this.zoneScrim.SetVisible(false);
+        this.zoneText = NMUi.Text(this.frame, NMTheme.BodyFont(), n"Semi-Bold", Cast<Int32>(NMCorner.StripFont() * s * this.cfg.textSize), NMTheme.Text());
+        this.zoneText.SetAnchorPoint(new Vector2(0.5, 0.5));
+        this.zoneText.SetTranslation(new Vector2(l.mapX + l.mapW * 0.5, top + h * 0.5));
+        this.zoneText.SetVisible(false);
+        this.zoneKey = "\n";
+    }
+
+    public func ZoneLabelRect() -> ref<NMRect> {
+        let p = this.zoneScrim.GetTranslation();
+        let z = this.zoneScrim.GetSize();
+        return NMRect.Create(p.X, p.Y, p.X + z.X, p.Y + z.Y);
+    }
+
+    public static func ZoneText(z: ref<NMZoneInfo>) -> String {
+        let parts: array<String>;
+        if StrLen(z.label) > 0 { ArrayPush(parts, StrUpper(z.label)); }
+        if z.autodrive { ArrayPush(parts, "AUTODRIVE"); }
+        if StrLen(z.timer) > 0 { ArrayPush(parts, z.timer); }
+        let out = "";
+        let i = 0;
+        while i < ArraySize(parts) {
+            if i > 0 { out += "  ·  "; }
+            out += parts[i];
+            i += 1;
+        }
+        return out;
+    }
+
+    // Frame tint for the vanilla vignette state: white (no change) when safe or public, the route yellow when
+    // restricted (vanilla "Default"), the enemy red when hostile or in combat.
+    public static func ZoneTint(state: CName) -> HDRColor {
+        if Equals(state, n"Dangerous") || Equals(state, n"Combat") {
+            return NMTheme.Pick(NMColorRole.Enemy, new HDRColor(1.0, 0.33, 0.33, 1.0));
+        }
+        if Equals(state, n"Default") { return NMTheme.Yellow(); }
+        return new HDRColor(1.0, 1.0, 1.0, 1.0);
+    }
+
+    public func SetZone(z: ref<NMZoneInfo>) {
+        if !IsDefined(z) { return; }
+        let key = z.Key();
+        if Equals(key, this.zoneKey) { return; }
+        this.zoneKey = key;
+        let text = NMCorner.ZoneText(z);
+        let on = StrLen(text) > 0;
+        this.zoneText.SetText(text);
+        this.zoneText.SetVisible(on);
+        this.zoneScrim.SetVisible(on);
+        this.frame.SetTintColor(NMCorner.ZoneTint(z.state));
     }
 
     // "320 M" (10 m steps) below 1 km, "1.4 KM" above, "" when nothing is tracked (m < 0).

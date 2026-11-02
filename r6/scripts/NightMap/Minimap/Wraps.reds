@@ -82,6 +82,33 @@ protected func Update() -> Void {
     }
 }
 
+// Quest and security areas: the shape widget the controller draws (vertices copied by NMShapeLayer).
+@wrapMethod(MinimapQuestAreaMappinController)
+protected func Update() -> Void {
+    wrappedMethod();
+    let mirror = NMMinimapWraps.Mirror();
+    if !IsDefined(mirror) || !mirror.live { return; }
+    let m = this.GetMappin();
+    if !IsDefined(m) { return; }
+    let e = mirror.Find(m.GetNewMappinID().value);
+    if IsDefined(e) { e.shape = inkWidgetRef.Get(this.areaShapeWidget); }
+}
+
+@wrapMethod(MinimapSecurityAreaMappinController)
+protected func Update() -> Void {
+    wrappedMethod();
+    let mirror = NMMinimapWraps.Mirror();
+    if !IsDefined(mirror) || !mirror.live { return; }
+    let m = this.GetMappin();
+    if !IsDefined(m) { return; }
+    let e = mirror.Upsert(m.GetNewMappinID().value);   // its Update returns early without super.Update when it has no area
+    e.kind = NMMiniKind.Zone;
+    e.cls = n"MinimapSecurityAreaMappinController";
+    e.mappin = m;
+    e.root = this.GetRootWidget();
+    e.shape = inkWidgetRef.Get(this.areaShapeWidget);
+}
+
 // Cameras, turrets and other devices: the effect area while targeted or tagged.
 @wrapMethod(MinimapDeviceMappinController)
 protected func Update() -> Void {

@@ -19,7 +19,8 @@ public abstract class NMParityTests {
         // The shape layer has no filter-view input at all: enemies show whatever the view.
         t.Check("parity.enemies_ignore_filter", NMShapeLayer.Wanted(NMMiniKind.Enemy, true, true), "");
         t.Check("parity.enemies_switch", !NMShapeLayer.Wanted(NMMiniKind.Enemy, false, true) && !NMShapeLayer.Wanted(NMMiniKind.Police, true, false)
-            && NMShapeLayer.Wanted(NMMiniKind.Device, false, false) && !NMShapeLayer.Wanted(NMMiniKind.Area, true, true), "");
+            && NMShapeLayer.Wanted(NMMiniKind.Device, false, false) && NMShapeLayer.Wanted(NMMiniKind.Area, false, false)
+            && NMShapeLayer.Wanted(NMMiniKind.Zone, false, false), "");
         t.Check("parity.kind_table", NMMinimapWraps.KindOf(n"MinimapStealthMappinController") == EnumInt(NMMiniKind.Enemy)
             && NMMinimapWraps.KindOf(n"MinimapRemotePlayerMappinController") == -1
             && NMMinimapWraps.KindOf(n"MinimapPingSystemMappinController") == EnumInt(NMMiniKind.Other), "");
@@ -36,5 +37,33 @@ public abstract class NMParityTests {
         t.Check("parity.vertical", NMParity.VerticalRotation(1) == 0.0 && NMParity.VerticalRotation(-1) == 180.0, "");
         t.Check("parity.shadow_kind", NMMinimapWraps.KindOf(n"MinimapQuestMappinController") == EnumInt(NMMiniKind.Shadow)
             && !NMShapeLayer.Wanted(NMMiniKind.Shadow, true, true), "");
+    
+        // Area shapes: vanilla minimap px relative to the mappin -> world (GPS transform, mappin as origin).
+        let aw = NMParity.AreaToWorld(new Vector2(10.0, 0.0), 100.0, 200.0, 0.0, 2.0);
+        t.Check("parity.area_vertices_to_world", AbsF(aw.X - 105.0) < 0.01 && AbsF(aw.Y - 200.0) < 0.01, FloatToStringPrec(aw.X, 2));
+        // Zone label line: vanilla text, autodrive and the courier timer joined; nothing when all are off.
+        let z = new NMZoneInfo();
+        t.Check("parity.zone_text_empty", Equals(NMCorner.ZoneText(z), ""), "");
+        z.label = "HOSTILE";
+        z.autodrive = true;
+        z.timer = "02:13";
+        t.Check("parity.zone_text", Equals(NMCorner.ZoneText(z), "HOSTILE  ·  AUTODRIVE  ·  02:13"), NMCorner.ZoneText(z));
+        t.Check("parity.zone_tint", NMCorner.ZoneTint(n"Safe").Red == 1.0 && NMCorner.ZoneTint(n"Safe").Green == 1.0
+            && NMCorner.ZoneTint(n"Dangerous").Green < 0.5 && NMCorner.ZoneTint(n"Combat").Green < 0.5, "");
+        // The label sits inside the corner's box in every style.
+        let host = new inkCanvas();
+        let ok = true;
+        let st = 0;
+        while st < 3 {
+            let set = new NightMapSettings();
+            set.cornerStyle = IntEnum<NightMapCornerStyle>(st);
+            let l = NMCornerLayout.Compute(NMRect.Create(3300.0, 100.0, 3700.0, 500.0), set.cornerStyle, 1.0, 1.0, 3840.0, 2160.0);
+            let c = NMCorner.Build(host, l, NMCornerConfig.From(set), NightMap.Create(), 0.4);
+            let r = c.ZoneLabelRect();
+            ok = ok && r.minX >= 0.0 && r.minY >= 0.0 && r.maxX <= l.w && r.maxY <= l.h;
+            c.Destroy();
+            st += 1;
+        }
+        t.Check("parity.zone_label_inside_box", ok, "");
     }
 }
