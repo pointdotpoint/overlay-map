@@ -71,6 +71,16 @@ UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only
 - `Numpad .` on a selected fast travel marker fast travels there with the game's own fast travel (arrival at the dataterm, the game's own locks during some quests or combat). On foot only; your vehicle stays behind. Display → Fast travel key.
 - Mods can add their own items through the layer API.
 
+### Corner minimap
+Mod Settings → NightMap → Minimap → Replace vanilla minimap (off by default) puts NightMap in place of the game's minimap, at its size and position. The open/close key expands it to the full map; closing shrinks it back to the corner, re-centred on V.
+- North-up, never rotates. It shows the markers of the expanded map's current filter, at the zoom you last left the expanded map at (saved with the game). The corner itself takes no input.
+- Corner map style: Circle, Square, or Square + info strip (default: the district and the distance to the tracked objective).
+- It copies what the vanilla minimap shows, which keeps running hidden underneath: enemies with their vision cones, cameras and turrets with their ranges, loot, pings and events, quest and security areas, markers held at the rim when off the map, above/below arrows, the zone label (restricted, hostile, combat), autodrive and the courier timer, and the GPS routes. Enemies and police have their own on/off switches and show whatever the filter view.
+- Sizes: corner size (from the vanilla box's top-right corner), marker size, text size, frame thickness, corner opacity, and the expanded map's size.
+- It hides whenever the game hides its minimap (menus, photo mode, scanner, ...).
+- Colours: Display → Follow HUD Painter colours (off by default) takes every NightMap colour from the game's HUD palette, so a [HUD Painter](https://www.nexusmods.com/cyberpunk2077/mods/14935) preset recolours the map. Off keeps NightMap's own colours. NightMap has no per-colour settings of its own; HUD Painter is optional.
+- With Debug on, the log gets a `RESULT|corner` line every 600 frames with the corner's frame and script time.
+
 ### Debug tools
 With Debug on (Mod Settings → NightMap → Debug tools), chords on the toggle key: Ctrl = self-test, Shift = perf suite (`python3 tools/results.py`), Alt = calibration dump (`cd tools/tiles && python3 -m nmtiles.calib`), Ctrl+Shift = debug layer.
 
