@@ -20,6 +20,7 @@ public class NMGps {
     public let readMsMax: Float;
 
     public func SetMinimap(c: ref<MinimapContainerController>) { this.ctrl = c; }
+    public func Minimap() -> wref<MinimapContainerController> { return this.ctrl; }
 
     public func ClearMinimap(c: ref<MinimapContainerController>) {
         let cur: ref<MinimapContainerController> = this.ctrl;
