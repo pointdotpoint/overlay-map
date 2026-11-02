@@ -43,6 +43,14 @@ public abstract class NMParity {
         return NMGps.ToWorld(v, new Vector2(0.0, 0.0), mx, my, camYaw, s);
     }
 
+    // Vanilla minimap px per metre from one marker: its root's offset from the minimap centre (px) over its
+    // horizontal distance from V (m). 0 when the marker is closer than 10 m (too noisy).
+    public static func ScaleFrom(offset: Vector2, dx: Float, dy: Float) -> Float {
+        let d = SqrtF(dx * dx + dy * dy);
+        if d < 10.0 { return 0.0; }
+        return SqrtF(offset.X * offset.X + offset.Y * offset.Y) / d;
+    }
+
     // holo_arrow points up: above = 0, below = 180.
     public static func VerticalRotation(v: Int32) -> Float {
         return v < 0 ? 180.0 : 0.0;

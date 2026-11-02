@@ -1080,7 +1080,7 @@ public class NightMapSystem extends ScriptableSystem {
             this.tipApiRev = -1;
         }
         this.UpdateRoutes(dt);
-        if IsDefined(this.panelMirror) { this.panelMirror.Update(this.camera, this.mirror, l.viewW, l.mapH, true, true, this.Gps().Scale(), this.CameraYaw(), this.vanilla.diff); }
+        if IsDefined(this.panelMirror) { this.panelMirror.Update(this.camera, this.mirror, l.viewW, l.mapH, true, true, this.MiniScale(GetPlayer(this.GetGameInstance())), this.CameraYaw(), this.vanilla.diff); }
         if this.Photos().Revision() != this.Photos().SyncedRevision() {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
         }
@@ -1302,6 +1302,13 @@ public class NightMapSystem extends ScriptableSystem {
 
     public func CornerHost() -> ref<NMCornerHost> { return this.cornerHost; }
 
+    // Vanilla minimap px per metre: measured on the GPS route when one is read, else estimated from a mirrored marker.
+    private func MiniScale(player: ref<GameObject>) -> Float {
+        let s = this.Gps().Scale();
+        if s > 0.0 || !IsDefined(player) { return s; }
+        return this.mirror.EstimateScale(player.GetWorldPosition());
+    }
+
     public func CameraYaw() -> Float {
         return NMGps.CameraYaw(GameInstance.GetCameraSystem(this.GetGameInstance()).GetActiveCameraForward());
     }
@@ -1407,7 +1414,7 @@ public class NightMapSystem extends ScriptableSystem {
             this.cornerDistrict = this.DistrictName();
         }
         c.Update(player, dt, reading, color, style, routesOn, this.cornerDistrict, this.cornerObjectiveM);
-        c.UpdateMirror(this.mirror, this.Gps().Scale(), this.CameraYaw(), this.vanilla.diff);
+        c.UpdateMirror(this.mirror, this.MiniScale(player), this.CameraYaw(), this.vanilla.diff);
         if this.frameNo % 10 == 0 {
             let ctrl = this.Gps().Minimap();
             if IsDefined(ctrl) { c.SetZone(ctrl.NMZone()); }

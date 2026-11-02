@@ -40,6 +40,9 @@ public abstract class NMParityTests {
     
         // Area shapes: vanilla minimap px relative to the mappin -> world (GPS transform, mappin as origin).
         let aw = NMParity.AreaToWorld(new Vector2(10.0, 0.0), 100.0, 200.0, 0.0, 2.0);
+        // No GPS route: the vanilla scale comes from a marker's minimap offset over its world distance (review: no areas).
+        t.Check("parity.scale_from_marker", AbsF(NMParity.ScaleFrom(new Vector2(30.0, 40.0), 25.0, 0.0) - 2.0) < 0.001
+            && NMParity.ScaleFrom(new Vector2(30.0, 40.0), 5.0, 0.0) == 0.0, "");   // too close to measure
         t.Check("parity.area_vertices_to_world", AbsF(aw.X - 105.0) < 0.01 && AbsF(aw.Y - 200.0) < 0.01, FloatToStringPrec(aw.X, 2));
         // Zone label line: vanilla text, autodrive and the courier timer joined; nothing when all are off.
         let z = new NMZoneInfo();

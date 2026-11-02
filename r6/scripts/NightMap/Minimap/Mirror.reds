@@ -106,6 +106,18 @@ public class NMMinimapMirror {
         this.revision += 1;
     }
 
+    // The vanilla minimap's px per metre from the first shown, unclamped marker 10 m or more from V; 0 if none.
+    public func EstimateScale(player: Vector4) -> Float {
+        for e in this.entries {
+            if e.Shown() && !e.clamped && !Equals(e.kind, NMMiniKind.Area) && !Equals(e.kind, NMMiniKind.Zone) {
+                let w = e.Position();
+                let s = NMParity.ScaleFrom(e.root.GetTranslation(), w.X - player.X, w.Y - player.Y);
+                if s > 0.0 { return s; }
+            }
+        }
+        return 0.0;
+    }
+
     public func All() -> array<ref<NMMiniEntry>> { return this.entries; }
     public func Count() -> Int32 { return ArraySize(this.entries); }
 }
