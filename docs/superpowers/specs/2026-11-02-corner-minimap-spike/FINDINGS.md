@@ -64,3 +64,22 @@ shows, the mirror sees, including types not listed here. NightMap then draws the
 - **Circular clip:** *runtime.* Plan: `inkMaskWidget` over the map canvas with the mask texture the vanilla minimap
   uses; until confirmed, the Circle style draws the map in a square clip under a ring with circular culling of
   markers, and logs the mask result (Debug on).
+
+## Confirmed in game (2026-11-02 campaigns: corner, corner-probe, corner-enemies, corner-perf)
+
+- **Placement:** the container root (`Root`, 450x450, controller reported as `gameuiTutorialArea`) sits in its own
+  `inkVirtualWindow` whose parent chain ends there; `LocalToGlobal` on it is local to that window (26.7,26.7), and the
+  HUD slot widgets report 0x0 boxes. So the corner is drawn **inside the root** in its local units; it lands exactly on
+  the vanilla minimap (top right, curved like the HUD), and hides with it.
+- **Circular clip:** `inkMask` with `holo_disc`, first in the holder, masks the canvases after it. Works.
+- **Palette read-back:** probes bound to `MainColors.*` read the vanilla values (`Yellow 1.119,0.844,0.257`).
+  Vanilla `PanelDarkBlue` equals `DarkBlue`; HUD Painter's White floor glares on filled buildings → floor uses
+  `PanelDarkGrey`.
+- **Controller updates:** `Update()` runs on events (intro, state changes), not per frame; the mirror records always and
+  re-reads widgets per frame. `GetClassName()` returns native names (`gameuiMinimapStealthMappinController`).
+- **Script quirk:** a field read straight off a call's temporary (`m.GetNewMappinID().value`,
+  `sm.GetSenseCone().length`, `p.Get(role).Green`) reads 0; bind to a local first.
+- **Stealth:** vanilla hides enemies beyond its radius (root invisible); shown ones carry `enemyCone` with rotation and
+  a 20 m sense cone.
+- **Cost (corner script time, 600-frame windows):** moving 0.32-0.34 ms, standing 0.19 ms (budget 0.5); before the
+  marker slide, moving was 1.56 ms (item relayout 1.1 ms).
