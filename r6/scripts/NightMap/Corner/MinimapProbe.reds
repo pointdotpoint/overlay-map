@@ -1,14 +1,15 @@
 module NightMap
 
 // The live vanilla minimap: its box, whether the game shows it, and fading its contents. The container root is never
-// faded: the game's own visibility/opacity on it stays readable (FINDINGS "Hiding"). Its children are, by opacity
-// only, so the minimap keeps running (GPS routes, mirrored markers).
+// faded: the game's own visibility/opacity on it stays readable (FINDINGS "Hiding"), and the corner is drawn inside it.
+// Its other children are faded, by opacity only, so the minimap keeps running (GPS routes, mirrored markers).
 public class NMMinimapProbe {
     private let root: wref<inkWidget>;
     private let window: wref<inkCompoundWidget>;
     private let faded: array<wref<inkWidget>>;
     private let opacity: array<Float>;
     private let logged: Bool;
+    private let target: Float;      // opacity the vanilla children are faded to (0 unless the harness asks otherwise)
     private let fixed: Bool;        // tests: Box() answers fixedBox instead of measuring
     private let fixedBox: ref<NMRect>;
 
@@ -45,23 +46,14 @@ public class NMMinimapProbe {
 
     public func Root() -> wref<inkWidget> { return this.root; }
 
-    // Absolute box in the HUD window's units; null when missing or under 8 units.
+    // The minimap root's own box, in its local units (the corner is drawn inside the root, FINDINGS "Placement");
+    // null when missing or under 8 units.
     public func Box() -> ref<NMRect> {
         if this.fixed { return this.fixedBox; }
-        if !IsDefined(this.root) || !IsDefined(this.window) { return null; }
-        let wtl = WidgetUtils.LocalToGlobal(this.window, new Vector2(0.0, 0.0));
-        let wbr = WidgetUtils.LocalToGlobal(this.window, this.window.GetSize());
-        let gw = wbr.X - wtl.X;
-        let gh = wbr.Y - wtl.Y;
-        if gw < 1.0 || gh < 1.0 { return null; }
-        let ws = this.window.GetSize();
-        let kx = ws.X / gw;
-        let ky = ws.Y / gh;
-        let tl = WidgetUtils.LocalToGlobal(this.root, new Vector2(0.0, 0.0));
-        let br = WidgetUtils.LocalToGlobal(this.root, this.root.GetSize());
-        let r = NMRect.Create((tl.X - wtl.X) * kx, (tl.Y - wtl.Y) * ky, (br.X - wtl.X) * kx, (br.Y - wtl.Y) * ky);
-        if r.maxX - r.minX < 8.0 || r.maxY - r.minY < 8.0 { return null; }
-        return r;
+        if !IsDefined(this.root) { return null; }
+        let size = this.root.GetSize();
+        if size.X < 8.0 || size.Y < 8.0 { return null; }
+        return NMRect.Create(0.0, 0.0, size.X, size.Y);
     }
 
     // The game shows the minimap: the root and every ancestor up to the window visible and not faded out.
@@ -85,12 +77,12 @@ public class NMMinimapProbe {
         let i = 0;
         while i < comp.GetNumChildren() {
             let w: ref<inkWidget> = comp.GetWidgetByIndex(i);
-            if IsDefined(w) {
+            if IsDefined(w) && !Equals(w.GetName(), n"NightMapCorner") {
                 if this.IndexOf(w) < 0 {
                     ArrayPush(this.faded, w);
                     ArrayPush(this.opacity, w.GetOpacity());
                 }
-                if w.GetOpacity() != 0.0 { w.SetOpacity(0.0); }
+                if w.GetOpacity() != this.target { w.SetOpacity(this.target); }
             }
             i += 1;
         }
@@ -106,6 +98,8 @@ public class NMMinimapProbe {
         ArrayClear(this.faded);
         ArrayClear(this.opacity);
     }
+
+    public func SetFadeTarget(op: Float) { this.target = op; }
 
     public func FadedCount() -> Int32 { return ArraySize(this.faded); }
 

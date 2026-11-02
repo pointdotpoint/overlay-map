@@ -706,6 +706,112 @@
         return out;
     }
 
+    // corner off|shown|hidden|box x,y wxh|mpp m|vanilla_op o (first faded child)|mirror n|icons i|cones c|palette k
+    public func Soak_Corner() -> String {
+        let h = this.cornerHost;
+        if !h.Active() {
+            return "corner off|probe " + (IsDefined(h.probe) ? "held" : "none") + "|minimap " + (IsDefined(this.Gps().Minimap()) ? "attached" : "none");
+        }
+        let c = h.corner;
+        let l = c.layout;
+        let root = h.probe.Root() as inkCompoundWidget;
+        let vop = IsDefined(root) && root.GetNumChildren() > 0 ? root.GetWidgetByIndex(0).GetOpacity() : -1.0;
+        let known = 0;
+        if IsDefined(this.palette) {
+            let i = 0;
+            while i < EnumInt(NMColorRole.Count) {
+                if this.palette.Has(IntEnum<NMColorRole>(i)) { known += 1; }
+                i += 1;
+            }
+        }
+        return "corner " + (c.IsShown() ? "shown" : "hidden") + "|style " + ToString(c.cfg.style)
+            + "|box " + FloatToStringPrec(l.x, 0) + "," + FloatToStringPrec(l.y, 0) + " " + FloatToStringPrec(l.w, 0) + "x" + FloatToStringPrec(l.h, 0)
+            + "|mpp " + FloatToStringPrec(c.Mpp(), 2) + "|vanilla_op " + FloatToStringPrec(vop, 2)
+            + "|game_shows " + (h.probe.ShownByGame() ? "1" : "0")
+            + "|mirror " + IntToString(this.mirror.Count()) + "|icons " + IntToString(c.mirrorLayer.drawnIcons)
+            + "|cones " + IntToString(c.mirrorLayer.drawnCones) + "|gps_scale " + FloatToStringPrec(this.MiniScale(GetPlayer(this.GetGameInstance())), 3)
+            + "|palette " + IntToString(known);
+    }
+
+    // hud_find: where the vanilla minimap's virtual window sits in the HUD window (the minimap root's own boxes are
+    // local to that window). Dumps the HUD window to depth 3 into hud_tree.txt, marking the minimap's ancestors.
+    public func Soak_HudFind() -> String {
+        let window = this.HudWindow();
+        let ctrl = this.Gps().Minimap();
+        if !IsDefined(window) || !IsDefined(ctrl) { return "no window or minimap"; }
+        let root = ctrl.NMRoot();
+        let vw = IsDefined(root) ? root.GetParentWidget() : null;
+        let dump = NMSoakDump.Open("hud_tree.txt");
+        let found = this.Soak_HudWalk(window, root, vw, 0, 3, dump, "");
+        dump.Flush();
+        return "found " + found + "|vw " + (IsDefined(vw) ? NameToString(vw.GetClassName()) : "-")
+            + "|root " + (IsDefined(root) ? NMMinimapSpike.BoxS(root) : "-") + "|window " + NMMinimapSpike.BoxS(window);
+    }
+
+    private func Soak_HudWalk(w: wref<inkWidget>, root: wref<inkWidget>, vw: wref<inkWidget>, depth: Int32, max: Int32, dump: ref<NMSoakDump>, path: String) -> String {
+        let mark = Equals(w, root) ? " <ROOT>" : (Equals(w, vw) ? " <VW>" : "");
+        let pad = "";
+        let k = 0;
+        while k < depth { pad += "  "; k += 1; }
+        let here = path + "/" + NameToString(w.GetName());
+        dump.Line(pad + NameToString(w.GetName()) + " [" + NameToString(w.GetClassName()) + "] ctrl=" + NMMinimapSpike.CtrlName(w)
+            + " box=" + NMMinimapSpike.BoxS(w) + " vis=" + (w.IsVisible() ? "1" : "0") + " op=" + FloatToStringPrec(w.GetOpacity(), 2) + mark);
+        let found = StrLen(mark) > 0 ? here + " " + NMMinimapSpike.BoxS(w) : "";
+        let comp = w as inkCompoundWidget;
+        if IsDefined(comp) && depth < max {
+            let i = 0;
+            while i < comp.GetNumChildren() {
+                let f = this.Soak_HudWalk(comp.GetWidgetByIndex(i), root, vw, depth + 1, max, dump, here);
+                if StrLen(f) > 0 && StrLen(found) == 0 { found = f; }
+                i += 1;
+            }
+        }
+        return found;
+    }
+
+    // mirror_dump: enemy / police / device entries as the shape layer sees them (up to 12), into mirror.txt; the answer
+    // counts them by kind and how many pass Shown().
+    public func Soak_MirrorDump() -> String {
+        let dump = NMSoakDump.Open("mirror.txt");
+        let n = 0;
+        let shown = 0;
+        let kinds = "";
+        let k = 0;
+        while k < 7 {
+            let c = 0;
+            for e in this.mirror.All() {
+                if EnumInt(e.kind) == k { c += 1; }
+            }
+            kinds += IntToString(k) + "=" + IntToString(c) + " ";
+            k += 1;
+        }
+        let player = GetPlayer(this.GetGameInstance());
+        let pp = player.GetWorldPosition();
+        for e in this.mirror.All() {
+            if e.Shown() { shown += 1; }
+            if n < 12 && (Equals(e.kind, NMMiniKind.Enemy) || Equals(e.kind, NMMiniKind.Police) || Equals(e.kind, NMMiniKind.Device)) {
+                let w = e.Position();
+                let ic = e.icon;
+                let co = e.cone;
+                dump.Line(NameToString(e.cls) + "|kind " + IntToString(EnumInt(e.kind)) + "|shown " + ToString(e.Shown())
+                    + "|root " + (IsDefined(e.root) ? (ToString(e.root.IsVisible()) + " " + FloatToStringPrec(e.root.GetOpacity(), 2)) : "-")
+                    + "|icon " + (IsDefined(ic) ? (NameToString(ic.GetTexturePart()) + " " + ToString(ic.IsVisible()) + " " + FloatToStringPrec(ic.GetOpacity(), 2)) : "-")
+                    + "|cone " + (IsDefined(co) ? (NameToString(co.GetTexturePart()) + " " + ToString(co.IsVisible()) + " " + FloatToStringPrec(co.GetOpacity(), 2)
+                        + " rot " + FloatToStringPrec(co.GetRotation(), 0)) : "-")
+                    + "|obj " + ToString(IsDefined(e.obj)) + "|d " + FloatToStringPrec(Vector4.Distance2D(w, pp), 1) + "|coneLen " + FloatToStringPrec(e.coneLen, 1));
+                n += 1;
+            }
+        }
+        dump.Flush();
+        return "mirror " + IntToString(this.mirror.Count()) + "|shown " + IntToString(shown) + "|kinds " + kinds;
+    }
+
+    // god: V can't die (enemy campaigns).
+    public func Soak_God() -> String {
+        StatusEffectHelper.ApplyStatusEffect(GetPlayer(this.GetGameInstance()), t"BaseStatusEffect.Invulnerable");
+        return "god";
+    }
+
     public func Soak_SeedPhotos(n: Int32) -> String {
         this.Photos().SeedForPerf(n);
         return "seeded";
@@ -722,6 +828,22 @@
             return "theme " + ToString(NMTheme.ThemeIndex(s.holoColor));
         }
         if Equals(name, "opacity") { s.panelOpacity = StringToFloat(value); return "opacity " + FloatToStringPrec(s.panelOpacity, 2); }
+        // Corner minimap: replace 0|1, style circle|square|strip, hudpainter 0|1, debug 0|1, enemies 0|1. The corner poll
+        // picks a change up within a second.
+        if Equals(name, "replace") { s.replaceMinimap = Equals(value, "1"); return "replace " + ToString(s.replaceMinimap); }
+        if Equals(name, "style") {
+            s.cornerStyle = Equals(value, "circle") ? NightMapCornerStyle.Circle : (Equals(value, "square") ? NightMapCornerStyle.Square : NightMapCornerStyle.SquareStrip);
+            return "style " + ToString(s.cornerStyle);
+        }
+        if Equals(name, "hudpainter") { s.followHudPainter = Equals(value, "1"); return "hudpainter " + ToString(s.followHudPainter); }
+        if Equals(name, "debug") { s.debug = Equals(value, "1"); return "debug " + ToString(s.debug); }
+        if Equals(name, "fadeop") {
+            if !this.cornerHost.Active() { return "no corner"; }
+            this.cornerHost.probe.SetFadeTarget(StringToFloat(value));
+            this.cornerHost.probe.Fade();
+            return "fadeop " + value;
+        }
+        if Equals(name, "enemies") { s.cornerEnemies = Equals(value, "1"); return "enemies " + ToString(s.cornerEnemies); }
         return "unknown setting";
     }
 

@@ -47,7 +47,7 @@ public class NMHudPalette {
             case NMColorRole.Police: return n"MainColors.SupBlue";
             case NMColorRole.Player: return n"MainColors.ActiveGreen";
             case NMColorRole.Road: return n"MainColors.DarkBlue";   // Road / Floor / Wall: HUD Painter's own minimap mapping
-            case NMColorRole.Floor: return n"MainColors.White";
+            case NMColorRole.Floor: return n"MainColors.PanelDarkGrey";   // HUD Painter uses White on the vanilla floor; on filled buildings it glares
             case NMColorRole.Wall: return n"MainColors.Neutral";
             case NMColorRole.FastTravel: return n"MainColors.FastTravel";
             case NMColorRole.Relic: return n"MainColors.RelicColor";
@@ -91,8 +91,7 @@ public class NMHudPalette {
         let p = NMHudPalette.Empty();
         let i = 0;
         while i < EnumInt(NMColorRole.Count) {
-            p.colors[i] = c;
-            p.known[i] = true;
+            p.Set(IntEnum<NMColorRole>(i), c);   // not p.colors[i] = c: in game that write lost the green channel
             i += 1;
         }
         return p;

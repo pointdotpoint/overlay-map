@@ -118,6 +118,9 @@ public class NightMapSystem extends ScriptableSystem {
     private let palette: ref<NMHudPalette>;
     private let mirror: ref<NMMinimapMirror>;
     private let cornerPerf: ref<NMCornerPerf>;   // Debug on: RESULT|corner lines while the corner runs
+    public let lastCornerPerf: String;            // the last RESULT|corner line (harness)
+    public let cornerMsVanilla: Float;            // this corner frame's vanilla poll and mirror draw (profiling)
+    public let cornerMsMirror: Float;
     private let panelMirror: ref<NMShapeLayer>;   // vanilla minimap markers, fed by Minimap/Wraps.reds while a view is live   // set while "Follow HUD Painter colours" is on
     private let cornerObjectiveM: Float;   // -1 = nothing tracked (set in PrepareCornerMarkers)
     private let collectSeenMap: ref<inkHashMap>;
@@ -855,7 +858,6 @@ public class NightMapSystem extends ScriptableSystem {
         if !this.isOpen && !this.cornerHost.Active() {
             this.loopAlive = false;
             this.mirror.live = false;
-            this.mirror.Clear();
             return;
         }
         let now = NMClock.NowMs();
@@ -866,7 +868,6 @@ public class NightMapSystem extends ScriptableSystem {
         // Parity markers belong to the corner option: with it off the open map is exactly as before.
         let ms = this.Settings();
         this.mirror.live = IsDefined(ms) && ms.replaceMinimap;
-        if !this.mirror.live && this.mirror.Count() > 0 { this.mirror.Clear(); }
         if this.frameNo % 30 == 0 { this.mirror.Sweep(); }
         if !this.isOpen {
             let s = this.Settings();
@@ -874,8 +875,15 @@ public class NightMapSystem extends ScriptableSystem {
             this.CornerTick(dt);
             if IsDefined(s) && s.debug {
                 if !IsDefined(this.cornerPerf) { this.cornerPerf = new NMCornerPerf(); }
+                let cc = this.cornerHost.corner;
+                if IsDefined(cc) {
+                    this.cornerPerf.AddSplit(cc.msTiles, cc.msRoutes, cc.msItems, this.cornerMsVanilla, this.cornerMsMirror);
+                }
                 let line = this.cornerPerf.Add(raw, NMClock.NowMs() - c0, this.mirror.Count());
-                if StrLen(line) > 0 { NMLog.Info(line); }
+                if StrLen(line) > 0 {
+                    NMLog.Info(line);
+                    this.lastCornerPerf = line;
+                }
             }
             this.Schedule();
             return;
@@ -1354,6 +1362,7 @@ public class NightMapSystem extends ScriptableSystem {
             this.cornerHost.mpp = this.cornerMpp;
         }
         this.SyncPalette(s);
+        this.mirror.Sweep();
         let probe = this.cornerHost.Active() ? this.cornerHost.probe : NMMinimapProbe.Find(window, this.Gps().Minimap());
         let r = this.cornerHost.Sync(s, window, probe, this.api);
         if r == 1 || r == 3 {
@@ -1395,6 +1404,7 @@ public class NightMapSystem extends ScriptableSystem {
         if !shown || !IsDefined(player) { return; }
         let now = NMClock.NowMs();
         this.vanilla.Tick(now, false);
+        this.cornerMsVanilla = NMClock.NowMs() - now;
         if this.Photos().Revision() != this.Photos().SyncedRevision() {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
         }
@@ -1414,7 +1424,9 @@ public class NightMapSystem extends ScriptableSystem {
             this.cornerDistrict = this.DistrictName();
         }
         c.Update(player, dt, reading, color, style, routesOn, this.cornerDistrict, this.cornerObjectiveM);
+        let tm = NMClock.NowMs();
         c.UpdateMirror(this.mirror, this.MiniScale(player), this.CameraYaw(), this.vanilla.diff);
+        this.cornerMsMirror = NMClock.NowMs() - tm;
         if this.frameNo % 10 == 0 {
             let ctrl = this.Gps().Minimap();
             if IsDefined(ctrl) { c.SetZone(ctrl.NMZone()); }

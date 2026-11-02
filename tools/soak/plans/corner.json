@@ -1,0 +1,212 @@
+{
+ "name": "corner",
+ "runs": [
+  {
+   "name": "corner",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 60
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "corner",
+     "expect": "^corner off"
+    },
+    {
+     "cmd": "set debug 1"
+    },
+    {
+     "cmd": "set replace 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "corner",
+     "expect": "^corner shown"
+    },
+    {
+     "shot": "strip"
+    },
+    {
+     "cmd": "mm_tree 6"
+    },
+    {
+     "cmd": "mm_vis"
+    },
+    {
+     "cmd": "mm_zone"
+    },
+    {
+     "cmd": "palette_probe"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "palette_read"
+    },
+    {
+     "cmd": "mask_probe"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "shot": "mask_probe"
+    },
+    {
+     "cmd": "set style circle"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "corner",
+     "expect": "style Circle"
+    },
+    {
+     "shot": "circle"
+    },
+    {
+     "cmd": "set style square"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "corner",
+     "expect": "style Square"
+    },
+    {
+     "shot": "square"
+    },
+    {
+     "cmd": "set style strip"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "set hudpainter 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "corner"
+    },
+    {
+     "shot": "hudpainter"
+    },
+    {
+     "cmd": "set hudpainter 0"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "expanded"
+    },
+    {
+     "cmd": "zoom 2"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "corner",
+     "expect": "mpp 2"
+    },
+    {
+     "shot": "after_close"
+    },
+    {
+     "cmd": "wanted 2"
+    },
+    {
+     "wait": 12
+    },
+    {
+     "cmd": "mm_stealth"
+    },
+    {
+     "cmd": "corner"
+    },
+    {
+     "shot": "wanted"
+    },
+    {
+     "cmd": "wanted 0"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 4.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "corner"
+    },
+    {
+     "cmd": "mm_ctrls"
+    },
+    {
+     "shot": "moved"
+    },
+    {
+     "wait": 15
+    },
+    {
+     "cmd": "set replace 0"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "corner",
+     "expect": "^corner off"
+    },
+    {
+     "shot": "off"
+    }
+   ]
+  }
+ ]
+}

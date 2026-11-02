@@ -85,6 +85,11 @@ public abstract class NMSoak {
         if Equals(command, "lootdump") { return NMSoak.LootDump(); }
         if Equals(command, "collect") { return sys.Soak_Collect(); }
         if Equals(command, "police") { return sys.Soak_Police(); }
+        if Equals(command, "corner") { return sys.Soak_Corner(); }
+        if Equals(command, "hud_find") { return sys.Soak_HudFind(); }
+        if Equals(command, "mirror_dump") { return sys.Soak_MirrorDump(); }
+        if Equals(command, "god") { return sys.Soak_God(); }
+        if Equals(command, "corner_perf") { return StrLen(sys.lastCornerPerf) > 0 ? sys.lastCornerPerf : "none yet"; }
         if Equals(command, "saves_req") { return NMSoakSaves.Request(); }
         if Equals(command, "save_manual") { return NMSoakSaves.SaveNew(); }
         if Equals(command, "saves_new") { return NMSoakSaves.FindNew(); }
@@ -122,7 +127,7 @@ public abstract class NMSoak {
         if Equals(command, "selftest") {
             let t = new NMSelfTest();
             t.Run();
-            return "ran";
+            return "ran|" + t.Summary();   // in the answer: CET's log can lose its tail when the harness closes the game
         }
         if StrBeginsWith(command, "sweep ") {
             let a = StrSplit(command, " ");

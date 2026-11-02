@@ -1,0 +1,100 @@
+{
+ "name": "corner-enemies",
+ "runs": [
+  {
+   "name": "enemies",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 60
+    },
+    {
+     "cmd": "god"
+    },
+    {
+     "cmd": "set debug 1"
+    },
+    {
+     "cmd": "set replace 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_layer Story 1"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "selected"
+    },
+    {
+     "key": "KP_Decimal"
+    },
+    {
+     "await_moved": 40,
+     "timeout": 90
+    },
+    {
+     "wait": 10
+    },
+    {
+     "cmd": "corner"
+    },
+    {
+     "cmd": "mm_stealth"
+    },
+    {
+     "cmd": "mm_ctrls"
+    },
+    {
+     "cmd": "mirror_dump"
+    },
+    {
+     "shot": "arrived"
+    },
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "corner"
+    },
+    {
+     "shot": "later"
+    },
+    {
+     "cmd": "mirror_dump"
+    },
+    {
+     "cmd": "set style circle"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "corner"
+    },
+    {
+     "shot": "circle"
+    }
+   ]
+  }
+ ]
+}

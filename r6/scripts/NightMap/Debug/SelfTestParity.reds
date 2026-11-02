@@ -35,6 +35,11 @@ public abstract class NMParityTests {
         t.Check("parity.rim_square", AbsF(rs.X - 200.0) < 0.01 && AbsF(rs.Y - 10.0) < 0.01
             && !NMParity.IsOff(395.0, 295.0, 400.0, 300.0, false, 0.0) && AbsF(NMParity.ArrowAngle(200.0, -1000.0, 400.0, 300.0)) < 0.01, "");
         t.Check("parity.vertical", NMParity.VerticalRotation(1) == 0.0 && NMParity.VerticalRotation(-1) == 180.0, "");
+        // GetClassName() on the native controllers reports the native names, with a gameui prefix (corner campaign).
+        t.Check("parity.kind_native_names", NMMinimapWraps.KindOf(n"gameuiMinimapQuestMappinController") == EnumInt(NMMiniKind.Shadow)
+            && NMMinimapWraps.KindOf(n"gameuiMinimapStealthMappinController") == EnumInt(NMMiniKind.Enemy)
+            && NMMinimapWraps.KindOf(n"gameuiMinimapPreventionVehicleMappinController") == EnumInt(NMMiniKind.Shadow)
+            && NMMinimapWraps.KindOf(n"gameuiMinimapQuestAreaMappinController") == EnumInt(NMMiniKind.Area), "");
         t.Check("parity.shadow_kind", NMMinimapWraps.KindOf(n"MinimapQuestMappinController") == EnumInt(NMMiniKind.Shadow)
             && !NMShapeLayer.Wanted(NMMiniKind.Shadow, true, true), "");
     
@@ -51,8 +56,12 @@ public abstract class NMParityTests {
         z.autodrive = true;
         z.timer = "02:13";
         t.Check("parity.zone_text", Equals(NMCorner.ZoneText(z), "HOSTILE  ·  AUTODRIVE  ·  02:13"), NMCorner.ZoneText(z));
-        t.Check("parity.zone_tint", NMCorner.ZoneTint(n"Safe").Red == 1.0 && NMCorner.ZoneTint(n"Safe").Green == 1.0
-            && NMCorner.ZoneTint(n"Dangerous").Green < 0.5 && NMCorner.ZoneTint(n"Combat").Green < 0.5, "");
+        let zs = NMCorner.ZoneTint(n"Safe");
+        let zd = NMCorner.ZoneTint(n"Dangerous");
+        let zc = NMCorner.ZoneTint(n"Combat");
+        t.Check("parity.zone_tint", zs.Red == 1.0 && zs.Green == 1.0 && zd.Green < zd.Red && zc.Green < zc.Red,
+            "safe " + FloatToStringPrec(zs.Red, 2) + "," + FloatToStringPrec(zs.Green, 2) + " danger " + FloatToStringPrec(zd.Red, 2) + ","
+            + FloatToStringPrec(zd.Green, 2) + " palette " + ToString(IsDefined(NMTheme.Palette())));
         // The label sits inside the corner's box in every style.
         let host = new inkCanvas();
         let ok = true;

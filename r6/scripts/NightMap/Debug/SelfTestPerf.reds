@@ -52,7 +52,7 @@ public abstract class NMPerfTests {
             if StrLen(l) > 0 { line = l; }
             i += 1;
         }
-        t.Check("perf.corner_window", StrContains(line, "script_avg=0.250") && StrContains(line, "frame_avg=16.000")
+        t.Check("perf.corner_window", StrContains(line, "script_avg=0.25") && StrContains(line, "frame_avg=16|")
             && StrContains(line, "mirror=12") && cp.Count() == 0, line);
         NMPerfTests.OccupiedCases(t);
         NMPerfTests.EquivalenceCases(t);

@@ -5,10 +5,12 @@ module NightMap
 public class NMSelfTest {
     private let passed: Int32;
     private let failed: Int32;
+    private let failedNames: String;
 
     public func Run() {
         this.passed = 0;
         this.failed = 0;
+        this.failedNames = "";
         NMLog.Info("TEST|START");
         this.MathCases();
         this.CameraCases();
@@ -45,8 +47,13 @@ public class NMSelfTest {
             NMLog.Info("TEST|PASS|" + name);
         } else {
             this.failed += 1;
+            this.failedNames += (StrLen(this.failedNames) > 0 ? "," : "") + name;
             NMLog.Info("TEST|FAIL|" + name + "|" + detail);
         }
+    }
+
+    public func Summary() -> String {
+        return "passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed) + "|fails=" + this.failedNames;
     }
 
     public static func ChildIndex(parent: ref<inkCompoundWidget>, name: CName) -> Int32 {

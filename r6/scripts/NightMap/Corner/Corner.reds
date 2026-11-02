@@ -33,6 +33,14 @@ public class NMCorner {
     public let mirrorLayer: ref<NMShapeLayer>;
     private let panelLayout: ref<NMPanelLayout>;
     private let shown: Bool;
+    // Markers and routes are laid out against layCam and their canvases slide by the live camera's offset in between:
+    // north-up at a fixed zoom, a slide is exact, and the relayout (1.1 ms a moving frame) runs a few times a second.
+    private let layCam: ref<NMCamera>;
+    private let layFrames: Int32;
+    private let layMpp: Float;
+    public let msTiles: Float;    // last Update's split (profiling: NMCornerPerf)
+    public let msRoutes: Float;
+    public let msItems: Float;
 
     public static func DefaultMpp() -> Float { return 0.4; }
     public static func RimInset() -> Float { return 22.0; }       // 4K units: clamped markers sit this far inside the rim
@@ -40,6 +48,12 @@ public class NMCorner {
     public static func BracketScale() -> Float { return 0.45; }   // of NMTheme.BracketSize(), at frame thickness 1
     public static func StripFont() -> Float { return 30.0; }      // 4K units, at text size 1
     public static func StripPad() -> Float { return 14.0; }       // 4K units
+    public static func RelayoutPx() -> Float { return 40.0; }     // 4K units of slide before markers are laid out again
+    public static func RelayoutFrames() -> Int32 { return 20; }
+
+    public static func NeedsRelayout(dx: Float, dy: Float, frames: Int32, mppChanged: Bool, limitPx: Float, maxFrames: Int32) -> Bool {
+        return mppChanged || frames >= maxFrames || AbsF(dx) > limitPx || AbsF(dy) > limitPx;
+    }
 
     public static func Build(window: wref<inkCompoundWidget>, layout: ref<NMCornerLayout>, cfg: ref<NMCornerConfig>, api: ref<NightMap>, mpp: Float) -> ref<NMCorner> {
         let c = new NMCorner();
@@ -102,6 +116,8 @@ public class NMCorner {
         c.camera = NMCamera.Create(layout.mapW, layout.mapH, bounds, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
         c.camera.SetMpp(mpp > 0.0 ? mpp : NMCorner.DefaultMpp());
         c.camera.follow = true;
+        c.layCam = NMCamera.Create(layout.mapW, layout.mapH, bounds, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
+        c.layFrames = 1000;
         c.panelLayout = layout.AsPanelLayout();
         c.layers = NMLayerStack.Create(c.tiles, th, cfg.effects);
         c.renderer = NMItemRenderer.Create(api, c.items, s * cfg.markerSize);
@@ -243,7 +259,27 @@ public class NMCorner {
         let l = this.layout;
         let p = player.GetWorldPosition();
         this.camera.SetCenter(p.X, p.Y);
+        let t0 = NMClock.NowMs();
         this.layers.Update(this.camera, dt);
+        let t1 = NMClock.NowMs();
+        this.msTiles = t1 - t0;
+        // Slide or relayout: where the layout camera's centre now sits in the live view.
+        let at = this.camera.WorldToMap(this.layCam.cx, this.layCam.cy);
+        let home = this.layCam.WorldToMap(this.layCam.cx, this.layCam.cy);
+        let dx = at.X - home.X;
+        let dy = at.Y - home.Y;
+        this.layFrames += 1;
+        if NMCorner.NeedsRelayout(dx, dy, this.layFrames, this.camera.mpp != this.layMpp, NMCorner.RelayoutPx() * l.scale, NMCorner.RelayoutFrames()) {
+            this.layCam.SetMpp(this.camera.mpp);
+            this.layCam.SetCenter(this.camera.cx, this.camera.cy);
+            this.layMpp = this.camera.mpp;
+            this.layFrames = 0;
+            dx = 0.0;
+            dy = 0.0;
+        }
+        let shift = new Vector2(dx, dy);
+        this.items.SetTranslation(shift);
+        this.routesCanvas.SetTranslation(shift);
         this.routes.SetVisible(routesOn);
         if routesOn {
             if !this.routes.HasStyle() && IsDefined(routeStyle) {
@@ -252,9 +288,12 @@ public class NMCorner {
             if IsDefined(routes) {
                 this.routes.SetRoutes(routes.quest, routeColor, routes.tracked);
             }
-            this.routes.Update(this.camera, p.X, p.Y, dt, l.mapW, l.mapH);
+            this.routes.Update(this.layCam, p.X, p.Y, dt, l.mapW, l.mapH);
         }
-        this.renderer.UpdateFor(this.camera, this.panelLayout);
+        let t2 = NMClock.NowMs();
+        this.msRoutes = t2 - t1;
+        this.renderer.UpdateFor(this.layCam, this.panelLayout);
+        this.msItems = NMClock.NowMs() - t2;
         this.marker.Update(this.camera, player, l.mapW, l.mapH);
         if IsDefined(this.stripLeft) {
             if NotEquals(district, this.stripLeftText) {

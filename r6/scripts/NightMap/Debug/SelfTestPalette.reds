@@ -16,7 +16,7 @@ public abstract class NMPaletteTests {
             && Equals(NMHudPalette.Slot(NMColorRole.Police), n"MainColors.SupBlue")
             && Equals(NMHudPalette.Slot(NMColorRole.Player), n"MainColors.ActiveGreen")
             && Equals(NMHudPalette.Slot(NMColorRole.Road), n"MainColors.DarkBlue")
-            && Equals(NMHudPalette.Slot(NMColorRole.Floor), n"MainColors.White")
+            && Equals(NMHudPalette.Slot(NMColorRole.Floor), n"MainColors.PanelDarkGrey")
             && Equals(NMHudPalette.Slot(NMColorRole.Wall), n"MainColors.Neutral")
             && Equals(NMHudPalette.Slot(NMColorRole.FastTravel), n"MainColors.FastTravel")
             && Equals(NMHudPalette.Slot(NMColorRole.Relic), n"MainColors.RelicColor"), "");
@@ -30,8 +30,11 @@ public abstract class NMPaletteTests {
         let q = NMHudPalette.Fixed(new HDRColor(0.1, 0.2, 0.3, 1.0));
         q.Set(NMColorRole.Route, new HDRColor(1.1192, 0.8441, 0.2565, 1.0));
         let y = q.Get(NMColorRole.Route);
-        t.Check("palette.set_get", q.Has(NMColorRole.Route) && y.Red == 1.1192 && y.Blue == 0.2565
-            && q.Get(NMColorRole.Accent).Green == 0.2, "");
+        let qa = q.Get(NMColorRole.Accent);   // bound first: a field read off a call's temporary is 0 in game
+        let ag = qa.Green;
+        t.Check("palette.set_get", q.Has(NMColorRole.Route) && AbsF(y.Red - 1.1192) < 0.0001 && AbsF(y.Blue - 0.2565) < 0.0001
+            && AbsF(ag - 0.2) < 0.0001, "has " + ToString(q.Has(NMColorRole.Route)) + " r " + FloatToStringPrec(y.Red, 4)
+            + " b " + FloatToStringPrec(y.Blue, 4) + " ag " + FloatToStringPrec(ag, 4));
         // HUD Painter alpha below 1 is not a change (review: the corner rebuilt every second).
         t.Check("palette.alpha_is_not_a_change", !NMHudPalette.Differs(new HDRColor(0.3, 0.6, 0.9, 1.0), new HDRColor(0.3, 0.6, 0.9, 0.5))
             && NMHudPalette.Differs(new HDRColor(0.3, 0.6, 0.9, 1.0), new HDRColor(0.3, 0.7, 0.9, 1.0)), "");

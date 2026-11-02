@@ -45,16 +45,19 @@ public class NMCornerHost {
     }
 
     private func Create(cfg: ref<NMCornerConfig>, window: wref<inkCompoundWidget>, probe: ref<NMMinimapProbe>, api: ref<NightMap>) -> Bool {
-        if !IsDefined(window) || !IsDefined(probe) { return false; }
+        if !IsDefined(probe) { return false; }
+        // Drawn inside the vanilla minimap's root, in its local units: wherever the game or a HUD mod puts the minimap,
+        // the corner is there, at its size, and hidden with it. Those units are the HUD's 3840x2160 space.
+        let parent = probe.Root() as inkCompoundWidget;
+        if !IsDefined(parent) { return false; }
         let box = probe.Box();
-        let size = window.GetSize();
-        if size.X < 100.0 || size.Y < 100.0 { size = new Vector2(3840.0, 2160.0); }
+        let size = new Vector2(3840.0, 2160.0);
         let layout = NMCornerLayout.Compute(box, cfg.style, cfg.scale, cfg.textSize, size.X, size.Y);
         if !IsDefined(layout) || !NMCornerHost.Plausible(box, size) { return false; }
         this.probe = probe;
         this.cfg = cfg;
         this.box = box;
-        this.corner = NMCorner.Build(window, layout, cfg, api, this.mpp);
+        this.corner = NMCorner.Build(parent, layout, cfg, api, this.mpp);
         this.corner.SetShown(!this.expanded);
         this.probe.Fade();
         return true;

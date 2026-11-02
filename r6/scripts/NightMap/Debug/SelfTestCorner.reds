@@ -85,6 +85,10 @@ public abstract class NMCornerTests {
             && !square.HasMask() && !square.HasStrip() && square.HasBrackets()
             && strip.HasStrip() && strip.HasBrackets()
             && Equals(strip.Root().GetName(), n"NightMapCorner"), "");
+        // Markers and routes slide with the camera between relayouts (corner perf: relayout was 1.1 ms a moving frame).
+        t.Check("corner.relayout_trigger", !NMCorner.NeedsRelayout(10.0, 10.0, 5, false, 40.0, 20)
+            && NMCorner.NeedsRelayout(41.0, 0.0, 5, false, 40.0, 20) && NMCorner.NeedsRelayout(0.0, -41.0, 5, false, 40.0, 20)
+            && NMCorner.NeedsRelayout(0.0, 0.0, 20, false, 40.0, 20) && NMCorner.NeedsRelayout(0.0, 0.0, 1, true, 40.0, 20), "");
         t.Check("corner.strip_text", Equals(NMCorner.DistanceText(320.0), "320 M") && Equals(NMCorner.DistanceText(1440.0), "1.4 KM")
             && Equals(NMCorner.DistanceText(-1.0), "") && Equals(NMCorner.DistanceText(14.0), "10 M"), NMCorner.DistanceText(320.0));
         let a = NMCornerConfig.From(new NightMapSettings());
@@ -113,7 +117,7 @@ public abstract class NMCornerTests {
 
     // Off-HUD test widgets get no layout pass, so the probe is given the box the fake minimap would measure.
     private static func FakeProbe(w: ref<inkCanvas>) -> ref<NMMinimapProbe> {
-        return NMMinimapProbe.ForWidgetBox(w, w.GetWidgetByIndex(0), NMCornerTests.Box());
+        return NMMinimapProbe.ForWidgetBox(w, w.GetWidgetByIndex(0), NMRect.Create(0.0, 0.0, 400.0, 400.0));
     }
 
     private static func On() -> ref<NightMapSettings> {
@@ -138,6 +142,13 @@ public abstract class NMCornerTests {
         let start = h1.Expanding();
         let hidden = !h1.corner.IsShown();
         h1.Collapsed(1.7);
+        // The corner lives inside the vanilla minimap's root (its position and visibility follow the game's) and is
+        // never faded with the vanilla children.
+        let mini1 = w1.GetWidgetByIndex(0) as inkCompoundWidget;
+        let ci = NMSelfTest.ChildIndex(mini1, n"NightMapCorner");
+        h1.probe.Fade();
+        t.Check("corner.lives_in_minimap_root", ci >= 0 && NMSelfTest.ChildIndex(w1, n"NightMapCorner") < 0
+            && mini1.GetWidgetByIndex(ci).GetOpacity() == 1.0 && mini1.GetWidgetByIndex(0).GetOpacity() == 0.0, ToString(ci));
         t.Check("corner.zoom_handover", created && start == 0.0 && hidden && h1.corner.IsShown() && h1.corner.Mpp() == 1.7
             && h1.Expanding() == 1.7, "");
         h1.Collapsed(0.0);
@@ -151,7 +162,7 @@ public abstract class NMCornerTests {
         let fadedNow = mini.GetWidgetByIndex(0).GetOpacity() == 0.0;
         let r2 = h2.Sync(new NightMapSettings(), w2, NMCornerTests.FakeProbe(w2), api);
         t.Check("corner.option_off_restores_vanilla", fadedNow && r2 == 2 && !h2.Active()
-            && NMSelfTest.ChildIndex(w2, n"NightMapCorner") < 0 && mini.GetWidgetByIndex(0).GetOpacity() == 0.8, "");
+            && NMSelfTest.ChildIndex(mini, n"NightMapCorner") < 0 && mini.GetWidgetByIndex(0).GetOpacity() == 0.8, "");
 
         // Session teardown.
         let w3 = NMCornerTests.FakeWindow();
@@ -159,7 +170,7 @@ public abstract class NMCornerTests {
         let h3 = new NMCornerHost();
         h3.Sync(NMCornerTests.On(), w3, NMCornerTests.FakeProbe(w3), api);
         h3.Detach();
-        t.Check("corner.detach_restores", !h3.Active() && NMSelfTest.ChildIndex(w3, n"NightMapCorner") < 0
+        t.Check("corner.detach_restores", !h3.Active() && NMSelfTest.ChildIndex(mini3, n"NightMapCorner") < 0
             && mini3.GetWidgetByIndex(0).GetOpacity() == 0.8, "");
 
         // A settings change rebuilds; an unchanged poll does nothing.
@@ -188,7 +199,7 @@ public abstract class NMCornerTests {
         // A box bigger than a third of the window is not the minimap: no corner.
         let w8 = NMCornerTests.FakeWindow();
         let h8 = new NMCornerHost();
-        let big = NMMinimapProbe.ForWidgetBox(w8, w8.GetWidgetByIndex(0), NMRect.Create(0.0, 0.0, 3840.0, 2160.0));
+        let big = NMMinimapProbe.ForWidgetBox(w8, w8.GetWidgetByIndex(0), NMRect.Create(0.0, 0.0, 3840.0, 2160.0));   // a full-screen root
         t.Check("corner.box_too_big_rejected", h8.Sync(NMCornerTests.On(), w8, big, api) == 0 && !h8.Active()
             && (w8.GetWidgetByIndex(0) as inkCompoundWidget).GetWidgetByIndex(0).GetOpacity() == 0.8, "");
 
