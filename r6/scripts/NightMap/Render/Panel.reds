@@ -15,13 +15,15 @@ public class NMPanelLayout {
     public let sideW: Float;   // the always-visible sidebar on the right of the map area (25% of mapW)
     public let viewW: Float;   // map visible left of the sidebar
 
-    public static func Compute(winW: Float, winH: Float) -> ref<NMPanelLayout> {
+    // expandedScale: NightMapSettings.expandedScale (0.7-1.0), multiplying the panel's share of the window.
+    public static func Compute(winW: Float, winH: Float, opt expandedScale: Float) -> ref<NMPanelLayout> {
+        let k = expandedScale > 0.0 ? expandedScale : 1.0;
         let l = new NMPanelLayout();
         l.winW = winW;
         l.winH = winH;
         l.scale = MinF(winW / 3840.0, winH / 2160.0);
-        l.w = winW * 0.90;
-        l.h = winH * 0.711;
+        l.w = winW * 0.90 * k;
+        l.h = winH * 0.711 * k;
         l.x = (winW - l.w) * 0.5;
         l.y = (winH - l.h) * 0.5;
         l.hintH = NMTheme.HintHeight() * l.scale;

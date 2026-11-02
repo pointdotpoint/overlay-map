@@ -7,6 +7,7 @@ public abstract class NMCornerTests {
         NMCornerTests.Layout(t);
         NMCornerTests.Probe(t);
         NMCornerTests.View(t);
+        NMCornerTests.Modes(t);
     }
 
     private static func Settings(t: ref<NMSelfTest>) {
@@ -99,5 +100,96 @@ public abstract class NMCornerTests {
             && !IsDefined(strip.Root().GetParentWidget()), "");
         circle.Destroy();
         square.Destroy();
+    }
+
+    // A host on a fake 3840x2160 window whose fake minimap sits at 3300,100 400x400.
+    private static func FakeWindow() -> ref<inkCanvas> {
+        let w = new inkCanvas();
+        w.SetSize(new Vector2(3840.0, 2160.0));
+        let root = NMCornerTests.FakeMinimap(w);
+        root.SetTranslation(new Vector2(3300.0, 100.0));
+        return w;
+    }
+
+    private static func FakeProbe(w: ref<inkCanvas>) -> ref<NMMinimapProbe> {
+        return NMMinimapProbe.ForWidget(w, w.GetWidgetByIndex(0));
+    }
+
+    private static func On() -> ref<NightMapSettings> {
+        let s = new NightMapSettings();
+        s.replaceMinimap = true;
+        return s;
+    }
+
+    private static func Modes(t: ref<NMSelfTest>) {
+        let api = NightMap.Create();
+        // Off: nothing happens.
+        let w0 = NMCornerTests.FakeWindow();
+        let h0 = new NMCornerHost();
+        let r0 = h0.Sync(new NightMapSettings(), w0, NMCornerTests.FakeProbe(w0), api);
+        t.Check("corner.off_means_today", r0 == 0 && !h0.Active() && NMSelfTest.ChildIndex(w0, n"NightMapCorner") < 0
+            && (w0.GetWidgetByIndex(0) as inkCompoundWidget).GetWidgetByIndex(0).GetOpacity() == 0.8, "");
+
+        // Zoom hand-over through expand / collapse.
+        let w1 = NMCornerTests.FakeWindow();
+        let h1 = new NMCornerHost();
+        let created = h1.Sync(NMCornerTests.On(), w1, NMCornerTests.FakeProbe(w1), api) == 1;
+        let start = h1.Expanding();
+        let hidden = !h1.corner.IsShown();
+        h1.Collapsed(1.7);
+        t.Check("corner.zoom_handover", created && start == 0.0 && hidden && h1.corner.IsShown() && h1.corner.Mpp() == 1.7
+            && h1.Expanding() == 1.7, "");
+        h1.Collapsed(0.0);
+        t.Check("corner.collapse_without_zoom_keeps_it", h1.corner.Mpp() == 1.7, "");
+
+        // Option switched off: corner gone, vanilla opacity back.
+        let w2 = NMCornerTests.FakeWindow();
+        let mini = w2.GetWidgetByIndex(0) as inkCompoundWidget;
+        let h2 = new NMCornerHost();
+        h2.Sync(NMCornerTests.On(), w2, NMCornerTests.FakeProbe(w2), api);
+        let fadedNow = mini.GetWidgetByIndex(0).GetOpacity() == 0.0;
+        let r2 = h2.Sync(new NightMapSettings(), w2, NMCornerTests.FakeProbe(w2), api);
+        t.Check("corner.option_off_restores_vanilla", fadedNow && r2 == 2 && !h2.Active()
+            && NMSelfTest.ChildIndex(w2, n"NightMapCorner") < 0 && mini.GetWidgetByIndex(0).GetOpacity() == 0.8, "");
+
+        // Session teardown.
+        let w3 = NMCornerTests.FakeWindow();
+        let mini3 = w3.GetWidgetByIndex(0) as inkCompoundWidget;
+        let h3 = new NMCornerHost();
+        h3.Sync(NMCornerTests.On(), w3, NMCornerTests.FakeProbe(w3), api);
+        h3.Detach();
+        t.Check("corner.detach_restores", !h3.Active() && NMSelfTest.ChildIndex(w3, n"NightMapCorner") < 0
+            && mini3.GetWidgetByIndex(0).GetOpacity() == 0.8, "");
+
+        // A settings change rebuilds; an unchanged poll does nothing.
+        let w4 = NMCornerTests.FakeWindow();
+        let h4 = new NMCornerHost();
+        let s4 = NMCornerTests.On();
+        h4.Sync(s4, w4, NMCornerTests.FakeProbe(w4), api);
+        let same = h4.Sync(s4, w4, NMCornerTests.FakeProbe(w4), api);
+        s4.cornerStyle = NightMapCornerStyle.Circle;
+        let rebuilt = h4.Sync(s4, w4, NMCornerTests.FakeProbe(w4), api);
+        t.Check("corner.settings_change_rebuilds", same == 0 && rebuilt == 3 && h4.corner.HasMask(), "");
+
+        // No minimap yet: nothing drawn, retried later.
+        let h5 = new NMCornerHost();
+        t.Check("corner.waits_for_minimap", h5.Sync(NMCornerTests.On(), new inkCanvas(), null, api) == 0 && !h5.Active(), "");
+
+        // Hide HUD while open: the hider fades the corner with the rest and gives it back; the vanilla stays at 0.
+        let w6 = NMCornerTests.FakeWindow();
+        let mini6 = w6.GetWidgetByIndex(0) as inkCompoundWidget;
+        let h6 = new NMCornerHost();
+        h6.Sync(NMCornerTests.On(), w6, NMCornerTests.FakeProbe(w6), api);
+        let panel = new inkCanvas();
+        panel.Reparent(w6);
+        h6.Expanding();
+        let hider = NMHudHider.Hide(w6, panel);
+        hider.Restore();
+        h6.Collapsed(0.5);
+        t.Check("corner.hudhider_roundtrip", mini6.GetWidgetByIndex(0).GetOpacity() == 0.0 && h6.corner.Root().GetOpacity() == 1.0
+            && h6.corner.IsShown(), "");
+        h1.Detach();
+        h4.Detach();
+        h6.Detach();
     }
 }

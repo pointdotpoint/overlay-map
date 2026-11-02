@@ -32,6 +32,19 @@ public class NightMapPadPauseCheck extends DelayCallback {
     }
 }
 
+// Corner minimap housekeeping, once a second while a player is attached: create / rebuild / remove the corner from the
+// settings, and re-fade the vanilla minimap. Reads a few settings when the option is off; no frame loop.
+public class NightMapCornerPoll extends DelayCallback {
+    public let system: wref<NightMapSystem>;
+    public let gen: Int32;
+
+    public func Call() {
+        if IsDefined(this.system) {
+            this.system.CornerPoll(this.gen);
+        }
+    }
+}
+
 // Gives the game its actions back after the map closed, once the closing button's release has gone by.
 public class NightMapPadRelease extends DelayCallback {
     public let system: wref<NightMapSystem>;
@@ -96,6 +109,13 @@ public class NightMapSystem extends ScriptableSystem {
     private let collect: ref<NMCollect>;
     // Collectible item records V has had, saved with the game (an iconic sold later still counts as collected).
     private persistent let collectSeen: array<TweakDBID>;
+    // Corner minimap (NightMapSettings.replaceMinimap). The zoom is saved with the game.
+    private persistent let cornerMpp: Float;
+    private let cornerHost: ref<NMCornerHost>;
+    private let cornerPollGen: Int32;
+    private let cornerRouteMs: Float;
+    private let cornerDistrict: String;
+    private let cornerObjectiveM: Float;   // -1 = nothing tracked (set in PrepareCornerMarkers)
     private let collectSeenMap: ref<inkHashMap>;
     private let hud: ref<NMHudHider>;     // set while the map is open with "Hide HUD while open" on
     private let lastRouteReadMs: Float;
@@ -118,6 +138,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.collect = new NMCollect();
         this.input = new NMInput();
         this.pad = new NMPad();
+        this.cornerHost = new NMCornerHost();
         GameInstance.GetCallbackSystem().RegisterCallback(n"Input/Key", this, n"OnKeyInput");
         GameInstance.GetCallbackSystem().RegisterCallback(n"Input/Axis", this, n"OnAxisInput");
         NMLog.Info("loaded (tiles " + (NMTileManifest.Available() ? "present" : "missing") + ", precise clock " + ToString(NMClock.Precise()) + ")");
@@ -133,6 +154,8 @@ public class NightMapSystem extends ScriptableSystem {
         GameInstance.GetCallbackSystem().UnregisterCallback(n"Input/Key", this);
         GameInstance.GetCallbackSystem().UnregisterCallback(n"Input/Axis", this);
         this.Close();
+        this.cornerPollGen += 1;
+        this.cornerHost.Detach();
         this.PadReleaseCtx(this.padCtxToken);
     }
 
@@ -281,6 +304,8 @@ public class NightMapSystem extends ScriptableSystem {
             }
             player.RegisterInputListener(this, n"OpenPauseMenu");
             this.padListener = player;
+            this.cornerPollGen += 1;
+            this.ScheduleCornerPoll(1.0);
         }
     }
 
@@ -502,7 +527,8 @@ public class NightMapSystem extends ScriptableSystem {
         if IsDefined(s) {
             s.panelOpacity = NMTheme.MigratePanelOpacity(s.panelOpacity);   // a saved old default moves to the new one
         }
-        let layout = NMPanelLayout.Compute(size.X, size.Y);
+        let layout = NMPanelLayout.Compute(size.X, size.Y, IsDefined(s) ? s.expandedScale : 1.0);
+        let cornerZoom = this.cornerHost.Expanding();
         this.holoTheme = IsDefined(s) ? NMTheme.ThemeIndex(s.holoColor) : 0;
         this.holoEffects = IsDefined(s) ? s.hologramEffects : true;
         this.panel = NMPanel.Build(window, layout, IsDefined(s) ? s.panelOpacity : NMTheme.DefaultPanelOpacity(), this.holoTheme, this.holoEffects);
@@ -511,7 +537,11 @@ public class NightMapSystem extends ScriptableSystem {
         }
         let bounds = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
         this.camera = NMCamera.Create(layout.mapW, layout.mapH, bounds, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
-        this.camera.SetMpp(this.savedMpp > 0.0 ? this.savedMpp : NightMapSystem.OpenMpp());
+        if this.cornerHost.Active() && cornerZoom > 0.0 {
+            this.camera.SetMpp(cornerZoom);
+        } else {
+            this.camera.SetMpp(this.savedMpp > 0.0 ? this.savedMpp : NightMapSystem.OpenMpp());
+        }
         this.CenterOnPlayer(true);
         if IsDefined(s) {
             this.panel.hintBar.Set(NMInput.Hints(s, NMVanillaFilters.ViewName(this.filterView), "FAST TRAVEL"));
@@ -738,6 +768,14 @@ public class NightMapSystem extends ScriptableSystem {
         if IsDefined(this.camera) {
             this.savedMpp = this.camera.mpp;
         }
+        // Every close path (key, pad, teleport, fast travel, teardown) hands the zoom back to the corner.
+        if this.cornerHost.Active() {
+            this.cornerHost.Collapsed(IsDefined(this.camera) ? this.camera.mpp : 0.0);
+            this.cornerMpp = this.cornerHost.mpp;
+            this.cornerRouteMs = 0.0;
+        } else {
+            this.cornerHost.Collapsed(0.0);
+        }
         if IsDefined(this.input) {
             this.input.ResetHeld();
         }
@@ -761,6 +799,9 @@ public class NightMapSystem extends ScriptableSystem {
             this.panel.Destroy();
         }
         this.panel = null;
+        if this.cornerHost.Active() {
+            this.EnsureLoop();
+        }
         NMLog.Info("closed");
     }
 
@@ -802,7 +843,7 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     public func Tick() {
-        if !this.isOpen {
+        if !this.isOpen && !this.cornerHost.Active() {
             this.loopAlive = false;
             return;
         }
@@ -811,6 +852,11 @@ public class NightMapSystem extends ScriptableSystem {
         let dt = ClampF(raw, 0.0, 100.0);         // clamped step for camera motion
         this.lastMs = now;
         this.frameNo += 1;
+        if !this.isOpen {
+            this.CornerTick(dt);
+            this.Schedule();
+            return;
+        }
         this.DriveCamera(dt);
         let t0 = NMClock.NowMs();
         if !this.perfHidden {
@@ -1222,6 +1268,85 @@ public class NightMapSystem extends ScriptableSystem {
             }
             this.panel.hintBar.Set(hints);   // rebuilds only when the hints changed
         }
+    }
+
+    public func CornerHost() -> ref<NMCornerHost> { return this.cornerHost; }
+    public func CornerActive() -> Bool { return this.cornerHost.Active(); }
+
+    private func ScheduleCornerPoll(seconds: Float) {
+        let cb = new NightMapCornerPoll();
+        cb.system = this;
+        cb.gen = this.cornerPollGen;
+        GameInstance.GetDelaySystem(this.GetGameInstance()).DelayCallback(cb, seconds, false);
+    }
+
+    public func CornerPoll(gen: Int32) {
+        if gen != this.cornerPollGen { return; }
+        let s = this.Settings();
+        let window = this.HudWindow();
+        if this.cornerHost.mpp <= 0.0 && this.cornerMpp > 0.0 {
+            this.cornerHost.mpp = this.cornerMpp;
+        }
+        let probe = this.cornerHost.Active() ? this.cornerHost.probe : NMMinimapProbe.Find(window, this.Gps().Minimap());
+        let r = this.cornerHost.Sync(s, window, probe, this.api);
+        if r == 1 || r == 3 {
+            this.PrepareCornerMarkers();
+            NMLog.Info("corner|" + (r == 1 ? "on" : "rebuilt") + "|style " + ToString(s.cornerStyle));
+            this.EnsureLoop();
+        } else if r == 2 {
+            NMLog.Info("corner|off");
+        }
+        if this.cornerHost.Active() {
+            this.cornerHost.probe.Fade();   // HUD animations fade vanilla pieces back in
+            if IsDefined(s) && s.debug { this.cornerHost.probe.LogOnce(); }
+        }
+        this.ScheduleCornerPoll(1.0);
+    }
+
+    // What OnOpened does for the panel's markers, for a corner built while the map is closed.
+    private func PrepareCornerMarkers() {
+        this.NoteInventory();
+        this.Collect().Refresh(this.GetGameInstance(), this.CollectSeen());
+        if this.Collect().SyncWouldRebuild(this.filterView, this.Settings()) {
+            this.SyncCollect();
+        }
+        this.Photos().SyncLayer(this.api, this.PhotosVisible());
+        this.vanilla.ApplyFilters(this.filterView, this.Settings());
+        this.vanilla.Tick(NMClock.NowMs(), true);
+        this.Gps().BeginOpen();
+        this.cornerRouteMs = 0.0;
+        this.cornerDistrict = "";
+        this.cornerObjectiveM = -1.0;
+    }
+
+    // The map is closed and the corner is live: markers, routes, strip. Hidden whenever the game hides its minimap.
+    private func CornerTick(dt: Float) {
+        let c = this.cornerHost.corner;
+        let player = GetPlayer(this.GetGameInstance());
+        let shown = this.cornerHost.probe.ShownByGame();
+        c.SetShown(shown);
+        if !shown || !IsDefined(player) { return; }
+        let now = NMClock.NowMs();
+        this.vanilla.Tick(now, false);
+        if this.Photos().Revision() != this.Photos().SyncedRevision() {
+            this.Photos().SyncLayer(this.api, this.PhotosVisible());
+        }
+        let reading: ref<NMGpsReading>;
+        let color = NMTheme.VanillaStateColor(n"Quest");
+        let style: ref<NMRouteStyle>;
+        let routesOn = this.RoutesWanted();
+        if routesOn && now - this.cornerRouteMs >= 500.0 {
+            reading = this.Gps().Read(player);
+            let hdr = NMQuestHeader.Read(this.GetGameInstance());
+            color = IsDefined(hdr) && !hdr.isQuest ? NMTheme.VanillaStateColor(n"Gigs") : NMTheme.VanillaStateColor(n"Quest");
+            style = this.Gps().PathStyle();
+            this.cornerRouteMs = now;
+            this.cornerObjectiveM = NMCornerHost.ObjectiveDistance(reading, player.GetWorldPosition());
+        }
+        if this.frameNo % 30 == 0 || StrLen(this.cornerDistrict) == 0 {
+            this.cornerDistrict = this.DistrictName();
+        }
+        c.Update(player, dt, reading, color, style, routesOn, this.cornerDistrict, this.cornerObjectiveM);
     }
 
     public func DistrictName() -> String {
