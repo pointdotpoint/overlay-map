@@ -194,6 +194,56 @@
      "wait": 15
     },
     {
+     "padhold": "VIEW",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "is_open",
+     "expect": "open"
+    },
+    {
+     "shot": "pad_open"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "cmd": "is_open"
+    },
+    {
+     "cmd": "corner",
+     "expect": "^corner shown"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist"
+    },
+    {
+     "cmd": "corner_perf"
+    },
+    {
      "cmd": "set replace 0"
     },
     {
