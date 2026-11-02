@@ -33,6 +33,7 @@ public class NMSelfTest {
         NMTierTests.Run(this);
         NMDeclutterTests.Run(this);
         NMPerfTests.Run(this);
+        NMCornerTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 
