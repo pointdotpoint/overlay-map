@@ -111,8 +111,9 @@ public abstract class NMCornerTests {
         return w;
     }
 
+    // Off-HUD test widgets get no layout pass, so the probe is given the box the fake minimap would measure.
     private static func FakeProbe(w: ref<inkCanvas>) -> ref<NMMinimapProbe> {
-        return NMMinimapProbe.ForWidget(w, w.GetWidgetByIndex(0));
+        return NMMinimapProbe.ForWidgetBox(w, w.GetWidgetByIndex(0), NMCornerTests.Box());
     }
 
     private static func On() -> ref<NightMapSettings> {
@@ -170,6 +171,26 @@ public abstract class NMCornerTests {
         s4.cornerStyle = NightMapCornerStyle.Circle;
         let rebuilt = h4.Sync(s4, w4, NMCornerTests.FakeProbe(w4), api);
         t.Check("corner.settings_change_rebuilds", same == 0 && rebuilt == 3 && h4.corner.HasMask(), "");
+
+        // A rebuild that can't measure the box gives the vanilla minimap back (review: it stayed faded).
+        let w7 = NMCornerTests.FakeWindow();
+        let mini7 = w7.GetWidgetByIndex(0) as inkCompoundWidget;
+        let h7 = new NMCornerHost();
+        let s7 = NMCornerTests.On();
+        let p7 = NMCornerTests.FakeProbe(w7);
+        h7.Sync(s7, w7, p7, api);
+        p7.SetBoxForTest(null);
+        s7.cornerStyle = NightMapCornerStyle.Square;
+        let r7 = h7.Sync(s7, w7, p7, api);
+        t.Check("corner.failed_rebuild_restores", r7 == 2 && !h7.Active() && !IsDefined(h7.probe)
+            && mini7.GetWidgetByIndex(0).GetOpacity() == 0.8, ToString(r7));
+
+        // A box bigger than a third of the window is not the minimap: no corner.
+        let w8 = NMCornerTests.FakeWindow();
+        let h8 = new NMCornerHost();
+        let big = NMMinimapProbe.ForWidgetBox(w8, w8.GetWidgetByIndex(0), NMRect.Create(0.0, 0.0, 3840.0, 2160.0));
+        t.Check("corner.box_too_big_rejected", h8.Sync(NMCornerTests.On(), w8, big, api) == 0 && !h8.Active()
+            && (w8.GetWidgetByIndex(0) as inkCompoundWidget).GetWidgetByIndex(0).GetOpacity() == 0.8, "");
 
         // No minimap yet: nothing drawn, retried later.
         let h5 = new NMCornerHost();

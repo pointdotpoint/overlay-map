@@ -37,7 +37,7 @@ public class NMHudPalette {
         switch role {
             case NMColorRole.Accent: return n"MainColors.Blue";
             case NMColorRole.Highlight: return n"MainColors.ActiveBlue";
-            case NMColorRole.Background: return n"MainColors.PanelDarkBlue";
+            case NMColorRole.Background: return n"MainColors.PanelBlack";   // not PanelDarkBlue: it equals DarkBlue (roads)
             case NMColorRole.PanelBg: return n"MainColors.PanelBlack";
             case NMColorRole.Text: return n"MainColors.White";
             case NMColorRole.Muted: return n"MainColors.MildBlue";
@@ -112,7 +112,7 @@ public class NMHudPalette {
         while i < ArraySize(this.probes) {
             let c = this.probes[i].GetTintColor();
             let ok = !NMHudPalette.Near(c, sent);
-            if ok && (!this.known[i] || !NMHudPalette.Near(c, this.colors[i])) {
+            if ok && (!this.known[i] || NMHudPalette.Differs(this.colors[i], c)) {
                 this.colors[i] = new HDRColor(c.Red, c.Green, c.Blue, 1.0);
                 this.known[i] = true;
                 changed = true;
@@ -137,6 +137,11 @@ public class NMHudPalette {
             if IsDefined(parent) { parent.RemoveChild(r); }
         }
         ArrayClear(this.probes);
+    }
+
+    // A real colour change: RGB only (stored colours keep alpha 1; a preset's alpha is not a change).
+    public static func Differs(stored: HDRColor, read: HDRColor) -> Bool {
+        return AbsF(stored.Red - read.Red) >= 0.002 || AbsF(stored.Green - read.Green) >= 0.002 || AbsF(stored.Blue - read.Blue) >= 0.002;
     }
 
     public static func Near(a: HDRColor, b: HDRColor) -> Bool {

@@ -6,7 +6,7 @@ public abstract class NMPaletteTests {
         t.Check("palette.slot_table",
             Equals(NMHudPalette.Slot(NMColorRole.Accent), n"MainColors.Blue")
             && Equals(NMHudPalette.Slot(NMColorRole.Highlight), n"MainColors.ActiveBlue")
-            && Equals(NMHudPalette.Slot(NMColorRole.Background), n"MainColors.PanelDarkBlue")
+            && Equals(NMHudPalette.Slot(NMColorRole.Background), n"MainColors.PanelBlack")
             && Equals(NMHudPalette.Slot(NMColorRole.PanelBg), n"MainColors.PanelBlack")
             && Equals(NMHudPalette.Slot(NMColorRole.Text), n"MainColors.White")
             && Equals(NMHudPalette.Slot(NMColorRole.Muted), n"MainColors.MildBlue")
@@ -32,6 +32,12 @@ public abstract class NMPaletteTests {
         let y = q.Get(NMColorRole.Route);
         t.Check("palette.set_get", q.Has(NMColorRole.Route) && y.Red == 1.1192 && y.Blue == 0.2565
             && q.Get(NMColorRole.Accent).Green == 0.2, "");
+        // HUD Painter alpha below 1 is not a change (review: the corner rebuilt every second).
+        t.Check("palette.alpha_is_not_a_change", !NMHudPalette.Differs(new HDRColor(0.3, 0.6, 0.9, 1.0), new HDRColor(0.3, 0.6, 0.9, 0.5))
+            && NMHudPalette.Differs(new HDRColor(0.3, 0.6, 0.9, 1.0), new HDRColor(0.3, 0.7, 0.9, 1.0)), "");
+        // The map background must not share the road slot (vanilla PanelDarkBlue == DarkBlue: roads vanished).
+        t.Check("palette.background_not_road", NotEquals(NMHudPalette.Slot(NMColorRole.Background), NMHudPalette.Slot(NMColorRole.Road))
+            && NotEquals(NMHudPalette.Slot(NMColorRole.Background), n"MainColors.PanelDarkBlue"), "");
         p.Destroy();
         t.Check("palette.destroy_removes_probes", host.GetNumChildren() == 0, "");
     

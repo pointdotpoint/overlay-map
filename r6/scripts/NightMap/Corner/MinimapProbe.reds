@@ -9,6 +9,8 @@ public class NMMinimapProbe {
     private let faded: array<wref<inkWidget>>;
     private let opacity: array<Float>;
     private let logged: Bool;
+    private let fixed: Bool;        // tests: Box() answers fixedBox instead of measuring
+    private let fixedBox: ref<NMRect>;
 
     // null until the container has attached (NMGps holds it from the OnPlayerAttach wrap).
     public static func Find(window: wref<inkCompoundWidget>, ctrl: wref<MinimapContainerController>) -> ref<NMMinimapProbe> {
@@ -29,10 +31,23 @@ public class NMMinimapProbe {
         return p;
     }
 
+    // Tests: off-HUD widgets get no layout pass, so their box can't be measured.
+    public static func ForWidgetBox(window: wref<inkCompoundWidget>, root: wref<inkWidget>, box: ref<NMRect>) -> ref<NMMinimapProbe> {
+        let p = NMMinimapProbe.ForWidget(window, root);
+        p.SetBoxForTest(box);
+        return p;
+    }
+
+    public func SetBoxForTest(box: ref<NMRect>) {
+        this.fixed = true;
+        this.fixedBox = box;
+    }
+
     public func Root() -> wref<inkWidget> { return this.root; }
 
     // Absolute box in the HUD window's units; null when missing or under 8 units.
     public func Box() -> ref<NMRect> {
+        if this.fixed { return this.fixedBox; }
         if !IsDefined(this.root) || !IsDefined(this.window) { return null; }
         let wtl = WidgetUtils.LocalToGlobal(this.window, new Vector2(0.0, 0.0));
         let wbr = WidgetUtils.LocalToGlobal(this.window, this.window.GetSize());

@@ -863,7 +863,10 @@ public class NightMapSystem extends ScriptableSystem {
         let dt = ClampF(raw, 0.0, 100.0);         // clamped step for camera motion
         this.lastMs = now;
         this.frameNo += 1;
-        this.mirror.live = true;
+        // Parity markers belong to the corner option: with it off the open map is exactly as before.
+        let ms = this.Settings();
+        this.mirror.live = IsDefined(ms) && ms.replaceMinimap;
+        if !this.mirror.live && this.mirror.Count() > 0 { this.mirror.Clear(); }
         if this.frameNo % 30 == 0 { this.mirror.Sweep(); }
         if !this.isOpen {
             let s = this.Settings();
@@ -973,8 +976,11 @@ public class NightMapSystem extends ScriptableSystem {
         this.vanilla.Tick(NMClock.NowMs(), true);
         this.Gps().BeginOpen();
         this.routes = NMRouteLayer.Create(this.panel.routes, l.scale, this.holoEffects);
-        this.panelMirror = NMShapeLayer.Create(this.panel.shapes, 1.0);
-        this.panelMirror.SetRim(false, 40.0 * l.scale, l.scale);
+        let ps = this.Settings();
+        if IsDefined(ps) && ps.replaceMinimap {
+            this.panelMirror = NMShapeLayer.Create(this.panel.shapes, 1.0);
+            this.panelMirror.SetRim(false, 40.0 * l.scale, l.scale);
+        }
         this.lastRouteReadMs = 0.0;
         if this.RoutesWanted() {
             this.ReadRoutes();   // routes on the first frame, not 500 ms later
@@ -1074,7 +1080,7 @@ public class NightMapSystem extends ScriptableSystem {
             this.tipApiRev = -1;
         }
         this.UpdateRoutes(dt);
-        this.panelMirror.Update(this.camera, this.mirror, l.viewW, l.mapH, true, true, this.Gps().Scale(), this.CameraYaw(), this.vanilla.diff);
+        if IsDefined(this.panelMirror) { this.panelMirror.Update(this.camera, this.mirror, l.viewW, l.mapH, true, true, this.Gps().Scale(), this.CameraYaw(), this.vanilla.diff); }
         if this.Photos().Revision() != this.Photos().SyncedRevision() {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
         }

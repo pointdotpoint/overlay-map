@@ -20,9 +20,10 @@ public class NMCornerHost {
     // 0 nothing, 1 created, 2 destroyed, 3 rebuilt. probe: the live minimap (null while it has not attached).
     public func Sync(s: ref<NightMapSettings>, window: wref<inkCompoundWidget>, probe: ref<NMMinimapProbe>, api: ref<NightMap>) -> Int32 {
         if !IsDefined(s) || !s.replaceMinimap {
-            if this.Active() {
+            if this.Active() || IsDefined(this.probe) {
+                let had = this.Active();
                 this.Detach();
-                return 2;
+                return had ? 2 : 0;
             }
             return 0;
         }
@@ -34,7 +35,11 @@ public class NMCornerHost {
             }
             let keep = this.probe;
             this.DestroyCorner();
-            return this.Create(cfg, window, keep, api) ? 3 : 2;
+            if this.Create(cfg, window, keep, api) { return 3; }
+            // No box this poll: give the vanilla minimap back rather than leave it faded with no corner.
+            keep.Restore();
+            this.probe = null;
+            return 2;
         }
         return this.Create(cfg, window, probe, api) ? 1 : 0;
     }
@@ -45,7 +50,7 @@ public class NMCornerHost {
         let size = window.GetSize();
         if size.X < 100.0 || size.Y < 100.0 { size = new Vector2(3840.0, 2160.0); }
         let layout = NMCornerLayout.Compute(box, cfg.style, cfg.scale, cfg.textSize, size.X, size.Y);
-        if !IsDefined(layout) { return false; }
+        if !IsDefined(layout) || !NMCornerHost.Plausible(box, size) { return false; }
         this.probe = probe;
         this.cfg = cfg;
         this.box = box;
@@ -65,6 +70,12 @@ public class NMCornerHost {
         let dx = e.X - p.X;
         let dy = e.Y - p.Y;
         return SqrtF(dx * dx + dy * dy);
+    }
+
+    // The vanilla minimap's box is a corner widget: anything wider or taller than a third of the window is some other
+    // canvas (a HUD mod, a full-screen root) and is not drawn over.
+    public static func Plausible(box: ref<NMRect>, win: Vector2) -> Bool {
+        return IsDefined(box) && box.maxX - box.minX <= win.X / 3.0 && box.maxY - box.minY <= win.Y / 3.0;
     }
 
     public static func SameBox(a: ref<NMRect>, b: ref<NMRect>) -> Bool {
