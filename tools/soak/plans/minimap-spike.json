@@ -1,0 +1,50 @@
+{
+ "name": "minimap-spike",
+ "runs": [
+  {
+   "name": "probe",
+   "parts": ["scripts", "archive", "bootstrap", "autopilot"],
+   "repeats": 1,
+   "steps": [
+    {"wait": 8},
+
+    {"cmd": "mm_reset", "expect": "reset"},
+    {"wait": 2.5},
+    {"cmd": "mm_ctrls", "expect": "^ctrls"},
+    {"cmd": "mm_tree 8", "expect": "box=|not attached"},
+    {"cmd": "mm_vis", "expect": "chain|not attached"},
+    {"cmd": "mm_zone", "expect": "zoneType|not attached"},
+    {"cmd": "mm_stealth", "expect": "^stealth"},
+    {"shot": "probe_normal"},
+
+    {"cmd": "palette_probe", "expect": "^created"},
+    {"wait": 1.0},
+    {"cmd": "palette_read", "expect": "^read"},
+
+    {"cmd": "mask_probe", "expect": "mask probe"},
+    {"wait": 1.0},
+    {"shot": "mask_probe"},
+
+    {"cmd": "wanted 2", "expect": "wanted"},
+    {"wait": 3.0},
+    {"cmd": "mm_reset", "expect": "reset"},
+    {"wait": 2.5},
+    {"cmd": "mm_ctrls", "expect": "^ctrls"},
+    {"cmd": "mm_zone", "expect": "zoneType|not attached"},
+    {"cmd": "mm_stealth", "expect": "^stealth"},
+    {"shot": "wanted"},
+    {"cmd": "wanted 0", "expect": "wanted"},
+
+    {"padaxis": "LY", "value": 1.0},
+    {"wait": 4.0},
+    {"padaxis": "LY", "value": 0.0},
+    {"wait": 1.0},
+    {"cmd": "mm_reset", "expect": "reset"},
+    {"wait": 2.5},
+    {"cmd": "mm_ctrls", "expect": "^ctrls"},
+    {"cmd": "mm_vis", "expect": "chain|not attached"},
+    {"shot": "after_move"}
+   ]
+  }
+ ]
+}

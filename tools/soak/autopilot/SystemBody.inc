@@ -836,3 +836,73 @@
             }
         }
     }
+
+    // ---- corner-minimap parity spike (MinimapSpike.reds does the work; these pass the HUD window) ----
+
+    public func Soak_MmTree(depth: Int32) -> String {
+        return NMMinimapSpike.Tree(this.HudWindow(), depth > 0 ? depth : 6);
+    }
+
+    public func Soak_MmVis() -> String {
+        return NMMinimapSpike.Vis(this.HudWindow());
+    }
+
+    public func Soak_MmReset() -> String {
+        let reg = NMMinimapSpikeReg.Get();
+        if !IsDefined(reg) { return "no reg"; }
+        reg.Reset();
+        return "reset";
+    }
+
+    public func Soak_MmCtrls() -> String {
+        let reg = NMMinimapSpikeReg.Get();
+        if !IsDefined(reg) { return "no reg"; }
+        let out = NMSoakDump.Open("mm_ctrls.txt");
+        let summary = reg.Dump(out);
+        out.Flush();
+        return "ctrls " + IntToString(reg.Size()) + "|" + summary;
+    }
+
+    public func Soak_MmStealth() -> String {
+        let reg = NMMinimapSpikeReg.Get();
+        if !IsDefined(reg) { return "no reg"; }
+        let out = NMSoakDump.Open("mm_stealth.txt");
+        let n = reg.DumpStealth(out);
+        out.Flush();
+        return "stealth " + IntToString(n);
+    }
+
+    public func Soak_MmZone() -> String {
+        let reg = NMMinimapSpikeReg.Get();
+        if !IsDefined(reg) || !IsDefined(reg.container) { return "container not attached"; }
+        return reg.container.NMSpikeZone();
+    }
+
+    public func Soak_PaletteProbe() -> String {
+        return NMMinimapSpike.PaletteProbe(this.HudWindow());
+    }
+
+    public func Soak_PaletteRead() -> String {
+        return NMMinimapSpike.PaletteRead();
+    }
+
+    // Positive control for corner clipping: an oversized bright rectangle clipped by inkScrollArea's internal mask (the
+    // Square/SquareStrip pattern from NMPanel). A screenshot shows the clip. Circle style needs its own radial mask.
+    public func Soak_MaskProbe() -> String {
+        let window = this.HudWindow();
+        if !IsDefined(window) { return "no window"; }
+        let area = new inkScrollArea();
+        area.SetName(n"NMMaskProbe");
+        area.SetAnchor(inkEAnchor.TopLeft);
+        area.SetSize(new Vector2(400.0, 400.0));
+        area.SetTranslation(new Vector2(200.0, 200.0));
+        area.SetUseInternalMask(true);
+        area.SetInteractive(false);
+        area.Reparent(window);
+        let inner = new inkCanvas();
+        inner.SetSize(new Vector2(400.0, 400.0));
+        inner.SetInteractive(false);
+        inner.Reparent(area);
+        NMUi.Rect(inner, -100.0, -100.0, 600.0, 600.0, new HDRColor(1.0, 0.0, 1.0, 1.0), 1.0);
+        return "mask probe placed 400x400 at 200,200 (magenta clipped to the box)";
+    }

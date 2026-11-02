@@ -107,6 +107,18 @@ public abstract class NMSoak {
             let cs = StrSplit(command, " ");
             return sys.Soak_CollectSeen(cs[1]);
         }
+        if StrBeginsWith(command, "mm_tree") {
+            let mt = StrSplit(command, " ");
+            return sys.Soak_MmTree(ArraySize(mt) > 1 ? StringToInt(mt[1]) : 6);
+        }
+        if Equals(command, "mm_vis") { return sys.Soak_MmVis(); }
+        if Equals(command, "mm_reset") { return sys.Soak_MmReset(); }
+        if Equals(command, "mm_ctrls") { return sys.Soak_MmCtrls(); }
+        if Equals(command, "mm_stealth") { return sys.Soak_MmStealth(); }
+        if Equals(command, "mm_zone") { return sys.Soak_MmZone(); }
+        if Equals(command, "palette_probe") { return sys.Soak_PaletteProbe(); }
+        if Equals(command, "palette_read") { return sys.Soak_PaletteRead(); }
+        if Equals(command, "mask_probe") { return sys.Soak_MaskProbe(); }
         if Equals(command, "selftest") {
             let t = new NMSelfTest();
             t.Run();

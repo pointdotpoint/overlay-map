@@ -75,7 +75,8 @@ def _source(paths: Paths, part: str, rel: str) -> Path:
     if part == "bootstrap":
         return repo / "tools/soak/bootstrap"
     if part == "autopilot":
-        return repo / "tools/soak/autopilot/SoakHooks.reds"
+        # Each autopilot rel maps to a same-named source file under tools/soak/autopilot (SoakHooks.reds, MinimapSpike.reds).
+        return repo / "tools/soak/autopilot" / Path(rel).name
     raise BuildError(f"unknown part {part}")
 
 

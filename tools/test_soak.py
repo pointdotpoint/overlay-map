@@ -321,6 +321,7 @@ def test_stage_build_overlays_the_hooks_and_stamps_the_id(tmp_path):
     (repo / "tools/soak/bootstrap/SoakBootstrap.reds").write_text("b")
     (repo / "tools/soak/autopilot").mkdir(parents=True)
     (repo / "tools/soak/autopilot/SoakHooks.reds").write_text("h")
+    (repo / "tools/soak/autopilot/MinimapSpike.reds").write_text("m")
     (repo / "tools/soak/autopilot/SystemBody.inc").write_text("    func Soak_X();\n")
     (repo / "tools/soak/autopilot/RendererBody.inc").write_text("    let y;\n")
     (repo / "r6/scripts/NightMap/Core").mkdir()
@@ -334,6 +335,7 @@ def test_stage_build_overlays_the_hooks_and_stamps_the_id(tmp_path):
     p = Paths(game=tmp_path, user=tmp_path, steam=tmp_path, soak=tmp_path / "soak", wrapper_state=tmp_path, repo=repo)
     b = stage_build(p, ["autopilot", "scripts", "archive", "bootstrap"])
     assert (b.dir / "r6/scripts/NightMap/Debug/SoakHooks.reds").read_text() == "h"
+    assert (b.dir / "r6/scripts/NightMap/Debug/MinimapSpike.reds").read_text() == "m"
     assert f'"{b.id}"' in (b.dir / "r6/scripts/SoakBootstrap/SoakBuild.reds").read_text()
     assert not (repo / "r6/scripts/NightMap/Debug/SoakHooks.reds").exists()
     staged = (b.dir / "r6/scripts/NightMap/Core/NightMapSystem.reds").read_text()

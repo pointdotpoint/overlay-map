@@ -18,7 +18,7 @@ PARTS: dict[str, list[str]] = {
     "scripts": ["r6/scripts/NightMap"],
     "archive": ["archive/pc/mod/NightMap.archive"],
     "bootstrap": ["r6/scripts/SoakBootstrap"],
-    "autopilot": ["r6/scripts/NightMap/Debug/SoakHooks.reds"],
+    "autopilot": ["r6/scripts/NightMap/Debug/SoakHooks.reds", "r6/scripts/NightMap/Debug/MinimapSpike.reds"],
 }
 # Parts nothing writes into at runtime: a change between runs means another writer.
 VERIFY_PARTS = ["scripts", "archive", "bootstrap"]
