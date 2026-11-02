@@ -41,6 +41,7 @@ public class NMPanel {
     public let mapContent: ref<inkCanvas>;
     public let tiles: ref<inkCanvas>;
     public let routes: ref<inkCanvas>;
+    public let shapes: ref<inkCanvas>;   // mirrored vanilla minimap markers (enemies, cones, devices)
     public let items: ref<inkCanvas>;
     public let overlay: ref<inkCanvas>;
     public let districtTitle: ref<inkText>;   // top-left header: the district
@@ -92,6 +93,7 @@ public class NMPanel {
         p.holo.AddVignette(p.mapContent);                                                  // over the tiles, under the routes
         p.holo.AddNoise(p.mapContent);                                                     // over the tiles, under the markers
         p.routes = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);           // GPS routes, under the markers
+        p.shapes = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
         p.items = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
         p.items.SetName(n"Items");
         // Soft dark scrim behind the district title (over the routes, markers and photo pins, under the player arrow),

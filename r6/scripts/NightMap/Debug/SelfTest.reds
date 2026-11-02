@@ -35,6 +35,7 @@ public class NMSelfTest {
         NMPerfTests.Run(this);
         NMCornerTests.Run(this);
         NMPaletteTests.Run(this);
+        NMParityTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 

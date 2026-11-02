@@ -115,7 +115,9 @@ public class NightMapSystem extends ScriptableSystem {
     private let cornerPollGen: Int32;
     private let cornerRouteMs: Float;
     private let cornerDistrict: String;
-    private let palette: ref<NMHudPalette>;   // set while "Follow HUD Painter colours" is on
+    private let palette: ref<NMHudPalette>;
+    private let mirror: ref<NMMinimapMirror>;
+    private let panelMirror: ref<NMShapeLayer>;   // vanilla minimap markers, fed by Minimap/Wraps.reds while a view is live   // set while "Follow HUD Painter colours" is on
     private let cornerObjectiveM: Float;   // -1 = nothing tracked (set in PrepareCornerMarkers)
     private let collectSeenMap: ref<inkHashMap>;
     private let hud: ref<NMHudHider>;     // set while the map is open with "Hide HUD while open" on
@@ -140,6 +142,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.input = new NMInput();
         this.pad = new NMPad();
         this.cornerHost = new NMCornerHost();
+        this.mirror = NMMinimapMirror.Create();
         GameInstance.GetCallbackSystem().RegisterCallback(n"Input/Key", this, n"OnKeyInput");
         GameInstance.GetCallbackSystem().RegisterCallback(n"Input/Axis", this, n"OnAxisInput");
         NMLog.Info("loaded (tiles " + (NMTileManifest.Available() ? "present" : "missing") + ", precise clock " + ToString(NMClock.Precise()) + ")");
@@ -850,6 +853,8 @@ public class NightMapSystem extends ScriptableSystem {
     public func Tick() {
         if !this.isOpen && !this.cornerHost.Active() {
             this.loopAlive = false;
+            this.mirror.live = false;
+            this.mirror.Clear();
             return;
         }
         let now = NMClock.NowMs();
@@ -857,6 +862,8 @@ public class NightMapSystem extends ScriptableSystem {
         let dt = ClampF(raw, 0.0, 100.0);         // clamped step for camera motion
         this.lastMs = now;
         this.frameNo += 1;
+        this.mirror.live = true;
+        if this.frameNo % 30 == 0 { this.mirror.Sweep(); }
         if !this.isOpen {
             this.CornerTick(dt);
             this.Schedule();
@@ -958,6 +965,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.vanilla.Tick(NMClock.NowMs(), true);
         this.Gps().BeginOpen();
         this.routes = NMRouteLayer.Create(this.panel.routes, l.scale, this.holoEffects);
+        this.panelMirror = NMShapeLayer.Create(this.panel.shapes, 1.0);
         this.lastRouteReadMs = 0.0;
         if this.RoutesWanted() {
             this.ReadRoutes();   // routes on the first frame, not 500 ms later
@@ -1014,6 +1022,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.reticle = null;
         this.drawerShift = 0.0;
         this.routes = null;
+        this.panelMirror = null;
     }
 
     private func UpdateModules(dt: Float) {
@@ -1056,6 +1065,7 @@ public class NightMapSystem extends ScriptableSystem {
             this.tipApiRev = -1;
         }
         this.UpdateRoutes(dt);
+        this.panelMirror.Update(this.camera, this.mirror, l.viewW, l.mapH, true, true, this.Gps().Scale(), this.CameraYaw(), this.vanilla.diff);
         if this.Photos().Revision() != this.Photos().SyncedRevision() {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
         }
@@ -1276,7 +1286,12 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     public func CornerHost() -> ref<NMCornerHost> { return this.cornerHost; }
+
+    public func CameraYaw() -> Float {
+        return NMGps.CameraYaw(GameInstance.GetCameraSystem(this.GetGameInstance()).GetActiveCameraForward());
+    }
     public func Palette() -> ref<NMHudPalette> { return this.palette; }
+    public func Mirror() -> ref<NMMinimapMirror> { return this.mirror; }
     public func UsePalette(p: ref<NMHudPalette>) { this.palette = p; }
 
     // Follow HUD Painter colours: probes live in the HUD window while the setting is on; a palette change re-tints the
@@ -1377,6 +1392,7 @@ public class NightMapSystem extends ScriptableSystem {
             this.cornerDistrict = this.DistrictName();
         }
         c.Update(player, dt, reading, color, style, routesOn, this.cornerDistrict, this.cornerObjectiveM);
+        c.UpdateMirror(this.mirror, this.Gps().Scale(), this.CameraYaw(), this.vanilla.diff);
     }
 
     public func DistrictName() -> String {

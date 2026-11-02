@@ -21,6 +21,7 @@ public class NMGps {
 
     public func SetMinimap(c: ref<MinimapContainerController>) { this.ctrl = c; }
     public func Minimap() -> wref<MinimapContainerController> { return this.ctrl; }
+    public func Scale() -> Float { return this.lastScale; }   // vanilla minimap px per metre; 0 = not measured yet
 
     public func ClearMinimap(c: ref<MinimapContainerController>) {
         let cur: ref<MinimapContainerController> = this.ctrl;

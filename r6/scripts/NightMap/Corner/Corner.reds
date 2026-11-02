@@ -27,6 +27,7 @@ public class NMCorner {
     public let renderer: ref<NMItemRenderer>;
     public let routes: ref<NMRouteLayer>;
     private let marker: ref<NMPlayerMarker>;
+    public let mirrorLayer: ref<NMShapeLayer>;
     private let panelLayout: ref<NMPanelLayout>;
     private let shown: Bool;
 
@@ -101,6 +102,7 @@ public class NMCorner {
         c.renderer = NMItemRenderer.Create(api, c.items, s * cfg.markerSize);
         c.routes = NMRouteLayer.Create(c.routesCanvas, s, cfg.effects);
         c.marker = NMPlayerMarker.Create(c.overlay, s * cfg.markerSize, false, th);
+        c.mirrorLayer = NMShapeLayer.Create(c.shapes, cfg.markerSize);
         c.shown = true;
         return c;
     }
@@ -201,6 +203,12 @@ public class NMCorner {
         }
     }
 
+    // Vanilla minimap markers (enemies and cones, devices, ...), after Update moved the camera.
+    public func UpdateMirror(mirror: ref<NMMinimapMirror>, sMini: Float, camYaw: Float, skip: ref<NMVanillaDiff>) {
+        if !this.shown { return; }
+        this.mirrorLayer.Update(this.camera, mirror, this.layout.mapW, this.layout.mapH, this.cfg.enemies, this.cfg.police, sMini, camYaw, skip);
+    }
+
     public func SetShown(on: Bool) {
         if Equals(on, this.shown) { return; }
         this.shown = on;
@@ -228,5 +236,6 @@ public class NMCorner {
         this.renderer = null;
         this.routes = null;
         this.marker = null;
+        this.mirrorLayer = null;
     }
 }
