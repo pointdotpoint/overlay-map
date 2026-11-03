@@ -7,6 +7,7 @@ module NightMap
 // closes it and every other button keeps driving.
 public class NMPad {
     public let act: Bool;
+    public let waypoint: Bool;
     public let teleport: Bool;
     public let filter: Bool;
     public let recenter: Bool;
@@ -87,6 +88,7 @@ public class NMPad {
         }
         this.lastWasPad = true;
         if Equals(key, EInputKey.IK_Pad_A_CROSS) { this.act = true; return true; }
+        if Equals(key, EInputKey.IK_Pad_RightShoulder) { this.waypoint = true; return true; }
         if Equals(key, EInputKey.IK_Pad_X_SQUARE) { this.teleport = true; return true; }
         if Equals(key, EInputKey.IK_Pad_Y_TRIANGLE) { this.filter = true; return true; }
         if Equals(key, EInputKey.IK_Pad_RightThumb) { this.recenter = true; return true; }
@@ -205,6 +207,7 @@ public class NMPad {
     // One-shots, axes and the View hold.
     public func Reset() {
         this.act = false;
+        this.waypoint = false;
         this.teleport = false;
         this.filter = false;
         this.recenter = false;

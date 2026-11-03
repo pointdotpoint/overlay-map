@@ -1,4 +1,7 @@
 module NightMap
+
+@if(ModuleExists("NightMapNative"))
+import NightMapNative.*
 import SoakBootstrap.*
 import RedFileSystem.*
 
@@ -86,6 +89,97 @@ public abstract class NMSoak {
         if Equals(command, "collect") { return sys.Soak_Collect(); }
         if Equals(command, "police") { return sys.Soak_Police(); }
         if Equals(command, "corner") { return sys.Soak_Corner(); }
+        if Equals(command, "wp_version") { return NMSoakNative.Version(); }
+        if Equals(command, "wp_rvas") { return NMSoakNative.Rvas(); }
+        if StrBeginsWith(command, "wp_reg ") {
+            let w = StrSplit(command, " ");
+            if ArraySize(w) < 3 { return "usage: wp_reg <dx> <dy>"; }
+            return NMSoakWp.Reg(StringToFloat(w[1]), StringToFloat(w[2]));
+        }
+        if Equals(command, "wp_state") { return NMSoakWp.State(); }
+        if StrBeginsWith(command, "wp_track_nearest ") {
+            let wt = StrSplit(command, " ");
+            return NMSoakWp.TrackNearest(wt[1], StringToFloat(wt[2]));
+        }
+        if StrBeginsWith(command, "wp_set_near ") {
+            let wn = StrSplit(command, " ");
+            return NMSoakWp.SetNear(wn[1], StringToFloat(wn[2]));
+        }
+        if Equals(command, "wp_track_custom") {
+            let ms3 = GameInstance.GetMappinSystem(GetGameInstance());
+            let all3: array<ref<IMappin>>;
+            ms3.GetMappins(gamemappinsMappinTargetType.Map, all3);
+            for c3 in all3 {
+                if Equals(c3.GetVariant(), gamedataMappinVariant.CustomPositionVariant) {
+                    let cid = c3.GetNewMappinID();
+                    return "track=" + NMSoakNative.Track(cid) + " id=" + ToString(cid.value);
+                }
+            }
+            return "no custom pin";
+        }
+        if StrBeginsWith(command, "wp_unreg_custom") {
+            let ms2 = GameInstance.GetMappinSystem(GetGameInstance());
+            let all: array<ref<IMappin>>;
+            ms2.GetMappins(gamemappinsMappinTargetType.Map, all);
+            let n = 0;
+            for c in all {
+                if Equals(c.GetVariant(), gamedataMappinVariant.CustomPositionVariant) { ms2.UnregisterMappin(c.GetNewMappinID()); n += 1; }
+            }
+            return "unregistered " + n;
+        }
+        if Equals(command, "gps") { return sys.Soak_GpsRoute(); }
+        if StrBeginsWith(command, "focus_at ") {
+            let fa = StrSplit(command, " ");
+            return sys.Soak_FocusAt(StringToFloat(fa[1]), StringToFloat(fa[2]), StringToFloat(fa[3]));
+        }
+        if StrBeginsWith(command, "focus_empty ") {
+            let fe = StrSplit(command, " ");
+            return sys.Soak_FocusEmpty(StringToFloat(fe[1]), StringToFloat(fe[2]), StringToFloat(fe[3]));
+        }
+        if StrBeginsWith(command, "focus_custom ") {
+            let fc = StrSplit(command, " ");
+            let msf = GameInstance.GetMappinSystem(GetGameInstance());
+            let allf: array<ref<IMappin>>;
+            msf.GetMappins(gamemappinsMappinTargetType.Map, allf);
+            for cf in allf {
+                if Equals(cf.GetVariant(), gamedataMappinVariant.CustomPositionVariant) {
+                    let wf = cf.GetWorldPosition();
+                    return sys.Soak_FocusAt(wf.X, wf.Y, StringToFloat(fc[1]));
+                }
+            }
+            return "no custom pin";
+        }
+        if Equals(command, "wp_count") {
+            let msc = GameInstance.GetMappinSystem(GetGameInstance());
+            let allc: array<ref<IMappin>>;
+            msc.GetMappins(gamemappinsMappinTargetType.Map, allc);
+            let nc = 0;
+            let at = "";
+            for cc in allc {
+                if Equals(cc.GetVariant(), gamedataMappinVariant.CustomPositionVariant) {
+                    nc += 1;
+                    let wpos = cc.GetWorldPosition();
+                    at += " " + FloatToStringPrec(wpos.X, 0) + "," + FloatToStringPrec(wpos.Y, 0);
+                }
+            }
+            return "custom " + nc + at;
+        }
+        if Equals(command, "quest_hash") {
+            let jmq = GameInstance.GetJournalManager(GetGameInstance());
+            let te = jmq.GetTrackedEntry();
+            return IsDefined(te) ? "quest " + ToString(jmq.GetEntryHash(te)) : "quest none";
+        }
+        if Equals(command, "wp_last") {
+            let wl = sys.Waypoint();
+            return "last=" + wl.lastAction + " pending=" + ToString(wl.Pending());
+        }
+        if Equals(command, "wp_why") { return NMSoakNative.Why(); }
+        if StrBeginsWith(command, "wp_set ") {
+            let ws = StrSplit(command, " ");
+            if ArraySize(ws) < 3 { return "usage: wp_set <dx> <dy>"; }
+            return NMSoakWp.Set(StringToFloat(ws[1]), StringToFloat(ws[2]));
+        }
+        if Equals(command, "wp_clear") { return NMVanillaTracking.ClearManual(GetGameInstance()) ? "cleared" : "nothing tracked"; }
         if Equals(command, "hud_find") { return sys.Soak_HudFind(); }
         if Equals(command, "mirror_dump") { return sys.Soak_MirrorDump(); }
         if Equals(command, "god") { return sys.Soak_God(); }
@@ -381,5 +475,105 @@ public class NMSoakDesc extends NightMapLayerListener {
         cam.SetMpp(1.0);
         cam.SetCenter(p.X + 40.0, p.Y + 40.0);
         return "ok";
+    }
+}
+
+// NightMapNative (optional plugin): answers "no plugin" when the plugin's module isn't loaded.
+@if(ModuleExists("NightMapNative"))
+public abstract class NMSoakNative {
+    public static func Version() -> String { return IntToString(NightMapNative_Version()); }
+    public static func Rvas() -> String { return NightMapNative_Rvas(); }
+    public static func Why() -> String { return "available=" + ToString(NightMapNative_Available()) + " " + NightMapNative_Why(); }
+    public static func Track(id: NewMappinID) -> String {
+        let ms = GameInstance.GetMappinSystem(GetGameInstance());
+        return ToString(NightMapNative_TrackMappin(ms, id));
+    }
+}
+
+@if(!ModuleExists("NightMapNative"))
+public abstract class NMSoakNative {
+    public static func Version() -> String { return "no plugin"; }
+    public static func Rvas() -> String { return "no plugin"; }
+    public static func Why() -> String { return "no plugin"; }
+    public static func Track(id: NewMappinID) -> String { return "no plugin"; }
+}
+
+// Waypoint probes: a vanilla custom waypoint registered from script (MappinSystem.RegisterMappin with the record and
+// variant the world map's own TrackCustomPositionMappin uses), and the manually tracked pin's state.
+public abstract class NMSoakWp {
+    public static func Reg(dx: Float, dy: Float) -> String {
+        let gi = GetGameInstance();
+        let player = GetPlayer(gi);
+        if !IsDefined(player) { return "no player"; }
+        let p = player.GetWorldPosition();
+        let pos = new Vector4(p.X + dx, p.Y + dy, p.Z, 1.0);
+        let data: MappinData;
+        data.mappinType = t"Mappins.CustomPositionMappinDefinition";
+        data.variant = gamedataMappinVariant.CustomPositionVariant;
+        data.active = true;
+        data.visibleThroughWalls = true;
+        let ms = GameInstance.GetMappinSystem(gi);
+        let id = ms.RegisterMappin(data, pos);
+        let tracked = ms.GetManuallyTrackedMappinID();
+        return "id=" + ToString(id.value) + " tracked=" + ToString(tracked.value);
+    }
+
+    // Vanilla's TrackCustomPositionMappin: move the tracked custom pin if there is one, else register and track.
+    public static func Set(dx: Float, dy: Float) -> String {
+        let player = GetPlayer(GetGameInstance());
+        if !IsDefined(player) { return "no player"; }
+        let p = player.GetWorldPosition();
+        return NMSoakWp.SetAt(new Vector4(p.X + dx, p.Y + dy, p.Z, 1.0));
+    }
+
+    // Through NightMap's own waypoint code (register, then track once the mappin system has the pin).
+    public static func SetAt(pos: Vector4) -> String {
+        let sys = NightMapSystem.Get(GetGameInstance());
+        let w = sys.Waypoint();
+        let ok = w.SetCustom(pos.X, pos.Y, pos.Z);
+        return "set=" + ToString(ok) + " " + w.lastAction;
+    }
+
+    // The nearest map mappin at least `minDist` m away whose variant name contains `part` (e.g. FastTravel).
+    public static func Nearest(part: String, minDist: Float) -> ref<IMappin> {
+        let ms = GameInstance.GetMappinSystem(GetGameInstance());
+        let arr: array<ref<IMappin>>;
+        ms.GetMappins(gamemappinsMappinTargetType.Map, arr);
+        let best: ref<IMappin>;
+        let bestD = 1000000000.0;
+        for m in arr {
+            let name = EnumValueToString("gamedataMappinVariant", Cast<Int64>(EnumInt(m.GetVariant())));
+            let d = m.GetDistanceToPlayer();
+            if StrContains(name, part) && d >= minDist && d < bestD { best = m; bestD = d; }
+        }
+        return best;
+    }
+
+    public static func TrackNearest(part: String, minDist: Float) -> String {
+        let m = NMSoakWp.Nearest(part, minDist);
+        if !IsDefined(m) { return "none"; }
+        let id = m.GetNewMappinID();
+        return "track=" + NMSoakNative.Track(id) + " id=" + ToString(id.value) + " dist=" + FloatToStringPrec(m.GetDistanceToPlayer(), 0);
+    }
+
+    // A custom waypoint 3 m beside the nearest matching mappin (a routable spot).
+    public static func SetNear(part: String, minDist: Float) -> String {
+        let m = NMSoakWp.Nearest(part, minDist);
+        if !IsDefined(m) { return "none"; }
+        let w = m.GetWorldPosition();
+        return NMSoakWp.SetAt(new Vector4(w.X, w.Y, w.Z, 1.0)) + " near=" + FloatToStringPrec(m.GetDistanceToPlayer(), 0);
+    }
+
+    public static func State() -> String {
+        let gi = GetGameInstance();
+        let ms = GameInstance.GetMappinSystem(gi);
+        let id = ms.GetManuallyTrackedMappinID();
+        if id.value == 0ul { return "tracked=0"; }
+        let m = ms.GetMappin(id);
+        if !IsDefined(m) { return "tracked=" + ToString(id.value) + " (no mappin)"; }
+        let w = m.GetWorldPosition();
+        return "tracked=" + ToString(id.value) + " variant=" + EnumValueToString("gamedataMappinVariant", Cast<Int64>(EnumInt(m.GetVariant())))
+            + " playerTracked=" + ToString(m.IsPlayerTracked()) + " pos=" + FloatToStringPrec(w.X, 1) + "," + FloatToStringPrec(w.Y, 1)
+            + " dist=" + FloatToStringPrec(m.GetDistanceToPlayer(), 1);
     }
 }

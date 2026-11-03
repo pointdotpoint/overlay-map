@@ -28,8 +28,17 @@ if [ -d "$GAME/red4ext/plugins/TweakXL/Scripts" ]; then
   cp "$GAME"/red4ext/plugins/TweakXL/Scripts/*.reds "$SANDBOX/r6/scripts/TweakXL/"
 fi
 cp -r "$HERE/r6/scripts/NightMap" "$SANDBOX/r6/scripts/NightMap"
+# --native: also compile against the optional NightMapNative plugin's declarations (tools/native/build.sh stages them).
+NATIVE=0; SOAK=0
+for arg in "$@"; do
+  case "$arg" in --native) NATIVE=1 ;; --soak) SOAK=1 ;; esac
+done
+if [ "$NATIVE" = 1 ]; then
+  mkdir -p "$SANDBOX/r6/scripts/NightMapNative"
+  cp "$HERE"/native/NightMapNative/*.reds "$SANDBOX/r6/scripts/NightMapNative/"
+fi
 # --soak: also compile the harness's bootstrap and hooks, which only exist in a campaign build.
-if [ "${1:-}" = "--soak" ]; then
+if [ "$SOAK" = 1 ]; then
   cp "$HERE/tools/soak/autopilot/SoakHooks.reds" "$SANDBOX/r6/scripts/NightMap/Debug/"
   cp "$HERE/tools/soak/autopilot/MinimapSpike.reds" "$SANDBOX/r6/scripts/NightMap/Debug/"
   python3 "$HERE/tools/soak/builds.py" "$SANDBOX/r6/scripts/NightMap" "$HERE/tools/soak/autopilot"

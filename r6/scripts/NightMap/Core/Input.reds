@@ -6,6 +6,7 @@ public class NMInput {
     public let toggle: Bool;
     public let recenter: Bool;
     public let act: Bool;
+    public let waypoint: Bool;
     public let teleport: Bool;
     public let filter: Bool;
     public let zoomIn: Bool;
@@ -76,6 +77,10 @@ public class NMInput {
             if pressed { this.act = true; }
             return true;
         }
+        if Equals(key, s.keyWaypoint) {
+            if pressed { this.waypoint = true; }
+            return true;
+        }
         if Equals(key, s.keyFilter) {
             if pressed { this.filter = true; }
             return true;
@@ -120,6 +125,7 @@ public class NMInput {
         this.zoomOut = false;
         this.recenter = false;
         this.act = false;
+        this.waypoint = false;
         this.filter = false;
         this.teleport = false;
     }

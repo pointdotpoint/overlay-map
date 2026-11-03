@@ -74,6 +74,8 @@ def _source(paths: Paths, part: str, rel: str) -> Path:
         return repo / rel
     if part == "bootstrap":
         return repo / "tools/soak/bootstrap"
+    if part == "native":
+        return repo / "dist-native" / rel
     if part == "autopilot":
         # Each autopilot rel maps to a same-named source file under tools/soak/autopilot (SoakHooks.reds, MinimapSpike.reds).
         return repo / "tools/soak/autopilot" / Path(rel).name

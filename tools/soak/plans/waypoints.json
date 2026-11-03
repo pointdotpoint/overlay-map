@@ -1,0 +1,242 @@
+{
+ "name": "waypoints",
+ "runs": [
+  {
+   "name": "plugin",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "native",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 60,
+     "expect": "failed=0\\|"
+    },
+    {
+     "cmd": "wp_why",
+     "expect": "available=true ok"
+    },
+    {
+     "cmd": "wp_clear",
+     "expect": "cleared|nothing"
+    },
+    {
+     "cmd": "quest_hash",
+     "expect": "^quest"
+    },
+    {
+     "cmd": "open",
+     "expect": "open"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "focus_empty -1835 -1925 0.5",
+     "expect": "^focus"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "selected",
+     "expect": "^none$"
+    },
+    {
+     "shot": "empty_spot_hint"
+    },
+    {
+     "key": "Return"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "wp_last",
+     "expect": "last=set pending=false"
+    },
+    {
+     "cmd": "wp_state",
+     "expect": "CustomPositionVariant playerTracked=true"
+    },
+    {
+     "cmd": "wp_count",
+     "expect": "^custom 1 "
+    },
+    {
+     "wait": 3.0
+    },
+    {
+     "cmd": "gps",
+     "expect": "tracked [1-9]"
+    },
+    {
+     "shot": "custom_set_map"
+    },
+    {
+     "cmd": "focus_empty -1700 -1800 0.5",
+     "expect": "^focus"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "selected",
+     "expect": "^none$"
+    },
+    {
+     "key": "KP_Enter"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "wp_last",
+     "expect": "last=moved"
+    },
+    {
+     "cmd": "wp_count",
+     "expect": "^custom 1 "
+    },
+    {
+     "cmd": "wp_state",
+     "expect": "CustomPositionVariant playerTracked=true"
+    },
+    {
+     "cmd": "focus_custom 0.5",
+     "expect": "^focus"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "selected",
+     "expect": "^other"
+    },
+    {
+     "shot": "on_custom_hint"
+    },
+    {
+     "key": "Return"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "wp_last",
+     "expect": "last=cleared"
+    },
+    {
+     "cmd": "wp_state",
+     "expect": "tracked=0"
+    },
+    {
+     "cmd": "wp_count",
+     "expect": "^custom 0"
+    },
+    {
+     "cmd": "focus_layer Vanilla.FastTravel 1",
+     "expect": "^ok"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "selected",
+     "expect": "^ft"
+    },
+    {
+     "shot": "on_ft_hint"
+    },
+    {
+     "key": "Return"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "wp_last",
+     "expect": "last=tracked"
+    },
+    {
+     "cmd": "wp_state",
+     "expect": "FastTravelVariant playerTracked=true"
+    },
+    {
+     "key": "Return"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "wp_last",
+     "expect": "last=cleared"
+    },
+    {
+     "cmd": "wp_state",
+     "expect": "tracked=0"
+    },
+    {
+     "cmd": "focus_layer Vanilla.Gigs 1",
+     "expect": "^ok|none"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "selected",
+     "expect": ""
+    },
+    {
+     "shot": "on_gig_hint"
+    },
+    {
+     "key": "Return"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "quest_hash",
+     "expect": "^quest"
+    },
+    {
+     "cmd": "close",
+     "expect": "closed"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "wp_last",
+     "expect": "^last="
+    },
+    {
+     "key": "Return"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "wp_state",
+     "expect": "tracked=0"
+    },
+    {
+     "cmd": "wp_count",
+     "expect": "^custom 0"
+    },
+    {
+     "shot": "closed_enter_hud"
+    }
+   ]
+  }
+ ]
+}

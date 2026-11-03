@@ -83,6 +83,13 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Keys")
     @runtimeProperty("ModSettings.category.order", "0")
+    @runtimeProperty("ModSettings.displayName", "Set waypoint / track")
+    @runtimeProperty("ModSettings.description", "On an empty spot or a pin: sets the custom waypoint there. On a job or gig: tracks its quest. On any other marker: tracks it. On the tracked one: clears it. Only while the map is open. Needs the NightMapNative plugin, except for quests.")
+    public let keyWaypoint: EInputKey = EInputKey.IK_Enter;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Keys")
+    @runtimeProperty("ModSettings.category.order", "0")
     @runtimeProperty("ModSettings.displayName", "Cycle marker filter")
     @runtimeProperty("ModSettings.description", "Cycles the map markers shown: All, Jobs, Services.")
     public let keyFilter: EInputKey = EInputKey.IK_NumSlash;

@@ -18,6 +18,7 @@ PARTS: dict[str, list[str]] = {
     "scripts": ["r6/scripts/NightMap"],
     "archive": ["archive/pc/mod/NightMap.archive"],
     "bootstrap": ["r6/scripts/SoakBootstrap"],
+    "native": ["red4ext/plugins/NightMapNative"],   # the optional plugin, staged by tools/native/build.sh
     "autopilot": ["r6/scripts/NightMap/Debug/SoakHooks.reds", "r6/scripts/NightMap/Debug/MinimapSpike.reds"],
 }
 # Parts nothing writes into at runtime: a change between runs means another writer.

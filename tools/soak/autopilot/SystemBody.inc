@@ -506,6 +506,60 @@
         return "marked";
     }
 
+    // Puts the focus point on a world spot (follow off): "focus x y".
+    public func Soak_FocusAt(x: Float, y: Float, mpp: Float) -> String {
+        if !IsDefined(this.camera) || !this.isOpen { return "map closed"; }
+        this.camera.follow = false;
+        this.camera.SetMpp(mpp);
+        this.camera.SetCenter(x, y);
+        return "focus " + FloatToStringPrec(x, 1) + " " + FloatToStringPrec(y, 1);
+    }
+
+    // Focuses the nearest spot to (cx, cy), on a 20 m grid out to 300 m, with no layer item within 30 m.
+    public func Soak_FocusEmpty(cx: Float, cy: Float, mpp: Float) -> String {
+        if !IsDefined(this.camera) || !this.isOpen { return "map closed"; }
+        let ring = 0;
+        while ring <= 15 {
+            let i = -ring;
+            while i <= ring {
+                let j = -ring;
+                while j <= ring {
+                    if AbsF(Cast<Float>(i)) == Cast<Float>(ring) || AbsF(Cast<Float>(j)) == Cast<Float>(ring) {
+                        let x = cx + 20.0 * Cast<Float>(i);
+                        let y = cy + 20.0 * Cast<Float>(j);
+                        if this.Soak_Clear(x, y, 30.0) { return this.Soak_FocusAt(x, y, mpp); }
+                    }
+                    j += 1;
+                }
+                i += 1;
+            }
+            ring += 1;
+        }
+        return "no empty spot";
+    }
+
+    private func Soak_Clear(x: Float, y: Float, r: Float) -> Bool {
+        for L in this.api.layers {
+            let k = 0;
+            while k < ArraySize(L.alive) {
+                if L.alive[k] {
+                    let dx = L.px[k] - x;
+                    let dy = L.py[k] - y;
+                    if dx * dx + dy * dy < r * r { return false; }
+                }
+                k += 1;
+            }
+        }
+        return true;
+    }
+
+    // GPS route points read from the vanilla minimap: "gps quest <n> tracked <n>".
+    public func Soak_GpsRoute() -> String {
+        let r = this.Gps().Read(GetPlayer(this.GetGameInstance()));
+        if !IsDefined(r) { return "gps none"; }
+        return "gps quest " + ArraySize(r.quest) + " tracked " + ArraySize(r.tracked);
+    }
+
     // Distance V moved since vmark: "still 0.1" under half a metre, else "moved 3.4".
     public func Soak_VDist() -> String {
         let d = Vector4.Distance(this.soakMarkV, GetPlayer(this.GetGameInstance()).GetWorldPosition());

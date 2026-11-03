@@ -1,0 +1,30 @@
+cmake_minimum_required(VERSION 3.24)
+project(NightMapNative CXX)
+# C++23: RED4ext.SDK's DynArray.hpp needs a C++23 constexpr relaxation under GCC (see the photomode plugin's FINDINGS).
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Game 2.5 changed engine layouts (Callback buffer 64, CBaseFunction +0x40): needs an SDK with 2.5 support.
+set(RED4EXT_SDK "${CMAKE_SOURCE_DIR}/vendor/RED4ext.SDK" CACHE PATH "RED4ext.SDK checkout (2.5 support)")
+
+if(MINGW)
+  # mingw-w64 only ships lowercase windows.h and drops __declspec(align); shims copied from the photomode plugin.
+  include_directories(BEFORE ${CMAKE_SOURCE_DIR}/shim/mingw-case-fix)
+endif()
+
+add_subdirectory(${RED4EXT_SDK} ${CMAKE_BINARY_DIR}/red4ext-sdk)
+
+if(MINGW)
+  get_target_property(_red4ext_sdk_sources RED4ext.SDK SOURCES)
+  list(FILTER _red4ext_sdk_sources EXCLUDE REGEX "/src/(GpuApi|Rendering)/|/src/Scripting/Natives\\.cpp$")
+  set_target_properties(RED4ext.SDK PROPERTIES SOURCES "${_red4ext_sdk_sources}")
+  target_compile_options(RED4ext.SDK PRIVATE -include ${CMAKE_SOURCE_DIR}/shim/mingw-case-fix/mingw-compat.hpp)
+endif()
+
+add_library(NightMapNative SHARED NightMapNative/Main.cpp)
+set_target_properties(NightMapNative PROPERTIES PREFIX "" SUFFIX ".dll")
+target_link_libraries(NightMapNative PRIVATE RED4ext::SDK)
+if(MINGW)
+  target_link_options(NightMapNative PRIVATE -static-libgcc -static-libstdc++ -static)
+  target_compile_options(NightMapNative PRIVATE -include ${CMAKE_SOURCE_DIR}/shim/mingw-case-fix/mingw-compat.hpp)
+endif()

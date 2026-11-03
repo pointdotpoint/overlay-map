@@ -275,6 +275,23 @@ public class NMVanilla extends NMVanillaSink {
         return GameInstance.GetMappinSystem(this.gi).GetMappin(id);
     }
 
+    private func WaypointKey() -> String {
+        let s = NightMapSettings.Get(this.gi);
+        return IsDefined(s) ? NMInput.KeyName(s.keyWaypoint) : "ENTER";
+    }
+
+    // The vanilla mappin under a NightMap layer item, or null when the item isn't a vanilla marker (or is gone).
+    public func MappinAt(L: ref<NightMapLayer>, item: Int32) -> ref<IMappin> {
+        if !IsDefined(L) { return null; }
+        let vl = L.listener as NMVanillaListener;
+        if !IsDefined(vl) { return null; }
+        let e = vl.Get(item);
+        return IsDefined(e) ? this.Resolve(e) : null;
+    }
+
+    // Re-poll now (after the waypoint key changed what is tracked); the current time keeps the 1.5 s cadence.
+    public func Repoll() { this.Tick(NMClock.NowMs(), true); }
+
     private func ActKey() -> String {
         let s = NightMapSettings.Get(this.gi);
         return IsDefined(s) ? NMInput.KeyName(s.keyAct) : "NUM 0";
@@ -309,11 +326,15 @@ public class NMVanilla extends NMVanillaSink {
         } else if manual {
             d.AddRow("Status", "Tracked");
             d.AddAction(this.ActKey(), Equals(s.variant, gamedataMappinVariant.CustomPositionVariant) ? "Clear waypoint" : "Stop tracking");
-        } else if IsDefined(NMFastTravel.PointOf(m)) {
-            let st = NightMapSettings.Get(this.gi);
-            if IsDefined(st) && st.teleportEnabled { d.AddAction(NMInput.KeyName(st.keyTeleport), "Fast travel"); }
         } else {
-            d.AddRow("Waypoint", "Coming with the native plugin");
+            let ft = IsDefined(NMFastTravel.PointOf(m));
+            let st = NightMapSettings.Get(this.gi);
+            if ft && IsDefined(st) && st.teleportEnabled { d.AddAction(NMInput.KeyName(st.keyTeleport), "Fast travel"); }
+            if IsDefined(m) && NMWaypoint.Available() {
+                d.AddAction(this.WaypointKey(), "Track");
+            } else if IsDefined(m) && !ft {
+                d.AddRow("Waypoint", "Needs the NightMapNative plugin");
+            }
         }
         return d;
     }

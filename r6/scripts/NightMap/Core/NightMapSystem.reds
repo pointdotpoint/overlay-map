@@ -103,6 +103,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let imageRev: Int32;
     private let vanilla: ref<NMVanilla>;
     private let gps: ref<NMGps>;
+    private let waypoint: ref<NMWaypoint>;
     private let routes: ref<NMRouteLayer>;
     private let routesOff: Bool;          // perf suite override (SetRoutesEnabled)
     private let photos: ref<NMPhotos>;
@@ -227,6 +228,11 @@ public class NightMapSystem extends ScriptableSystem {
     private func SyncCollect() {
         let s = this.Settings();
         this.Collect().Sync(this.api, this.filterView, s);
+    }
+
+    public func Waypoint() -> ref<NMWaypoint> {
+        if !IsDefined(this.waypoint) { this.waypoint = NMWaypoint.Create(this.GetGameInstance()); }
+        return this.waypoint;
     }
 
     public func Gps() -> ref<NMGps> {
@@ -387,6 +393,7 @@ public class NightMapSystem extends ScriptableSystem {
             return;
         }
         if this.pad.act { this.pad.act = false; this.input.act = true; }
+        if this.pad.waypoint { this.pad.waypoint = false; this.input.waypoint = true; }
         if this.pad.teleport {
             this.pad.teleport = false;
             if s.teleportEnabled { this.input.teleport = true; }
@@ -1123,6 +1130,14 @@ public class NightMapSystem extends ScriptableSystem {
             this.renderer.Invalidate();
             this.UpdateHeader();
         }
+        if IsDefined(this.waypoint) && this.waypoint.Pending() { this.waypoint.TryPending(); }
+        if this.input.waypoint {
+            this.input.waypoint = false;
+            this.DoWaypoint();
+            this.tipApiRev = -1;
+            this.renderer.Invalidate();
+            this.UpdateHeader();
+        }
         if this.input.filter {
             this.input.filter = false;
             this.filterView = (this.filterView + 1) % NMVanillaFilters.ViewCount();
@@ -1226,6 +1241,68 @@ public class NightMapSystem extends ScriptableSystem {
         return d;
     }
 
+    // What the waypoint key does for the current selection: the vanilla mappin under it (if any) and the point a custom
+    // waypoint would go (the pin, else the focus point at street level).
+    private func WaypointPlan(out pos: Vector4, out m: ref<IMappin>) -> NMWaypointAction {
+        let gi = this.GetGameInstance();
+        let c = this.crosshair;
+        pos = new Vector4(this.camera.cx, this.camera.cy, NMWaypoint.GroundZ(this.camera.cx, this.camera.cy), 1.0);
+        let hasSel = false;
+        if c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers) && this.api.layers[c.selLayer].IsAlive(c.selItem) {
+            let L = this.api.layers[c.selLayer];
+            hasSel = true;
+            let p = L.Position(c.selItem);
+            pos = new Vector4(p.X, p.Y, p.Z != 0.0 ? p.Z : NMWaypoint.GroundZ(p.X, p.Y), 1.0);
+            if IsDefined(this.vanilla) { m = this.vanilla.MappinAt(L, c.selItem); }
+        }
+        let isMappin = IsDefined(m);
+        let questTrackable = isMappin && NMVanillaTracking.CanTrackQuest(gi, m);
+        let questTracked = questTrackable && NMVanillaTracking.IsQuestTracked(gi, m);
+        let trackedNow = false;
+        if isMappin {
+            let id = m.GetNewMappinID();
+            trackedNow = id.value != 0ul && NMVanillaTracking.ManualKey(gi) == id.value;
+        }
+        return NMWaypoint.Decide(hasSel, isMappin, questTrackable, questTracked, trackedNow, NMWaypoint.Available());
+    }
+
+    private func WaypointLabel() -> String {
+        if !IsDefined(this.crosshair) || !IsDefined(this.camera) { return ""; }
+        let pos: Vector4;
+        let m: ref<IMappin>;
+        return NMWaypoint.Label(this.WaypointPlan(pos, m));
+    }
+
+    // Enter / pad RB: set the custom waypoint, track the quest or the marker, or clear what is tracked.
+    private func DoWaypoint() {
+        if !IsDefined(this.crosshair) || !IsDefined(this.camera) { return; }
+        let gi = this.GetGameInstance();
+        let pos: Vector4;
+        let m: ref<IMappin>;
+        let a = this.WaypointPlan(pos, m);
+        let w = this.Waypoint();
+        let ok = false;
+        switch a {
+            case NMWaypointAction.TrackQuest:
+                NMWaypoint.UnregisterCustom(gi);   // vanilla TryTrackQuestOrSetWaypoint drops the custom waypoint first
+                ok = NMVanillaTracking.TrackQuest(gi, m);
+                break;
+            case NMWaypointAction.SetCustom:
+                ok = w.SetCustom(pos.X, pos.Y, pos.Z);
+                break;
+            case NMWaypointAction.TrackMappin:
+                ok = w.Track(m);
+                break;
+            case NMWaypointAction.Clear:
+                ok = w.Clear();
+                break;
+            default:
+                return;
+        }
+        NMLog.Info("waypoint|" + NMWaypoint.Label(a) + "|" + ToString(ok) + "|" + w.lastAction);
+        if IsDefined(this.vanilla) { this.vanilla.Repoll(); }
+    }
+
     private func Activate() {
         let c = this.crosshair;
         if c.selKind == 0 && c.selLayer >= 0 && c.selLayer < ArraySize(this.api.layers) {
@@ -1301,6 +1378,8 @@ public class NightMapSystem extends ScriptableSystem {
             } else if this.padFromPad && !this.padOwned {
                 hints = NMPad.PassThroughHints(hints);
             }
+            let padHints = this.padOwned && this.pad.lastWasPad;
+            hints = NMWaypoint.WithHint(hints, padHints ? "RB" : NMInput.KeyName(s.keyWaypoint), this.WaypointLabel());
             if this.input.arrowSeen {
                 hints = NMInput.NumLockHints(hints);
             }

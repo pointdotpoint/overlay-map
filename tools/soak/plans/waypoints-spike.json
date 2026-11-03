@@ -1,0 +1,54 @@
+{
+ "name": "waypoints-spike",
+ "runs": [
+  {
+   "name": "native",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "native",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "wp_clear",
+     "expect": "cleared|nothing"
+    },
+    {
+     "cmd": "wp_scriptreg_near FastTravel 150",
+     "expect": "^id=[1-9]"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "wp_track_custom",
+     "expect": "track=true"
+    },
+    {
+     "wait": 5.0
+    },
+    {
+     "cmd": "wp_state",
+     "expect": "playerTracked=true"
+    },
+    {
+     "cmd": "gps",
+     "expect": "tracked [1-9]"
+    },
+    {
+     "shot": "delayed_track_hud"
+    },
+    {
+     "cmd": "wp_clear",
+     "expect": "cleared"
+    }
+   ]
+  }
+ ]
+}
