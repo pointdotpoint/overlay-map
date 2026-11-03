@@ -202,7 +202,17 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.step", "0.02")
     @runtimeProperty("ModSettings.min", "0.3")
     @runtimeProperty("ModSettings.max", "1.0")
-    public let panelOpacity: Float = 0.92;
+    public let panelOpacity: Float = 0.5;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Map marker size")
+    @runtimeProperty("ModSettings.description", "Size of the markers on the open map, where 1.0 is the original size (applies on next open). The corner map has its own Corner marker size.")
+    @runtimeProperty("ModSettings.step", "0.05")
+    @runtimeProperty("ModSettings.min", "0.25")
+    @runtimeProperty("ModSettings.max", "1.5")
+    public let markerSize: Float = 0.5;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")

@@ -970,7 +970,9 @@ public class NightMapSystem extends ScriptableSystem {
         this.layerEpoch = this.api.layerEpoch;
         let l = this.panel.layout;
         this.layers = NMLayerStack.Create(this.panel.tiles, this.holoTheme, this.holoEffects);
-        this.renderer = NMItemRenderer.Create(this.api, this.panel.items, l.scale);
+        let ms = this.Settings();
+        let markerSize = IsDefined(ms) ? ms.markerSize : 0.5;
+        this.renderer = NMItemRenderer.Create(this.api, this.panel.items, NMTheme.MapMarkerScale(l.scale, markerSize));
         this.renderer.SetShotHandler(this.Photos().Handler());
         this.Photos().SyncLayer(this.api, this.PhotosVisible());
         let t0 = NMClock.NowMs();
@@ -998,7 +1000,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.routes = NMRouteLayer.Create(this.panel.routes, l.scale, this.holoEffects);
         let ps = this.Settings();
         if IsDefined(ps) && ps.replaceMinimap {
-            this.panelMirror = NMShapeLayer.Create(this.panel.shapes, 1.0);
+            this.panelMirror = NMShapeLayer.Create(this.panel.shapes, ClampF(markerSize, 0.25, 1.5));
             this.panelMirror.SetRim(false, 40.0 * l.scale, l.scale);
         }
         this.lastRouteReadMs = 0.0;

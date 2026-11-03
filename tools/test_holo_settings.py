@@ -5,11 +5,19 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parents[1] / "r6" / "scripts" / "NightMap"
 
 
-def test_panel_opacity_default_is_nearly_opaque_and_matches_theme():
+def test_panel_opacity_default_is_half_and_matches_theme():
     settings = (SCRIPTS / "Core" / "Settings.reds").read_text()
     theme = (SCRIPTS / "Core" / "Theme.reds").read_text()
-    assert re.search(r"public let panelOpacity: Float = 0\.92;", settings)
-    assert re.search(r"func DefaultPanelOpacity\(\) -> Float \{ return 0\.92; \}", theme)
+    assert re.search(r"public let panelOpacity: Float = 0\.5;", settings)
+    assert re.search(r"func DefaultPanelOpacity\(\) -> Float \{ return 0\.5; \}", theme)
+
+
+def test_map_marker_size_lives_under_display_and_defaults_to_half():
+    s = (SCRIPTS / "Core" / "Settings.reds").read_text()
+    assert "public let markerSize: Float = 0.5;" in s
+    b = _block(s, "markerSize")
+    assert '"ModSettings.category", "Display"' in b and '"ModSettings.displayName", "Map marker size"' in b
+    assert '"ModSettings.min", "0.25"' in b and '"ModSettings.max", "1.5"' in b and '"ModSettings.step", "0.05"' in b
 
 
 def _block(src: str, field: str) -> str:

@@ -180,9 +180,12 @@ public abstract class NMTheme {
     public static func HoloEdgeOpacity() -> Float { return 0.3; }
     public static func HoloBracketGain() -> Float { return 1.25; }   // brackets brighten with HDR gain (bloom not verified)
     public static func ScanPeriod() -> Float { return 4.0; }          // holo_scan line spacing in 4K units
-    public static func DefaultPanelOpacity() -> Float { return 0.92; }   // nearly opaque (spec 4.5); keep equal to NightMapSettings.panelOpacity
-    // The old default (0.45) becomes the new one. The 0.02 slider step from 0.3 can't produce 0.45, so a saved 0.45 is
-    // never the player's choice; any other value is kept.
+    public static func DefaultPanelOpacity() -> Float { return 0.5; }   // half see-through; keep equal to NightMapSettings.panelOpacity
+    // The oldest default (0.45) becomes the current one. The 0.02 slider step from 0.3 can't produce 0.45, so a saved 0.45
+    // is never the player's choice; any other value is kept.
+    public static func MapMarkerScale(layoutScale: Float, markerSize: Float) -> Float {
+        return layoutScale * ClampF(markerSize, 0.25, 1.5);   // the Map marker size slider's range
+    }
     public static func MigratePanelOpacity(saved: Float) -> Float {
         return AbsF(saved - 0.45) < 0.0005 ? NMTheme.DefaultPanelOpacity() : saved;   // float 0.449 is 0.0009999 away
     }

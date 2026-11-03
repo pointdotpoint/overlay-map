@@ -92,7 +92,12 @@ public abstract class NMHoloTests {
         t.Check("theme.rings_fade_with_zoom", NMTheme.RingsFade(0.5) == 1.0 && NMTheme.RingsFade(1.0) == 1.0 && t.Near(NMTheme.RingsFade(16.0), 0.2, 0.0001)
             && NMTheme.RingsFade(2.0) > NMTheme.RingsFade(4.0) && NMTheme.RingsFade(4.0) > NMTheme.RingsFade(8.0), t.F(NMTheme.RingsFade(4.0)));
         t.Check("holo.glow_opacity", t.Near(NMTheme.TileOpacity("glow"), 0.50, 0.0001), "");
-        t.Check("holo.panel_opacity_default", t.Near(NMTheme.DefaultPanelOpacity(), 0.92, 0.0001), t.F(NMTheme.DefaultPanelOpacity()));
+        t.Check("holo.panel_opacity_default", t.Near(NMTheme.DefaultPanelOpacity(), 0.5, 0.0001), t.F(NMTheme.DefaultPanelOpacity()));
+        let ms = new NightMapSettings();
+        t.Check("holo.marker_size_default", ms.markerSize == 0.5, t.F(ms.markerSize));
+        t.Check("holo.marker_scale", t.Near(NMTheme.MapMarkerScale(2.0, 0.5), 1.0, 0.0001) && t.Near(NMTheme.MapMarkerScale(1.0, 1.0), 1.0, 0.0001)
+            && t.Near(NMTheme.MapMarkerScale(1.0, 0.0), 0.25, 0.0001) && t.Near(NMTheme.MapMarkerScale(1.0, 9.0), 1.5, 0.0001),
+            t.F(NMTheme.MapMarkerScale(2.0, 0.5)) + " " + t.F(NMTheme.MapMarkerScale(1.0, 0.0)));
         t.Check("holo.theme_index", NMTheme.ThemeIndex(NightMapHoloColor.Cyan) == 0 && NMTheme.ThemeIndex(NightMapHoloColor.Green) == 1, "");
         let brC: HDRColor = NMTheme.BracketColor(0, true);
         let brOff: HDRColor = NMTheme.BracketColor(0, false);

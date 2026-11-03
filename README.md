@@ -74,7 +74,8 @@ UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only
 - `Numpad /` cycles the markers shown: All → Jobs (quests, gigs, psycho) → Services (ripperdoc, vendors, autofixer, drop points, fast travel, your property), like the vanilla quick lists; NCPD scanner and apartments to rent show only in All. A filter keeps its categories visible as long as quests and fast travel when zooming out.
 - There is no clustering. Markers shrink and fade out by tier as the map zooms out: minor ones (gigs, vendors, NCPD, collectibles, photo pins) first, quests and fast travel last, the tracked quest and V never. Markers never overlap: where two would, the more important one is drawn, and the district title and scale bar stay clear. Mod Settings → NightMap → Map filters turns each vanilla category on or off.
 - The district title sits top left (with the active filter under it) and the scale bar top right. The sidebar's bottom shows the tracked quest and its current objective.
-- The panel is nearly opaque by default (Display → Panel opacity); installs still on the old 0.45 default move to 0.92 once.
+- The map background is half see-through by default (Display → Panel opacity, 0.5); installs still on the old 0.45 default move to 0.5 once.
+- Display → Map marker size scales the open map's markers; the default is half the original size (0.5). The corner map has its own Corner marker size.
 - GPS routes: the route to your vanilla waypoint (white) and to the tracked quest (yellow, teal for gigs) are mirrored from the minimap as flowing dots. Mod Settings → NightMap → Display → GPS routes.
 - The game's HUD fades out while the map is open (Display → Hide HUD while open).
 - Numpad . on any spot teleports V there: onto the roof or ground below, or into the water. On a fast travel marker it fast-travels, on a photo pin it goes to the photo's spot, and V's car comes along. Long jumps show the game's loading screen for a few seconds first.

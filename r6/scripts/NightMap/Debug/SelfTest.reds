@@ -722,7 +722,7 @@ public class NMSelfTest {
         this.Check("layout.scale_bar_in_view", barOk, fdetail);
         this.Check("layout.map_clipped_to_view", clipOk, fdetail);
         this.Check("layout.tracking_bottom", trackOk, fdetail);
-        this.Check("settings.panel_opacity_migrates", this.Near(NMTheme.MigratePanelOpacity(0.45), 0.92, 0.0001)
+        this.Check("settings.panel_opacity_migrates", this.Near(NMTheme.MigratePanelOpacity(0.45), 0.5, 0.0001)
             && this.Near(NMTheme.MigratePanelOpacity(0.6), 0.6, 0.0001) && this.Near(NMTheme.MigratePanelOpacity(0.92), 0.92, 0.0001)
             && this.Near(NMTheme.MigratePanelOpacity(0.449), 0.449, 0.0001) && this.Near(NMTheme.MigratePanelOpacity(0.451), 0.451, 0.0001),
             this.F(NMTheme.MigratePanelOpacity(0.45)) + " " + this.F(NMTheme.MigratePanelOpacity(0.6)) + " " + this.F(NMTheme.MigratePanelOpacity(0.449)) + " " + this.F(NMTheme.MigratePanelOpacity(0.451)));
