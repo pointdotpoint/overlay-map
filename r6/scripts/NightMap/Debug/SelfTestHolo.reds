@@ -265,10 +265,10 @@ public abstract class NMHoloTests {
     // VHS knobs: defaults match Mod Settings, values clamp to the slider ranges, and each knob reaches its widget.
     private static func VhsCases(t: ref<NMSelfTest>) {
         let d = NMHoloFx.Default();
-        let fs = NMHoloFx.From(new NightMapSettings());
-        t.Check("holo.fx_defaults", t.Near(d.scan, 0.3, 0.0001) && t.Near(d.glow, 1.5, 0.0001) && d.tracking && d.glitch
-            && t.Near(fs.scan, d.scan, 0.0001) && t.Near(fs.glow, d.glow, 0.0001) && Equals(fs.tracking, d.tracking) && Equals(fs.glitch, d.glitch),
-            t.F(fs.scan) + "/" + t.F(fs.glow));
+        // Not compared with new NightMapSettings(): Mod Settings fills a new instance with the player's saved values.
+        // The declared defaults are checked offline (tools/test_holo_settings.py).
+        t.Check("holo.fx_defaults", t.Near(d.scan, 0.3, 0.0001) && t.Near(d.glow, 1.5, 0.0001) && d.tracking && d.glitch,
+            t.F(d.scan) + "/" + t.F(d.glow));
         let big = NMHoloFx.Make(9.0, -1.0, false, false);
         t.Check("holo.fx_clamps", t.Near(big.scan, 0.6, 0.0001) && t.Near(big.glow, 0.0, 0.0001), t.F(big.scan) + "/" + t.F(big.glow));
         t.Check("holo.fx_glow_opacity", t.Near(d.GlowOpacity(), 0.75, 0.0001) && t.Near(NMHoloFx.Make(0.3, 3.0, true, true).GlowOpacity(), 1.0, 0.0001)
