@@ -346,28 +346,22 @@ def _edge_len(g: TrackGraph, ei: int) -> float:
 
 
 def _drop_short_backtracks(g: TrackGraph, seq: list[tuple[int, bool]]) -> list[tuple[int, bool]]:
-    """Remove out-and-back runs (e1..en then en..e1 reversed) whose one-way length is under BACKTRACK_M."""
-    out: list[tuple[int, bool]] = []
+    """Remove out-and-back runs whose one-way length is under BACKTRACK_M. Each run is measured whole: from a
+    turnaround (an edge followed by itself reversed) outward while the sequence mirrors."""
+    seq = list(seq)
     i = 0
-    while i < len(seq):
-        out.append(seq[i])
-        # collapse while the tail of out is a mirrored pair
-        while True:
-            # the longest mirrored suffix: out[-2m:-m] == reversed(out[-m:]) with flipped directions
-            m, best = 1, 0
-            while 2 * m <= len(out):
-                left, right = out[-2 * m:-m], out[-m:]
-                if all(l[0] == r[0] and l[1] != r[1] for l, r in zip(left, reversed(right))):
-                    best = m
-                    m += 1
-                else:
-                    break
-            if best and sum(_edge_len(g, e) for e, _ in out[-best:]) < BACKTRACK_M:
-                del out[-2 * best:]
-            else:
-                break
+    while i < len(seq) - 1:
+        if seq[i][0] == seq[i + 1][0] and seq[i][1] != seq[i + 1][1]:
+            m = 1
+            while i - m >= 0 and i + 1 + m < len(seq) and seq[i - m][0] == seq[i + 1 + m][0] and seq[i - m][1] != seq[i + 1 + m][1]:
+                m += 1
+            if sum(_edge_len(g, e) for e, _ in seq[i - m + 1:i + 1]) < BACKTRACK_M:
+                del seq[i - m + 1:i + 1 + m]
+                i = max(0, i - m)
+                continue
+            i += m
         i += 1
-    return out
+    return seq
 
 
 def route_edges(g: TrackGraph, node_of: dict[str, int], line: Line) -> list[tuple[int, bool]]:
@@ -475,3 +469,106 @@ def offset_polyline(g: TrackGraph, route: list[tuple[int, bool]], sl: dict[int, 
         c = np.cumsum(np.concatenate([[0.0], np.full(k, o[0]), o, np.full(k, o[-1])]))
         o = (c[2 * k + 1:] - c[: len(o)]) / (2 * k + 1)
     return p + _left_normals(p) * o[:, None]
+
+
+# ------------------------------------------------------------------------------------------------- the metro set
+
+LINE_PX = 5.0                  # core line width at every level
+SPACING_PX = 6.0               # centre-to-centre distance of side-by-side lines (1 px gap)
+CASING_PX = 2.0                # dark casing beyond each side of a line: keeps it readable over bright roads
+CASING_RGB = (6, 8, 14)
+CASING_ALPHA = 0.7
+EASE_PX = 24.0                 # ease length where lines join or split, in pixels (at least EASE_MIN_M)
+EASE_MIN_M = 25.0
+GLOW_PX = 12.0                 # width of the glow stroke before the blur
+GLOW_SIGMA = 3.0               # px
+GLOW_ALPHA = 0.35
+CONNECTOR_PX = 2.0
+CONNECTOR_RGB = (225, 232, 240)
+RSS = 4                        # supersampling of the strokes
+MARGIN_PX = int(GLOW_PX / 2 + 4 * GLOW_SIGMA) + 4
+
+
+@dataclass
+class Network:
+    g: TrackGraph                          # with the stations as nodes
+    lines: list[Line]
+    routes: dict[int, list[tuple[int, bool]]]
+    slots: dict[int, dict[int, float]]
+    connectors: list[np.ndarray]
+
+    @staticmethod
+    def build(g: TrackGraph, lines: list[Line], stations: dict[str, Station]) -> "Network":
+        gs, node_of = with_stations(g, stations)
+        routes = {l.number: route_edges(gs, node_of, l) for l in lines}
+        centre = {n: edges_polyline(gs, r) for n, r in routes.items()}
+        return Network(gs, lines, routes, slots(routes), connectors(centre, lines, stations))
+
+    @staticmethod
+    def from_game(glb: Path, lines_json: Path = LINES, stations_json: Path = DATA) -> "Network":
+        return Network.build(track_graph(metro_tris(glb)), load_lines(lines_json), load_stations(stations_json))
+
+
+def level_paths(net: Network, mpp: float) -> list[tuple[np.ndarray, tuple[int, int, int], str]]:
+    """What a level draws, bottom to top: connectors, then the lines offset by SPACING_PX at this level's mpp."""
+    spacing, ease = SPACING_PX * mpp, max(EASE_MIN_M, EASE_PX * mpp)
+    out = [(c, CONNECTOR_RGB, "connector") for c in net.connectors]
+    for l in net.lines:
+        out.append((offset_polyline(net.g, net.routes[l.number], net.slots, spacing, ease, l.number), l.rgb, "line"))
+    return out
+
+
+def _premul(a: np.ndarray) -> np.ndarray:
+    out = a.astype(np.float32)
+    out[..., :3] *= out[..., 3:4] / 255.0
+    return out
+
+
+def _unpremul(p: np.ndarray) -> np.ndarray:
+    a = p[..., 3:4]
+    rgb = np.where(a > 0, p[..., :3] * 255.0 / np.maximum(a, 1e-6), 0)
+    return np.clip(np.concatenate([rgb, a], -1) + 0.5, 0, 255).astype(np.uint8)
+
+
+def _box_down(p: np.ndarray, k: int) -> np.ndarray:
+    h, w = p.shape[0] // k, p.shape[1] // k
+    return p[:h * k, :w * k].reshape(h, k, w, k, 4).mean(axis=(1, 3))
+
+
+def render_metro_tile(paths: list[tuple[np.ndarray, tuple[int, int, int], str]], grid, ix: int, iy: int):
+    """RGBA tile (colour in RGB, coverage in alpha) of the lines and connectors, or None when empty."""
+    from PIL import Image, ImageDraw
+    from scipy.ndimage import gaussian_filter
+    mpp, tw, m = grid.mpp, grid.tile_world, MARGIN_PX
+    x0 = grid.origin_x + ix * tw - m * mpp
+    y1 = grid.origin_top - iy * tw + m * mpp
+    span = tw + 2 * m * mpp
+    hits = [p for p in paths if len(p[0]) > 1 and p[0][:, 0].max() >= x0 and p[0][:, 0].min() <= x0 + span
+            and p[0][:, 1].max() >= y1 - span and p[0][:, 1].min() <= y1]
+    if not hits:
+        return None
+    n = grid.tile + 2 * m
+    W = n * RSS
+    s = RSS / mpp
+    case, glow, core = Image.new("RGBA", (W, W)), Image.new("RGBA", (W, W)), Image.new("RGBA", (W, W))
+    dk, dg, dc = ImageDraw.Draw(case), ImageDraw.Draw(glow), ImageDraw.Draw(core)
+    for pts, rgb, kind in hits:
+        xy = [((x - x0) * s, (y1 - y) * s) for x, y in pts]
+        width = LINE_PX if kind == "line" else CONNECTOR_PX
+        for d, wpx, col in ((dk, width + 2 * CASING_PX, CASING_RGB), (dg, GLOW_PX if kind == "line" else GLOW_PX / 2, rgb),
+                            (dc, width, rgb)):
+            w = max(1, int(round(wpx * RSS)))
+            d.line(xy, fill=col + (255,), width=w, joint="curve")
+            r = w / 2                       # round caps
+            for cx, cy in (xy[0], xy[-1]):
+                d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=col + (255,))
+    k = _box_down(_premul(np.asarray(case)), RSS) * CASING_ALPHA
+    g = _box_down(_premul(np.asarray(glow)), RSS)
+    g = np.stack([gaussian_filter(g[..., c], GLOW_SIGMA, mode="constant") for c in range(4)], -1) * GLOW_ALPHA
+    c = _box_down(_premul(np.asarray(core)), RSS)
+    over = lambda top, under: top + under * (1.0 - top[..., 3:4] / 255.0)   # premultiplied "over"
+    out = over(c, over(g, k))
+    out = out[m:m + grid.tile, m:m + grid.tile]
+    if out[..., 3].max() < 1.0:
+        return None
+    return Image.fromarray(_unpremul(out), "RGBA")

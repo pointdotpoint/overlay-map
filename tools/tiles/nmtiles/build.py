@@ -16,7 +16,7 @@ from nmtiles.encode import encode_bc7
 from nmtiles.holo_atlas import build_holo_atlas
 from nmtiles.holo_preview import write_holo_previews
 from nmtiles.manifest import emit_manifest
-from nmtiles import boxfill, dogtown
+from nmtiles import boxfill, dogtown, ncart
 from nmtiles.footprints import load_or_build
 from nmtiles.minimap import load_city
 from nmtiles.pack import deserialize_all, pack_archive, write_resource
@@ -62,6 +62,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"road tris={len(city['road'])} major={len(city['road_major'])} building tris={len(city['stroke'])} footprints={len(fp.polys)} "
           f"bounds={bounds}", flush=True)
 
+    net = ncart.Network.from_game(mesh_dir / "3dmap_metro.glb")
+    print(f"ncart: {len(net.lines)} lines, {len(net.connectors)} station connectors", flush=True)
     png_dir = out / "png"
     shutil.rmtree(png_dir, ignore_errors=True)
     png_dir.mkdir(parents=True)
@@ -71,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
         t_lv = time.time()
         grid = level_grid(bounds, mpp)
         src = make_sources(city["road"], fp.polys, max(grid.tile_world, 256.0), city["road_major"])
+        src.metro = ncart.level_paths(net, mpp)
         tiles = render_level_tiles(src, grid, li, png_dir, args.jobs)
         del src
         for s, cells in tiles.items():

@@ -26,7 +26,7 @@ def alpha(img):
 
 
 def test_sets_order():
-    assert SETS == ("glow", "bfill", "outline", "road")
+    assert SETS == ("glow", "bfill", "outline", "road", "metro")
 
 
 def test_tri_index_returns_overlapping_bboxes_and_nothing_far():

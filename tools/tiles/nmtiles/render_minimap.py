@@ -6,6 +6,7 @@ One tile set per class, in draw order; the runtime tints them with SetTintColor 
            so bilinear filtering makes the bloom soft
   bfill    building footprint fill
   outline  footprint exterior as a 1 px line at the level's resolution (drawn at 2x, width 2, downsampled)
+  metro    the NCART lines in their own colours (RGBA, nmtiles.ncart; tinted white at runtime)
   road     every minimap road triangle in one mask, like the vanilla minimap draws them. The minimap classifies each
            road shape by width (minimap.MAJOR_WIDTH_M), but one highway is many shapes whose widths fall either side of
            it, so tinting the classes apart striped the highways; they are merged here.
@@ -26,7 +27,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from nmtiles.render import LevelGrid
 
-SETS = ("glow", "bfill", "outline", "road")      # draw order, back to front: roads over buildings
+SETS = ("glow", "bfill", "outline", "road", "metro")      # draw order, back to front: roads over buildings
 SS = 2
 DEFAULT_JOBS = 4
 GLOW_MIN_MPP = 2.0                                       # glow tiles exist only at m/px >= this (L2..L5)
@@ -97,6 +98,7 @@ class TileSources:
     road_major: TriIndex
     foot: TriIndex                  # over the footprints' bboxes, as (n, 2, 2) corner pairs
     polys: list[np.ndarray]         # footprint exteriors, world xy
+    metro: list | None = None       # this level's NCART paths (ncart.level_paths); None = no metro set
 
 
 def make_sources(road: np.ndarray, polys: list[np.ndarray], cell: float, road_major: np.ndarray) -> TileSources:
@@ -222,6 +224,11 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
     if glow_on:
         g = _glow(road, glow_gain(grid.mpp))
         put("glow", None if g is None else _crop(g, margin))
+    if src.metro:
+        from nmtiles.ncart import render_metro_tile
+        img = render_metro_tile(src.metro, grid, ix, iy)     # full colour, not a white mask
+        if img is not None:
+            out["metro"] = img
     return out
 
 

@@ -191,8 +191,62 @@ def test_terminal_station_on_a_stub_is_reached():
 
 
 def test_long_reversal_is_kept():
-    # A 400 m branch to a through station and back is real service, not a detour.
-    g = ncart.track_graph(tracks(((0, 0), (800, 0)), ((400, -4), (400, 400))))
+    # A 400 m branch to a through station and back is real service, not a detour, even when the branch is many
+    # short edges (side stubs every 50 m split it, like the real mesh's skeleton).
+    side = [((396, y), (440, y)) for y in range(50, 400, 50)]
+    g = ncart.track_graph(tracks(((0, 0), (800, 0)), ((400, -4), (400, 400)), *side))
     st = places(S=(10, 0), W=(400, 390), T=(790, 0))
     p = ncart.line_polyline(g, mk(1, "S", "W", "T"), st)
     assert p[:, 1].max() > 380
+
+
+# ----------------------------------------------------------------------------------------------------- metro tiles
+
+from nmtiles.render import LevelGrid  # noqa: E402
+
+GRID = LevelGrid(1.0, 0.0, 1024.0, 2, 2, 512)   # tile (ix, iy): x in [512 ix, +512), y in (1024 - 512 (iy+1), 1024 - 512 iy]
+
+
+def rgba(img):
+    return np.asarray(img).astype(int)
+
+
+def test_metro_tile_is_coloured_and_transparent_elsewhere():
+    paths = [(np.array([[50.0, 900.0], [450.0, 900.0]]), (229, 25, 25), "line")]
+    a = rgba(ncart.render_metro_tile(paths, GRID, 0, 0))
+    core = a[1024 - 900, 250]
+    assert core[3] == 255 and abs(core[0] - 229) <= 3 and abs(core[1] - 25) <= 3 and abs(core[2] - 25) <= 3
+    assert a[1024 - 900 - 40, 250, 3] == 0 and a[1024 - 900, 480, 3] == 0
+    assert ncart.render_metro_tile(paths, GRID, 1, 1) is None
+
+
+def test_metro_glow_is_soft():
+    paths = [(np.array([[50.0, 900.0], [450.0, 900.0]]), (18, 228, 255), "line")]
+    a = rgba(ncart.render_metro_tile(paths, GRID, 0, 0))[:, 250, 3]
+    row = 1024 - 900
+    edge = row + int(ncart.LINE_PX / 2) + 1
+    fall = a[edge:edge + 14]
+    assert 0 < fall[0] < 255 and np.all(np.diff(fall) <= 0) and fall[-1] < 8
+    rgb = rgba(ncart.render_metro_tile(paths, GRID, 0, 0))[edge + 3, 250, :3]
+    assert abs(rgb[2] - 255) <= 12 and rgb[0] < 60          # the glow keeps the line colour: no dark fringe
+
+
+def test_metro_tiles_stitch():
+    paths = [(np.array([[400.0, 700.0], [640.0, 760.0]]), (250, 131, 0), "line"),
+             (np.array([[480.0, 650.0], [560.0, 650.0]]), (255, 255, 255), "connector")]
+    left, right = rgba(ncart.render_metro_tile(paths, GRID, 0, 0)), rgba(ncart.render_metro_tile(paths, GRID, 1, 0))
+    big = LevelGrid(1.0, 0.0, 1024.0, 1, 1, 1024)
+    whole = rgba(ncart.render_metro_tile(paths, big, 0, 0))[:512]
+    assert np.abs(np.hstack([left, right]) - whole).max() <= 2
+
+
+def test_level_paths_space_lines_by_pixels():
+    g = ncart.track_graph(tracks(((0, 0), (400, 0))))
+    st = places(S=(10, 0), T=(390, 0))
+    net = ncart.Network.build(g, [mk(1, "S", "T"), mk(2, "S", "T")], st)
+    for mpp in (1.0, 4.0):
+        p = {rgb: pts for pts, rgb, kind in ncart.level_paths(net, mpp) if kind == "line"}
+        assert len(p) == 1 or len(p) == 2
+        lines = [pts for pts, rgb, kind in ncart.level_paths(net, mpp) if kind == "line"]
+        mid = lines[0][(lines[0][:, 0] > 100) & (lines[0][:, 0] < 300)]
+        assert np.allclose(dist_to(lines[1], mid), ncart.SPACING_PX * mpp, rtol=0.02)
