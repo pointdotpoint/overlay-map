@@ -26,7 +26,7 @@ def alpha(img):
 
 
 def test_sets_order():
-    assert SETS == ("glow", "bfill", "outline", "road_minor", "road_major")
+    assert SETS == ("glow", "bfill", "outline", "road")
 
 
 def test_tri_index_returns_overlapping_bboxes_and_nothing_far():
@@ -45,10 +45,10 @@ def test_tri_index_returns_overlapping_bboxes_and_nothing_far():
 
 def test_road_triangle_paints_centroid_and_leaves_far_pixels_clear():
     out = render_tile(src(road=tri((100, 900), (200, 900), (150, 1000))), GRID, 0, 0)
-    assert set(out) == {"road_minor"}
-    a = alpha(out["road_minor"])
+    assert set(out) == {"road"}
+    a = alpha(out["road"])
     assert a.shape == (512, 512) and a[int(1024 - 933), 150] == 255
-    assert (np.asarray(out["road_minor"])[91, 150, :3] == 255).all()                # white mask
+    assert (np.asarray(out["road"])[91, 150, :3] == 255).all()                # white mask
     assert a[300:, 300:].max() == 0 and a[:, 400:].max() == 0
 
 
@@ -78,7 +78,7 @@ def test_adjacent_tiles_agree_with_one_big_render_for_fractional_vertices():
     l, r = render_tile(s, GRID, 0, 0), render_tile(s, GRID, 1, 0)
     big = LevelGrid(1.0, 0.0, 1024.0, 1, 1, 1024)
     whole = render_tile(make_sources(road, polys, big.tile_world, NOROAD), big, 0, 0)
-    for name in ("road_minor", "bfill", "outline"):      # glow needs mpp >= 2: covered below
+    for name in ("road", "bfill", "outline"):      # glow needs mpp >= 2: covered below
         left, right = alpha(l[name]).astype(int), alpha(r[name]).astype(int)
         assert left[:, 511].max() > 0 and right[:, 0].max() > 0, name        # painted on both sides of the shared edge
         top = alpha(whole[name]).astype(int)[:512]
@@ -110,7 +110,7 @@ def test_glow_exists_only_at_levels_with_mpp_at_least_two():
         road = tri((50 * mpp, 1000 * mpp), (150 * mpp, 1000 * mpp), (100 * mpp, 900 * mpp))   # px (50..150, 24..124)
         foot = [box(200 * mpp, 800 * mpp, 300 * mpp, 900 * mpp)]
         out = render_tile(make_sources(road, foot, g.tile_world, NOROAD), g, 0, 0)
-        assert {"road_minor", "bfill", "outline"} <= set(out)
+        assert {"road", "bfill", "outline"} <= set(out)
         have.append("glow" in out)
     assert have == [False, False, True, True, True, True]
     assert GLOW_MIN_MPP == 2.0
@@ -133,20 +133,32 @@ def test_glow_from_roads_only():
     assert "outline" in out and "bfill" in out and "glow" not in out
 
 
-def test_glow_weights_major_over_minor():
+def test_glow_is_the_same_for_every_road():
+    # One road style like the vanilla minimap: a narrow (minor) piece glows exactly like a wide (major) one.
     major = alpha(render_tile(src2(major=quad(200, 1200, 500, 1500)), GRID2, 0, 0)["glow"]).astype(int)
     minor = alpha(render_tile(src2(road=quad(200, 1200, 500, 1500)), GRID2, 0, 0)["glow"]).astype(int)
-    assert 0 < minor.max() < major.max() * 0.5
+    assert major.max() > 0 and np.array_equal(major, minor)
 
 
-def test_render_tile_splits_roads():
+def test_render_tile_merges_roads_into_one_set():
     s = src(road=quad(100, 600, 200, 606), major=quad(300, 700, 340, 720))   # 6 m narrow, 20 m wide
     out = render_tile(s, GRID, 0, 0)
-    assert set(out) == {"road_minor", "road_major"}
-    mn, mj = alpha(out["road_minor"]), alpha(out["road_major"])
-    assert mn[1024 - 603, 150] == 255 and mj[1024 - 603, 150] == 0
-    assert mj[1024 - 710, 320] == 255 and mn[1024 - 710, 320] == 0
-    assert mn[:, 250:].max() == 0 and mj[:, :250].max() == 0
+    assert set(out) == {"road"}
+    r = alpha(out["road"])
+    assert r[1024 - 603, 150] == 255 and r[1024 - 710, 320] == 255
+
+
+def test_no_stripe_where_a_narrow_piece_meets_a_wide_one():
+    # The striping bug: one highway made of pieces whose measured widths fall either side of MAJOR_WIDTH_M drew as
+    # alternating light/dark bands with a glow line across every joint. Merged, the joint is invisible.
+    wide = quad(100, 1500, 300, 1540)                  # 40 m wide piece (major)
+    narrow = quad(300, 1500, 500, 1540)                # same road continued, classified minor
+    out = render_tile(src2(road=narrow, major=wide), GRID2, 0, 0)
+    r = alpha(out["road"]).astype(int)
+    row = (2048 - 1520) // 2
+    assert (r[row, 60:240] == 255).all()               # x 120..480 m: continuous across the joint at x = 300
+    g = alpha(out["glow"]).astype(int)
+    assert g[row, 150] == g[row, 100] == 0             # no glow inside the road, at the joint or away from it
 
 
 def test_glow_stitches_across_a_tile_edge_and_is_deterministic():
@@ -176,7 +188,7 @@ def test_margin_change_leaves_the_other_sets_identical():
     finally:
         rm.GLOW_MIN_MPP = old
     assert "glow" in a and "glow" not in b
-    for name in ("road_minor", "bfill", "outline"):
+    for name in ("road", "bfill", "outline"):
         assert a[name].tobytes() == b[name].tobytes(), name
 
 
@@ -186,44 +198,11 @@ def test_glow_gain_falls_with_level_so_far_zoom_is_not_haze():
     assert g[0] == GLOW_GAIN and all(a > b for a, b in zip(g, g[1:])) and g[3] < 1.0
 
 
-def test_short_minor_piece_between_collinear_major_segments_is_major():
-    # 1 m/px; major 20 m wide segments with a 20 x 20 m square (width 10: minor) bridging the 20 m gap
-    major = np.concatenate([quad(100, 600, 200, 620), quad(220, 600, 320, 620)])
-    stub = quad(200, 600, 220, 620)
-    out = render_tile(src(road=stub, major=major), GRID, 0, 0)
-    mn, mj = alpha(out["road_minor"]) if "road_minor" in out else np.zeros((512, 512)), alpha(out["road_major"])
-    row, col = 1024 - 610, 210
-    assert mj[row, col] == 255 and mn[row, col] == 0
-    assert mn.max() == 0
-
-
-def test_side_street_meeting_a_major_road_stays_minor():
-    major = quad(100, 600, 400, 620)                  # 300 x 20 m arterial
-    side = quad(240, 620, 250, 800)                   # 10 x 180 m street, T-junction on the arterial's edge
-    out = render_tile(src(road=side, major=major), GRID, 0, 0)
-    mn, mj = alpha(out["road_minor"]), alpha(out["road_major"])
-    assert mn[1024 - 700, 245] == 255 and mj[1024 - 700, 245] == 0
-    assert mn[1024 - 625, 245] == 255 and mj[1024 - 625, 245] == 0     # right at the junction
-
-
 def test_road_major_is_required():
     with pytest.raises(TypeError):
         make_sources(NOROAD, [], 256.0)
     with pytest.raises(TypeError):
         TileSources(TriIndex(NOROAD, 256.0), TriIndex(NOROAD, 256.0), [])
-
-
-def test_promotion_stitches_across_tile_edges():
-    major = np.concatenate([quad(400, 600, 500, 620), quad(524, 600, 624, 620)])    # gap of 24 m across x = 512
-    stub = quad(500, 600, 524, 620)
-    s = src(road=stub, major=major)
-    l, r = render_tile(s, GRID, 0, 0), render_tile(s, GRID, 1, 0)
-    big = LevelGrid(1.0, 0.0, 1024.0, 1, 1, 1024)
-    whole = render_tile(make_sources(stub, [], big.tile_world, major), big, 0, 0)
-    for name in ("road_major",):
-        got = np.hstack([alpha(l[name]), alpha(r[name])]).astype(int)
-        assert np.abs(got - alpha(whole[name]).astype(int)[:512]).max() <= 2
-    assert "road_minor" not in l and "road_minor" not in r
 
 
 def test_dot_pattern_is_seamless():

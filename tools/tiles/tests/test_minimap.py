@@ -61,14 +61,25 @@ def test_quantization_endpoints():
     assert abs(q[1] - 7.5) < 1e-5
 
 
+def rect(w, h):
+    return np.array([[(0, 0), (w, 0), (w, h)], [(0, 0), (w, h), (0, h)]], np.float32)
+
+
 def test_classify_uses_elevation_per_spec_11_6():
-    def rect(w, h):
-        return np.array([[(0, 0), (w, 0), (w, h)], [(0, 0), (w, h), (0, h)]], np.float32)
     assert classify(rect(10, 40), z=5) == "road"
     assert classify(rect(10, 40), z=50) == "road"          # elevated but narrow: freeway
     assert classify(rect(40, 60), z=50) == "stroke"        # elevated and wide: a rooftop plate
     assert classify(rect(10, 40), z=120) == "stroke"       # too high
     assert classify(rect(40, 60), z=5) == "road"
+
+
+def test_classify_road_surface_flag_overrides_elevation():
+    # B.flag 7 marks road surfaces. Wide elevated flag-7 shapes are highway bridges and overpasses (dropping them as
+    # rooftops striped the highways with building footprints); wide elevated flag-1 shapes are rooftops.
+    assert classify(rect(40, 60), z=50, flag=7) == "road"
+    assert classify(rect(10, 40), z=120, flag=7) == "road"
+    assert classify(rect(40, 60), z=50, flag=1) == "stroke"
+    assert classify(rect(0.8, 12), z=5, flag=7) == "stroke"   # still too thin to be a road area
 
 
 def test_classify_thickness():

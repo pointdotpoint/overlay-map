@@ -8,7 +8,7 @@ module NightMap
 // and Stop() ends the loops first. With effects off no widget exists and no animation is started.
 //
 // Stack inside the clipped map content, bottom to top (the panel inserts them between its own canvases):
-//   grid (under the tile layers) | tiles: glow, bfill, outline, road_minor, road_major | vignette | noise | routes | items | scanlines | scan bar | tracking band | overlay
+//   grid (under the tile layers) | tiles: glow, bfill, outline, road | vignette | noise | routes | items | scanlines | scan bar | tracking band | overlay
 // The VHS glitch is an engine effect (NMFx) on the map content itself, pulsed by an inkAnimEffect loop.
 // The edge glow sits on the panel root, under the corner brackets.
 public class NMHolo {

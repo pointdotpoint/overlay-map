@@ -59,10 +59,10 @@ public abstract class NMHoloTests {
         t.Check("holo.glow_layer_level_offset", near.CurrentLevel() == 2 && far.CurrentLevel() == n - 1 && near.LevelOffset() == 2,
             ToString(near.CurrentLevel()) + "/" + ToString(far.CurrentLevel()));
         t.Check("holo.glow_has_no_l0_tiles", !near.Has(0, 0, 0) && !near.Has(1, 0, 0), "");
-        t.Check("holo.set_offsets", NMLayerStack.WantsSet("glow", true) && NMLayerStack.SetOffset("glow") == 2 && NMLayerStack.SetOffset("road_major") == 0, "");
+        t.Check("holo.set_offsets", NMLayerStack.WantsSet("glow", true) && NMLayerStack.SetOffset("glow") == 2 && NMLayerStack.SetOffset("road") == 0, "");
         let stack = NMLayerStack.Create(canvas, 0, false);
         let withFx = NMLayerStack.Create(canvas, 0, true);
-        t.Check("holo.effects_off_drops_glow_layer", !IsDefined(stack.Layer("glow")) && stack.LayerCount() == 4 && IsDefined(withFx.Layer("glow")) && withFx.LayerCount() == 5,
+        t.Check("holo.effects_off_drops_glow_layer", !IsDefined(stack.Layer("glow")) && stack.LayerCount() == NMTileManifest.SetCount() - 1 && IsDefined(withFx.Layer("glow")) && withFx.LayerCount() == NMTileManifest.SetCount(),
             ToString(stack.LayerCount()) + "/" + ToString(withFx.LayerCount()));
     }
 
@@ -70,8 +70,8 @@ public abstract class NMHoloTests {
         // Read through locals: field access on a call temporary reads 0 in redscript.
         let accC: HDRColor = NMTheme.HoloAccent(0);
         let accG: HDRColor = NMTheme.HoloAccent(1);
-        let roadC: HDRColor = NMTheme.TileTint("road_major", 0);
-        let roadG: HDRColor = NMTheme.TileTint("road_major", 1);
+        let roadC: HDRColor = NMTheme.TileTint("road", 0);
+        let roadG: HDRColor = NMTheme.TileTint("road", 1);
         let fillC: HDRColor = NMTheme.TileTint("bfill", 0);
         let outG: HDRColor = NMTheme.TileTint("outline", 1);
         let glowC: HDRColor = NMTheme.TileTint("glow", 0);
@@ -80,14 +80,14 @@ public abstract class NMHoloTests {
         let bgG: HDRColor = NMTheme.HoloBackground(1);
         t.Check("holo.accent_cyan_vs_green", t.Near(accC.Red, 0.310, 0.002) && t.Near(accC.Green, 0.890, 0.002) && t.Near(accC.Blue, 1.0, 0.002)
             && t.Near(accG.Red, 0.365, 0.002) && t.Near(accG.Green, 1.0, 0.002) && t.Near(accG.Blue, 0.541, 0.002), "");
-        t.Check("holo.road_tint_cyan_vs_green", t.Near(roadC.Red, 0.561, 0.002) && t.Near(roadC.Green, 0.863, 0.002) && t.Near(roadG.Red, 0.561, 0.002) && t.Near(roadG.Green, 1.0, 0.002) && t.Near(roadG.Blue, 0.707, 0.002), "");
+        t.Check("holo.road_tint_cyan_vs_green", t.Near(roadC.Red, 0.363, 0.002) && t.Near(roadC.Green, 0.694, 0.002) && t.Near(roadG.Red, 0.363, 0.002) && t.Near(roadG.Green, 0.924, 0.002) && t.Near(roadG.Blue, 0.550, 0.002), "");
         t.Check("holo.line_tints_cyan_vs_green", t.Near(fillC.Red, 0.106, 0.002) && t.Near(fillC.Blue, 0.471, 0.002) && t.Near(outG.Red, 0.227, 0.002) && t.Near(outG.Green, 0.816, 0.002) && t.Near(outG.Blue, 0.424, 0.002), "");
         t.Check("holo.glow_tint_is_accent", t.Near(glowC.Red, 0.184, 0.002) && t.Near(glowC.Blue, 1.0, 0.002) && t.Near(glowG.Green, 1.0, 0.002) && t.Near(glowG.Red, 0.184, 0.002), "");
         t.Check("holo.background_cyan_vs_green", t.Near(bgC.Red, 0.020, 0.002) && t.Near(bgC.Green, 0.051, 0.002) && t.Near(bgC.Blue, 0.094, 0.002) && t.Near(bgG.Green, 0.063, 0.002) && t.Near(bgG.Blue, 0.031, 0.002), "");
-        let lumFx = NMHoloTests.Lum("road_major", 0) > NMHoloTests.Lum("road_minor", 0) && NMHoloTests.Lum("road_minor", 0) > NMHoloTests.Lum("outline", 0) && NMHoloTests.Lum("outline", 0) > NMHoloTests.Lum("bfill", 0);
-        let lumFxG = NMHoloTests.Lum("road_major", 1) > NMHoloTests.Lum("road_minor", 1) && NMHoloTests.Lum("road_minor", 1) > NMHoloTests.Lum("outline", 1) && NMHoloTests.Lum("outline", 1) > NMHoloTests.Lum("bfill", 1);
+        let lumFx = NMHoloTests.Lum("road", 0) > NMHoloTests.Lum("outline", 0) && NMHoloTests.Lum("outline", 0) > NMHoloTests.Lum("bfill", 0);
+        let lumFxG = NMHoloTests.Lum("road", 1) > NMHoloTests.Lum("outline", 1) && NMHoloTests.Lum("outline", 1) > NMHoloTests.Lum("bfill", 1);
         t.Check("theme.roads_brighter_than_buildings", lumFx && lumFxG,
-            t.F(NMHoloTests.Lum("road_major", 0)) + "/" + t.F(NMHoloTests.Lum("bfill", 0)) + "/" + t.F(NMHoloTests.Lum("outline", 0)));
+            t.F(NMHoloTests.Lum("road", 0)) + "/" + t.F(NMHoloTests.Lum("bfill", 0)) + "/" + t.F(NMHoloTests.Lum("outline", 0)));
         t.Check("theme.overlay_opacities", t.Near(NMTheme.RingsOpacity(), 0.05, 0.0001) && t.Near(NMTheme.VignetteOpacity(), 0.55, 0.0001)
             && t.Near(NMTheme.HoloBarOpacity(), 0.035, 0.0001) && t.Near(NMTheme.HoloEdgeOpacity(), 0.3, 0.0001), "");
         t.Check("theme.rings_fade_with_zoom", NMTheme.RingsFade(0.5) == 1.0 && NMTheme.RingsFade(1.0) == 1.0 && t.Near(NMTheme.RingsFade(16.0), 0.2, 0.0001)
@@ -189,7 +189,7 @@ public abstract class NMHoloTests {
         while th < 5 {
             let a = NMTheme.HoloAccentOwn(th);
             let h = NMTheme.HoloHighlightOwn(th);
-            let r = NMTheme.TileTintOwn("road_major", th);
+            let r = NMTheme.TileTintOwn("road", th);
             let f = NMTheme.TileTintOwn("bfill", th);
             let w = want[th];
             if NMHoloTests.Dominant(a) != w || NMHoloTests.Dominant(h) != w || NMHoloTests.Dominant(r) != w || NMHoloTests.Dominant(f) != w {
@@ -332,8 +332,8 @@ public abstract class NMHoloTests {
         let st = NMLayerStack.Create(canvas, 0, true);
         st.SetGlow(NMHoloFx.Make(0.3, 2.0, true, true));
         let g = st.Layer("glow");
-        let road = st.Layer("road_major");
-        t.Check("holo.fx_glow_gain", IsDefined(g) && t.Near(g.Opacity(), 1.0, 0.0001) && IsDefined(road) && t.Near(road.Opacity(), NMTheme.TileOpacity("road_major"), 0.0001),
+        let road = st.Layer("road");
+        t.Check("holo.fx_glow_gain", IsDefined(g) && t.Near(g.Opacity(), 1.0, 0.0001) && IsDefined(road) && t.Near(road.Opacity(), NMTheme.TileOpacity("road"), 0.0001),
             IsDefined(g) ? t.F(g.Opacity()) : "no glow layer");
         t.Check("holo.fx_bloom_once", IsDefined(g) && NMFx.EffectCount(g.Root()) == 2, IsDefined(g) ? ToString(NMFx.EffectCount(g.Root())) : "no glow layer");
         st.SetGlow(NMHoloFx.Make(0.3, 2.0, true, true));

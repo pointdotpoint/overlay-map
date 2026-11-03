@@ -1,12 +1,14 @@
 """Colourless mask tiles (white RGB, alpha = coverage) from the game's minimap geometry (spec 11.6).
 
 One tile set per class, in draw order; the runtime tints them with SetTintColor from NMTheme:
-  glow     blurred road rims (major at full gain, minor at GLOW_MINOR_WEIGHT; buildings do not glow); levels with
+  glow     blurred road rims (every road alike; buildings do not glow); levels with
            mpp >= GLOW_MIN_MPP only; the runtime draws it from a level 2 steps coarser than the camera's, upscaled,
            so bilinear filtering makes the bloom soft
   bfill    building footprint fill
   outline  footprint exterior as a 1 px line at the level's resolution (drawn at 2x, width 2, downsampled)
-  road_minor / road_major  minimap road triangles, split by shape width (minimap.MAJOR_WIDTH_M)
+  road     every minimap road triangle in one mask, like the vanilla minimap draws them. The minimap classifies each
+           road shape by width (minimap.MAJOR_WIDTH_M), but one highway is many shapes whose widths fall either side of
+           it, so tinting the classes apart striped the highways; they are merged here.
 Every tile is rendered independently at SS x and downsampled (LANCZOS), with a margin that is cropped away afterwards,
 so neighbouring tiles agree along their shared edge and no whole-level image ever exists.
 """
@@ -21,12 +23,10 @@ from typing import Callable
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
-from scipy.ndimage import maximum_filter, minimum_filter
 
-from nmtiles.minimap import MAJOR_WIDTH_M
 from nmtiles.render import LevelGrid
 
-SETS = ("glow", "bfill", "outline", "road_minor", "road_major")      # draw order, back to front: roads over buildings
+SETS = ("glow", "bfill", "outline", "road")      # draw order, back to front: roads over buildings
 SS = 2
 DEFAULT_JOBS = 4
 GLOW_MIN_MPP = 2.0                                       # glow tiles exist only at m/px >= this (L2..L5)
@@ -39,8 +39,6 @@ def glow_gain(mpp: float) -> float:
     otherwise the far zoom reads as haze, not glow."""
     return GLOW_GAIN * math.sqrt(GLOW_MIN_MPP / max(mpp, GLOW_MIN_MPP))
 
-GLOW_MINOR_WEIGHT = 0.35                                 # minor-road rim strength in the glow, relative to major
-BRIDGE_EXTENT = 1.5 * MAJOR_WIDTH_M                      # m: a minor piece up to this long between major pieces is promoted
 GLOW_MARGIN = math.ceil(3 * GLOW_RADIUS) + 3             # >= 3 sigma plus the LANCZOS support
 DOT_PITCH_PX = 8                                         # building fill dot matrix: pitch and dot size in px
 DOT_SIZE_PX = 3
@@ -113,22 +111,25 @@ def _window(grid: LevelGrid, ix: int, iy: int, margin: int) -> tuple[float, floa
     return x0, y1, x0 + tw + 2 * margin * mpp, y1 - tw - 2 * margin * mpp, (grid.tile + 2 * margin) * SS
 
 
-def _fill_mask(index: TriIndex, grid: LevelGrid, ix: int, iy: int, margin: int) -> np.ndarray | None:
-    """Coverage (uint8, margin included) of the index's triangles. Pixel coordinates are floored before drawing, so
-    negative and positive coordinates round the same way and neighbouring tiles agree."""
+def _fill_mask(indices: TriIndex | tuple[TriIndex, ...], grid: LevelGrid, ix: int, iy: int, margin: int) -> np.ndarray | None:
+    """Coverage (uint8, margin included) of the triangles of one or more indices, drawn into one canvas before the
+    downsample: two pieces sharing an edge then cover it fully (separately downsampled masks leave a seam there).
+    Pixel coordinates are floored before drawing, so negative and positive coordinates round the same way and
+    neighbouring tiles agree."""
     x0, y1, x1, y0, size = _window(grid, ix, iy, margin)
-    sel = index.query(x0, y0, x1, y1)
-    if not len(sel):
+    parts = [(index, index.query(x0, y0, x1, y1)) for index in (indices if isinstance(indices, tuple) else (indices,))]
+    if not any(len(sel) for _, sel in parts):
         return None
     img = Image.new("L", (size, size), 0)
     draw = ImageDraw.Draw(img)
     s = SS / grid.mpp
-    for i in range(0, len(sel), BATCH):
-        px = index.tris[sel[i:i + BATCH]].astype(np.float64)
-        px[..., 0] = np.floor((px[..., 0] - x0) * s)
-        px[..., 1] = np.floor((y1 - px[..., 1]) * s)
-        for t in px.reshape(-1, 6).tolist():
-            draw.polygon(t, fill=255)
+    for index, sel in parts:
+        for i in range(0, len(sel), BATCH):
+            px = index.tris[sel[i:i + BATCH]].astype(np.float64)
+            px[..., 0] = np.floor((px[..., 0] - x0) * s)
+            px[..., 1] = np.floor((y1 - px[..., 1]) * s)
+            for t in px.reshape(-1, 6).tolist():
+                draw.polygon(t, fill=255)
     return _down(img)
 
 
@@ -173,36 +174,12 @@ def _road_edge(road: np.ndarray) -> np.ndarray:
     return road - np.minimum(road, eroded)
 
 
-def bridge_size(mpp: float) -> int:
-    """Odd side in px of the closing kernel that bridges BRIDGE_EXTENT metres (1 = no-op at coarse levels)."""
-    k = math.ceil(BRIDGE_EXTENT / mpp)
-    return k + 1 - k % 2
-
-
-def _promote(minor: np.ndarray | None, major: np.ndarray | None, mpp: float) -> tuple[np.ndarray | None, np.ndarray | None]:
-    """Minor road pieces that sit in a gap of the major roads no wider than BRIDGE_EXTENT (junction squares, short
-    pieces between two major segments) belong to the major road: move them over, so arterials read as continuous
-    lines. Closing the major mask only fills concavities, so a side street abutting a road stays minor.
-    The closing reaches k - 1 px: callers must render with a margin of at least that."""
-    k = bridge_size(mpp)
-    if minor is None or major is None or k < 3:
-        return minor, major
-    closed = minimum_filter(maximum_filter(major, size=k, mode="constant"), size=k, mode="constant")
-    closed = np.where(closed >= 128, 255, 0).astype(np.uint8)
-    closed = maximum_filter(closed, size=7, mode="constant")      # 3 px slack: LANCZOS ringing around the pieces' edges
-    moved = np.minimum(minor, closed)
-    return minor - moved, np.maximum(major, moved)
-
-
-def _glow(major: np.ndarray | None, minor: np.ndarray | None, gain: float = GLOW_GAIN) -> np.ndarray | None:
-    """Blurred road rims, lifted by `gain`: major at full gain, minor at GLOW_MINOR_WEIGHT of it; margin included."""
-    if major is None and minor is None:
+def _glow(road: np.ndarray | None, gain: float = GLOW_GAIN) -> np.ndarray | None:
+    """Blurred rim of the merged road mask, lifted by `gain`; margin included. Taken from the union, so a joint between
+    two road pieces has no rim of its own."""
+    if road is None:
         return None
-    src = np.zeros(((major if major is not None else minor).shape), np.float32)
-    if major is not None:
-        src += _road_edge(major)
-    if minor is not None:
-        src += _road_edge(minor) * GLOW_MINOR_WEIGHT
+    src = _road_edge(road).astype(np.float32)
     blurred = np.asarray(Image.fromarray(np.minimum(src, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(GLOW_RADIUS)))
     return np.minimum(blurred.astype(np.float32) * gain, 255).astype(np.uint8)
 
@@ -234,19 +211,16 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
     # Levels with a glow set render every mask with the larger margin (the window shifts by whole pixels, so the
     # cropped result is identical) and blur it before cropping.
     glow_on = grid.mpp >= GLOW_MIN_MPP
-    margin = max(GLOW_MARGIN if glow_on else EDGE_MARGIN, bridge_size(grid.mpp) + EDGE_MARGIN + 3)
-    minor = _fill_mask(src.road, grid, ix, iy, margin)
-    major = _fill_mask(src.road_major, grid, ix, iy, margin)
-    minor, major = _promote(minor, major, grid.mpp)
-    minor = None if minor is None or not minor.any() else minor
-    put("road_minor", None if minor is None else _crop(minor, margin))
-    put("road_major", None if major is None else _crop(major, margin))
+    margin = GLOW_MARGIN if glow_on else EDGE_MARGIN
+    road = _fill_mask((src.road, src.road_major), grid, ix, iy, margin)
+    road = None if road is None or not road.any() else road
+    put("road", None if road is None else _crop(road, margin))
     masks = _foot_masks(src, grid, ix, iy, margin)
     if masks is not None:
         put("bfill", _dot_fill(_crop(masks[0], margin), ix, iy))
         put("outline", _crop(masks[1], margin))
     if glow_on:
-        g = _glow(major, minor, glow_gain(grid.mpp))
+        g = _glow(road, glow_gain(grid.mpp))
         put("glow", None if g is None else _crop(g, margin))
     return out
 

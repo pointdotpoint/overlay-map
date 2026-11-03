@@ -735,7 +735,7 @@ public class NMSelfTest {
         }
         let n = NMTileManifest.LevelCount();
         this.Check("tiles.six_levels", n == 6, ToString(n));
-        this.Check("tiles.five_sets_order", NMTileManifest.SetCount() == 5 && Equals(NMTileManifest.SetName(3), "road_minor") && Equals(NMTileManifest.SetName(4), "road_major"),
+        this.Check("tiles.four_sets_order", NMTileManifest.SetCount() == 4 && Equals(NMTileManifest.SetName(3), "road"),
             ToString(NMTileManifest.SetCount()));
         let ascending = true;
         let i = 1;
@@ -814,7 +814,7 @@ public class NMSelfTest {
         let cb = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
         let cam = NMCamera.Create(1880.0, 1480.0, cb, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
         cam.SetCenter(-1800.0, 150.0);
-        let sl = NMTileLayer.Create(canvas, NMHoloTests.SetIndex("road_major"), 0);
+        let sl = NMTileLayer.Create(canvas, NMHoloTests.SetIndex("road"), 0);
         sl.skipLoadWait = true;
         cam.SetMpp(1.0);
         sl.Update(cam, 16.0);
@@ -833,7 +833,7 @@ public class NMSelfTest {
         sl.Update(cam, NMTileLayer.FadeMs() * 2.0);
         let st5 = sl.CurrentLevel() == 4 && sl.PreviousLevel() == -1;
         // Tiles that have not loaded: the incoming level waits, and the outgoing one stays until it can fade in.
-        let wl = NMTileLayer.Create(canvas, NMHoloTests.SetIndex("road_major"), 0);
+        let wl = NMTileLayer.Create(canvas, NMHoloTests.SetIndex("road"), 0);
         wl.skipLoadWait = true;
         cam.SetMpp(1.0);
         wl.Update(cam, 16.0);
@@ -859,10 +859,10 @@ public class NMSelfTest {
         NMLog.Info("TEST|INFO|tiles.set_level_counts|" + counts);
         this.Check("tiles.no_empty_set_levels", Equals(emptyDetail, ""), emptyDetail);
         // Read through locals: field access on a call temporary reads 0 in redscript.
-        let roadTint: HDRColor = NMTheme.TileTint("road_major", 0);
-        let roadOp: Float = NMTheme.TileOpacity("road_major");
+        let roadTint: HDRColor = NMTheme.TileTint("road", 0);
+        let roadOp: Float = NMTheme.TileOpacity("road");
         let outlineOp: Float = NMTheme.TileOpacity("outline");
-        this.Check("tiles.theme_defaults", this.Near(roadOp, 0.90, 0.0001) && this.Near(outlineOp, 0.40, 0.0001) && this.Near(roadTint.Red, 0.561, 0.001),
+        this.Check("tiles.theme_defaults", this.Near(roadOp, 0.90, 0.0001) && this.Near(outlineOp, 0.40, 0.0001) && this.Near(roadTint.Red, 0.363, 0.001),
             ToString(roadOp) + "," + ToString(outlineOp) + "," + ToString(roadTint.Red));
     }
 

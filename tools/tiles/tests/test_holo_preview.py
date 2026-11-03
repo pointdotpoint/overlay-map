@@ -12,7 +12,7 @@ def mask(path, a):
 
 
 def tiles(tmp_path, glow=True):
-    t = {s: {(li, 0, 0): mask(tmp_path / f"{s}{li}.png", 255) for li in range(6)} for s in ("road_minor", "road_major", "bfill", "outline")}
+    t = {s: {(li, 0, 0): mask(tmp_path / f"{s}{li}.png", 255) for li in range(6)} for s in ("road", "bfill", "outline")}
     t["glow"] = {(li, 0, 0): mask(tmp_path / f"g{li}.png", 255) for li in range(2, 6)} if glow else {}
     return t
 

@@ -48,9 +48,9 @@ public abstract class NMPaletteTests {
         let prev = NMTheme.Palette();
         NMTheme.Use(null);
         let c = NMTheme.Cyan();
-        let r = NMTheme.TileTint("road_major", 0);
+        let r = NMTheme.TileTint("road", 0);
         t.Check("palette.off_is_today", c.Red == 0.478 && c.Green == 0.941 && c.Blue == 1.0
-            && r.Red == 0.561 && r.Green == 0.863 && r.Blue == 1.0, "");
+            && r.Red == 0.363 && r.Green == 0.694 && r.Blue == 0.924, "");
         let f = NMHudPalette.Fixed(new HDRColor(0.5, 0.5, 0.5, 1.0));
         f.Set(NMColorRole.Accent, new HDRColor(0.9, 0.1, 0.1, 1.0));
         f.Set(NMColorRole.Floor, new HDRColor(0.1, 0.9, 0.1, 1.0));

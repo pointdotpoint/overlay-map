@@ -244,7 +244,7 @@ public abstract class NMTheme {
     // Keys are NMTileManifest.SetName values.
     public static func TileTint(set: String, theme: Int32) -> HDRColor {
         let own = NMTheme.TileTintOwn(set, theme);
-        if Equals(set, "road_major") || Equals(set, "road_minor") { return NMTheme.Pick(NMColorRole.Road, own); }
+        if Equals(set, "road") { return NMTheme.Pick(NMColorRole.Road, own); }
         if Equals(set, "outline") || Equals(set, "glow") { return NMTheme.Pick(NMColorRole.Wall, own); }
         return NMTheme.Pick(NMColorRole.Floor, own);   // bfill
     }
@@ -252,43 +252,39 @@ public abstract class NMTheme {
         if theme == 1 {   // same lightness and saturation as cyan, hue ~140 degrees
             if Equals(set, "glow") { return new HDRColor(0.184, 1.0, 0.456, 1.0); }          // #2fff74
             if Equals(set, "outline") { return new HDRColor(0.227, 0.816, 0.424, 1.0); }     // #3ad06c
-            if Equals(set, "road_minor") { return new HDRColor(0.165, 0.847, 0.392, 1.0); }  // #2ad864
-            if Equals(set, "road_major") { return new HDRColor(0.561, 1.0, 0.707, 1.0); }    // #8fffb4
+            if Equals(set, "road") { return new HDRColor(0.363, 0.924, 0.550, 1.0); }
             return new HDRColor(0.106, 0.471, 0.227, 1.0);                                   // #1b783a (bfill)
         }
         if theme == 2 {   // red, hue ~352 degrees; same lightness and saturation as cyan
             if Equals(set, "glow") { return new HDRColor(1.0, 0.184, 0.293, 1.0); }
             if Equals(set, "outline") { return new HDRColor(0.816, 0.227, 0.306, 1.0); }
-            if Equals(set, "road_minor") { return new HDRColor(0.847, 0.165, 0.256, 1.0); }
-            if Equals(set, "road_major") { return new HDRColor(1.0, 0.561, 0.620, 1.0); }
+            if Equals(set, "road") { return new HDRColor(0.924, 0.363, 0.438, 1.0); }
             return new HDRColor(0.471, 0.106, 0.155, 1.0);   // bfill
         }
         if theme == 3 {   // purple, hue ~275 degrees; same lightness and saturation as cyan
             if Equals(set, "glow") { return new HDRColor(0.660, 0.184, 1.0, 1.0); }
             if Equals(set, "outline") { return new HDRColor(0.571, 0.227, 0.816, 1.0); }
-            if Equals(set, "road_minor") { return new HDRColor(0.563, 0.165, 0.847, 1.0); }
-            if Equals(set, "road_major") { return new HDRColor(0.817, 0.561, 1.0, 1.0); }
+            if Equals(set, "road") { return new HDRColor(0.690, 0.363, 0.924, 1.0); }
             return new HDRColor(0.319, 0.106, 0.471, 1.0);   // bfill
         }
         if theme == 4 {   // amber, hue ~36 degrees; same lightness and saturation as cyan
             if Equals(set, "glow") { return new HDRColor(1.0, 0.674, 0.184, 1.0); }
             if Equals(set, "outline") { return new HDRColor(0.816, 0.580, 0.227, 1.0); }
-            if Equals(set, "road_minor") { return new HDRColor(0.847, 0.574, 0.165, 1.0); }
-            if Equals(set, "road_major") { return new HDRColor(1.0, 0.824, 0.561, 1.0); }
+            if Equals(set, "road") { return new HDRColor(0.924, 0.699, 0.363, 1.0); }
             return new HDRColor(0.471, 0.325, 0.106, 1.0);   // bfill
         }
         if Equals(set, "glow") { return new HDRColor(0.184, 0.612, 1.0, 1.0); }              // #2f9cff
         if Equals(set, "outline") { return new HDRColor(0.227, 0.561, 0.816, 1.0); }         // #3a8fd0
-        if Equals(set, "road_minor") { return new HDRColor(0.165, 0.525, 0.847, 1.0); }      // #2a86d8
-        if Equals(set, "road_major") { return new HDRColor(0.561, 0.863, 1.0, 1.0); }        // #8fdcff
+        // One road colour like the vanilla minimap (halfway between the old minor and major tints): one highway is
+        // many road shapes, so tinting them by width striped it.
+        if Equals(set, "road") { return new HDRColor(0.363, 0.694, 0.924, 1.0); }            // #5cb1ec
         return new HDRColor(0.106, 0.290, 0.471, 1.0);                                       // #1b4a78 (bfill; one tint for fill and dots)
     }
     public static func TileOpacity(set: String) -> Float {
         if Equals(set, "glow") { return 0.50; }
         if Equals(set, "bfill") { return 0.40; }
         if Equals(set, "outline") { return 0.40; }
-        if Equals(set, "road_minor") { return 0.60; }
-        if Equals(set, "road_major") { return 0.90; }
+        if Equals(set, "road") { return 0.90; }
         return 1.0;
     }
 }

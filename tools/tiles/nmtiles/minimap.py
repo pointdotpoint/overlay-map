@@ -27,8 +27,9 @@ import numpy as np
 
 MAJOR_WIDTH_M = 16.0        # metres: a road shape at least this wide (classify_width) is a major road (arterial, highway)
 ROAD_THICKNESS = 3.0        # metres: area / max bbox extent at or above this is a road, below it a stroke
-DECODE_VERSION = 5           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
+DECODE_VERSION = 6           # bump when decode/classify logic changes: invalidates the npz (not the JSON cache)
 GROUND_Z, ELEVATED_Z, ELEVATED_MAX_THICK = 15.0, 80.0, 25.0   # spec 11.6 road rule
+ROAD_FLAG = 7               # B.flag of road surfaces (wall/building lines are 1); measured over the city, 2026-11-03
 LODS = (3, 4)               # sector LODs that carry the minimap geometry we use (spike 2: both, disjoint paths)
 # SECTOR_RE also matches z = -1 sectors (exterior_x_y_-1_*, about 1.3% of the triangles). They are included on
 # purpose (not verified to be surface-only; Task 12 should check for stray geometry).
@@ -143,12 +144,16 @@ def classify_width(tris: np.ndarray) -> float:
     return float(area / ext) if ext > 0 else 0.0
 
 
-def classify(tris: np.ndarray, z: float = 0.0, thickness: float = ROAD_THICKNESS) -> str:
-    """'road' when thick >= 3 m and (z < 15 or (z < 80 and thick < 25)) (spec 11.6), else 'stroke' (building geometry).
-
-    thick = area / max bbox extent; z = the shape's instance elevation (C.z)."""
+def classify(tris: np.ndarray, z: float = 0.0, thickness: float = ROAD_THICKNESS, flag: int = 0) -> str:
+    """'road' when thick >= 3 m and either B.flag == ROAD_FLAG (a road surface, at any height: highway bridges and
+    overpasses are wide and elevated) or (z < 15 or (z < 80 and thick < 25)) (spec 11.6), else 'stroke' (building
+    geometry). thick = area / max bbox extent; z = the shape's instance elevation (C.z)."""
     thick = classify_width(tris)
-    return "road" if thick >= thickness and (z < GROUND_Z or (z < ELEVATED_Z and thick < ELEVATED_MAX_THICK)) else "stroke"
+    if thick < thickness:
+        return "stroke"
+    if flag == ROAD_FLAG:
+        return "road"
+    return "road" if z < GROUND_Z or (z < ELEVATED_Z and thick < ELEVATED_MAX_THICK) else "stroke"
 
 
 def _node_index(nd: dict) -> int | None:
@@ -205,7 +210,7 @@ def decode_sector(sector_json: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray
         for sh in decode_shapes(enc):
             if len(sh.tris) == 0:
                 continue
-            if classify(sh.tris, sh.z + pz) != "road":
+            if classify(sh.tris, sh.z + pz, flag=sh.flag) != "road":
                 stroke.append(sh.tris + off)
             else:
                 (major if classify_width(sh.tris) >= MAJOR_WIDTH_M else road).append(sh.tris + off)
@@ -274,7 +279,7 @@ def archive_key(archives: list[Path]) -> str:
 
 def npz_key(arc_key: str) -> str:
     """Key of the final npz: archives plus everything that changes the decoded result."""
-    return hashlib.sha256(f"{arc_key}|v{DECODE_VERSION}|road{ROAD_THICKNESS}/{MAJOR_WIDTH_M}/{GROUND_Z}/{ELEVATED_Z}/{ELEVATED_MAX_THICK}|lods{LODS}".encode()).hexdigest()[:16]
+    return hashlib.sha256(f"{arc_key}|v{DECODE_VERSION}|road{ROAD_THICKNESS}/{MAJOR_WIDTH_M}/f{ROAD_FLAG}/{GROUND_Z}/{ELEVATED_Z}/{ELEVATED_MAX_THICK}|lods{LODS}".encode()).hexdigest()[:16]
 
 
 def json_ok(path: Path) -> bool:

@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image
 
 from nmtiles.preview import composite_sets, write_previews
-from nmtiles.style import PREVIEW_BG
+from nmtiles.style import PREVIEW_BG, PREVIEW_SETS
 
 LEVEL = {"mpp": 1.0, "origin_x": 0.0, "origin_top": 1024.0, "nx": 2, "ny": 2}
 
@@ -17,7 +17,8 @@ def test_composite_tints_masks_over_dark_background_in_layer_order(tmp_path):
     img = composite_sets({"road": {(0, 0): road}, "outline": {(0, 0): stroke}}, LEVEL, (256.0, 768.0), (512, 512))
     assert img.size == (512, 512)
     r, g, b = img.getpixel((10, 10))
-    assert abs(r - (0.1 * (0.45 * PREVIEW_BG[0] + 0.55 * 0x1e) + 0.9 * 0x9f)) < 2          # stroke over road over bg
+    (oc, oa), (rc, ra) = PREVIEW_SETS["outline"], PREVIEW_SETS["road"]
+    assert abs(r - ((1 - ra) * ((1 - oa) * PREVIEW_BG[0] + oa * oc[0]) + ra * rc[0])) < 2   # road over stroke over bg
     only_road = composite_sets({"road": {(0, 0): road}}, LEVEL, (256.0, 768.0), (512, 512)).getpixel((10, 10))
     assert only_road != (r, g, b)
 
