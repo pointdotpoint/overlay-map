@@ -39,3 +39,23 @@ def test_hologram_settings_live_under_display_with_the_right_defaults():
         assert f'"ModSettings.displayValues.{v}", "{v}"' in b
     system = (SCRIPTS / "Core" / "NightMapSystem.reds").read_text()
     assert "NMTheme.ThemeIndex(s.holoColor)" in system
+
+
+def test_vhs_settings_live_under_display_with_their_defaults():
+    s = (SCRIPTS / "Core" / "Settings.reds").read_text()
+    sliders = (
+        ("scanlineStrength", "Scanline strength", "0.3", "0", "0.6", "0.02"),
+        ("glowStrength", "Glow strength", "1.5", "0", "3", "0.1"),
+    )
+    for field, name, default, lo, hi, step in sliders:
+        assert f"public let {field}: Float = {default};" in s
+        b = _block(s, field)
+        assert '"ModSettings.category", "Display"' in b and f'"ModSettings.displayName", "{name}"' in b
+        assert f'"ModSettings.min", "{lo}"' in b and f'"ModSettings.max", "{hi}"' in b and f'"ModSettings.step", "{step}"' in b
+    for field, name in (("vhsTracking", "VHS tracking band"), ("vhsGlitch", "VHS glitch")):
+        assert f"public let {field}: Bool = true;" in s
+        b = _block(s, field)
+        assert '"ModSettings.category", "Display"' in b and f'"ModSettings.displayName", "{name}"' in b
+    # Every knob is read into one config and handed to the panel and the layer stack.
+    system = (SCRIPTS / "Core" / "NightMapSystem.reds").read_text()
+    assert "NMHoloFx.From(s)" in system

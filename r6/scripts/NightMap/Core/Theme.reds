@@ -205,6 +205,12 @@ public abstract class NMTheme {
     public static func HoloNoiseOpacity() -> Float { return 0.008; }   // the flicker moves it between 0.68x and 1.18x
     public static func HoloBarOpacity() -> Float { return 0.035; }
     public static func HoloBarHeight() -> Float { return 0.06; }        // of the map height
+    public static func HoloTrackOpacity() -> Float { return 0.12; }     // VHS tracking band at its brightest
+    public static func HoloTrackHeight() -> Float { return 0.07; }      // of the map height
+    public static func GlitchIntensity() -> Float { return 0.35; }      // inkGlitchEffect intensity at a burst's peak
+    public static func BloomIntensity() -> Float { return 1.0; }        // inkBoxBlurEffect on the glow layer
+    public static func BloomSamples() -> Int32 { return 12; }
+    public static func GlitchSize() -> Float { return 0.02; }           // inkGlitchEffect block size (sizeX/sizeY)
     public static func HoloEdgeOpacity() -> Float { return 0.3; }
     public static func HoloBracketGain() -> Float { return 1.25; }   // brackets brighten with HDR gain (bloom not verified)
     public static func ScanPeriod() -> Float { return 4.0; }          // holo_scan line spacing in 4K units

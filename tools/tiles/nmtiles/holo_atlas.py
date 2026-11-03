@@ -13,6 +13,7 @@ Others:
   holo_edge_t/_b 16x64, holo_edge_l/_r 64x16  soft glowing frame line, bright on the outer pixel row, fading inward;
                        stretched along their length (they are uniform that way)
   holo_halo   128x128  radial soft glow for marker halos
+  holo_track  512x80   VHS tracking band: streaky noise rows under a soft vertical envelope (clear top and bottom)
   holo_ring   128x128  one antialiased ring at the edge, about 3 px wide (corner minimap Circle frame)
   holo_disc   128x128  filled antialiased disc (corner minimap circular clip mask)
   holo_arrow  32x32    filled up-pointing triangle (corner minimap rim clamp and above/below arrows)
@@ -29,7 +30,7 @@ SIZES = {   # name -> (w, h)
     "holo_scan": (64, 64), "holo_grid": (48, 48), "holo_noise": (256, 256), "holo_bar": (512, 160),
     "holo_halo": (128, 128), "holo_line": (16, 16), "holo_vignette": (256, 256), "holo_rings": (256, 256),
     "holo_edge_t": (16, 64), "holo_edge_b": (16, 64), "holo_edge_l": (64, 16), "holo_edge_r": (64, 16),
-    "holo_ring": (128, 128), "holo_disc": (128, 128), "holo_arrow": (32, 32),
+    "holo_ring": (128, 128), "holo_disc": (128, 128), "holo_arrow": (32, 32), "holo_track": (512, 80),
 }
 TILEABLE = {"holo_scan": 4, "holo_grid": 24, "holo_noise": 256}     # name -> period in px (both axes)
 # Fixed layout (4 px gaps so bilinear sampling never bleeds a neighbour in).
@@ -37,9 +38,10 @@ LAYOUT = {
     "holo_grid": (870, 0), "holo_rings": (0, 0), "holo_noise": (260, 0), "holo_halo": (520, 0), "holo_scan": (652, 0),
     "holo_edge_t": (720, 0), "holo_edge_b": (740, 0), "holo_edge_l": (760, 0), "holo_edge_r": (760, 20),
     "holo_bar": (0, 260), "holo_line": (840, 0), "holo_vignette": (520, 132),
-    "holo_ring": (780, 132), "holo_disc": (780, 264), "holo_arrow": (912, 132),
+    "holo_ring": (780, 132), "holo_disc": (780, 264), "holo_arrow": (912, 132), "holo_track": (0, 428),
 }
 NOISE_SEED = 20261015
+TRACK_SEED = 20261104
 
 
 def _white(alpha: np.ndarray) -> Image.Image:
@@ -103,6 +105,23 @@ def _bar() -> Image.Image:
     prof = (up + down) * 255.0
     prof[int(core * h)] = 255.0
     return _white(np.tile(prof[:, None], (1, w)))
+
+
+def _track() -> Image.Image:
+    """Rows of horizontal streaks (random runs along x, per-row brightness) under a sin envelope, plus one bright core line."""
+    h, w = 80, 512
+    rng = np.random.default_rng(TRACK_SEED)
+    t = (np.arange(h, dtype=np.float32) + 0.5) / h
+    env = np.sin(np.pi * t) ** 1.5
+    row = 0.35 + 0.65 * rng.random(h, dtype=np.float32)               # per-row brightness
+    streak = rng.random((h, w // 8), dtype=np.float32) > 0.45          # 8 px cells, on or off
+    streak = np.repeat(streak, 8, axis=1).astype(np.float32)
+    fine = 0.6 + 0.4 * rng.random((h, w), dtype=np.float32)
+    a = env[:, None] * row[:, None] * streak * fine * 255.0
+    a[h // 2, :] = 255.0                                              # the bright tracking line
+    a[0, :] = 0.0
+    a[-1, :] = 0.0
+    return _white(a)
 
 
 def _halo() -> Image.Image:
@@ -183,6 +202,8 @@ def _render(name: str) -> Image.Image:
         return _bar()
     if name == "holo_halo":
         return _halo()
+    if name == "holo_track":
+        return _track()
     if name == "holo_line":
         return _line()
     return _edge(*SIZES[name], name[-1])

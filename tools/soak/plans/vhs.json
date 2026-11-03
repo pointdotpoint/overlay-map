@@ -1,0 +1,39 @@
+{
+  "name": "vhs",
+  "runs": [
+    {
+      "name": "vhs",
+      "parts": ["scripts", "archive", "bootstrap", "autopilot"],
+      "repeats": 1,
+      "steps": [
+        {"wait": 8},
+        {"cmd": "selftest", "timeout": 60, "expect": "failed=0\\|"},
+        {"cmd": "set effects 0", "expect": "^effects false"},
+        {"cmd": "open"}, {"wait": 3}, {"cmd": "zoom 2"}, {"wait": 4}, {"shot": "plain"}, {"cmd": "close"}, {"wait": 2},
+        {"cmd": "set effects 1", "expect": "^effects true"},
+        {"cmd": "set scan 0.14", "expect": "^scan 0.14"},
+        {"cmd": "set glow 1", "expect": "^glow 1.00"},
+        {"cmd": "set tracking 0", "expect": "^tracking false"},
+        {"cmd": "set glitch 0", "expect": "^glitch false"},
+        {"cmd": "open"}, {"wait": 4}, {"shot": "before"}, {"cmd": "close"}, {"wait": 2},
+        {"cmd": "set scan 0.3", "expect": "^scan 0.30"},
+        {"cmd": "set glow 1.5", "expect": "^glow 1.50"},
+        {"cmd": "set tracking 1", "expect": "^tracking true"},
+        {"cmd": "set glitch 1", "expect": "^glitch true"},
+        {"cmd": "open"}, {"wait": 2},
+        {"shot": "vhs_t2"}, {"wait": 1}, {"shot": "vhs_t3"}, {"wait": 0.5}, {"shot": "vhs_t3_5"}, {"wait": 0.5}, {"shot": "vhs_t4"},
+        {"wait": 0.8}, {"shot": "vhs_t4_8"}, {"wait": 0.3}, {"shot": "vhs_t5_1"}, {"wait": 0.2}, {"shot": "vhs_t5_3"},
+        {"wait": 3}, {"shot": "vhs_t8"},
+        {"cmd": "fx_probe glitch 1", "expect": "^glitch effects="}, {"wait": 0.5}, {"shot": "probe_glitch_full"},
+        {"cmd": "close"}, {"wait": 2},
+        {"cmd": "open"}, {"wait": 4},
+        {"cmd": "fx_probe blur 4", "expect": "^blur effects="}, {"wait": 1}, {"shot": "probe_blur_tiles"},
+        {"cmd": "close"}, {"wait": 2},
+        {"cmd": "set glow 3", "expect": "^glow 3.00"},
+        {"cmd": "set scan 0.6", "expect": "^scan 0.60"},
+        {"cmd": "open"}, {"wait": 4}, {"shot": "max"}, {"cmd": "close"}, {"wait": 2},
+        {"cmd": "set scan 0.3"}, {"cmd": "set glow 1.5"}
+      ]
+    }
+  ]
+}

@@ -25,6 +25,7 @@ public abstract class NMHoloTests {
         NMHoloTests.ThemeCases(t);
         NMHoloTests.EffectsCases(t);
         NMHoloTests.RendererCases(t);
+        NMHoloTests.VhsCases(t);
     }
 
     private static func GlowCases(t: ref<NMSelfTest>) {
@@ -127,7 +128,7 @@ public abstract class NMHoloTests {
         on.AddBar(canvas);
         on.AddEdges(canvas, 1880.0, 1480.0);
         t.Check("holo.effects_on_builds_overlays", IsDefined(on.grid) && IsDefined(on.scan) && IsDefined(on.noise) && IsDefined(on.bar) && IsDefined(on.vignette) && ArraySize(on.edges) == 4, "");
-        t.Check("holo.overlay_opacities", t.Near(on.grid.GetOpacity(), 0.08, 0.0001) && t.Near(on.scan.GetOpacity(), 0.14, 0.0001) && t.Near(on.vignette.GetOpacity(), 0.55, 0.0001)
+        t.Check("holo.overlay_opacities", t.Near(on.grid.GetOpacity(), 0.08, 0.0001) && t.Near(on.scan.GetOpacity(), 0.3, 0.0001) && t.Near(on.vignette.GetOpacity(), 0.55, 0.0001)
             && t.Near(on.noise.GetOpacity(), 0.008, 0.0001) && t.Near(on.bar.GetOpacity(), 0.0, 0.0001), "");
         t.Check("holo.scan_period_is_native", t.Near(on.ScanPeriod(), 4.0, 0.0001) && t.Near(on.scan.GetHeight(), 1480.0 + 4.0, 0.01), t.F(on.ScanPeriod()));
         // A whole panel with effects off: the Part 1 look, no overlay widgets, no animations, the see-through default opacity.
@@ -244,5 +245,53 @@ public abstract class NMHoloTests {
         r.ApplySelection(0, 0, NMTheme.VanillaGrowMs());
         t.Check("plate.steady_on_grow", t.Near(mid, NMTheme.PlateOpacity(), 0.001) && t.Near(bg.GetOpacity(), NMTheme.PlateOpacity(), 0.001)
             && t.Near(r.chipIcon[s].GetOpacity(), 1.0, 0.001), t.F(mid) + " " + t.F(bg.GetOpacity()));
+    }
+    // VHS knobs: defaults match Mod Settings, values clamp to the slider ranges, and each knob reaches its widget.
+    private static func VhsCases(t: ref<NMSelfTest>) {
+        let d = NMHoloFx.Default();
+        let fs = NMHoloFx.From(new NightMapSettings());
+        t.Check("holo.fx_defaults", t.Near(d.scan, 0.3, 0.0001) && t.Near(d.glow, 1.5, 0.0001) && d.tracking && d.glitch
+            && t.Near(fs.scan, d.scan, 0.0001) && t.Near(fs.glow, d.glow, 0.0001) && Equals(fs.tracking, d.tracking) && Equals(fs.glitch, d.glitch),
+            t.F(fs.scan) + "/" + t.F(fs.glow));
+        let big = NMHoloFx.Make(9.0, -1.0, false, false);
+        t.Check("holo.fx_clamps", t.Near(big.scan, 0.6, 0.0001) && t.Near(big.glow, 0.0, 0.0001), t.F(big.scan) + "/" + t.F(big.glow));
+        t.Check("holo.fx_glow_opacity", t.Near(d.GlowOpacity(), 0.75, 0.0001) && t.Near(NMHoloFx.Make(0.3, 3.0, true, true).GlowOpacity(), 1.0, 0.0001)
+            && t.Near(big.GlowOpacity(), 0.0, 0.0001), t.F(d.GlowOpacity()));
+
+        let canvas = new inkCanvas();
+        let strong = NMHolo.Create(true, 0, 1880.0, 1480.0, 1.0, NMHoloFx.Make(0.5, 1.0, true, true));
+        strong.AddScan(canvas);
+        strong.AddTrack(canvas);
+        let content = new inkCanvas();
+        strong.AddGlitch(content);
+        t.Check("holo.fx_scan_strength", IsDefined(strong.scan) && t.Near(strong.scan.GetOpacity(), 0.5, 0.0001), "");
+        t.Check("holo.fx_track_band", IsDefined(strong.track) && t.Near(strong.track.GetOpacity(), 0.0, 0.0001)
+            && t.Near(strong.track.GetHeight(), strong.TrackHeight(), 0.01) && t.Near(strong.track.GetTranslation().Y, 0.0 - strong.TrackHeight(), 0.01), "");
+        t.Check("holo.fx_glitch_attached", NMFx.EffectCount(content) == 1, ToString(NMFx.EffectCount(content)));
+
+        let none = NMHolo.Create(true, 0, 1880.0, 1480.0, 1.0, NMHoloFx.Make(0.0, 0.0, false, false));
+        none.AddScan(canvas);
+        none.AddTrack(canvas);
+        let content2 = new inkCanvas();
+        none.AddGlitch(content2);
+        t.Check("holo.fx_all_off", !IsDefined(none.scan) && !IsDefined(none.track) && NMFx.EffectCount(content2) == 0, "");
+        let fxOff = NMHolo.Create(false, 0, 1880.0, 1480.0, 1.0, NMHoloFx.Default());
+        fxOff.AddTrack(canvas);
+        let content3 = new inkCanvas();
+        fxOff.AddGlitch(content3);
+        t.Check("holo.fx_need_effects", !IsDefined(fxOff.track) && NMFx.EffectCount(content3) == 0, "");
+
+        // The glow gain reaches the glow tile layer; 0 hides it.
+        let st = NMLayerStack.Create(canvas, 0, true);
+        st.SetGlow(NMHoloFx.Make(0.3, 2.0, true, true));
+        let g = st.Layer("glow");
+        let road = st.Layer("road_major");
+        t.Check("holo.fx_glow_gain", IsDefined(g) && t.Near(g.Opacity(), 1.0, 0.0001) && IsDefined(road) && t.Near(road.Opacity(), NMTheme.TileOpacity("road_major"), 0.0001),
+            IsDefined(g) ? t.F(g.Opacity()) : "no glow layer");
+        t.Check("holo.fx_bloom_once", IsDefined(g) && NMFx.EffectCount(g.Root()) == 2, IsDefined(g) ? ToString(NMFx.EffectCount(g.Root())) : "no glow layer");
+        st.SetGlow(NMHoloFx.Make(0.3, 2.0, true, true));
+        t.Check("holo.fx_bloom_not_doubled", IsDefined(g) && NMFx.EffectCount(g.Root()) == 2, "");
+        st.SetGlow(NMHoloFx.Make(0.3, 0.0, true, true));
+        t.Check("holo.fx_glow_zero", IsDefined(g) && t.Near(g.Opacity(), 0.0, 0.0001), IsDefined(g) ? t.F(g.Opacity()) : "no glow layer");
     }
 }

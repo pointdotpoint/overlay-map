@@ -83,6 +83,7 @@ public class NightMapSystem extends ScriptableSystem {
     private let layers: ref<NMLayerStack>;
     private let holoTheme: Int32;      // NMTheme.ThemeIndex(NightMapSettings.holoColor), read once per open
     private let holoEffects: Bool;     // NightMapSettings.hologramEffects, read once per open
+    private let holoFx: ref<NMHoloFx>; // the VHS knobs (scanlines, glow, tracking band, glitch), read once per open
     private let renderer: ref<NMItemRenderer>;
     private let crosshair: ref<NMCrosshair>;
     private let tooltip: ref<NMTooltip>;
@@ -555,7 +556,8 @@ public class NightMapSystem extends ScriptableSystem {
         let cornerZoom = this.cornerHost.Expanding();
         this.holoTheme = IsDefined(s) ? NMTheme.ThemeIndex(s.holoColor) : 0;
         this.holoEffects = IsDefined(s) ? s.hologramEffects : true;
-        this.panel = NMPanel.Build(window, layout, IsDefined(s) ? s.panelOpacity : NMTheme.DefaultPanelOpacity(), this.holoTheme, this.holoEffects);
+        this.holoFx = NMHoloFx.From(s);
+        this.panel = NMPanel.Build(window, layout, IsDefined(s) ? s.panelOpacity : NMTheme.DefaultPanelOpacity(), this.holoTheme, this.holoEffects, this.holoFx);
         if !IsDefined(s) || s.hideHud {
             this.hud = NMHudHider.Hide(window, this.panel.root);
         }
@@ -970,6 +972,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.layerEpoch = this.api.layerEpoch;
         let l = this.panel.layout;
         this.layers = NMLayerStack.Create(this.panel.tiles, this.holoTheme, this.holoEffects);
+        this.layers.SetGlow(this.holoFx);
         let ms = this.Settings();
         let markerSize = IsDefined(ms) ? ms.markerSize : 0.5;
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, NMTheme.MapMarkerScale(l.scale, markerSize));

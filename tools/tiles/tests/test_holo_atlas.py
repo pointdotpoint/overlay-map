@@ -166,3 +166,16 @@ def test_corner_arrow():
     l, t, r, b = parts["holo_arrow"]
     a = np.asarray(img)[t:b, l:r, 3].astype(int)
     assert a[4, 16] > 128 and a[4, 2] == 0 and a[28, 4] > 128 and a[28, 28] > 128 and a[16, 16] == 255
+
+
+def test_track_band_is_a_noisy_band_that_fades_out_at_top_and_bottom():
+    """VHS tracking band: clear top and bottom rows, a bright middle, and streaky (not uniform) rows."""
+    img, parts = build_holo_atlas()
+    assert SIZES["holo_track"] == (512, 80)
+    a = part(img, parts, "holo_track")[..., 3].astype(float)
+    rows = a.mean(axis=1)
+    assert rows[0] < 4 and rows[-1] < 4
+    assert rows[30:50].mean() > 4 * rows[:6].mean() + 20
+    mid = a[35:45]
+    assert mid.std(axis=1).mean() > 20          # streaks along each row, not a flat gradient
+    assert a.max() == 255

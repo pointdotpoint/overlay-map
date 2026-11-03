@@ -6,6 +6,8 @@ public class NMMapLayer {
     public func Name() -> String { return ""; }
     public func SetVisible(visible: Bool) {}
     public func SetTint(color: HDRColor, opacity: Float) {}
+    public func Opacity() -> Float { return 0.0; }
+    public func Root() -> ref<inkCanvas> { return null; }   // the layer's own container, for effects
     public func Update(cam: ref<NMCamera>, dtMs: Float) {}
 }
 
@@ -22,6 +24,9 @@ public class NMMapLayer {
 public class NMLayerStack {
     private let layers: array<ref<NMMapLayer>>;
     public let available: Bool;
+    private let theme: Int32;
+    private let bloomed: Bool;
+    private let fx: ref<NMHoloFx>;   // unset: the glow layer keeps NMTheme.TileOpacity("glow")
 
     // Does a set get a layer? The glow set only exists while the hologram effects are on.
     public static func WantsSet(name: String, effects: Bool) -> Bool {
@@ -55,8 +60,29 @@ public class NMLayerStack {
 
     // Re-reads every layer's tint and opacity from NMTheme. Call after the theme changes.
     public func ApplyTheme(theme: Int32) {
+        this.theme = theme;
         for l in this.layers {
-            l.SetTint(NMTheme.TileTint(l.Name(), theme), NMTheme.TileOpacity(l.Name()));
+            let op = NMTheme.TileOpacity(l.Name());
+            if Equals(l.Name(), "glow") && IsDefined(this.fx) {
+                op = this.fx.GlowOpacity();
+            }
+            l.SetTint(NMTheme.TileTint(l.Name(), theme), op);
+        }
+    }
+
+    // The glow knobs: the glow layer's opacity follows the gain (Glow strength); 0 hides it.
+    // The glow layer is also blurred (an engine box blur on its container), so bright roads bloom instead of
+    // showing the coarse tiles' edges.
+    public func SetGlow(fx: ref<NMHoloFx>) {
+        this.fx = fx;
+        this.ApplyTheme(this.theme);
+        let g = this.Layer("glow");
+        if !this.bloomed && IsDefined(fx) && fx.glow > 0.001 && IsDefined(g) && IsDefined(g.Root()) {
+            let root = g.Root();
+            NMFx.AddBlur2D(root, NMTheme.BloomIntensity(), NMTheme.BloomSamples());
+            root.SetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Horizontal), true);
+            root.SetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Vertical), true);
+            this.bloomed = true;
         }
     }
 

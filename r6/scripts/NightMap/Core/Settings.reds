@@ -239,6 +239,40 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Scanline strength")
+    @runtimeProperty("ModSettings.description", "How dark the moving scanlines over the map are. 0 hides them. Needs Hologram effects (applies on next open).")
+    @runtimeProperty("ModSettings.step", "0.02")
+    @runtimeProperty("ModSettings.min", "0")
+    @runtimeProperty("ModSettings.max", "0.6")
+    public let scanlineStrength: Float = 0.3;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Glow strength")
+    @runtimeProperty("ModSettings.description", "How strongly roads and buildings glow. 0 turns the glow off. Needs Hologram effects (applies on next open).")
+    @runtimeProperty("ModSettings.step", "0.1")
+    @runtimeProperty("ModSettings.min", "0")
+    @runtimeProperty("ModSettings.max", "3")
+    public let glowStrength: Float = 1.5;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "VHS tracking band")
+    @runtimeProperty("ModSettings.description", "A noisy band that rolls down the map now and then, like a worn tape. Needs Hologram effects (applies on next open).")
+    public let vhsTracking: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "VHS glitch")
+    @runtimeProperty("ModSettings.description", "A short picture glitch every few seconds. Needs Hologram effects (applies on next open).")
+    public let vhsGlitch: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Follow HUD Painter colours")
     @runtimeProperty("ModSettings.description", "Take every NightMap colour from the game's HUD palette, so HUD Painter presets recolour the map. Off keeps NightMap's own colours.")
     public let followHudPainter: Bool = false;

@@ -8,7 +8,8 @@ module NightMap
 // and Stop() ends the loops first. With effects off no widget exists and no animation is started.
 //
 // Stack inside the clipped map content, bottom to top (the panel inserts them between its own canvases):
-//   grid (under the tile layers) | tiles: glow, bfill, outline, road_minor, road_major | vignette | noise | routes | items | scanlines | scan bar | overlay
+//   grid (under the tile layers) | tiles: glow, bfill, outline, road_minor, road_major | vignette | noise | routes | items | scanlines | scan bar | tracking band | overlay
+// The VHS glitch is an engine effect (NMFx) on the map content itself, pulsed by an inkAnimEffect loop.
 // The edge glow sits on the panel root, under the corner brackets.
 public class NMHolo {
     public let effects: Bool;
@@ -17,6 +18,9 @@ public class NMHolo {
     public let scan: ref<inkImage>;
     public let noise: ref<inkImage>;
     public let bar: ref<inkImage>;
+    public let track: ref<inkImage>;
+    public let glitch: Bool;           // the glitch effect is on the map content
+    public let fx: ref<NMHoloFx>;
     public let vignette: ref<inkImage>;
     public let edges: array<ref<inkImage>>;
     private let proxies: array<ref<inkAnimProxy>>;
@@ -24,8 +28,9 @@ public class NMHolo {
     private let mapH: Float;
     private let scale: Float;
 
-    public static func Create(effects: Bool, theme: Int32, mapW: Float, mapH: Float, scale: Float) -> ref<NMHolo> {
+    public static func Create(effects: Bool, theme: Int32, mapW: Float, mapH: Float, scale: Float, opt fx: ref<NMHoloFx>) -> ref<NMHolo> {
         let h = new NMHolo();
+        h.fx = IsDefined(fx) ? fx : NMHoloFx.Default();
         h.effects = effects;
         h.theme = theme;
         h.mapW = mapW;
@@ -37,6 +42,7 @@ public class NMHolo {
     // One period of the scanline texture (a tiled part repeats at its native size, so no scale term); the scanline loop translates by exactly this much.
     public func ScanPeriod() -> Float { return NMTheme.ScanPeriod(); }
     public func BarHeight() -> Float { return this.mapH * NMTheme.HoloBarHeight(); }
+    public func TrackHeight() -> Float { return this.mapH * NMTheme.HoloTrackHeight(); }
     public func ProxyCount() -> Int32 { return ArraySize(this.proxies); }
 
     public func AddGrid(parent: wref<inkCompoundWidget>) {
@@ -65,11 +71,11 @@ public class NMHolo {
     // Scanlines (black) over the markers, under the overlay. The image is one period taller than the map and starts one
     // period up, so the looped translation by one period is seamless.
     public func AddScan(parent: wref<inkCompoundWidget>) {
-        if !this.effects {
+        if !this.effects || this.fx.scan <= 0.001 {
             return;
         }
         let p = this.ScanPeriod();
-        this.scan = NMUi.HoloImage(parent, n"holo_scan", 0.0, 0.0 - p, this.mapW, this.mapH + p, NMTheme.HoloScanColor(), NMTheme.HoloScanOpacity(), inkBrushTileType.Both);
+        this.scan = NMUi.HoloImage(parent, n"holo_scan", 0.0, 0.0 - p, this.mapW, this.mapH + p, NMTheme.HoloScanColor(), this.fx.scan, inkBrushTileType.Both);
     }
 
     // Starts invisible above the map; its loop fades it in while it sweeps down.
@@ -78,6 +84,24 @@ public class NMHolo {
             return;
         }
         this.bar = NMUi.HoloImage(parent, n"holo_bar", 0.0, 0.0 - this.BarHeight(), this.mapW, this.BarHeight(), NMTheme.HoloAccent(this.theme), 0.0, inkBrushTileType.NoTile);
+    }
+
+    // VHS tracking band: a noisy light band, invisible above the map until its loop rolls it down.
+    public func AddTrack(parent: wref<inkCompoundWidget>) {
+        if !this.effects || !this.fx.tracking {
+            return;
+        }
+        this.track = NMUi.HoloImage(parent, n"holo_track", 0.0, 0.0 - this.TrackHeight(), this.mapW, this.TrackHeight(), NMTheme.HoloHighlight(this.theme), 0.0, inkBrushTileType.NoTile);
+    }
+
+    // VHS glitch on the map content (routes and markers included). Starts at intensity 0; Play pulses it.
+    public func AddGlitch(content: ref<inkWidget>) {
+        if !this.effects || !this.fx.glitch || !IsDefined(content) {
+            return;
+        }
+        NMFx.AddGlitch(content, NMTheme.GlitchSize(), NMTheme.GlitchSize());
+        content.SetEffectEnabled(inkEffectType.Glitch, NMFx.GlitchName(), true);
+        this.glitch = true;
     }
 
     // Soft glowing line along the inside of the frame: four stretched strips, bright on the frame side.
@@ -144,6 +168,28 @@ public class NMHolo {
             dBar.AddInterpolator(NMHolo.Fade(a, 0.0, 2.2, 0.3));
             dBar.AddInterpolator(NMHolo.Fade(0.0, 0.0, 5.9, 0.1));
             this.Loop(this.bar, dBar);
+        }
+        // Tracking band: rolls top to bottom over 1.6 s with a fade at both ends, then hidden for the rest of an 11 s cycle.
+        if IsDefined(this.track) {
+            let ta = NMTheme.HoloTrackOpacity();
+            let dTrack = new inkAnimDef();
+            dTrack.AddInterpolator(NMHolo.Move(0.0, 0.0 - this.TrackHeight(), 0.0, this.mapH, 3.0, 1.6));
+            dTrack.AddInterpolator(NMHolo.Fade(0.0, ta, 3.0, 0.2));
+            dTrack.AddInterpolator(NMHolo.Fade(ta, 0.0, 4.4, 0.2));
+            dTrack.AddInterpolator(NMHolo.Fade(0.0, 0.0, 10.9, 0.1));
+            this.Loop(this.track, dTrack);
+        }
+        // Glitch: two short bursts, then quiet for the rest of a 6.5 s cycle.
+        if this.glitch && IsDefined(content) {
+            let gi = NMTheme.GlitchIntensity();
+            let gn = NMFx.GlitchName();
+            let dGl = new inkAnimDef();
+            dGl.AddInterpolator(NMFx.Param(inkEffectType.Glitch, gn, n"intensity", 0.0, gi, 5.0, 0.04));
+            dGl.AddInterpolator(NMFx.Param(inkEffectType.Glitch, gn, n"intensity", gi, 0.0, 5.04, 0.08));
+            dGl.AddInterpolator(NMFx.Param(inkEffectType.Glitch, gn, n"intensity", 0.0, gi * 0.6, 5.3, 0.03));
+            dGl.AddInterpolator(NMFx.Param(inkEffectType.Glitch, gn, n"intensity", gi * 0.6, 0.0, 5.33, 0.06));
+            dGl.AddInterpolator(NMFx.Param(inkEffectType.Glitch, gn, n"intensity", 0.0, 0.0, 6.4, 0.1));
+            this.Loop(content, dGl);
         }
         // Noise flicker: hard steps between 0.68x and 1.18x the noise opacity, five per second.
         if IsDefined(this.noise) {

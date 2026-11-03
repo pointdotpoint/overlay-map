@@ -61,13 +61,13 @@ public class NMPanel {
     public let questDiamond: ref<inkRectangle>;
 
     // theme / effects: NMTheme.ThemeIndex(NightMapSettings.holoColor) / hologramEffects, passed in so the layout stays testable.
-    public static func Build(window: wref<inkCompoundWidget>, layout: ref<NMPanelLayout>, opacity: Float, theme: Int32, effects: Bool) -> ref<NMPanel> {
+    public static func Build(window: wref<inkCompoundWidget>, layout: ref<NMPanelLayout>, opacity: Float, theme: Int32, effects: Bool, opt fx: ref<NMHoloFx>) -> ref<NMPanel> {
         let p = new NMPanel();
         p.layout = layout;
         let s = layout.scale;
         p.root = NMUi.Canvas(window, layout.x, layout.y, layout.w, layout.h);
         p.root.SetName(n"NightMapPanel");
-        p.holo = NMHolo.Create(effects, theme, layout.mapW, layout.mapH, s);
+        p.holo = NMHolo.Create(effects, theme, layout.mapW, layout.mapH, s, fx);
         // One background layer per region (the panel fill only under the hint bar): stacking the panel fill under the map
         // fill would compound the opacity (0.45 over 0.45 reads as 0.70) and a low setting would not show the world through.
         NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.PanelBg(), opacity);
@@ -103,6 +103,7 @@ public class NMPanel {
         p.headerScrim.SetName(n"HeaderScrim");
         p.holo.AddScan(p.mapContent);                                                      // over the markers, under the overlay
         p.holo.AddBar(p.mapContent);                                                       // over the markers, under the player arrow
+        p.holo.AddTrack(p.mapContent);                                                     // VHS tracking band, same depth as the bar
         p.overlay = NMUi.Canvas(p.mapContent, 0.0, 0.0, layout.mapW, layout.mapH);
 
         NMPanel.BuildSidebar(p, opacity, theme);
@@ -153,6 +154,7 @@ public class NMPanel {
         NMUi.Image(p.root, n"bracket_tr", layout.w - b, 0.0, b, bc, false);
         NMUi.Image(p.root, n"bracket_bl", 0.0, layout.h - b, b, bc, false);
         NMUi.Image(p.root, n"bracket_br", layout.w - b, layout.h - b, b, bc, false);
+        p.holo.AddGlitch(p.mapContent);
         p.holo.Play(p.mapContent);
         return p;
     }

@@ -171,6 +171,9 @@ public class NMTileLayer extends NMMapLayer {
     }
 
     // Applied to every resident tile on the next Update, and to every tile assigned later.
+    public func Opacity() -> Float { return this.opacity; }
+    public func Root() -> ref<inkCanvas> { return this.box; }
+
     public func SetTint(color: HDRColor, opacity: Float) {
         this.tint = color;
         this.opacity = opacity;

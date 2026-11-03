@@ -938,6 +938,11 @@
             return "theme " + ToString(NMTheme.ThemeIndex(s.holoColor));
         }
         if Equals(name, "opacity") { s.panelOpacity = StringToFloat(value); return "opacity " + FloatToStringPrec(s.panelOpacity, 2); }
+        // VHS look: scan <float>, glow <float>, tracking 0|1, glitch 0|1.
+        if Equals(name, "scan") { s.scanlineStrength = StringToFloat(value); return "scan " + FloatToStringPrec(s.scanlineStrength, 2); }
+        if Equals(name, "glow") { s.glowStrength = StringToFloat(value); return "glow " + FloatToStringPrec(s.glowStrength, 2); }
+        if Equals(name, "tracking") { s.vhsTracking = Equals(value, "1"); return "tracking " + ToString(s.vhsTracking); }
+        if Equals(name, "glitch") { s.vhsGlitch = Equals(value, "1"); return "glitch " + ToString(s.vhsGlitch); }
         // Corner minimap: replace 0|1, style circle|square|strip, hudpainter 0|1, debug 0|1, enemies 0|1. The corner poll
         // picks a change up within a second.
         if Equals(name, "replace") { s.replaceMinimap = Equals(value, "1"); return "replace " + ToString(s.replaceMinimap); }
@@ -1138,3 +1143,24 @@
         NMUi.Rect(inner, -100.0, -100.0, 600.0, 600.0, new HDRColor(1.0, 0.0, 1.0, 1.0), 1.0);
         return "mask probe placed 400x400 at 200,200 (magenta clipped to the box)";
     }
+
+    // Spike for script-attached engine effects (NMFx): blur the tile canvas or glitch the whole map content at a fixed
+    // intensity, so a screenshot shows whether the renderer applies an effect pushed onto inkWidget.effects at runtime.
+    public func Soak_FxProbe(mode: String, v: Float) -> String {
+        if !IsDefined(this.panel) { return "map not open"; }
+        if Equals(mode, "blur") {
+            NMFx.AddBlur2D(this.panel.tiles, v, 16);
+            this.panel.tiles.SetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Horizontal), true);
+            this.panel.tiles.SetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Vertical), true);
+            return "blur effects=" + NMFx.EffectCount(this.panel.tiles) + " on=" + ToString(this.panel.tiles.GetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Horizontal)));
+        }
+        if Equals(mode, "glitch") {
+            NMFx.AddGlitch(this.panel.mapContent, 1.0, 1.0);
+            this.panel.mapContent.SetEffectEnabled(inkEffectType.Glitch, NMFx.GlitchName(), true);
+            let r = this.panel.mapContent.SetEffectParamValue(inkEffectType.Glitch, NMFx.GlitchName(), n"intensity", v);
+            return "glitch effects=" + NMFx.EffectCount(this.panel.mapContent) + " set=" + FloatToStringPrec(r, 2)
+                + " read=" + FloatToStringPrec(this.panel.mapContent.GetEffectParamValue(inkEffectType.Glitch, NMFx.GlitchName(), n"intensity"), 2);
+        }
+        return "usage: fx_probe blur|glitch <value>";
+    }
+
