@@ -7,9 +7,12 @@ Hologram-style 2D world map overlay for Cyberpunk 2077 (redscript + Codeware). O
 - Map layer (sub-project 1b): docs/superpowers/specs/2026-10-12-nightmap-vector-layer-design.md §11
 
 ## Requirements
-- Cyberpunk 2077 2.31 (tiles are built for it; a different major.minor shows a warning in the panel)
+- Cyberpunk 2077 2.31 or later (tiles are built for 2.31; a different major.minor shows a warning in the panel). The
+  waypoint plugin is tested on 2.5.
 - redscript and Codeware (required)
-- RED4ext (required by Codeware)
+- RED4ext (required by Codeware). NightMap also ships an optional RED4ext plugin, `NightMapNative`, for setting
+  waypoints (see Using it). Without it everything else works; the plugin finds the game's own tracking function at
+  runtime, checks its bytes, and switches the feature off on a game build where it can't find it.
 - Mod Settings (optional): settings menu and key rebinding; without it the defaults apply
 - RedFileSystem (optional): stores photo-pin spots in NightMap's own `photos.txt`; without it photo pins aren't kept
 - RedIMGRetriever (optional): photo thumbnails (image items)
@@ -23,7 +26,9 @@ To build tiles: WolvenKit CLI (the build runs the executable named by `NIGHTMAP_
     # WolvenKit.CLI 8.19 cannot read the LOD-3 EP1 sectors of game 2.31+ (0-byte JSON). Use WolvenKit 10:
     NIGHTMAP_WOLVENKIT=~/.local/share/nightmap-tools/wk10 python3 -m nmtiles.build --game ~/cyberpunk_symlink
     tools/check.sh                                                          # offline redscript compile
-    tools/install.sh                                                        # check + copy into the game
+    tools/native/build.sh                                                   # optional plugin -> dist-native/ (mingw-w64)
+    tools/native/test.sh                                                    # host tests for the plugin's byte matchers
+    tools/install.sh                                                        # check + copy into the game (plugin too)
 
 Install only while the game is closed. If the archive is replaced while the game runs, every resource load fails until
 a restart.
@@ -58,7 +63,14 @@ UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only
 - Arrow keys are never used (they steer vehicles). Keep NumLock on.
 - Controller: hold View for half a second to open the map (a tap still does what it does in the game). While it is open the map takes the controller, so V stops: left stick pans, LT/RT zoom, A acts, X teleports, Y cycles the filter, R3 follows V, B (or View) closes. In a car the car coasts meanwhile. A map opened with the keyboard ignores the controller, so you can drive with a pad and use the numpad map. Mod Settings → NightMap → Controller → Open map button (Hold View / Off).
 - Zoom crossfades between six baked levels, from 0.5 m/px (single buildings) to 16 m/px (the whole city).
-- The game's own map markers (quests, gigs, NCPD, vendors, fast travel, …) appear with their vanilla icons, each on a dark plate ringed in its own colour. Move the map so a marker is nearest the centre to see its details card in the sidebar; `Numpad 0` tracks its quest, or clears your vanilla waypoint. Setting new waypoints comes with the optional native plugin (later).
+- The game's own map markers (quests, gigs, NCPD, vendors, fast travel, …) appear with their vanilla icons, each on a dark plate ringed in its own colour. Move the map so a marker is nearest the centre to see its details card in the sidebar; `Numpad 0` tracks its quest, or clears your vanilla waypoint.
+- `Enter` (controller: RB) sets waypoints, like right-clicking on the vanilla map. On an empty spot it places the
+  game's own custom waypoint there, with its GPS route. On a job or gig it makes that quest the active one. On any other
+  marker (vendor, fast travel, drop point, …) it tracks that marker. On photo or collectible pins it places the
+  waypoint at the pin. On what is already tracked it clears it. There is one custom waypoint, as in vanilla: setting
+  another moves it. The game reads Numpad Enter and the main Enter as one key, so both work; rebind it in Mod Settings.
+  Everything but tracking a quest needs the `NightMapNative` plugin; without it Enter only tracks quests, and the hint
+  shows only where Enter does something.
 - `Numpad /` cycles the markers shown: All → Jobs (quests, gigs, psycho) → Services (ripperdoc, vendors, autofixer, drop points, fast travel, your property), like the vanilla quick lists; NCPD scanner and apartments to rent show only in All. A filter keeps its categories visible as long as quests and fast travel when zooming out.
 - There is no clustering. Markers shrink and fade out by tier as the map zooms out: minor ones (gigs, vendors, NCPD, collectibles, photo pins) first, quests and fast travel last, the tracked quest and V never. Markers never overlap: where two would, the more important one is drawn, and the district title and scale bar stay clear. Mod Settings → NightMap → Map filters turns each vanilla category on or off.
 - The district title sits top left (with the active filter under it) and the scale bar top right. The sidebar's bottom shows the tracked quest and its current objective.
