@@ -1,21 +1,177 @@
 {
-  "_source": "In-game dump 2026-11-03 (soak command ncart_dump, game 2.5): world position of every NCART map marker (FastTravelMappin, Zzz17_NCARTVariant), matched to ENcartStations by name (lang_en onscreens) and by the line station order in ue_metro_route_diagram.inkwidget. The four stations with no fast-travel point anywhere in the game have no marker and are listed under 'unmarked'.",
-  "marked": {
-    "LITTLE_CHINA_HOSPITAL":     {"name": "MedCenter",           "record": "FastTravelPoints.wat_lch_metro_ftp_02", "pos": [-1416.75, 1757.61, 16.27]},
-    "LITTLE_CHINA_NORTH":        {"name": "Farrier & Ferguson",  "record": "FastTravelPoints.wat_lch_metro_ftp_01", "pos": [-1608.44, 1474.66, 18.21]},
-    "LITTLE_CHINA_MEGABUILDING": {"name": "Megabuilding H10",    "record": "FastTravelPoints.wat_lch_metro_ftp_03", "pos": [-1456.63, 1181.34, 45.97]},
-    "LITTLE_CHINA_SOUTH":        {"name": "Ellison Plaza",       "record": "FastTravelPoints.wat_lch_metro_ftp_04", "pos": [-1388.47, 1031.28, 27.14]},
-    "JAPAN_TOWN_NORTH":          {"name": "Monroe & Sagan",      "record": "FastTravelPoints.wbr_jpn_metro_ftp_01", "pos": [-528.15, 1131.68, 34.69]},
-    "JAPAN_TOWN_SOUTH":          {"name": "Japantown South",     "record": "FastTravelPoints.wbr_jpn_metro_ftp_02", "pos": [-568.45, 206.49, 22.27]},
-    "CHARTER_HILL":              {"name": "Charter Hill",        "record": "FastTravelPoints.wbr_hil_metro_ftp_01", "pos": [-113.25, 119.11, 12.40]},
-    "DOWNTOWN_NORTH":            {"name": "Alexander Street",    "record": "FastTravelPoints.cct_dtn_metro_ftp_02", "pos": [-2068.25, 481.65, 8.05]},
-    "CITY_CENTER":               {"name": "Sarasti & Republic",  "record": "FastTravelPoints.cct_cpz_metro_ftp_01", "pos": [-1473.43, 460.06, 5.82]},
-    "ARASAKA_TOWER":             {"name": "Memorial Park",       "record": "FastTravelPoints.cct_cpz_metro_ftp_03", "pos": [-1333.29, -86.13, -3.85]},
-    "VISTA_DEL_REY":             {"name": "Congress & MLK",      "record": "FastTravelPoints.hey_rey_metro_ftp_01", "pos": [-1026.56, -348.45, 5.73]},
-    "GLEN_SOUTH":                {"name": "Glen South",          "record": "FastTravelPoints.hey_gle_metro_ftp_02", "pos": [-1590.05, -1302.67, 47.98]},
-    "ARROYO":                    {"name": "Wollesen Street",     "record": "FastTravelPoints.std_arr_metro_ftp_01", "pos": [-1069.12, -1427.71, 30.85]},
-    "RANCHO_CORONADO":           {"name": "Megabuilding H7",     "record": "FastTravelPoints.std_rcr_metro_ftp_01", "pos": [156.45, -1181.24, 31.64]},
-    "PACIFICA_STADIUM":          {"name": "Pacifica - Stadium",  "record": "FastTravelPoints.pac_cvi_metro_ftp_01", "pos": [-1542.12, -1939.21, 62.85]}
+ "_source": "In-game dump 2026-11-03 (soak command ncart_dump, game 2.5): world position of every NCART map marker (FastTravelMappin, Zzz17_NCARTVariant), matched to ENcartStations by name (lang_en onscreens) and by the line station order in ue_metro_route_diagram.inkwidget. The four stations with no fast-travel point anywhere in the game have no marker and are listed under 'unmarked'.",
+ "marked": {
+  "LITTLE_CHINA_HOSPITAL": {
+   "name": "MedCenter",
+   "record": "FastTravelPoints.wat_lch_metro_ftp_02",
+   "pos": [
+    -1416.75,
+    1757.61,
+    16.27
+   ]
   },
-  "unmarked": ["ARASAKA_WATERFRONT", "WELLSPRINGS", "GLEN_NORTH", "GLEN_EBUNIKE"]
+  "LITTLE_CHINA_NORTH": {
+   "name": "Farrier & Ferguson",
+   "record": "FastTravelPoints.wat_lch_metro_ftp_01",
+   "pos": [
+    -1608.44,
+    1474.66,
+    18.21
+   ]
+  },
+  "LITTLE_CHINA_MEGABUILDING": {
+   "name": "Megabuilding H10",
+   "record": "FastTravelPoints.wat_lch_metro_ftp_03",
+   "pos": [
+    -1456.63,
+    1181.34,
+    45.97
+   ]
+  },
+  "LITTLE_CHINA_SOUTH": {
+   "name": "Ellison Plaza",
+   "record": "FastTravelPoints.wat_lch_metro_ftp_04",
+   "pos": [
+    -1388.47,
+    1031.28,
+    27.14
+   ]
+  },
+  "JAPAN_TOWN_NORTH": {
+   "name": "Monroe & Sagan",
+   "record": "FastTravelPoints.wbr_jpn_metro_ftp_01",
+   "pos": [
+    -528.15,
+    1131.68,
+    34.69
+   ]
+  },
+  "JAPAN_TOWN_SOUTH": {
+   "name": "Japantown South",
+   "record": "FastTravelPoints.wbr_jpn_metro_ftp_02",
+   "pos": [
+    -568.45,
+    206.49,
+    22.27
+   ]
+  },
+  "CHARTER_HILL": {
+   "name": "Charter Hill",
+   "record": "FastTravelPoints.wbr_hil_metro_ftp_01",
+   "pos": [
+    -113.25,
+    119.11,
+    12.4
+   ]
+  },
+  "DOWNTOWN_NORTH": {
+   "name": "Alexander Street",
+   "record": "FastTravelPoints.cct_dtn_metro_ftp_02",
+   "pos": [
+    -2068.25,
+    481.65,
+    8.05
+   ]
+  },
+  "CITY_CENTER": {
+   "name": "Sarasti & Republic",
+   "record": "FastTravelPoints.cct_cpz_metro_ftp_01",
+   "pos": [
+    -1473.43,
+    460.06,
+    5.82
+   ]
+  },
+  "ARASAKA_TOWER": {
+   "name": "Memorial Park",
+   "record": "FastTravelPoints.cct_cpz_metro_ftp_03",
+   "pos": [
+    -1333.29,
+    -86.13,
+    -3.85
+   ]
+  },
+  "VISTA_DEL_REY": {
+   "name": "Congress & MLK",
+   "record": "FastTravelPoints.hey_rey_metro_ftp_01",
+   "pos": [
+    -1026.56,
+    -348.45,
+    5.73
+   ]
+  },
+  "GLEN_SOUTH": {
+   "name": "Glen South",
+   "record": "FastTravelPoints.hey_gle_metro_ftp_02",
+   "pos": [
+    -1590.05,
+    -1302.67,
+    47.98
+   ]
+  },
+  "ARROYO": {
+   "name": "Wollesen Street",
+   "record": "FastTravelPoints.std_arr_metro_ftp_01",
+   "pos": [
+    -1069.12,
+    -1427.71,
+    30.85
+   ]
+  },
+  "RANCHO_CORONADO": {
+   "name": "Megabuilding H7",
+   "record": "FastTravelPoints.std_rcr_metro_ftp_01",
+   "pos": [
+    156.45,
+    -1181.24,
+    31.64
+   ]
+  },
+  "PACIFICA_STADIUM": {
+   "name": "Pacifica - Stadium",
+   "record": "FastTravelPoints.pac_cvi_metro_ftp_01",
+   "pos": [
+    -1542.12,
+    -1939.21,
+    62.85
+   ]
+  }
+ },
+ "unmarked": [
+  "ARASAKA_WATERFRONT",
+  "WELLSPRINGS",
+  "GLEN_NORTH",
+  "GLEN_EBUNIKE"
+ ],
+ "_placed_note": "Stations with no marker, placed on the track (snapped) where the NCART service diagram puts them; estimates, only used to route the lines over the right track.",
+ "placed": {
+  "ARASAKA_WATERFRONT": {
+   "name": "Eisenhower Street",
+   "pos": [
+    -1649.9,
+    1888.6
+   ]
+  },
+  "WELLSPRINGS": {
+   "name": "Wellsprings",
+   "pos": [
+    -1989.9,
+    -379.0
+   ]
+  },
+  "GLEN_NORTH": {
+   "name": "Glen North",
+   "pos": [
+    -1656.3,
+    -616.0
+   ]
+  },
+  "GLEN_EBUNIKE": {
+   "name": "Ebunike",
+   "pos": [
+    -1226.5,
+    -637.7
+   ]
+  }
+ }
 }
