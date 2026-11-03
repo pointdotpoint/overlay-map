@@ -1164,6 +1164,32 @@
         return "usage: fx_probe blur|glitch <value>";
     }
 
+    // NCART station positions for tools/tiles (nmtiles.ncart): one NCART| line per station mappin, record id first.
+    public func Soak_NcartDump() -> String {
+        let n = 0;
+        for m in GameInstance.GetMappinSystem(this.GetGameInstance()).GetAllMappins() {
+            let ft = m as FastTravelMappin;
+            let data = IsDefined(ft) ? ft.GetPointData() : null;
+            let rec = IsDefined(data) ? TDBID.ToStringDEBUG(data.GetPointRecord()) : "none";
+            if IsDefined(ft) && (Equals(m.GetVariant(), gamedataMappinVariant.Zzz17_NCARTVariant) || StrContains(rec, "metro")) {
+                let pos = ft.GetWorldPosition();
+                let name = IsDefined(data) ? data.GetPointDisplayName() : "";
+                NMLog.Info("NCART|" + rec + "|" + name + "|" + EnumValueToString("gamedataMappinVariant", Cast<Int64>(EnumInt(m.GetVariant()))) + "|" + FloatToStringPrec(pos.X, 2) + "|" + FloatToStringPrec(pos.Y, 2) + "|" + FloatToStringPrec(pos.Z, 2));
+                n += 1;
+            }
+        }
+        // Every registered fast-travel node with "metro" in its record, mapped or not (no position: markerRef only).
+        let fts = GameInstance.GetScriptableSystemsContainer(this.GetGameInstance()).Get(n"FastTravelSystem") as FastTravelSystem;
+        if IsDefined(fts) {
+            for pd in fts.GetFastTravelPoints() {
+                let r = TDBID.ToStringDEBUG(pd.GetPointRecord());
+                if StrContains(r, "metro") { NMLog.Info("NCARTNODE|" + r + "|" + pd.GetPointDisplayName()); }
+            }
+        }
+        NMLog.Info("NCART|DONE|" + ToString(n));
+        return "ncart " + ToString(n);
+    }
+
     // Live state of the engine-animated VHS widgets: where the tracking band is and how bright, and the glitch intensity.
     public func Soak_FxState() -> String {
         if !IsDefined(this.panel) || !IsDefined(this.panel.holo) { return "map not open"; }

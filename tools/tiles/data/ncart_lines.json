@@ -1,0 +1,247 @@
+{
+ "_source": "base\\open_world\\metro\\ue_metro\\ui\\ue_metro_route_diagram.inkwidget (gameController.LinesList), trimmed",
+ "LinesList": [
+  {
+   "$type": "ncartLineListDef",
+   "lineColor": {
+    "$type": "Color",
+    "Alpha": 255,
+    "Blue": 25,
+    "Green": 25,
+    "Red": 229
+   },
+   "lineIsLooped": 0,
+   "lineNumber": 1,
+   "stationsList": [
+    {
+     "$type": "ncartStationListDef",
+     "station": "ARASAKA_WATERFRONT"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "LITTLE_CHINA_HOSPITAL"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "LITTLE_CHINA_NORTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "DOWNTOWN_NORTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "CITY_CENTER"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "ARASAKA_TOWER"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "VISTA_DEL_REY"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "ARROYO"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "RANCHO_CORONADO"
+    }
+   ]
+  },
+  {
+   "$type": "ncartLineListDef",
+   "lineColor": {
+    "$type": "Color",
+    "Alpha": 255,
+    "Blue": 0,
+    "Green": 248,
+    "Red": 255
+   },
+   "lineIsLooped": 0,
+   "lineNumber": 2,
+   "stationsList": [
+    {
+     "$type": "ncartStationListDef",
+     "station": "RANCHO_CORONADO"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "CHARTER_HILL"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "JAPAN_TOWN_NORTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "LITTLE_CHINA_MEGABUILDING"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "DOWNTOWN_NORTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "GLEN_NORTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "GLEN_EBUNIKE"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "PACIFICA_STADIUM"
+    }
+   ]
+  },
+  {
+   "$type": "ncartLineListDef",
+   "lineColor": {
+    "$type": "Color",
+    "Alpha": 255,
+    "Blue": 255,
+    "Green": 228,
+    "Red": 18
+   },
+   "lineIsLooped": 0,
+   "lineNumber": 3,
+   "stationsList": [
+    {
+     "$type": "ncartStationListDef",
+     "station": "ARASAKA_TOWER"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "VISTA_DEL_REY"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "ARROYO"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "PACIFICA_STADIUM"
+    }
+   ]
+  },
+  {
+   "$type": "ncartLineListDef",
+   "lineColor": {
+    "$type": "Color",
+    "Alpha": 255,
+    "Blue": 32,
+    "Green": 233,
+    "Red": 27
+   },
+   "lineIsLooped": 1,
+   "lineNumber": 4,
+   "stationsList": [
+    {
+     "$type": "ncartStationListDef",
+     "station": "JAPAN_TOWN_NORTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "LITTLE_CHINA_SOUTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "CITY_CENTER"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "ARASAKA_TOWER"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "VISTA_DEL_REY"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "GLEN_SOUTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "WELLSPRINGS"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "GLEN_NORTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "GLEN_EBUNIKE"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "JAPAN_TOWN_SOUTH"
+    }
+   ]
+  },
+  {
+   "$type": "ncartLineListDef",
+   "lineColor": {
+    "$type": "Color",
+    "Alpha": 255,
+    "Blue": 0,
+    "Green": 131,
+    "Red": 250
+   },
+   "lineIsLooped": 0,
+   "lineNumber": 5,
+   "stationsList": [
+    {
+     "$type": "ncartStationListDef",
+     "station": "ARASAKA_WATERFRONT"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "LITTLE_CHINA_HOSPITAL"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "LITTLE_CHINA_MEGABUILDING"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "DOWNTOWN_NORTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "WELLSPRINGS"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "GLEN_SOUTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "VISTA_DEL_REY"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "JAPAN_TOWN_SOUTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "JAPAN_TOWN_NORTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "LITTLE_CHINA_SOUTH"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "CITY_CENTER"
+    },
+    {
+     "$type": "ncartStationListDef",
+     "station": "CHARTER_HILL"
+    }
+   ]
+  }
+ ]
+}

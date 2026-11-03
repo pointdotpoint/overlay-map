@@ -1,0 +1,15 @@
+{
+  "name": "ncart-dump",
+  "runs": [
+    {
+      "name": "dump",
+      "parts": ["scripts", "archive", "bootstrap", "autopilot"],
+      "repeats": 1,
+      "steps": [
+        {"wait": 8},
+        {"cmd": "ncart_dump", "expect": "^ncart [0-9]+"},
+        {"wait": 2}
+      ]
+    }
+  ]
+}
