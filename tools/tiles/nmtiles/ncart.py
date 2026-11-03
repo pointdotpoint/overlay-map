@@ -337,8 +337,43 @@ def _dijkstra(g: TrackGraph, src: int, dst: int) -> list[tuple[int, bool]]:
     return out[::-1]
 
 
+BACKTRACK_M = 200.0   # an out-and-back shorter than this (into a stub or a spur) is dropped from a through line
+CONNECT_M = SPUR_MIN_M  # a marker farther than this from its lines gets a connector
+
+
+def _edge_len(g: TrackGraph, ei: int) -> float:
+    return float(np.hypot(*np.diff(g.edges[ei].pts, axis=0).T).sum())
+
+
+def _drop_short_backtracks(g: TrackGraph, seq: list[tuple[int, bool]]) -> list[tuple[int, bool]]:
+    """Remove out-and-back runs (e1..en then en..e1 reversed) whose one-way length is under BACKTRACK_M."""
+    out: list[tuple[int, bool]] = []
+    i = 0
+    while i < len(seq):
+        out.append(seq[i])
+        # collapse while the tail of out is a mirrored pair
+        while True:
+            # the longest mirrored suffix: out[-2m:-m] == reversed(out[-m:]) with flipped directions
+            m, best = 1, 0
+            while 2 * m <= len(out):
+                left, right = out[-2 * m:-m], out[-m:]
+                if all(l[0] == r[0] and l[1] != r[1] for l, r in zip(left, reversed(right))):
+                    best = m
+                    m += 1
+                else:
+                    break
+            if best and sum(_edge_len(g, e) for e, _ in out[-best:]) < BACKTRACK_M:
+                del out[-2 * best:]
+            else:
+                break
+        i += 1
+    return out
+
+
 def route_edges(g: TrackGraph, node_of: dict[str, int], line: Line) -> list[tuple[int, bool]]:
-    """The (edge, forward) sequence the line runs over, station to station (and back to the first when looped)."""
+    """The (edge, forward) sequence the line runs over, station to station (and back to the first when looped).
+    Short out-and-back detours to a through station (a stub or a spur) are dropped: connectors() joins such a
+    station's marker to the line instead."""
     stops = [node_of[s] for s in line.stations if s in node_of]
     if line.looped:
         stops.append(stops[0])
@@ -346,6 +381,32 @@ def route_edges(g: TrackGraph, node_of: dict[str, int], line: Line) -> list[tupl
     for u, v in zip(stops, stops[1:]):
         if u != v:
             out += _dijkstra(g, u, v)
+    return _drop_short_backtracks(g, out)
+
+
+def connectors(polys: dict[int, np.ndarray], lines: list[Line], stations: dict[str, Station]) -> list[np.ndarray]:
+    """A straight connector (2 points, line -> marker) for every marked station farther than CONNECT_M from all the
+    lines that serve it, from the nearest point of those lines."""
+    out = []
+    for key, s in sorted(stations.items()):
+        if not s.marked or s.xy is None:
+            continue
+        p = np.array(s.xy, float)
+        best, at = np.inf, None
+        for l in lines:
+            if key not in l.stations or l.number not in polys or len(polys[l.number]) < 2:
+                continue
+            q = polys[l.number]
+            a, b = q[:-1], q[1:]
+            ab = b - a
+            t = np.clip(((p - a) * ab).sum(1) / np.maximum((ab ** 2).sum(1), 1e-12), 0, 1)
+            c = a + ab * t[:, None]
+            d = np.hypot(*(c - p).T)
+            k = int(np.argmin(d))
+            if d[k] < best:
+                best, at = float(d[k]), c[k]
+        if at is not None and best > CONNECT_M:
+            out.append(np.vstack([at, p]))
     return out
 
 
@@ -360,3 +421,57 @@ def edges_polyline(g: TrackGraph, seq: list[tuple[int, bool]]) -> np.ndarray:
 def line_polyline(g: TrackGraph, line: Line, stations: dict[str, Station]) -> np.ndarray:
     gs, node_of = with_stations(g, {k: v for k, v in stations.items() if k in line.stations})
     return edges_polyline(gs, route_edges(gs, node_of, line))
+
+
+# ------------------------------------------------------------------------------------------------ shared-track slots
+
+STEP_M = 1.0          # resampling step of an offset polyline
+
+
+def slots(routes: dict[int, list[tuple[int, bool]]]) -> dict[int, dict[int, float]]:
+    """Per edge, per line number: its slot across the track, measured to the left of the edge's canonical direction
+    (node a -> b). Lines on an edge are ordered by number and centred: slot = i - (n - 1) / 2."""
+    on: dict[int, set[int]] = {}
+    for n, r in routes.items():
+        for ei, _ in r:
+            on.setdefault(ei, set()).add(n)
+    return {ei: {n: i - (len(ns) - 1) / 2 for i, n in enumerate(sorted(ns))} for ei, ns in on.items()}
+
+
+def _resample(p: np.ndarray, step: float) -> np.ndarray:
+    seg = np.hypot(*np.diff(p, axis=0).T)
+    s = np.concatenate([[0.0], np.cumsum(seg)])
+    if s[-1] <= 0:
+        return p[:1]
+    n = max(1, int(np.ceil(s[-1] / step)))
+    t = np.linspace(0, s[-1], n + 1)
+    return np.stack([np.interp(t, s, p[:, 0]), np.interp(t, s, p[:, 1])], 1)
+
+
+def _left_normals(p: np.ndarray) -> np.ndarray:
+    d = np.gradient(p, axis=0) if len(p) > 1 else np.array([[1.0, 0.0]])
+    d /= np.maximum(np.hypot(*d.T), 1e-12)[:, None]
+    return np.stack([-d[:, 1], d[:, 0]], 1)
+
+
+def offset_polyline(g: TrackGraph, route: list[tuple[int, bool]], sl: dict[int, dict[int, float]],
+                    spacing_m: float, ease_m: float, number: int) -> np.ndarray:
+    """The line's polyline shifted sideways by its slot x spacing_m on every edge. The shift is a scalar in the
+    line's own left frame (an edge run backwards flips the sign, so every line on an edge uses the edge's frame) and
+    is smoothed over ease_m of arc length, so the line eases in and out where it joins or leaves others."""
+    pts, off = [], []
+    for ei, fwd in route:
+        p = _resample(g.edges[ei].pts if fwd else g.edges[ei].pts[::-1], STEP_M)
+        o = sl[ei][number] * spacing_m * (1.0 if fwd else -1.0)
+        if pts:
+            p = p[1:]
+        pts.append(p)
+        off.append(np.full(len(p), o))
+    if not pts:
+        return np.zeros((0, 2))
+    p, o = np.vstack(pts), np.concatenate(off)
+    k = max(1, int(round(ease_m / STEP_M)))
+    if k > 1 and len(o) > 1:   # centred box filter of width 2k + 1, ends held
+        c = np.cumsum(np.concatenate([[0.0], np.full(k, o[0]), o, np.full(k, o[-1])]))
+        o = (c[2 * k + 1:] - c[: len(o)]) / (2 * k + 1)
+    return p + _left_normals(p) * o[:, None]
