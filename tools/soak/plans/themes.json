@@ -1,0 +1,27 @@
+{
+  "name": "themes",
+  "runs": [
+    {
+      "name": "themes",
+      "parts": ["scripts", "archive", "bootstrap", "autopilot"],
+      "repeats": 1,
+      "steps": [
+        {"wait": 8},
+        {"cmd": "selftest", "timeout": 60, "expect": "failed=0\\|"},
+        {"cmd": "set replace 1", "expect": "^replace true"},
+        {"cmd": "set theme cyan", "expect": "^theme 0"},
+        {"cmd": "open"}, {"wait": 3}, {"cmd": "zoom 2"}, {"wait": 4}, {"shot": "cyan"}, {"cmd": "close"}, {"wait": 2}, {"shot": "cyan_corner"},
+        {"cmd": "set theme green", "expect": "^theme 1"},
+        {"cmd": "open"}, {"wait": 4}, {"shot": "green"}, {"cmd": "close"}, {"wait": 2}, {"shot": "green_corner"},
+        {"cmd": "set theme red", "expect": "^theme 2"},
+        {"cmd": "open"}, {"wait": 4}, {"shot": "red"}, {"cmd": "close"}, {"wait": 2}, {"shot": "red_corner"},
+        {"cmd": "set theme purple", "expect": "^theme 3"},
+        {"cmd": "open"}, {"wait": 4}, {"shot": "purple"}, {"cmd": "close"}, {"wait": 2}, {"shot": "purple_corner"},
+        {"cmd": "set theme amber", "expect": "^theme 4"},
+        {"cmd": "open"}, {"wait": 4}, {"shot": "amber"}, {"cmd": "close"}, {"wait": 2}, {"shot": "amber_corner"},
+        {"cmd": "set theme cyan", "expect": "^theme 0"},
+        {"cmd": "set replace 0", "expect": "^replace false"}
+      ]
+    }
+  ]
+}

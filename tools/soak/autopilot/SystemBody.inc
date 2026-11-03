@@ -924,13 +924,17 @@
     }
 
     // Look checks: a setting changed in memory (the harness restores the settings file after the campaign). The panel
-    // reads these on open, so close and open after a change. effects 0|1, theme cyan|green, opacity <float>.
+    // reads these on open, so close and open after a change. effects 0|1, theme cyan|green|red|purple|amber, opacity <float>.
     public func Soak_Set(name: String, value: String) -> String {
         let s = this.Settings();
         if !IsDefined(s) { return "no settings"; }
         if Equals(name, "effects") { s.hologramEffects = Equals(value, "1"); return "effects " + ToString(s.hologramEffects); }
         if Equals(name, "theme") {
-            s.holoColor = Equals(value, "green") ? NightMapHoloColor.Green : NightMapHoloColor.Cyan;
+            s.holoColor = NightMapHoloColor.Cyan;
+            if Equals(value, "green") { s.holoColor = NightMapHoloColor.Green; }
+            if Equals(value, "red") { s.holoColor = NightMapHoloColor.Red; }
+            if Equals(value, "purple") { s.holoColor = NightMapHoloColor.Purple; }
+            if Equals(value, "amber") { s.holoColor = NightMapHoloColor.Amber; }
             return "theme " + ToString(NMTheme.ThemeIndex(s.holoColor));
         }
         if Equals(name, "opacity") { s.panelOpacity = StringToFloat(value); return "opacity " + FloatToStringPrec(s.panelOpacity, 2); }
