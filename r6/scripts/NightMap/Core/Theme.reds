@@ -87,38 +87,57 @@ public abstract class NMTheme {
     // 1.0 if ink rotates clockwise for positive angles; verified at Checkpoint 2.
     public static func PlayerRotationSign() -> Float { return 1.0; }
 
-    // ---- hologram themes: 0 cyan (default), 1 green. Every function takes the theme index; nothing here reads
+    // ---- hologram themes: 0 cyan (default), 1 green, 2 red, 3 purple, 4 amber; the presets keep cyan's lightness and
+    // saturation at another hue. Every function takes the theme index; nothing here reads
     // settings, so the look is testable. The system passes ThemeIndex(NightMapSettings.holoColor) on open.
     // Accent: glow tiles and overlays (grid, noise, scan bar, edge glow). Highlight: frame, brackets, hint/header text.
     public static func ThemeIndex(c: NightMapHoloColor) -> Int32 {
         if Equals(c, NightMapHoloColor.Green) { return 1; }
+        if Equals(c, NightMapHoloColor.Red) { return 2; }
+        if Equals(c, NightMapHoloColor.Purple) { return 3; }
+        if Equals(c, NightMapHoloColor.Amber) { return 4; }
         return 0;
     }
     public static func HoloAccent(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Accent, NMTheme.HoloAccentOwn(theme)); }
     public static func HoloAccentOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.365, 1.0, 0.541, 1.0); }   // #5dff8a
+        if theme == 2 { return new HDRColor(1.0, 0.310, 0.402, 1.0); }
+        if theme == 3 { return new HDRColor(0.712, 0.310, 1.0, 1.0); }
+        if theme == 4 { return new HDRColor(1.0, 0.724, 0.310, 1.0); }
         return new HDRColor(0.310, 0.890, 1.0, 1.0);                     // #4fe3ff
     }
     public static func HoloHighlight(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Highlight, NMTheme.HoloHighlightOwn(theme)); }
     public static func HoloHighlightOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.553, 1.0, 0.659, 1.0); }   // #8dffa8
+        if theme == 2 { return new HDRColor(1.0, 0.478, 0.548, 1.0); }
+        if theme == 3 { return new HDRColor(0.782, 0.478, 1.0, 1.0); }
+        if theme == 4 { return new HDRColor(1.0, 0.791, 0.478, 1.0); }
         return NMTheme.Cyan();
     }
     public static func HoloBackground(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Background, NMTheme.HoloBackgroundOwn(theme)); }
     public static func HoloBackgroundOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.016, 0.063, 0.031, 1.0); } // #041008
+        if theme == 2 { return new HDRColor(0.094, 0.020, 0.030, 1.0); }
+        if theme == 3 { return new HDRColor(0.063, 0.020, 0.094, 1.0); }
+        if theme == 4 { return new HDRColor(0.094, 0.064, 0.020, 1.0); }
         return new HDRColor(0.020, 0.051, 0.094, 1.0);                   // #050d18
     }
     // District title in the top-left header (#e6f7ff), mirrored in green.
     public static func HeaderTitle(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Highlight, NMTheme.HeaderTitleOwn(theme)); }
     public static func HeaderTitleOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.902, 1.0, 0.925, 1.0); }  // #e6ffec
+        if theme == 2 { return new HDRColor(1.0, 0.902, 0.915, 1.0); }
+        if theme == 3 { return new HDRColor(0.959, 0.902, 1.0, 1.0); }
+        if theme == 4 { return new HDRColor(1.0, 0.961, 0.902, 1.0); }
         return new HDRColor(0.902, 0.969, 1.0, 1.0);                     // #e6f7ff
     }
     // Sidebar glass (spec 6): a dark fill over the panel fill, a bright left edge and a soft inner gradient.
     public static func SidebarBg(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.PanelBg, NMTheme.SidebarBgOwn(theme)); }
     public static func SidebarBgOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.012, 0.047, 0.024, 1.0); } // #030c06
+        if theme == 2 { return new HDRColor(0.071, 0.012, 0.020, 1.0); }
+        if theme == 3 { return new HDRColor(0.046, 0.012, 0.071, 1.0); }
+        if theme == 4 { return new HDRColor(0.071, 0.047, 0.012, 1.0); }
         return new HDRColor(0.012, 0.035, 0.071, 1.0);                   // #030912
     }
     // At least .80 and always above the panel fill it sits on (0.92 -> 0.98), so the world and the map never show
@@ -130,11 +149,17 @@ public abstract class NMTheme {
     public static func CardLabel(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Muted, NMTheme.CardLabelOwn(theme)); }
     public static func CardLabelOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.435, 0.753, 0.541, 1.0); } // #6fc08a
+        if theme == 2 { return new HDRColor(0.753, 0.435, 0.477, 1.0); }
+        if theme == 3 { return new HDRColor(0.620, 0.435, 0.753, 1.0); }
+        if theme == 4 { return new HDRColor(0.753, 0.626, 0.435, 1.0); }
         return new HDRColor(0.435, 0.612, 0.753, 1.0);                   // #6f9cc0
     }
     public static func CardBody(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Text, NMTheme.CardBodyOwn(theme)); }
     public static func CardBodyOwn(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.710, 0.878, 0.761, 1.0); } // #b5e0c2
+        if theme == 2 { return new HDRColor(0.878, 0.710, 0.732, 1.0); }
+        if theme == 3 { return new HDRColor(0.808, 0.710, 0.878, 1.0); }
+        if theme == 4 { return new HDRColor(0.878, 0.811, 0.710, 1.0); }
         return new HDRColor(0.710, 0.804, 0.878, 1.0);                   // #b5cde0
     }
     // Keycap box (spec 6: fill @ .14, edge @ .55 in the sRGB mockup). Ink blends in linear light, where a .14 fill of
@@ -156,6 +181,9 @@ public abstract class NMTheme {
     // Reticle brackets: light #d8f4ff (spec 5.2), mirrored in green.
     public static func ReticleColor(theme: Int32) -> HDRColor {
         if theme == 1 { return new HDRColor(0.847, 1.0, 0.894, 1.0); }  // #d8ffe4
+        if theme == 2 { return new HDRColor(1.0, 0.847, 0.867, 1.0); }
+        if theme == 3 { return new HDRColor(0.936, 0.847, 1.0, 1.0); }
+        if theme == 4 { return new HDRColor(1.0, 0.939, 0.847, 1.0); }
         return new HDRColor(0.847, 0.957, 1.0, 1.0);                     // #d8f4ff
     }
     public static func HoloScanColor() -> HDRColor { return new HDRColor(0.0, 0.0, 0.0, 1.0); }
@@ -207,6 +235,27 @@ public abstract class NMTheme {
             if Equals(set, "road_minor") { return new HDRColor(0.165, 0.847, 0.392, 1.0); }  // #2ad864
             if Equals(set, "road_major") { return new HDRColor(0.561, 1.0, 0.707, 1.0); }    // #8fffb4
             return new HDRColor(0.106, 0.471, 0.227, 1.0);                                   // #1b783a (bfill)
+        }
+        if theme == 2 {   // red, hue ~352 degrees; same lightness and saturation as cyan
+            if Equals(set, "glow") { return new HDRColor(1.0, 0.184, 0.293, 1.0); }
+            if Equals(set, "outline") { return new HDRColor(0.816, 0.227, 0.306, 1.0); }
+            if Equals(set, "road_minor") { return new HDRColor(0.847, 0.165, 0.256, 1.0); }
+            if Equals(set, "road_major") { return new HDRColor(1.0, 0.561, 0.620, 1.0); }
+            return new HDRColor(0.471, 0.106, 0.155, 1.0);   // bfill
+        }
+        if theme == 3 {   // purple, hue ~275 degrees; same lightness and saturation as cyan
+            if Equals(set, "glow") { return new HDRColor(0.660, 0.184, 1.0, 1.0); }
+            if Equals(set, "outline") { return new HDRColor(0.571, 0.227, 0.816, 1.0); }
+            if Equals(set, "road_minor") { return new HDRColor(0.563, 0.165, 0.847, 1.0); }
+            if Equals(set, "road_major") { return new HDRColor(0.817, 0.561, 1.0, 1.0); }
+            return new HDRColor(0.319, 0.106, 0.471, 1.0);   // bfill
+        }
+        if theme == 4 {   // amber, hue ~36 degrees; same lightness and saturation as cyan
+            if Equals(set, "glow") { return new HDRColor(1.0, 0.674, 0.184, 1.0); }
+            if Equals(set, "outline") { return new HDRColor(0.816, 0.580, 0.227, 1.0); }
+            if Equals(set, "road_minor") { return new HDRColor(0.847, 0.574, 0.165, 1.0); }
+            if Equals(set, "road_major") { return new HDRColor(1.0, 0.824, 0.561, 1.0); }
+            return new HDRColor(0.471, 0.325, 0.106, 1.0);   // bfill
         }
         if Equals(set, "glow") { return new HDRColor(0.184, 0.612, 1.0, 1.0); }              // #2f9cff
         if Equals(set, "outline") { return new HDRColor(0.227, 0.561, 0.816, 1.0); }         // #3a8fd0

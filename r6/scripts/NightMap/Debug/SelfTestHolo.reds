@@ -98,7 +98,10 @@ public abstract class NMHoloTests {
         t.Check("holo.marker_scale", t.Near(NMTheme.MapMarkerScale(2.0, 0.5), 1.0, 0.0001) && t.Near(NMTheme.MapMarkerScale(1.0, 1.0), 1.0, 0.0001)
             && t.Near(NMTheme.MapMarkerScale(1.0, 0.0), 0.25, 0.0001) && t.Near(NMTheme.MapMarkerScale(1.0, 9.0), 1.5, 0.0001),
             t.F(NMTheme.MapMarkerScale(2.0, 0.5)) + " " + t.F(NMTheme.MapMarkerScale(1.0, 0.0)));
-        t.Check("holo.theme_index", NMTheme.ThemeIndex(NightMapHoloColor.Cyan) == 0 && NMTheme.ThemeIndex(NightMapHoloColor.Green) == 1, "");
+        t.Check("holo.theme_index", NMTheme.ThemeIndex(NightMapHoloColor.Cyan) == 0 && NMTheme.ThemeIndex(NightMapHoloColor.Green) == 1
+            && NMTheme.ThemeIndex(NightMapHoloColor.Red) == 2 && NMTheme.ThemeIndex(NightMapHoloColor.Purple) == 3
+            && NMTheme.ThemeIndex(NightMapHoloColor.Amber) == 4, "");
+        NMHoloTests.PresetHues(t);
         let brC: HDRColor = NMTheme.BracketColor(0, true);
         let brOff: HDRColor = NMTheme.BracketColor(0, false);
         t.Check("holo.brackets_brighter_with_effects", brC.Red > brOff.Red && t.Near(brOff.Red, 0.478, 0.002), t.F(brC.Red));
@@ -171,6 +174,37 @@ public abstract class NMHoloTests {
             && rg.Green > rg.Blue && rg.Green > rg.Red, t.F(lc.Red) + "," + t.F(lc.Green) + "," + t.F(lc.Blue));
     }
 
+    // Each preset keeps its hue in every role: the strongest channel of the accent, highlight, road and building tints.
+    private static func Dominant(c: HDRColor) -> Int32 {
+        if c.Red >= c.Green && c.Red >= c.Blue { return 0; }
+        if c.Green >= c.Blue { return 1; }
+        return 2;
+    }
+    private static func PresetHues(t: ref<NMSelfTest>) {
+        let want: array<Int32> = [2, 1, 0, 2, 0];   // cyan: blue, green: green, red: red, purple: blue, amber: red
+        let ok = true;
+        let detail = "";
+        let th = 0;
+        while th < 5 {
+            let a = NMTheme.HoloAccentOwn(th);
+            let h = NMTheme.HoloHighlightOwn(th);
+            let r = NMTheme.TileTintOwn("road_major", th);
+            let f = NMTheme.TileTintOwn("bfill", th);
+            let w = want[th];
+            if NMHoloTests.Dominant(a) != w || NMHoloTests.Dominant(h) != w || NMHoloTests.Dominant(r) != w || NMHoloTests.Dominant(f) != w {
+                ok = false;
+                detail += " theme" + IntToString(th);
+            }
+            th += 1;
+        }
+        let purple = NMTheme.HoloAccentOwn(3);
+        let amber = NMTheme.HoloAccentOwn(4);
+        let red = NMTheme.HoloAccentOwn(2);
+        ok = ok && purple.Red > purple.Green && amber.Green > amber.Blue && red.Blue > red.Green;   // not blue, yellow or orange
+        t.Check("holo.preset_hues", ok, detail);
+        t.Check("holo.preset_distinct", !NMHoloTests.SameRgb(NMTheme.HoloAccentOwn(2), NMTheme.HoloAccentOwn(4))
+            && !NMHoloTests.SameRgb(NMTheme.HoloAccentOwn(3), NMTheme.HoloAccentOwn(0)), "");
+    }
     public static func SameRgb(a: HDRColor, b: HDRColor) -> Bool {
         return AbsF(a.Red - b.Red) < 0.002 && AbsF(a.Green - b.Green) < 0.002 && AbsF(a.Blue - b.Blue) < 0.002;
     }

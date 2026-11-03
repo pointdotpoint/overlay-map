@@ -2,7 +2,10 @@ module NightMap
 
 public enum NightMapHoloColor {
     Cyan = 0,
-    Green = 1
+    Green = 1,
+    Red = 2,
+    Purple = 3,
+    Amber = 4
 }
 
 public enum NightMapCornerStyle {
@@ -221,6 +224,9 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.description", "Tints the map tiles, overlays, frame and header text (applies on next open).")
     @runtimeProperty("ModSettings.displayValues.Cyan", "Cyan")
     @runtimeProperty("ModSettings.displayValues.Green", "Green")
+    @runtimeProperty("ModSettings.displayValues.Red", "Red")
+    @runtimeProperty("ModSettings.displayValues.Purple", "Purple")
+    @runtimeProperty("ModSettings.displayValues.Amber", "Amber")
     public let holoColor: NightMapHoloColor = NightMapHoloColor.Cyan;
 
     @runtimeProperty("ModSettings.mod", "NightMap")

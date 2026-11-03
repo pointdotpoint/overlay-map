@@ -91,6 +91,7 @@ Mod Settings → NightMap → Minimap → Replace vanilla minimap (off by defaul
 - It copies what the vanilla minimap shows, which keeps running hidden underneath: enemies with their vision cones, cameras and turrets with their ranges, loot, pings and events, quest and security areas, markers held at the rim when off the map, above/below arrows, the zone label (restricted, hostile, combat), autodrive and the courier timer, and the GPS routes. Enemies and police have their own on/off switches and show whatever the filter view.
 - Sizes: corner size (from the vanilla box's top-right corner), marker size, text size, frame thickness, corner opacity, and the expanded map's size.
 - It hides whenever the game hides its minimap (menus, photo mode, scanner, ...).
+- Themes: Display → Hologram colour picks a prebuilt theme: Cyan (default), Green, Red, Purple or Amber. Each tints the tiles, overlays, frame, sidebar and header text, on both the open map and the corner map.
 - Colours: Display → Follow HUD Painter colours (off by default) takes every NightMap colour from the game's HUD palette, so a [HUD Painter](https://www.nexusmods.com/cyberpunk2077/mods/14935) preset recolours the map. Off keeps NightMap's own colours. NightMap has no per-colour settings of its own; HUD Painter is optional.
 - With Debug on, the log gets a `RESULT|corner` line every 600 frames with the corner's frame and script time.
 

@@ -30,11 +30,12 @@ def test_hologram_settings_live_under_display_with_the_right_defaults():
     s = (SCRIPTS / "Core" / "Settings.reds").read_text()
     assert "public let holoColor: NightMapHoloColor = NightMapHoloColor.Cyan;" in s
     assert "public let hologramEffects: Bool = true;" in s and "greenHologram" not in s
-    assert re.search(r"enum NightMapHoloColor \{\s*Cyan = 0,\s*Green = 1\s*\}", s)
+    assert re.search(r"enum NightMapHoloColor \{\s*Cyan = 0,\s*Green = 1,\s*Red = 2,\s*Purple = 3,\s*Amber = 4\s*\}", s)
     for field, name in (("holoColor", "Hologram colour"), ("hologramEffects", "Hologram effects")):
         b = _block(s, field)
         assert '"ModSettings.category", "Display"' in b and f'"ModSettings.displayName", "{name}"' in b
     b = _block(s, "holoColor")
-    assert '"ModSettings.displayValues.Cyan", "Cyan"' in b and '"ModSettings.displayValues.Green", "Green"' in b
+    for v in ("Cyan", "Green", "Red", "Purple", "Amber"):
+        assert f'"ModSettings.displayValues.{v}", "{v}"' in b
     system = (SCRIPTS / "Core" / "NightMapSystem.reds").read_text()
     assert "NMTheme.ThemeIndex(s.holoColor)" in system
