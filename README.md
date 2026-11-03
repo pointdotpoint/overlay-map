@@ -76,6 +76,7 @@ UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only
 - The district title sits top left (with the active filter under it) and the scale bar top right. The sidebar's bottom shows the tracked quest and its current objective.
 - The map background is half see-through by default (Display → Panel opacity, 0.5); installs still on the old 0.45 default move to 0.5 once.
 - Display → Map marker size scales the open map's markers; the default is half the original size (0.5). The corner map has its own Corner marker size.
+- VHS look on the open map (Display, all need Hologram effects): Scanline strength (0 to 0.6, default 0.3), Glow strength (0 to 3, default 1.5; the glow layer is blurred by the engine so bright roads bloom), VHS tracking band (a noisy band rolls down the map every 11 s) and VHS glitch (two short engine glitch bursts every 6.5 s). Each applies on the next open. The corner map stays plain.
 - GPS routes: the route to your vanilla waypoint (white) and to the tracked quest (yellow, teal for gigs) are mirrored from the minimap as flowing dots. Mod Settings → NightMap → Display → GPS routes.
 - The game's HUD fades out while the map is open (Display → Hide HUD while open).
 - Numpad . on any spot teleports V there: onto the roof or ground below, or into the water. On a fast travel marker it fast-travels, on a photo pin it goes to the photo's spot, and V's car comes along. Long jumps show the game's loading screen for a few seconds first.

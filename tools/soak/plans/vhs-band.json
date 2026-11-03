@@ -1,0 +1,347 @@
+{
+ "name": "vhs-band",
+ "runs": [
+  {
+   "name": "band",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "set effects 1",
+     "expect": "^effects true"
+    },
+    {
+     "cmd": "set scan 0.3"
+    },
+    {
+     "cmd": "set glow 1.5"
+    },
+    {
+     "cmd": "set tracking 1",
+     "expect": "^tracking true"
+    },
+    {
+     "cmd": "set glitch 1",
+     "expect": "^glitch true"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b00"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b01"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b02"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b03"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b04"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b05"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b06"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b07"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b08"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b09"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b10"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b11"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b12"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b13"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b14"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b15"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b16"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b17"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b18"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b19"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b20"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b21"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b22"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b23"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b24"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b25"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b26"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b27"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b28"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "fx_state",
+     "expect": "^track=y"
+    },
+    {
+     "shot": "b29"
+    },
+    {
+     "wait": 0.25
+    },
+    {
+     "cmd": "close"
+    }
+   ]
+  }
+ ]
+}

@@ -265,9 +265,40 @@ public abstract class NMHoloTests {
         let content = new inkCanvas();
         strong.AddGlitch(content);
         t.Check("holo.fx_scan_strength", IsDefined(strong.scan) && t.Near(strong.scan.GetOpacity(), 0.5, 0.0001), "");
-        t.Check("holo.fx_track_band", IsDefined(strong.track) && t.Near(strong.track.GetOpacity(), 0.0, 0.0001)
-            && t.Near(strong.track.GetHeight(), strong.TrackHeight(), 0.01) && t.Near(strong.track.GetTranslation().Y, 0.0 - strong.TrackHeight(), 0.01), "");
+        let trY = 999.0;
+        let trH = 999.0;
+        let trO = 999.0;
+        if IsDefined(strong.track) {
+            let tr = strong.track.GetTranslation();
+            trY = tr.Y;
+            trH = strong.track.GetHeight();
+            trO = strong.track.GetOpacity();
+        }
+        let want = strong.TrackHeight();
+        t.Check("holo.fx_track_band", IsDefined(strong.track) && t.Near(trO, 0.0, 0.0001) && t.Near(trH, want, 0.01) && t.Near(trY, 0.0 - want, 0.01),
+            "o=" + t.F(trO) + " h=" + t.F(trH) + " y=" + t.F(trY) + " want=" + t.F(want));
         t.Check("holo.fx_glitch_attached", NMFx.EffectCount(content) == 1, ToString(NMFx.EffectCount(content)));
+        // inkGlitchEffect.sizeX/sizeY are the glitched area in pixels (vanilla authors the widget's size); a tiny
+        // value glitches nothing visible.
+        let gx = 0.0;
+        let gy = 0.0;
+        if NMFx.EffectCount(content) > 0 {
+            let ge = content.effects[0] as inkGlitchEffect;
+            if IsDefined(ge) {
+                gx = ge.sizeX;
+                gy = ge.sizeY;
+            }
+        }
+        t.Check("holo.fx_glitch_covers_map", t.Near(gx, 1880.0, 0.01) && t.Near(gy, 1480.0, 0.01), t.F(gx) + "x" + t.F(gy));
+        // Tracking band bright enough to read over the light map.
+        t.Check("holo.fx_track_visible", NMTheme.HoloTrackOpacity() >= 0.3, t.F(NMTheme.HoloTrackOpacity()));
+        // Bloom widens with the gain, and the glow tint is pushed past 1 above gain 1 so the top of the slider still adds light.
+        let lo = NMHoloFx.Make(0.3, 1.0, true, true);
+        let hi = NMHoloFx.Make(0.3, 3.0, true, true);
+        t.Check("holo.fx_bloom_scales", hi.BloomIntensity() > lo.BloomIntensity() + 1.0 && lo.BloomIntensity() >= 2.0,
+            t.F(lo.BloomIntensity()) + "/" + t.F(hi.BloomIntensity()));
+        t.Check("holo.fx_glow_boost", t.Near(lo.GlowBoost(), 1.0, 0.0001) && t.Near(hi.GlowBoost(), 3.0, 0.0001)
+            && t.Near(NMHoloFx.Make(0.3, 0.5, true, true).GlowBoost(), 1.0, 0.0001), t.F(hi.GlowBoost()));
 
         let none = NMHolo.Create(true, 0, 1880.0, 1480.0, 1.0, NMHoloFx.Make(0.0, 0.0, false, false));
         none.AddScan(canvas);

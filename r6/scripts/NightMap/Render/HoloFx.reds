@@ -30,6 +30,17 @@ public class NMHoloFx {
     public func GlowOpacity() -> Float {
         return ClampF(NMTheme.TileOpacity("glow") * this.glow, 0.0, 1.0);
     }
+
+    // Box blur intensity on the glow layer: wider halo at a higher gain.
+    public func BloomIntensity() -> Float {
+        return NMTheme.BloomIntensity() * MaxF(1.0, this.glow);
+    }
+
+    // Multiplier on the glow tint's RGB. Opacity tops out at gain 2, so above gain 1 the colour itself goes past 1
+    // (HDR) to keep adding light up to the top of the slider.
+    public func GlowBoost() -> Float {
+        return MaxF(1.0, this.glow);
+    }
 }
 
 // Engine UI effects attached from script. Vanilla only toggles effects authored in .inkwidget files; Codeware exposes
@@ -58,7 +69,8 @@ public abstract class NMFx {
         NMFx.AddBlur(w, inkEBlurDimension.Vertical, intensity, samples);
     }
 
-    // Starts at intensity 0 (invisible); a loop raises it in short bursts.
+    // Starts at intensity 0 (invisible); a loop raises it in short bursts. sizeX/sizeY: the glitched area in pixels
+    // (vanilla authors the widget's own size).
     public static func AddGlitch(w: ref<inkWidget>, sizeX: Float, sizeY: Float) -> ref<inkGlitchEffect> {
         let e = new inkGlitchEffect();
         e.effectName = NMFx.GlitchName();

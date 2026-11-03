@@ -63,10 +63,13 @@ public class NMLayerStack {
         this.theme = theme;
         for l in this.layers {
             let op = NMTheme.TileOpacity(l.Name());
+            let tint = NMTheme.TileTint(l.Name(), theme);
             if Equals(l.Name(), "glow") && IsDefined(this.fx) {
                 op = this.fx.GlowOpacity();
+                let k = this.fx.GlowBoost();
+                tint = new HDRColor(tint.Red * k, tint.Green * k, tint.Blue * k, tint.Alpha);
             }
-            l.SetTint(NMTheme.TileTint(l.Name(), theme), op);
+            l.SetTint(tint, op);
         }
     }
 
@@ -79,10 +82,14 @@ public class NMLayerStack {
         let g = this.Layer("glow");
         if !this.bloomed && IsDefined(fx) && fx.glow > 0.001 && IsDefined(g) && IsDefined(g.Root()) {
             let root = g.Root();
-            NMFx.AddBlur2D(root, NMTheme.BloomIntensity(), NMTheme.BloomSamples());
+            NMFx.AddBlur2D(root, fx.BloomIntensity(), NMTheme.BloomSamples());
             root.SetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Horizontal), true);
             root.SetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Vertical), true);
             this.bloomed = true;
+        }
+        if this.bloomed && IsDefined(fx) && IsDefined(g) && IsDefined(g.Root()) {
+            g.Root().SetEffectParamValue(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Horizontal), n"intensity", fx.BloomIntensity());
+            g.Root().SetEffectParamValue(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Vertical), n"intensity", fx.BloomIntensity());
         }
     }
 

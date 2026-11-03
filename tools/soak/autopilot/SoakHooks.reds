@@ -133,6 +133,7 @@ public abstract class NMSoak {
             let fp = StrSplit(command, " ");
             return sys.Soak_FxProbe(fp[1], ArraySize(fp) > 2 ? StringToFloat(fp[2]) : 1.0);
         }
+        if Equals(command, "fx_state") { return sys.Soak_FxState(); }
         if Equals(command, "gps") { return sys.Soak_GpsRoute(); }
         if StrBeginsWith(command, "focus_at ") {
             let fa = StrSplit(command, " ");

@@ -1155,12 +1155,31 @@
             return "blur effects=" + NMFx.EffectCount(this.panel.tiles) + " on=" + ToString(this.panel.tiles.GetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Horizontal)));
         }
         if Equals(mode, "glitch") {
-            NMFx.AddGlitch(this.panel.mapContent, 1.0, 1.0);
+            NMFx.AddGlitch(this.panel.mapContent, this.panel.mapContent.GetWidth(), this.panel.mapContent.GetHeight());
             this.panel.mapContent.SetEffectEnabled(inkEffectType.Glitch, NMFx.GlitchName(), true);
             let r = this.panel.mapContent.SetEffectParamValue(inkEffectType.Glitch, NMFx.GlitchName(), n"intensity", v);
             return "glitch effects=" + NMFx.EffectCount(this.panel.mapContent) + " set=" + FloatToStringPrec(r, 2)
                 + " read=" + FloatToStringPrec(this.panel.mapContent.GetEffectParamValue(inkEffectType.Glitch, NMFx.GlitchName(), n"intensity"), 2);
         }
         return "usage: fx_probe blur|glitch <value>";
+    }
+
+    // Live state of the engine-animated VHS widgets: where the tracking band is and how bright, and the glitch intensity.
+    public func Soak_FxState() -> String {
+        if !IsDefined(this.panel) || !IsDefined(this.panel.holo) { return "map not open"; }
+        let s = "track=";
+        let tr = this.panel.holo.track;
+        if IsDefined(tr) {
+            let p = tr.GetTranslation();
+            s += "y" + FloatToStringPrec(p.Y, 0) + "/h" + FloatToStringPrec(tr.GetHeight(), 0) + "/o" + FloatToStringPrec(tr.GetOpacity(), 2);
+        } else {
+            s += "none";
+        }
+        let br = this.panel.holo.bar;
+        if IsDefined(br) {
+            let bp = br.GetTranslation();
+            s += " bar=y" + FloatToStringPrec(bp.Y, 0) + "/o" + FloatToStringPrec(br.GetOpacity(), 3);
+        }
+        return s + " glitch=" + FloatToStringPrec(this.panel.mapContent.GetEffectParamValue(inkEffectType.Glitch, NMFx.GlitchName(), n"intensity"), 2);
     }
 

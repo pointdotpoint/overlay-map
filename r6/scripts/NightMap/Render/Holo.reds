@@ -99,7 +99,7 @@ public class NMHolo {
         if !this.effects || !this.fx.glitch || !IsDefined(content) {
             return;
         }
-        NMFx.AddGlitch(content, NMTheme.GlitchSize(), NMTheme.GlitchSize());
+        NMFx.AddGlitch(content, this.mapW, this.mapH);
         content.SetEffectEnabled(inkEffectType.Glitch, NMFx.GlitchName(), true);
         this.glitch = true;
     }
@@ -170,12 +170,14 @@ public class NMHolo {
             this.Loop(this.bar, dBar);
         }
         // Tracking band: rolls top to bottom over 1.6 s with a fade at both ends, then hidden for the rest of an 11 s cycle.
+        // Same shape as the bar (motion from t=0, quiet padding after): with every interpolator delayed the band never
+        // showed in game (opacity read 0 throughout).
         if IsDefined(this.track) {
             let ta = NMTheme.HoloTrackOpacity();
             let dTrack = new inkAnimDef();
-            dTrack.AddInterpolator(NMHolo.Move(0.0, 0.0 - this.TrackHeight(), 0.0, this.mapH, 3.0, 1.6));
-            dTrack.AddInterpolator(NMHolo.Fade(0.0, ta, 3.0, 0.2));
-            dTrack.AddInterpolator(NMHolo.Fade(ta, 0.0, 4.4, 0.2));
+            dTrack.AddInterpolator(NMHolo.Move(0.0, 0.0 - this.TrackHeight(), 0.0, this.mapH, 0.0, 1.6));
+            dTrack.AddInterpolator(NMHolo.Fade(0.0, ta, 0.0, 0.2));
+            dTrack.AddInterpolator(NMHolo.Fade(ta, 0.0, 1.4, 0.2));
             dTrack.AddInterpolator(NMHolo.Fade(0.0, 0.0, 10.9, 0.1));
             this.Loop(this.track, dTrack);
         }
