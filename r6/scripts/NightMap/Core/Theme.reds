@@ -23,8 +23,23 @@ public abstract class NMTheme {
     public static func Pink() -> HDRColor { return NMTheme.Pick(NMColorRole.Warn, new HDRColor(1.0, 0.310, 0.847, 1.0)); }
     public static func Yellow() -> HDRColor { return NMTheme.Pick(NMColorRole.Route, new HDRColor(1.0, 0.878, 0.400, 1.0)); }
     public static func Muted() -> HDRColor { return NMTheme.Pick(NMColorRole.Muted, new HDRColor(0.667, 0.863, 0.922, 1.0)); }
-    public static func PanelBg() -> HDRColor { return NMTheme.Pick(NMColorRole.PanelBg, new HDRColor(0.024, 0.078, 0.118, 1.0)); }
-    public static func CardBg() -> HDRColor { return NMTheme.Pick(NMColorRole.PanelBg, new HDRColor(0.039, 0.157, 0.216, 1.0)); }
+    // Hint bar / tooltip / photo fills. Each theme keeps cyan's saturation and brightness at its own hue.
+    public static func PanelBg(opt theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.PanelBg, NMTheme.PanelBgOwn(theme)); }
+    public static func PanelBgOwn(theme: Int32) -> HDRColor {
+        if theme == 1 { return new HDRColor(0.024, 0.118, 0.057, 1.0); }
+        if theme == 2 { return new HDRColor(0.118, 0.024, 0.037, 1.0); }
+        if theme == 3 { return new HDRColor(0.079, 0.024, 0.118, 1.0); }
+        if theme == 4 { return new HDRColor(0.118, 0.080, 0.024, 1.0); }
+        return new HDRColor(0.024, 0.078, 0.118, 1.0);
+    }
+    public static func CardBg(opt theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.PanelBg, NMTheme.CardBgOwn(theme)); }
+    public static func CardBgOwn(theme: Int32) -> HDRColor {
+        if theme == 1 { return new HDRColor(0.039, 0.216, 0.101, 1.0); }
+        if theme == 2 { return new HDRColor(0.216, 0.039, 0.063, 1.0); }
+        if theme == 3 { return new HDRColor(0.142, 0.039, 0.216, 1.0); }
+        if theme == 4 { return new HDRColor(0.216, 0.145, 0.039, 1.0); }
+        return new HDRColor(0.039, 0.157, 0.216, 1.0);
+    }
     public static func ZoomRatePerSecond() -> Float { return 4.0; }
     public static func CardOpacity() -> Float { return 0.5; }
 

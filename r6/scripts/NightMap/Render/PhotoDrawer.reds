@@ -60,7 +60,7 @@ public class NMPhotoDrawer {
         dr.photo.SetVisible(false);
         let iw = w - pad * 2.0;
         let ih = iw * 9.0 / 16.0;
-        dr.imgFill = NMUi.Rect(dr.photo, pad, pad, iw, ih, NMTheme.PanelBg(), 1.0);
+        dr.imgFill = NMUi.Rect(dr.photo, pad, pad, iw, ih, NMTheme.PanelBg(theme), 1.0);
         dr.img = new inkImage();
         dr.img.SetAnchor(inkEAnchor.TopLeft);
         dr.img.SetSize(new Vector2(iw, ih));

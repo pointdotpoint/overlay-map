@@ -203,6 +203,22 @@ public abstract class NMHoloTests {
         let red = NMTheme.HoloAccentOwn(2);
         ok = ok && purple.Red > purple.Green && amber.Green > amber.Blue && red.Blue > red.Green;   // not blue, yellow or orange
         t.Check("holo.preset_hues", ok, detail);
+        // The hint bar, tooltip and photo fills (PanelBg/CardBg) follow the theme too; cyan keeps its original values.
+        let bgOk = true;
+        let bgDetail = "";
+        let tb = 0;
+        while tb < 5 {
+            let pb = NMTheme.PanelBgOwn(tb);
+            let cb = NMTheme.CardBgOwn(tb);
+            if NMHoloTests.Dominant(pb) != want[tb] || NMHoloTests.Dominant(cb) != want[tb] {
+                bgOk = false;
+                bgDetail += " theme" + IntToString(tb);
+            }
+            tb += 1;
+        }
+        let pc = NMTheme.PanelBgOwn(0);
+        let cc = NMTheme.CardBgOwn(0);
+        t.Check("holo.preset_panel_bg", bgOk && t.Near(pc.Blue, 0.118, 0.0001) && t.Near(cc.Blue, 0.216, 0.0001), bgDetail);
         t.Check("holo.preset_distinct", !NMHoloTests.SameRgb(NMTheme.HoloAccentOwn(2), NMTheme.HoloAccentOwn(4))
             && !NMHoloTests.SameRgb(NMTheme.HoloAccentOwn(3), NMTheme.HoloAccentOwn(0)), "");
     }

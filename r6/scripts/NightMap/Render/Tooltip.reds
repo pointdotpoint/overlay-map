@@ -86,7 +86,7 @@ public class NMTooltip {
         t.w = NMTooltip.Width() * s;
         t.root = NMUi.Canvas(parent, 0.0, 0.0, t.w, 100.0 * s);
         t.root.SetVisible(false);
-        t.bg = NMUi.Rect(t.root, 0.0, 0.0, t.w, 100.0 * s, NMTheme.CardBg(), NMTheme.CardOpacity());
+        t.bg = NMUi.Rect(t.root, 0.0, 0.0, t.w, 100.0 * s, NMTheme.CardBg(t.theme), NMTheme.CardOpacity());
         t.bar = NMUi.Rect(t.root, 0.0, 0.0, 6.0 * s, 100.0 * s, NMTheme.Cyan(), 1.0);
         let hi = NMTheme.HoloHighlight(theme);
         t.label = NMUi.Text(t.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.CardLabel(theme));

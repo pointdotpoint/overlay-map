@@ -70,7 +70,7 @@ public class NMPanel {
         p.holo = NMHolo.Create(effects, theme, layout.mapW, layout.mapH, s, fx);
         // One background layer per region (the panel fill only under the hint bar): stacking the panel fill under the map
         // fill would compound the opacity (0.45 over 0.45 reads as 0.70) and a low setting would not show the world through.
-        NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.PanelBg(), opacity);
+        NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.PanelBg(theme), opacity);
         NMUi.Rect(p.root, 0.0, 0.0, layout.mapW, layout.mapH, NMTheme.HoloBackground(theme), opacity);
 
         // Clipped viewport (inkScrollArea's internal mask), same pattern as Codeware's text input viewport. It clips at
@@ -109,7 +109,7 @@ public class NMPanel {
         NMPanel.BuildSidebar(p, opacity, theme);
 
         // Hint bar.
-        NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.CardBg(), 0.6);
+        NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.CardBg(theme), 0.6);
         p.hintBar = NMHintBar.Create(p.root, 0.0, layout.mapH, layout.w, layout.hintH, s, theme);
 
         // Top-left header: the district as a large letter-spaced title, the filter view under it in the accent colour.
