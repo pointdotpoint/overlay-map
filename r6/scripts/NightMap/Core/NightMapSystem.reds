@@ -1268,7 +1268,12 @@ public class NightMapSystem extends ScriptableSystem {
             let id = m.GetNewMappinID();
             trackedNow = id.value != 0ul && NMVanillaTracking.ManualKey(gi) == id.value;
         }
-        return NMWaypoint.Decide(hasSel, isMappin, questTrackable, questTracked, trackedNow, NMWaypoint.Available());
+        let a = NMWaypoint.Decide(hasSel, isMappin, questTrackable, questTracked, trackedNow, NMWaypoint.Available());
+        // An empty spot off the city (open sea, past the edge) gets no waypoint, as teleport refuses it.
+        if Equals(a, NMWaypointAction.SetCustom) && !hasSel && !NMTeleport.InBounds(pos.X, pos.Y) {
+            return NMWaypointAction.None;
+        }
+        return a;
     }
 
     private func WaypointLabel() -> String {
@@ -1289,6 +1294,7 @@ public class NightMapSystem extends ScriptableSystem {
         let ok = false;
         switch a {
             case NMWaypointAction.TrackQuest:
+                w.CancelPending();
                 NMWaypoint.UnregisterCustom(gi);   // vanilla TryTrackQuestOrSetWaypoint drops the custom waypoint first
                 ok = NMVanillaTracking.TrackQuest(gi, m);
                 w.lastAction = ok ? "quest" : "refused";

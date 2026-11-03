@@ -21,15 +21,25 @@ PLUGIN="$GAME/red4ext/plugins/NightMapNative"
 if [ "${1:-}" = "--uninstall" ]; then
   rm -rf "$DEST" "$ARCH" "$PLUGIN"; echo "removed $DEST, $ARCH and $PLUGIN"; exit 0
 fi
-"$HERE/tools/check.sh"
-rm -rf "$DEST"; cp -r "$HERE/r6/scripts/NightMap" "$DEST"
-# Optional native plugin (waypoints). Built by tools/native/build.sh; needs RED4ext in the game.
-"$HERE/tools/native/build.sh" >/dev/null
+# Optional native plugin (waypoints), decided before anything in the game folder changes. A failed build only skips the
+# plugin: NightMap works without it.
+WITH_PLUGIN=0
 if [ -d "$GAME/red4ext" ]; then
-  rm -rf "$PLUGIN"; cp -r "$HERE/dist-native/red4ext/plugins/NightMapNative" "$PLUGIN"
-  echo "installed plugin -> $PLUGIN"
+  if "$HERE/tools/native/build.sh" && "$HERE/tools/check.sh" --native; then
+    WITH_PLUGIN=1
+  else
+    echo "WARNING: waypoint plugin not built (see above): installing NightMap without it" >&2
+  fi
 else
   echo "NOTE: RED4ext not installed: skipped the waypoint plugin (NightMap works without it)"
+fi
+"$HERE/tools/check.sh"
+rm -rf "$DEST"; cp -r "$HERE/r6/scripts/NightMap" "$DEST"
+if [ "$WITH_PLUGIN" = 1 ]; then
+  rm -rf "$PLUGIN"; cp -r "$HERE/dist-native/red4ext/plugins/NightMapNative" "$PLUGIN"
+  echo "installed plugin -> $PLUGIN"
+elif [ -d "$PLUGIN" ]; then
+  rm -rf "$PLUGIN"; echo "removed the previous plugin (it may not match these scripts)"
 fi
 if [ -f "$HERE/archive/pc/mod/NightMap.archive" ]; then
   mkdir -p "$(dirname "$ARCH")"

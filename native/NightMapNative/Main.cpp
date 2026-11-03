@@ -47,13 +47,27 @@ bool SafeRead(uintptr_t aAddress, uint64_t& aOut)
     MEMORY_BASIC_INFORMATION mbi{};
     if (!VirtualQuery(reinterpret_cast<void*>(aAddress), &mbi, sizeof(mbi)) || mbi.State != MEM_COMMIT)
         return false;
-    if (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD))
+    constexpr DWORD readable = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ |
+                               PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+    if (!(mbi.Protect & readable) || (mbi.Protect & PAGE_GUARD))
         return false;
     auto end = reinterpret_cast<uintptr_t>(mbi.BaseAddress) + mbi.RegionSize;
     if (aAddress + 8 > end)
         return false;
     aOut = *reinterpret_cast<uint64_t*>(aAddress);
     return true;
+}
+
+// RED4ext's address for a hash, or 0. The SDK's UniversalReloc* show an error and terminate the game on an unknown hash;
+// a future RED4ext may drop one of these, and that must turn the feature off, not close the game.
+uintptr_t ResolveHash(uint32_t aHash)
+{
+    using ResolveFunc = uintptr_t (*)(uint32_t);
+    static ResolveFunc resolve = []() -> ResolveFunc {
+        auto module = GetModuleHandleW(L"RED4ext.dll");
+        return module ? reinterpret_cast<ResolveFunc>(GetProcAddress(module, "RED4ext_ResolveAddress")) : nullptr;
+    }();
+    return resolve ? resolve(aHash) : 0;
 }
 
 void Version(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t);
@@ -69,8 +83,9 @@ uintptr_t StaticTable()
     if (cached != 1)
         return cached;
     cached = 0;
-    RED4ext::UniversalRelocPtr<uint8_t> ctor(RED4ext::Detail::AddressHashes::CGlobalFunction_ctor);
-    auto ctorAddr = reinterpret_cast<uintptr_t>(ctor.GetAddr());
+    auto ctorAddr = ResolveHash(RED4ext::Detail::AddressHashes::CGlobalFunction_ctor);
+    if (!ctorAddr)
+        return 0;
     uint8_t code[0x80];
     for (std::size_t i = 0; i < sizeof(code); i += 8)
     {
@@ -93,8 +108,8 @@ uintptr_t MemberTable()
 {
     if (!StaticTable())
         return 0; // the engine layout isn't the one we know
-    static RED4ext::UniversalRelocPtr<uint8_t> table(RED4ext::Detail::AddressHashes::CBaseFunction_Handlers);
-    return reinterpret_cast<uintptr_t>(table.GetAddr());
+    static const uintptr_t table = ResolveHash(RED4ext::Detail::AddressHashes::CBaseFunction_Handlers);
+    return table;
 }
 
 // [start, end) of the game exe's code section.

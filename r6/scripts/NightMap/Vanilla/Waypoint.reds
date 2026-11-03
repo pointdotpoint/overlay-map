@@ -16,7 +16,12 @@ public enum NMWaypointAction {
 @if(ModuleExists("NightMapNative"))
 public abstract class NMWaypointNative {
     public static func Available() -> Bool { return NightMapNative_Available(); }
-    public static func Track(ms: ref<MappinSystem>, id: NewMappinID) -> Bool { return NightMapNative_TrackMappin(ms, id); }
+    // Never reach the native on an unrecognised build: without the engine's opcode table it can't consume its
+    // parameters, and the calling script would then run from the wrong place.
+    public static func Track(ms: ref<MappinSystem>, id: NewMappinID) -> Bool {
+        if !NightMapNative_Available() { return false; }
+        return NightMapNative_TrackMappin(ms, id);
+    }
     public static func Why() -> String { return NightMapNative_Why(); }
 }
 
@@ -38,12 +43,24 @@ public class NMWaypointRetry extends DelayCallback {
 public class NMWaypoint {
     private let gi: GameInstance;
     private let pending: NewMappinID;
-    private let pendingFrames: Int32;
+    private let pendingSince: Float;   // NMClock ms when the pending pin was registered
     private let scheduled: Bool;   // one delay callback in flight at most
     private let loggedUnavailable: Bool;
     public let lastAction: String;
 
-    public static func MaxPendingFrames() -> Int32 { return 120; }
+    // How long a registered pin may take to become resolvable before it is dropped. Wall-clock: TryPending runs from
+    // both the map update and the delay callback, and the map may pause the game meanwhile.
+    public static func PendingTimeoutMs() -> Float { return 3000.0; }
+    public static func TimedOut(since: Float, now: Float) -> Bool { return now - since > NMWaypoint.PendingTimeoutMs(); }
+
+    // Drops a pending custom waypoint (registered, not yet tracked) so it can't be tracked over a later action.
+    public func CancelPending() {
+        if this.pending.value == 0ul { return; }
+        let id = this.pending;
+        let none: NewMappinID;
+        this.pending = none;
+        GameInstance.GetMappinSystem(this.gi).UnregisterMappin(id);
+    }
 
     public static func Create(gi: GameInstance) -> ref<NMWaypoint> {
         let w = new NMWaypoint();
@@ -115,6 +132,7 @@ public class NMWaypoint {
     // mappin system has it.
     public func SetCustom(x: Float, y: Float, z: Float) -> Bool {
         if !this.Ready() { return false; }
+        this.CancelPending();
         let ms = GameInstance.GetMappinSystem(this.gi);
         let pos = new Vector4(x, y, z, 1.0);
         let cur = ms.GetManuallyTrackedMappinID();
@@ -133,7 +151,7 @@ public class NMWaypoint {
         data.active = true;
         data.visibleThroughWalls = true;
         this.pending = ms.RegisterMappin(data, pos);
-        this.pendingFrames = 0;
+        this.pendingSince = NMClock.NowMs();
         this.lastAction = "registered";
         this.Schedule();
         return this.pending.value != 0ul;
@@ -144,14 +162,17 @@ public class NMWaypoint {
         if !this.Ready() || !IsDefined(m) { return false; }
         let id = m.GetNewMappinID();   // bound to a local: a field read off the call's temporary is 0 in-game
         if id.value == 0ul { return false; }
-        NMWaypoint.UnregisterCustom(this.gi);
+        this.CancelPending();
+        if NotEquals(m.GetVariant(), gamedataMappinVariant.CustomPositionVariant) { NMWaypoint.UnregisterCustom(this.gi); }
         let ok = NMWaypointNative.Track(GameInstance.GetMappinSystem(this.gi), id);
         this.lastAction = ok ? "tracked" : "refused";
         return ok;
     }
 
     public func Clear() -> Bool {
-        let ok = NMVanillaTracking.ClearManual(this.gi);
+        let hadPending = this.Pending();
+        this.CancelPending();
+        let ok = NMVanillaTracking.ClearManual(this.gi) || hadPending;
         this.lastAction = ok ? "cleared" : "nothing";
         return ok;
     }
@@ -172,8 +193,7 @@ public class NMWaypoint {
             }
             return;
         }
-        this.pendingFrames += 1;
-        if this.pendingFrames > NMWaypoint.MaxPendingFrames() {
+        if NMWaypoint.TimedOut(this.pendingSince, NMClock.NowMs()) {
             let none: NewMappinID;
             this.pending = none;
             ms.UnregisterMappin(id);

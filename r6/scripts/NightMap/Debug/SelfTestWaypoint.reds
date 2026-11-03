@@ -56,5 +56,25 @@ public abstract class NMWaypointTests {
         let usedOpen = open.Handle(ws, ws.keyWaypoint, EInputAction.IACT_Press, false, false, false, true);
         t.Check("input.waypoint_only_open", !usedClosed && !closed.waypoint && usedOpen && open.waypoint, "");
         t.Check("input.waypoint_default_enter", Equals(new NightMapSettings().keyWaypoint, EInputKey.IK_Enter), "");
+
+        // The pending track gives up by time, not frames (TryPending runs from the map update and the delay callback).
+        let lim = NMWaypoint.PendingTimeoutMs();
+        t.Check("wp.pending_timeout_time", !NMWaypoint.TimedOut(1000.0, 1000.0 + lim - 1.0)
+            && NMWaypoint.TimedOut(1000.0, 1000.0 + lim + 1.0) && lim >= 2000.0, FloatToStringPrec(lim, 0));
+
+        // Any other action cancels a pending custom waypoint, so it can't be tracked over the player's next choice.
+        if NMWaypoint.Available() {
+            let gi = GetGameInstance();
+            let p = GetPlayer(gi).GetWorldPosition();
+            let w = NMWaypoint.Create(gi);
+            w.SetCustom(p.X + 40.0, p.Y, p.Z);
+            let wasPending = w.Pending();
+            w.Clear();
+            let afterClear = w.Pending();
+            w.SetCustom(p.X + 40.0, p.Y, p.Z);
+            w.CancelPending();
+            t.Check("wp.cancel_pending", wasPending && !afterClear && !w.Pending(),
+                ToString(wasPending) + "/" + ToString(afterClear) + "/" + ToString(w.Pending()));
+        }
     }
 }
