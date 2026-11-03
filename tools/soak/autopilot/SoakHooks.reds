@@ -32,6 +32,7 @@ public abstract class NMSoak {
             if ArraySize(fl) < 3 { return "usage: focus_layer <id part> <mpp>"; }
             return sys.Soak_FocusLayer(fl[1], StringToFloat(fl[2]));
         }
+        if StrBeginsWith(command, "focus_quest ") { return sys.Soak_FocusQuest(StringToFloat(StrAfterFirst(command, " "))); }
         if Equals(command, "perf") { return sys.Soak_Perf(); }
         if StrBeginsWith(command, "set ") {
             let sv = StrSplit(command, " ");
@@ -41,6 +42,7 @@ public abstract class NMSoak {
         if Equals(command, "is_open") { return sys.Soak_IsOpen(); }
         if Equals(command, "watch_keys") { return sys.Soak_WatchKeys(); }
         if Equals(command, "last_keys") { return sys.Soak_LastKeys(); }
+        if StrBeginsWith(command, "press ") { return sys.Soak_PressBound(StrAfterFirst(command, " ")); }
         if Equals(command, "hold_mode") { return sys.Soak_HoldMode(); }
         if Equals(command, "watch_axis") { return sys.Soak_WatchAxis(); }
         if Equals(command, "last_axis") { return sys.Soak_LastAxis(); }

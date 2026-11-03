@@ -287,16 +287,20 @@ public class NightMapSystem extends ScriptableSystem {
     }
 
     private cb func OnKeyInput(evt: ref<KeyInputEvent>) {
+        this.HandleKey(evt.GetKey(), evt.GetAction(), evt.IsShiftDown(), evt.IsControlDown(), evt.IsAltDown());
+    }
+
+    // One key event, from the game's Input/Key callback (or the soak harness, which can't send real keys on a desktop).
+    public func HandleKey(key: EInputKey, action: EInputAction, shift: Bool, ctrl: Bool, alt: Bool) -> Bool {
         let s = this.Settings();
         if !IsDefined(s) {
-            return;
+            return false;
         }
-        let key = evt.GetKey();
         if NMPad.IsPad(key) && (Equals(s.padOpen, NightMapPadOpen.HoldView) || this.padOwned || this.padCtx) {
-            this.OnPadButton(s, key, evt.GetAction());
-            return;
+            this.OnPadButton(s, key, action);
+            return true;
         }
-        let used = this.input.Handle(s, key, evt.GetAction(), evt.IsShiftDown(), evt.IsControlDown(), evt.IsAltDown(), this.isOpen);
+        let used = this.input.Handle(s, key, action, shift, ctrl, alt, this.isOpen);
         if used && this.isOpen {
             this.pad.lastWasPad = false;
         }
@@ -309,6 +313,7 @@ public class NightMapSystem extends ScriptableSystem {
             }
         }
         this.HandleDebug(s);
+        return used;
     }
 
     // View is also the game's pause button, and the pause menu opens on its release. On the press, hold that release
@@ -1286,6 +1291,7 @@ public class NightMapSystem extends ScriptableSystem {
             case NMWaypointAction.TrackQuest:
                 NMWaypoint.UnregisterCustom(gi);   // vanilla TryTrackQuestOrSetWaypoint drops the custom waypoint first
                 ok = NMVanillaTracking.TrackQuest(gi, m);
+                w.lastAction = ok ? "quest" : "refused";
                 break;
             case NMWaypointAction.SetCustom:
                 ok = w.SetCustom(pos.X, pos.Y, pos.Z);

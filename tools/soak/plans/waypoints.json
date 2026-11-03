@@ -54,7 +54,8 @@
      "shot": "empty_spot_hint"
     },
     {
-     "key": "Return"
+     "cmd": "press waypoint",
+     "expect": "pressed ENTER used=true"
     },
     {
      "wait": 1.5
@@ -93,7 +94,8 @@
      "expect": "^none$"
     },
     {
-     "key": "KP_Enter"
+     "cmd": "press waypoint",
+     "expect": "pressed ENTER used=true"
     },
     {
      "wait": 1.5
@@ -125,7 +127,8 @@
      "shot": "on_custom_hint"
     },
     {
-     "key": "Return"
+     "cmd": "press waypoint",
+     "expect": "pressed ENTER used=true"
     },
     {
      "wait": 1.5
@@ -157,7 +160,8 @@
      "shot": "on_ft_hint"
     },
     {
-     "key": "Return"
+     "cmd": "press waypoint",
+     "expect": "pressed ENTER used=true"
     },
     {
      "wait": 1.5
@@ -171,7 +175,8 @@
      "expect": "FastTravelVariant playerTracked=true"
     },
     {
-     "key": "Return"
+     "cmd": "press waypoint",
+     "expect": "pressed ENTER used=true"
     },
     {
      "wait": 1.5
@@ -185,8 +190,8 @@
      "expect": "tracked=0"
     },
     {
-     "cmd": "focus_layer Vanilla.Gigs 1",
-     "expect": "^ok|none"
+     "cmd": "focus_quest 1",
+     "expect": "^ok\\|"
     },
     {
      "wait": 1.5
@@ -199,14 +204,23 @@
      "shot": "on_gig_hint"
     },
     {
-     "key": "Return"
+     "cmd": "press waypoint",
+     "expect": "pressed ENTER used=true"
     },
     {
      "wait": 1.5
     },
     {
+     "cmd": "wp_last",
+     "expect": "last=quest pending=false"
+    },
+    {
      "cmd": "quest_hash",
      "expect": "^quest"
+    },
+    {
+     "cmd": "wp_state",
+     "expect": "tracked=0"
     },
     {
      "cmd": "close",
@@ -220,7 +234,8 @@
      "expect": "^last="
     },
     {
-     "key": "Return"
+     "cmd": "press waypoint",
+     "expect": "pressed ENTER used=false"
     },
     {
      "wait": 1.0
@@ -235,6 +250,76 @@
     },
     {
      "shot": "closed_enter_hud"
+    },
+    {
+     "cmd": "wp_clear",
+     "expect": "cleared|nothing"
+    },
+    {
+     "padhold": "VIEW",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "cmd": "focus_empty -1835 -1925 0.5",
+     "expect": "^focus"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "shot": "pad_empty_hint"
+    },
+    {
+     "pad": "RB"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "wp_last",
+     "expect": "last=set pending=false"
+    },
+    {
+     "cmd": "wp_state",
+     "expect": "CustomPositionVariant playerTracked=true"
+    },
+    {
+     "cmd": "focus_custom 0.5",
+     "expect": "^focus"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "pad": "RB"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "wp_last",
+     "expect": "last=cleared pending=false"
+    },
+    {
+     "cmd": "wp_count",
+     "expect": "^custom 0"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
     }
    ]
   }

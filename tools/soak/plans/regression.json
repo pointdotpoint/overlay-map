@@ -61,7 +61,8 @@
      "expect": "^ft"
     },
     {
-     "key": "KP_Decimal"
+     "cmd": "press teleport",
+     "expect": "^pressed"
     },
     {
      "await_moved": 100,

@@ -308,7 +308,8 @@
      "expect": "^moved"
     },
     {
-     "key": "94"
+     "cmd": "press toggle",
+     "expect": "^pressed"
     },
     {
      "wait": 1.5
@@ -353,7 +354,8 @@
      "expect": "^open"
     },
     {
-     "key": "94"
+     "cmd": "press toggle",
+     "expect": "^pressed"
     },
     {
      "wait": 1.0

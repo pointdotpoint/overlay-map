@@ -682,6 +682,22 @@
         return on ? "held" : "free";
     }
 
+    // Desktop-mode xdotool presses never reach the game (Wayland drops them): feed one press + release of a bound key
+    // through the same HandleKey the game's Input/Key callback uses. Names the action, not the key, so rebinds hold.
+    public func Soak_PressBound(what: String) -> String {
+        let s = this.Settings();
+        let key = EInputKey.IK_None;
+        if Equals(what, "waypoint") { key = s.keyWaypoint; }
+        if Equals(what, "act") { key = s.keyAct; }
+        if Equals(what, "toggle") { key = s.keyToggle; }
+        if Equals(what, "teleport") { key = s.keyTeleport; }
+        if Equals(what, "filter") { key = s.keyFilter; }
+        if Equals(key, EInputKey.IK_None) { return "usage: press waypoint|act|toggle|teleport|filter"; }
+        let used = this.HandleKey(key, EInputAction.IACT_Press, false, false, false);
+        this.HandleKey(key, EInputAction.IACT_Release, false, false, false);
+        return "pressed " + NMInput.KeyName(key) + " used=" + ToString(used);
+    }
+
     public func Soak_LastKeys() -> String {
         let seen = this.soakKeys;
         this.soakKeys = "";
@@ -708,6 +724,42 @@
     }
 
     // Centres the map on the item of the first layer whose id contains `part` nearest to V (a hover for look shots).
+    // Centres on the nearest vanilla entry Enter would track as a quest (a job or gig not already tracked).
+    public func Soak_FocusQuest(mpp: Float) -> String {
+        if !IsDefined(this.camera) || !IsDefined(this.vanilla) { return "map closed"; }
+        let gi = this.GetGameInstance();
+        let here = GetPlayer(gi).GetWorldPosition();
+        let bestL = -1;
+        let best = -1;
+        let bestD = 0.0;
+        let li = 0;
+        while li < ArraySize(this.api.layers) {
+            let L = this.api.layers[li];
+            if StrBeginsWith(NameToString(L.id), "Vanilla.") {
+                let i = 0;
+                while i < ArraySize(L.alive) {
+                    if L.alive[i] {
+                        let m = this.vanilla.MappinAt(L, i);
+                        if IsDefined(m) && NMVanillaTracking.CanTrackQuest(gi, m) && !NMVanillaTracking.IsQuestTracked(gi, m) {
+                            let dx = L.px[i] - here.X;
+                            let dy = L.py[i] - here.Y;
+                            let d = dx * dx + dy * dy;
+                            if best < 0 || d < bestD { bestL = li; best = i; bestD = d; }
+                        }
+                    }
+                    i += 1;
+                }
+            }
+            li += 1;
+        }
+        if best < 0 { return "none"; }
+        let B = this.api.layers[bestL];
+        this.camera.follow = false;
+        this.camera.SetMpp(mpp);
+        this.camera.SetCenter(B.px[best], B.py[best]);
+        return "ok|" + NameToString(B.id) + "|" + FloatToStringPrec(SqrtF(bestD), 0) + "m";
+    }
+
     public func Soak_FocusLayer(part: String, mpp: Float) -> String {
         if !IsDefined(this.camera) { return "map closed"; }
         let here = GetPlayer(this.GetGameInstance()).GetWorldPosition();
