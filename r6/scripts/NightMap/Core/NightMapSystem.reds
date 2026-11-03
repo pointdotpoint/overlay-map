@@ -881,7 +881,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.frameNo += 1;
         // Parity markers belong to the corner option: with it off the open map is exactly as before.
         let ms = this.Settings();
-        this.mirror.live = IsDefined(ms) && ms.replaceMinimap;
+        this.mirror.live = NMCornerHost.Enabled(ms);
         if this.frameNo % 30 == 0 { this.mirror.Sweep(); }
         if !this.isOpen {
             let s = this.Settings();
@@ -1002,7 +1002,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.Gps().BeginOpen();
         this.routes = NMRouteLayer.Create(this.panel.routes, l.scale, this.holoEffects);
         let ps = this.Settings();
-        if IsDefined(ps) && ps.replaceMinimap {
+        if NMCornerHost.Enabled(ps) {
             this.panelMirror = NMShapeLayer.Create(this.panel.shapes, ClampF(markerSize, 0.25, 1.5));
             this.panelMirror.SetRim(false, 40.0 * l.scale, l.scale);
         }
@@ -1460,7 +1460,7 @@ public class NightMapSystem extends ScriptableSystem {
         this.SyncPalette(s);
         this.mirror.Sweep();
         let probe = this.cornerHost.Active() ? this.cornerHost.probe : NMMinimapProbe.Find(window, this.Gps().Minimap());
-        let r = this.cornerHost.Sync(s, window, probe, this.api);
+        let r = this.cornerHost.Sync(NMCornerHost.Enabled(s) ? s : null, window, probe, this.api);   // null: shelved or off
         if r == 1 || r == 3 {
             this.PrepareCornerMarkers();
             NMLog.Info("corner|" + (r == 1 ? "on" : "rebuilt") + "|style " + ToString(s.cornerStyle));

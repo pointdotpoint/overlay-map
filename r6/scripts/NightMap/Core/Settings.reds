@@ -361,100 +361,23 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.description", "Keep collected ones on the map, scratched out and faded.")
     public let collectShowCollected: Bool = true;
 
-    @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Minimap")
-    @runtimeProperty("ModSettings.category.order", "6")
-    @runtimeProperty("ModSettings.displayName", "Replace vanilla minimap")
-    @runtimeProperty("ModSettings.description", "Show NightMap in place of the game's minimap. The Open / close map key expands it.")
+    // Corner minimap: shelved 2026-11-03 (NMCornerHost.Shelved). Not shown in Mod Settings; kept so the code still builds
+    // and the feature can come back. Defaults only.
     public let replaceMinimap: Bool = false;
-
-    @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Minimap")
-    @runtimeProperty("ModSettings.category.order", "6")
-    @runtimeProperty("ModSettings.displayName", "Corner map style")
-    @runtimeProperty("ModSettings.description", "Circle, Square, or Square with a strip showing the district and the distance to the tracked objective.")
-    @runtimeProperty("ModSettings.dependency", "replaceMinimap")
-    @runtimeProperty("ModSettings.displayValues.Circle", "Circle")
-    @runtimeProperty("ModSettings.displayValues.Square", "Square")
-    @runtimeProperty("ModSettings.displayValues.SquareStrip", "Square + info strip")
     public let cornerStyle: NightMapCornerStyle = NightMapCornerStyle.SquareStrip;
-
-    @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Minimap")
-    @runtimeProperty("ModSettings.category.order", "6")
-    @runtimeProperty("ModSettings.displayName", "Corner map size")
-    @runtimeProperty("ModSettings.description", "Size relative to the game's minimap, grown from its top-right corner.")
-    @runtimeProperty("ModSettings.dependency", "replaceMinimap")
-    @runtimeProperty("ModSettings.step", "0.05")
-    @runtimeProperty("ModSettings.min", "0.75")
-    @runtimeProperty("ModSettings.max", "1.5")
     public let cornerScale: Float = 1.0;
-
-    @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Minimap")
-    @runtimeProperty("ModSettings.category.order", "6")
-    @runtimeProperty("ModSettings.displayName", "Corner marker size")
-    @runtimeProperty("ModSettings.description", "Marker size in the corner map.")
-    @runtimeProperty("ModSettings.dependency", "replaceMinimap")
-    @runtimeProperty("ModSettings.step", "0.1")
-    @runtimeProperty("ModSettings.min", "0.5")
-    @runtimeProperty("ModSettings.max", "2.0")
     public let cornerMarkerSize: Float = 1.0;
-
-    @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Minimap")
-    @runtimeProperty("ModSettings.category.order", "6")
-    @runtimeProperty("ModSettings.displayName", "Corner text size")
-    @runtimeProperty("ModSettings.description", "Size of the corner map's labels and info strip.")
-    @runtimeProperty("ModSettings.dependency", "replaceMinimap")
-    @runtimeProperty("ModSettings.step", "0.1")
-    @runtimeProperty("ModSettings.min", "0.5")
-    @runtimeProperty("ModSettings.max", "2.0")
     public let cornerTextSize: Float = 1.0;
-
-    @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Minimap")
-    @runtimeProperty("ModSettings.category.order", "6")
-    @runtimeProperty("ModSettings.displayName", "Corner frame thickness")
-    @runtimeProperty("ModSettings.description", "Thickness of the corner map's ring or brackets.")
-    @runtimeProperty("ModSettings.dependency", "replaceMinimap")
-    @runtimeProperty("ModSettings.step", "0.25")
-    @runtimeProperty("ModSettings.min", "0.5")
-    @runtimeProperty("ModSettings.max", "3.0")
     public let cornerFrameThickness: Float = 1.0;
-
-    @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Minimap")
-    @runtimeProperty("ModSettings.category.order", "6")
-    @runtimeProperty("ModSettings.displayName", "Corner map opacity")
-    @runtimeProperty("ModSettings.description", "Background opacity of the corner map.")
-    @runtimeProperty("ModSettings.dependency", "replaceMinimap")
-    @runtimeProperty("ModSettings.step", "0.02")
-    @runtimeProperty("ModSettings.min", "0.2")
-    @runtimeProperty("ModSettings.max", "1.0")
     public let cornerOpacity: Float = 0.92;
-
-    @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Minimap")
-    @runtimeProperty("ModSettings.category.order", "6")
-    @runtimeProperty("ModSettings.displayName", "Enemies in corner map")
-    @runtimeProperty("ModSettings.description", "Show enemy dots and vision cones in the corner map, whatever the filter view.")
-    @runtimeProperty("ModSettings.dependency", "replaceMinimap")
     public let cornerEnemies: Bool = true;
-
-    @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Minimap")
-    @runtimeProperty("ModSettings.category.order", "6")
-    @runtimeProperty("ModSettings.displayName", "Police in corner map")
-    @runtimeProperty("ModSettings.description", "Show police dots in the corner map.")
-    @runtimeProperty("ModSettings.dependency", "replaceMinimap")
     public let cornerPolice: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
-    @runtimeProperty("ModSettings.category", "Minimap")
-    @runtimeProperty("ModSettings.category.order", "6")
-    @runtimeProperty("ModSettings.displayName", "Expanded map size")
-    @runtimeProperty("ModSettings.description", "Size of the expanded map panel (applies on next open).")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "2")
+    @runtimeProperty("ModSettings.displayName", "Map size")
+    @runtimeProperty("ModSettings.description", "Size of the map panel (applies on next open).")
     @runtimeProperty("ModSettings.step", "0.05")
     @runtimeProperty("ModSettings.min", "0.7")
     @runtimeProperty("ModSettings.max", "1.0")

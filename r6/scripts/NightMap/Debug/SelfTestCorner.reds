@@ -11,6 +11,10 @@ public abstract class NMCornerTests {
     }
 
     private static func Settings(t: ref<NMSelfTest>) {
+        // Shelved 2026-11-03: even a save with "Replace vanilla minimap" on gets no corner and an untouched open map.
+        let on = new NightMapSettings();
+        on.replaceMinimap = true;
+        t.Check("corner.shelved", NMCornerHost.Shelved() && !NMCornerHost.Enabled(on) && !NMCornerHost.Enabled(null), "");
         let s = new NightMapSettings();
         t.Check("corner.settings_defaults",
             !s.replaceMinimap && Equals(s.cornerStyle, NightMapCornerStyle.SquareStrip)

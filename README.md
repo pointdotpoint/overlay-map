@@ -75,8 +75,8 @@ UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only
 - There is no clustering. Markers shrink and fade out by tier as the map zooms out: minor ones (gigs, vendors, NCPD, collectibles, photo pins) first, quests and fast travel last, the tracked quest and V never. Markers never overlap: where two would, the more important one is drawn, and the district title and scale bar stay clear. Mod Settings → NightMap → Map filters turns each vanilla category on or off.
 - The district title sits top left (with the active filter under it) and the scale bar top right. The sidebar's bottom shows the tracked quest and its current objective.
 - The map background is half see-through by default (Display → Panel opacity, 0.5); installs still on the old 0.45 default move to 0.5 once.
-- Display → Map marker size scales the open map's markers; the default is half the original size (0.5). The corner map has its own Corner marker size.
-- VHS look on the open map (Display, all need Hologram effects): Scanline strength (0 to 0.6, default 0.3), Glow strength (0 to 3, default 1.5; the glow layer is blurred by the engine so bright roads bloom), VHS tracking band (a noisy band rolls down the map every 11 s) and VHS glitch (two short engine glitch bursts every 6.5 s). Each applies on the next open. The corner map stays plain.
+- Display → Map marker size scales the open map's markers; the default is half the original size (0.5).
+- VHS look on the open map (Display, all need Hologram effects): Scanline strength (0 to 0.6, default 0.3), Glow strength (0 to 3, default 1.5; the glow layer is blurred by the engine so bright roads bloom), VHS tracking band (a noisy band rolls down the map every 11 s) and VHS glitch (two short engine glitch bursts every 6.5 s). Each applies on the next open.
 - GPS routes: the route to your vanilla waypoint (white) and to the tracked quest (yellow, teal for gigs) are mirrored from the minimap as flowing dots. Mod Settings → NightMap → Display → GPS routes.
 - The game's HUD fades out while the map is open (Display → Hide HUD while open).
 - Numpad . on any spot teleports V there: onto the roof or ground below, or into the water. On a fast travel marker it fast-travels, on a photo pin it goes to the photo's spot, and V's car comes along. Long jumps show the game's loading screen for a few seconds first.
@@ -85,16 +85,12 @@ UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only
 - `Numpad .` on a selected fast travel marker fast travels there with the game's own fast travel (arrival at the dataterm, the game's own locks during some quests or combat). On foot only; your vehicle stays behind. Display → Fast travel key.
 - Mods can add their own items through the layer API.
 
-### Corner minimap
-Mod Settings → NightMap → Minimap → Replace vanilla minimap (off by default) puts NightMap in place of the game's minimap, at its size and position. The open/close key expands it to the full map; closing shrinks it back to the corner, re-centred on V.
-- North-up, never rotates. It shows the markers of the expanded map's current filter, at the zoom you last left the expanded map at (saved with the game). The corner itself takes no input.
-- Corner map style: Circle, Square, or Square + info strip (default: the district and the distance to the tracked objective).
-- It copies what the vanilla minimap shows, which keeps running hidden underneath: enemies with their vision cones, cameras and turrets with their ranges, loot, pings and events, quest and security areas, markers held at the rim when off the map, above/below arrows, the zone label (restricted, hostile, combat), autodrive and the courier timer, and the GPS routes. Enemies and police have their own on/off switches and show whatever the filter view.
-- Sizes: corner size (from the vanilla box's top-right corner), marker size, text size, frame thickness, corner opacity, and the expanded map's size.
-- It hides whenever the game hides its minimap (menus, photo mode, scanner, ...).
-- Themes: Display → Hologram colour picks a prebuilt theme: Cyan (default), Green, Red, Purple or Amber. Each tints the tiles, overlays, frame, sidebar and header text, on both the open map and the corner map.
-- Colours: Display → Follow HUD Painter colours (off by default) takes every NightMap colour from the game's HUD palette, so a [HUD Painter](https://www.nexusmods.com/cyberpunk2077/mods/14935) preset recolours the map. Off keeps NightMap's own colours. NightMap has no per-colour settings of its own; HUD Painter is optional.
-- With Debug on, the log gets a `RESULT|corner` line every 600 frames with the corner's frame and script time.
+### Colours
+- Themes: Display → Hologram colour picks a prebuilt theme: Cyan (default), Green, Red, Purple or Amber. Each tints the tiles, overlays, frame, sidebar, hint bar and header text.
+- Display → Follow HUD Painter colours (off by default) takes every NightMap colour from the game's HUD palette, so a [HUD Painter](https://www.nexusmods.com/cyberpunk2077/mods/14935) preset recolours the map. Off keeps NightMap's own colours. NightMap has no per-colour settings of its own; HUD Painter is optional.
+- Display → Map size sets the size of the map panel.
+
+A corner minimap that replaces the game's own is shelved for now: its code is still in `r6/scripts/NightMap/Corner/` but it is switched off (`NMCornerHost.Shelved`) and its settings are hidden.
 
 ### Debug tools
 With Debug on (Mod Settings → NightMap → Debug tools), chords on the toggle key: Ctrl = self-test, Shift = perf suite (`python3 tools/results.py`), Alt = calibration dump (`cd tools/tiles && python3 -m nmtiles.calib`), Ctrl+Shift = debug layer.

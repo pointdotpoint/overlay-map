@@ -12,6 +12,15 @@ public class NMCornerHost {
 
     public func Active() -> Bool { return IsDefined(this.corner); }
 
+    // The corner minimap is shelved (2026-11-03: not good enough yet); its settings are hidden from Mod Settings and
+    // this keeps a save that still has "Replace vanilla minimap" on from turning it back on. Flip to false to restore.
+    public static func Shelved() -> Bool { return true; }
+
+    // Whether the game should run the corner (and the vanilla-parity markers that come with it).
+    public static func Enabled(s: ref<NightMapSettings>) -> Bool {
+        return !NMCornerHost.Shelved() && IsDefined(s) && s.replaceMinimap;
+    }
+
     // The next Sync rebuilds the corner (colours changed under it).
     public func Invalidate() {
         if this.Active() { this.cfg = new NMCornerConfig(); }
