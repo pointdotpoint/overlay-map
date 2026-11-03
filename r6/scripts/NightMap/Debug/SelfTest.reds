@@ -735,7 +735,7 @@ public class NMSelfTest {
         }
         let n = NMTileManifest.LevelCount();
         this.Check("tiles.six_levels", n == 6, ToString(n));
-        this.Check("tiles.four_sets_order", NMTileManifest.SetCount() == 4 && Equals(NMTileManifest.SetName(3), "road"),
+        this.Check("tiles.five_sets_order", NMTileManifest.SetCount() == 5 && Equals(NMTileManifest.SetName(3), "road") && Equals(NMTileManifest.SetName(4), "metro"),
             ToString(NMTileManifest.SetCount()));
         let ascending = true;
         let i = 1;

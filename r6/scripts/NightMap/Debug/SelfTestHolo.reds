@@ -83,8 +83,12 @@ public abstract class NMHoloTests {
         t.Check("holo.set_offsets", NMLayerStack.WantsSet("glow", true, false) && NMLayerStack.SetOffset("glow") == 2 && NMLayerStack.SetOffset("road") == 0, "");
         let stack = NMLayerStack.Create(canvas, 0, false);
         let withFx = NMLayerStack.Create(canvas, 0, true);
-        t.Check("holo.effects_off_drops_glow_layer", !IsDefined(stack.Layer("glow")) && stack.LayerCount() == NMTileManifest.SetCount() - 1 && IsDefined(withFx.Layer("glow")) && withFx.LayerCount() == NMTileManifest.SetCount(),
+        // The metro set only gets a layer while the NCART filter is on, so both counts leave it out.
+        t.Check("holo.effects_off_drops_glow_layer", !IsDefined(stack.Layer("glow")) && stack.LayerCount() == NMTileManifest.SetCount() - 2 && IsDefined(withFx.Layer("glow")) && withFx.LayerCount() == NMTileManifest.SetCount() - 1,
             ToString(stack.LayerCount()) + "/" + ToString(withFx.LayerCount()));
+        let withMetro = NMLayerStack.Create(canvas, 0, true, true);
+        t.Check("holo.ncart_adds_metro_layer", !IsDefined(withFx.Layer("metro")) && IsDefined(withMetro.Layer("metro")) && withMetro.LayerCount() == NMTileManifest.SetCount(),
+            ToString(withMetro.LayerCount()));
     }
 
     private static func ThemeCases(t: ref<NMSelfTest>) {

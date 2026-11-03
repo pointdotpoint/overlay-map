@@ -99,7 +99,7 @@ def test_real_mesh_routes_every_line_through_every_marker():
     lines = ncart.load_lines(FIXTURE)
     gs, node_of = ncart.with_stations(g, st)
     polys = {l.number: ncart.edges_polyline(gs, ncart.route_edges(gs, node_of, l)) for l in lines}
-    ends = [c[-1] for c in ncart.connectors(polys, lines, st)]
+    ends = [c[-1] for c, _ in ncart.connectors(polys, lines, st)]
     for key, s in st.items():
         if not s.marked:
             continue
@@ -152,6 +152,46 @@ def test_slot_frame_ignores_travel_direction():
     assert np.allclose(dist_to(o[2], mid), 5.0, rtol=0.01)
 
 
+def flipped_chain():
+    # Nodes 0 -- 1 -- 2 along y = 0; edge 1 is stored backwards (2 -> 1), as the skeleton trace often does at a node.
+    nodes = np.array([[0.0, 0.0], [200.0, 0.0], [400.0, 0.0]])
+    e0 = ncart.Edge(0, 1, np.array([[0.0, 0.0], [100.0, 0.0], [200.0, 0.0]]))
+    e1 = ncart.Edge(2, 1, np.array([[400.0, 0.0], [300.0, 0.0], [200.0, 0.0]]))
+    return ncart.TrackGraph(nodes, [e0, e1])
+
+
+def test_lines_keep_their_sides_through_a_reversed_edge():
+    g = flipped_chain()
+    routes = {1: [(0, True), (1, False)], 2: [(0, True), (1, False)]}
+    sl = ncart.slots(routes)
+    o = {n: ncart.offset_polyline(g, r, sl, 5.0, 30.0, n) for n, r in routes.items()}
+    side = np.sign(o[1][:, 1] - np.interp(o[1][:, 0], o[2][:, 0], o[2][:, 1]))
+    assert np.all(side[5:-5] == side[len(side) // 2])            # never cross
+
+
+def test_opposite_running_lines_are_aligned_before_ordering():
+    # Line 2 is listed the other way round; on both edges it must still sit on the same side of line 1.
+    g = flipped_chain()
+    routes = {1: [(0, True), (1, False)], 2: [(1, True), (0, False)]}
+    sl = ncart.slots(routes)
+    o = {n: ncart.offset_polyline(g, r, sl, 5.0, 30.0, n) for n, r in routes.items()}
+    o2 = o[2][::-1]
+    side = np.sign(o[1][:, 1] - np.interp(o[1][:, 0], o2[:, 0], o2[:, 1]))
+    assert np.all(side[5:-5] == side[len(side) // 2])
+
+
+def test_a_spike_at_a_node_is_smoothed_out():
+    # The skeleton node of a wide junction often sits off the track centre: the joined route kinks up to it and back.
+    nodes = np.array([[0.0, 0.0], [200.0, 6.0], [400.0, 0.0]])
+    e0 = ncart.Edge(0, 1, np.array([[0.0, 0.0], [196.0, 0.0], [200.0, 6.0]]))
+    e1 = ncart.Edge(1, 2, np.array([[200.0, 6.0], [204.0, 0.0], [400.0, 0.0]]))
+    g = ncart.TrackGraph(nodes, [e0, e1])
+    routes = {1: [(0, True), (1, True)]}
+    p = ncart.offset_polyline(g, routes[1], ncart.slots(routes), 5.0, 30.0, 1)
+    assert np.abs(p[:, 1]).max() < 1.5
+    assert np.linalg.norm(p[0] - (0, 0)) < 0.5 and np.linalg.norm(p[-1] - (400, 0)) < 0.5   # ends stay at stations
+
+
 def test_three_share_then_one_leaves():
     # Lines 1, 2, 3 share x 0..200; line 2 (the middle one) turns north at x = 200, 1 and 3 run on to x = 400.
     g = ncart.track_graph(tracks(((0, 0), (400, 0)), ((200, -4), (200, 200))))
@@ -180,7 +220,9 @@ def test_through_line_skips_a_short_stub_and_gets_a_connector():
     p = ncart.edges_polyline(gs, r)
     assert p[:, 1].max() < 2                                     # stayed on the main track
     cons = ncart.connectors({1: p}, [mk(1, "S", "M", "T")], st)
-    assert len(cons) == 1 and np.linalg.norm(cons[0][-1] - (200, 58)) < 0.5 and np.linalg.norm(cons[0][0] - (200, 0)) < 2
+    assert len(cons) == 1 and cons[0][1] == 1
+    c = cons[0][0]
+    assert np.linalg.norm(c[-1] - (200, 58)) < 0.5 and np.linalg.norm(c[0] - (200, 0)) < 2
 
 
 def test_terminal_station_on_a_stub_is_reached():
@@ -214,8 +256,11 @@ def rgba(img):
 def test_metro_tile_is_coloured_and_transparent_elsewhere():
     paths = [(np.array([[50.0, 900.0], [450.0, 900.0]]), (229, 25, 25), "line")]
     a = rgba(ncart.render_metro_tile(paths, GRID, 0, 0))
-    core = a[1024 - 900, 250]
-    assert core[3] == 255 and abs(core[0] - 229) <= 3 and abs(core[1] - 25) <= 3 and abs(core[2] - 25) <= 3
+    col = a[1024 - 900 - 4:1024 - 900 + 5, 250]
+    pure = [p for p in col if p[3] == 255 and abs(p[0] - 229) <= 3 and abs(p[1] - 25) <= 3 and abs(p[2] - 25) <= 3]
+    assert pure                                                  # the core keeps the line colour
+    centre = col[np.argmax(col[:, 1])]
+    assert centre[3] == 255 and centre[1] > 100 and centre[0] >= 229   # a paler centre: the neon-tube highlight
     assert a[1024 - 900 - 40, 250, 3] == 0 and a[1024 - 900, 480, 3] == 0
     assert ncart.render_metro_tile(paths, GRID, 1, 1) is None
 
@@ -229,6 +274,25 @@ def test_metro_glow_is_soft():
     assert 0 < fall[0] < 255 and np.all(np.diff(fall) <= 0) and fall[-1] < 8
     rgb = rgba(ncart.render_metro_tile(paths, GRID, 0, 0))[edge + 3, 250, :3]
     assert abs(rgb[2] - 255) <= 12 and rgb[0] < 60          # the glow keeps the line colour: no dark fringe
+
+
+def test_side_by_side_lines_keep_a_dark_gap():
+    # Glow sits under the casing, so the gap between two lines on shared track stays dark instead of mixing colours.
+    y = 900.0
+    paths = [(np.array([[50.0, y], [450.0, y]]), (229, 25, 25), "line"),
+             (np.array([[50.0, y - ncart.SPACING_PX], [450.0, y - ncart.SPACING_PX]]), (18, 228, 255), "line")]
+    a = rgba(ncart.render_metro_tile(paths, GRID, 0, 0))
+    gap = a[int(1024 - y + ncart.SPACING_PX / 2), 250]
+    assert gap[3] > 200 and gap[:3].max() < 50
+
+
+def test_connector_takes_its_line_colour():
+    g = ncart.track_graph(tracks(((0, 0), (400, 0))))
+    st = places(S=(10, 0), M=(200, 40), T=(390, 0))
+    cyan = ncart.Line(3, "C", (18, 228, 255), ("S", "M", "T"), False)
+    net = ncart.Network.build(g, [cyan], st)
+    cons = [rgb for pts, rgb, kind in ncart.level_paths(net, 1.0) if kind == "connector"]
+    assert cons == [(18, 228, 255)]
 
 
 def test_metro_tiles_stitch():

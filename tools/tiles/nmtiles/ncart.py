@@ -378,15 +378,16 @@ def route_edges(g: TrackGraph, node_of: dict[str, int], line: Line) -> list[tupl
     return _drop_short_backtracks(g, out)
 
 
-def connectors(polys: dict[int, np.ndarray], lines: list[Line], stations: dict[str, Station]) -> list[np.ndarray]:
+def connectors(polys: dict[int, np.ndarray], lines: list[Line],
+               stations: dict[str, Station]) -> list[tuple[np.ndarray, int]]:
     """A straight connector (2 points, line -> marker) for every marked station farther than CONNECT_M from all the
-    lines that serve it, from the nearest point of those lines."""
+    lines that serve it, from the nearest point of those lines, with the number of that line (its colour)."""
     out = []
     for key, s in sorted(stations.items()):
         if not s.marked or s.xy is None:
             continue
         p = np.array(s.xy, float)
-        best, at = np.inf, None
+        best, at, by = np.inf, None, None
         for l in lines:
             if key not in l.stations or l.number not in polys or len(polys[l.number]) < 2:
                 continue
@@ -398,9 +399,9 @@ def connectors(polys: dict[int, np.ndarray], lines: list[Line], stations: dict[s
             d = np.hypot(*(c - p).T)
             k = int(np.argmin(d))
             if d[k] < best:
-                best, at = float(d[k]), c[k]
+                best, at, by = float(d[k]), c[k], l
         if at is not None and best > CONNECT_M:
-            out.append(np.vstack([at, p]))
+            out.append((np.vstack([at, p]), by.number))
     return out
 
 
@@ -422,14 +423,43 @@ def line_polyline(g: TrackGraph, line: Line, stations: dict[str, Station]) -> np
 STEP_M = 1.0          # resampling step of an offset polyline
 
 
+def _travel_signs(routes: dict[int, list[tuple[int, bool]]]) -> dict[int, int]:
+    """+1 or -1 per line: whether to read its route as listed or reversed, so that lines sharing track run the same
+    way. Lines are taken in number order; each one is reversed when it runs against the lines already placed on more
+    of its shared edges than with them."""
+    sign: dict[int, int] = {}
+    placed: dict[int, list[bool]] = {}          # edge -> effective forward flags of placed lines
+    for n in sorted(routes):
+        agree = against = 0
+        for ei, fwd in routes[n]:
+            for f in placed.get(ei, ()):
+                if f == fwd:
+                    agree += 1
+                else:
+                    against += 1
+        sign[n] = -1 if against > agree else 1
+        for ei, fwd in routes[n]:
+            placed.setdefault(ei, []).append(fwd if sign[n] > 0 else not fwd)
+    return sign
+
+
 def slots(routes: dict[int, list[tuple[int, bool]]]) -> dict[int, dict[int, float]]:
     """Per edge, per line number: its slot across the track, measured to the left of the edge's canonical direction
-    (node a -> b). Lines on an edge are ordered by number and centred: slot = i - (n - 1) / 2."""
-    on: dict[int, set[int]] = {}
+    (node a -> b). Lines on an edge are ordered by number, left to right in the travel direction of the lowest line
+    there (after _travel_signs has aligned the lines), and centred: i - (n - 1) / 2. Ordering in a travel frame rather
+    than the edge's stored direction keeps every line on its side where a chain of edges flips direction at a node, so
+    lines sharing track never braid."""
+    sign = _travel_signs(routes)
+    on: dict[int, dict[int, bool]] = {}         # edge -> line -> runs along a -> b (after alignment)
     for n, r in routes.items():
-        for ei, _ in r:
-            on.setdefault(ei, set()).add(n)
-    return {ei: {n: i - (len(ns) - 1) / 2 for i, n in enumerate(sorted(ns))} for ei, ns in on.items()}
+        for ei, fwd in r:
+            on.setdefault(ei, {})[n] = fwd if sign[n] > 0 else not fwd
+    out: dict[int, dict[int, float]] = {}
+    for ei, ls in on.items():
+        ns = sorted(ls)
+        frame = 1.0 if ls[ns[0]] else -1.0
+        out[ei] = {n: frame * (i - (len(ns) - 1) / 2) for i, n in enumerate(ns)}
+    return out
 
 
 def _resample(p: np.ndarray, step: float) -> np.ndarray:
@@ -448,11 +478,29 @@ def _left_normals(p: np.ndarray) -> np.ndarray:
     return np.stack([-d[:, 1], d[:, 0]], 1)
 
 
+ROUTE_SMOOTH_M = 16.0     # half-width of the box filter run twice over a joined route (removes kinks at nodes)
+
+
+def _smooth_route(p: np.ndarray, k: int) -> np.ndarray:
+    """Two passes of a centred box filter of width 2k + 1 over an evenly resampled polyline. The ends are padded by
+    point reflection, so they stay exactly in place and a straight run stays straight."""
+    if k < 1 or len(p) < 3:
+        return p
+    k = min(k, len(p) - 1)
+    for _ in range(2):
+        pad = np.vstack([2 * p[0] - p[k:0:-1], p, 2 * p[-1] - p[-2:-k - 2:-1]])
+        c = np.cumsum(np.vstack([np.zeros((1, 2)), pad]), axis=0)
+        p = (c[2 * k + 1:] - c[: len(p)]) / (2 * k + 1)
+    return p
+
+
 def offset_polyline(g: TrackGraph, route: list[tuple[int, bool]], sl: dict[int, dict[int, float]],
                     spacing_m: float, ease_m: float, number: int) -> np.ndarray:
     """The line's polyline shifted sideways by its slot x spacing_m on every edge. The shift is a scalar in the
     line's own left frame (an edge run backwards flips the sign, so every line on an edge uses the edge's frame) and
-    is smoothed over ease_m of arc length, so the line eases in and out where it joins or leaves others."""
+    is smoothed over ease_m of arc length, so the line eases in and out where it joins or leaves others. The joined
+    centre line is smoothed first (ROUTE_SMOOTH_M): each edge was smoothed alone with its ends pinned to the skeleton
+    nodes, which sit off the track centre at wide junctions and would otherwise leave a spike."""
     pts, off = [], []
     for ei, fwd in route:
         p = _resample(g.edges[ei].pts if fwd else g.edges[ei].pts[::-1], STEP_M)
@@ -464,6 +512,7 @@ def offset_polyline(g: TrackGraph, route: list[tuple[int, bool]], sl: dict[int, 
     if not pts:
         return np.zeros((0, 2))
     p, o = np.vstack(pts), np.concatenate(off)
+    p = _smooth_route(p, int(round(ROUTE_SMOOTH_M / STEP_M)))
     k = max(1, int(round(ease_m / STEP_M)))
     if k > 1 and len(o) > 1:   # centred box filter of width 2k + 1, ends held
         c = np.cumsum(np.concatenate([[0.0], np.full(k, o[0]), o, np.full(k, o[-1])]))
@@ -473,18 +522,20 @@ def offset_polyline(g: TrackGraph, route: list[tuple[int, bool]], sl: dict[int, 
 
 # ------------------------------------------------------------------------------------------------- the metro set
 
-LINE_PX = 5.0                  # core line width at every level
-SPACING_PX = 6.0               # centre-to-centre distance of side-by-side lines (1 px gap)
-CASING_PX = 2.0                # dark casing beyond each side of a line: keeps it readable over bright roads
-CASING_RGB = (6, 8, 14)
-CASING_ALPHA = 0.7
+LINE_PX = 6.5                  # core line width at every level
+SPACING_PX = 9.5               # centre-to-centre distance of side-by-side lines: a 3 px dark gap survives the in-game
+                               # downscale (tiles show at 0.5-1x), so shared track reads as separate lines
+CASING_PX = 1.75               # dark casing beyond each side of a line; between neighbours it fills the gap
+CASING_RGB = (8, 6, 16)
+CASING_ALPHA = 0.92
+HILITE_PX = 2.0                # pale centre of the core: the neon-tube look of the NCART diagram
+HILITE_MIX = 0.55              # share of white in the centre colour
 EASE_PX = 24.0                 # ease length where lines join or split, in pixels (at least EASE_MIN_M)
 EASE_MIN_M = 25.0
-GLOW_PX = 12.0                 # width of the glow stroke before the blur
-GLOW_SIGMA = 3.0               # px
-GLOW_ALPHA = 0.35
-CONNECTOR_PX = 2.0
-CONNECTOR_RGB = (225, 232, 240)
+GLOW_PX = 18.0                 # width of the glow stroke before the blur; drawn under the casing, so it only shows
+GLOW_SIGMA = 5.0               # outside a bundle and never tints a neighbour
+GLOW_ALPHA = 0.5
+CONNECTOR_PX = 2.5
 RSS = 4                        # supersampling of the strokes
 MARGIN_PX = int(GLOW_PX / 2 + 4 * GLOW_SIGMA) + 4
 
@@ -495,7 +546,7 @@ class Network:
     lines: list[Line]
     routes: dict[int, list[tuple[int, bool]]]
     slots: dict[int, dict[int, float]]
-    connectors: list[np.ndarray]
+    connectors: list[tuple[np.ndarray, int]]      # (2-point polyline, line number)
 
     @staticmethod
     def build(g: TrackGraph, lines: list[Line], stations: dict[str, Station]) -> "Network":
@@ -512,7 +563,8 @@ class Network:
 def level_paths(net: Network, mpp: float) -> list[tuple[np.ndarray, tuple[int, int, int], str]]:
     """What a level draws, bottom to top: connectors, then the lines offset by SPACING_PX at this level's mpp."""
     spacing, ease = SPACING_PX * mpp, max(EASE_MIN_M, EASE_PX * mpp)
-    out = [(c, CONNECTOR_RGB, "connector") for c in net.connectors]
+    rgb = {l.number: l.rgb for l in net.lines}
+    out = [(c, rgb[n], "connector") for c, n in net.connectors]
     for l in net.lines:
         out.append((offset_polyline(net.g, net.routes[l.number], net.slots, spacing, ease, l.number), l.rgb, "line"))
     return out
@@ -550,24 +602,32 @@ def render_metro_tile(paths: list[tuple[np.ndarray, tuple[int, int, int], str]],
     n = grid.tile + 2 * m
     W = n * RSS
     s = RSS / mpp
-    case, glow, core = Image.new("RGBA", (W, W)), Image.new("RGBA", (W, W)), Image.new("RGBA", (W, W))
-    dk, dg, dc = ImageDraw.Draw(case), ImageDraw.Draw(glow), ImageDraw.Draw(core)
+    layers = {k: Image.new("RGBA", (W, W)) for k in ("glow", "case", "core", "hi")}
+    draws = {k: ImageDraw.Draw(v) for k, v in layers.items()}
+
+    def stroke(d, xy, wpx, col):
+        w = max(1, int(round(wpx * RSS)))
+        d.line(xy, fill=col + (255,), width=w, joint="curve")
+        r = w / 2                       # round caps
+        for cx, cy in (xy[0], xy[-1]):
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=col + (255,))
+
     for pts, rgb, kind in hits:
         xy = [((x - x0) * s, (y1 - y) * s) for x, y in pts]
-        width = LINE_PX if kind == "line" else CONNECTOR_PX
-        for d, wpx, col in ((dk, width + 2 * CASING_PX, CASING_RGB), (dg, GLOW_PX if kind == "line" else GLOW_PX / 2, rgb),
-                            (dc, width, rgb)):
-            w = max(1, int(round(wpx * RSS)))
-            d.line(xy, fill=col + (255,), width=w, joint="curve")
-            r = w / 2                       # round caps
-            for cx, cy in (xy[0], xy[-1]):
-                d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=col + (255,))
-    k = _box_down(_premul(np.asarray(case)), RSS) * CASING_ALPHA
-    g = _box_down(_premul(np.asarray(glow)), RSS)
-    g = np.stack([gaussian_filter(g[..., c], GLOW_SIGMA, mode="constant") for c in range(4)], -1) * GLOW_ALPHA
-    c = _box_down(_premul(np.asarray(core)), RSS)
+        line = kind == "line"
+        width = LINE_PX if line else CONNECTOR_PX
+        hi = tuple(int(round(c + (255 - c) * HILITE_MIX)) for c in rgb)
+        stroke(draws["glow"], xy, GLOW_PX if line else GLOW_PX / 2, rgb)
+        stroke(draws["case"], xy, width + 2 * CASING_PX, CASING_RGB)
+        stroke(draws["core"], xy, width, rgb)
+        if line:
+            stroke(draws["hi"], xy, HILITE_PX, hi)
+    down = {k: _box_down(_premul(np.asarray(v)), RSS) for k, v in layers.items()}
+    g = np.stack([gaussian_filter(down["glow"][..., c], GLOW_SIGMA, mode="constant") for c in range(4)], -1) * GLOW_ALPHA
     over = lambda top, under: top + under * (1.0 - top[..., 3:4] / 255.0)   # premultiplied "over"
-    out = over(c, over(g, k))
+    # Bottom to top: glow, casing, core, highlight. The casing covers the glow inside a bundle, so neighbouring
+    # lines never tint each other and the gap between them stays dark.
+    out = over(down["hi"], over(down["core"], over(down["case"] * CASING_ALPHA, g)))
     out = out[m:m + grid.tile, m:m + grid.tile]
     if out[..., 3].max() < 1.0:
         return None
