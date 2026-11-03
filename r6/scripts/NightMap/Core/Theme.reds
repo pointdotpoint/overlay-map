@@ -243,6 +243,7 @@ public abstract class NMTheme {
     // Tile-set tints. Tiles are colourless masks; these are applied at runtime, so a theme change needs no rebuild.
     // Keys are NMTileManifest.SetName values.
     public static func TileTint(set: String, theme: Int32) -> HDRColor {
+        if Equals(set, "metro") { return new HDRColor(1.0, 1.0, 1.0, 1.0); }   // NCART colours are baked in; never themed
         let own = NMTheme.TileTintOwn(set, theme);
         if Equals(set, "road") { return NMTheme.Pick(NMColorRole.Road, own); }
         if Equals(set, "outline") || Equals(set, "glow") { return NMTheme.Pick(NMColorRole.Wall, own); }
@@ -285,6 +286,6 @@ public abstract class NMTheme {
         if Equals(set, "bfill") { return 0.40; }
         if Equals(set, "outline") { return 0.40; }
         if Equals(set, "road") { return 0.90; }
-        return 1.0;
+        return 1.0;   // metro: full colour tiles
     }
 }

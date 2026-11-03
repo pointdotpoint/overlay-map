@@ -28,8 +28,10 @@ public class NMLayerStack {
     private let bloomed: Bool;
     private let fx: ref<NMHoloFx>;   // unset: the glow layer keeps NMTheme.TileOpacity("glow")
 
-    // Does a set get a layer? The glow set only exists while the hologram effects are on.
-    public static func WantsSet(name: String, effects: Bool) -> Bool {
+    // Does a set get a layer? The glow set only exists while the hologram effects are on, the metro set (NCART lines)
+    // only while its map filter is on.
+    public static func WantsSet(name: String, effects: Bool, ncart: Bool) -> Bool {
+        if Equals(name, "metro") { return ncart; }
         return effects || NotEquals(name, "glow");
     }
 
@@ -37,14 +39,14 @@ public class NMLayerStack {
         return Equals(name, "glow") ? NMTheme.GlowLevelOffset() : 0;
     }
 
-    public static func Create(parent: ref<inkCanvas>, theme: Int32, effects: Bool) -> ref<NMLayerStack> {
+    public static func Create(parent: ref<inkCanvas>, theme: Int32, effects: Bool, opt ncart: Bool) -> ref<NMLayerStack> {
         let st = new NMLayerStack();
         st.available = NMTileLayer.ArchiveAvailable();
         if st.available {
             let s = 0;
             while s < NMTileManifest.SetCount() {
                 let name = NMTileManifest.SetName(s);
-                if NMLayerStack.WantsSet(name, effects) {
+                if NMLayerStack.WantsSet(name, effects, ncart) {
                     ArrayPush(st.layers, NMTileLayer.Create(parent, s, NMLayerStack.SetOffset(name)));
                 }
                 s += 1;

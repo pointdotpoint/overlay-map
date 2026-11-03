@@ -15,7 +15,7 @@ public abstract class NMTileManifest {
     }
 
     public static func SetCount() -> Int32 {
-        return 4;
+        return 5;
     }
 
     public static func SetName(i: Int32) -> String {
@@ -24,6 +24,7 @@ public abstract class NMTileManifest {
             case 1: return "bfill";
             case 2: return "outline";
             case 3: return "road";
+            case 4: return "metro";
             default: return "";
         }
     }
@@ -450,6 +451,72 @@ public abstract class NMTileManifest {
         return a;
     }
 
+    private static func Tiles_4_0_0() -> array<Int32> {
+        return [670, 671, 725, 777, 778, 779, 780, 781, 782, 830, 831, 832, 833, 836, 837, 884, 885, 887, 891, 892, 938, 941, 945, 946, 992, 993, 994, 995, 996, 998, 999, 1000, 1046, 1047, 1050, 1051, 1052, 1053, 1054, 1055, 1101, 1103, 1104, 1105, 1106, 1107, 1108, 1109, 1155, 1158, 1159, 1161, 1162, 1209, 1210, 1211, 1212, 1213, 1214, 1215, 1263, 1266, 1267, 1268, 1269, 1270, 1317, 1318, 1319, 1320, 1321, 1324, 1325, 1371, 1372, 1373, 1374, 1375, 1427, 1428, 1480, 1481];
+    }
+
+    private static func Tiles_4_0() -> array<Int32> {
+        let a: array<Int32>;
+        let c0: array<Int32> = NMTileManifest.Tiles_4_0_0();
+        for x in c0 { ArrayPush(a, x); }
+        return a;
+    }
+
+    private static func Tiles_4_1_0() -> array<Int32> {
+        return [179, 180, 206, 207, 208, 209, 210, 234, 235, 236, 238, 262, 263, 264, 265, 266, 267, 291, 292, 293, 294, 295, 319, 320, 321, 322, 347, 348, 349, 350, 351, 375, 376];
+    }
+
+    private static func Tiles_4_1() -> array<Int32> {
+        let a: array<Int32>;
+        let c0: array<Int32> = NMTileManifest.Tiles_4_1_0();
+        for x in c0 { ArrayPush(a, x); }
+        return a;
+    }
+
+    private static func Tiles_4_2_0() -> array<Int32> {
+        return [50, 51, 52, 65, 66, 67, 68, 80, 81, 82, 83, 96, 97, 98];
+    }
+
+    private static func Tiles_4_2() -> array<Int32> {
+        let a: array<Int32>;
+        let c0: array<Int32> = NMTileManifest.Tiles_4_2_0();
+        for x in c0 { ArrayPush(a, x); }
+        return a;
+    }
+
+    private static func Tiles_4_3_0() -> array<Int32> {
+        return [18, 19, 20, 26, 27, 28];
+    }
+
+    private static func Tiles_4_3() -> array<Int32> {
+        let a: array<Int32>;
+        let c0: array<Int32> = NMTileManifest.Tiles_4_3_0();
+        for x in c0 { ArrayPush(a, x); }
+        return a;
+    }
+
+    private static func Tiles_4_4_0() -> array<Int32> {
+        return [5, 6, 9, 10];
+    }
+
+    private static func Tiles_4_4() -> array<Int32> {
+        let a: array<Int32>;
+        let c0: array<Int32> = NMTileManifest.Tiles_4_4_0();
+        for x in c0 { ArrayPush(a, x); }
+        return a;
+    }
+
+    private static func Tiles_4_5_0() -> array<Int32> {
+        return [0, 1, 2, 3];
+    }
+
+    private static func Tiles_4_5() -> array<Int32> {
+        let a: array<Int32>;
+        let c0: array<Int32> = NMTileManifest.Tiles_4_5_0();
+        for x in c0 { ArrayPush(a, x); }
+        return a;
+    }
+
     public static func SetTiles(s: Int32, l: Int32) -> array<Int32> {
         switch s * 100 + l {
             case 2: return NMTileManifest.Tiles_0_2();
@@ -474,6 +541,12 @@ public abstract class NMTileManifest {
             case 303: return NMTileManifest.Tiles_3_3();
             case 304: return NMTileManifest.Tiles_3_4();
             case 305: return NMTileManifest.Tiles_3_5();
+            case 400: return NMTileManifest.Tiles_4_0();
+            case 401: return NMTileManifest.Tiles_4_1();
+            case 402: return NMTileManifest.Tiles_4_2();
+            case 403: return NMTileManifest.Tiles_4_3();
+            case 404: return NMTileManifest.Tiles_4_4();
+            case 405: return NMTileManifest.Tiles_4_5();
             default: break;
         }
         let empty: array<Int32>;

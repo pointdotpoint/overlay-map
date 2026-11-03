@@ -193,6 +193,13 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "NightMap")
     @runtimeProperty("ModSettings.category", "Map filters")
     @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "NCART lines")
+    @runtimeProperty("ModSettings.description", "Show the five NCART metro lines along their tracks (applies on next open).")
+    public let filterNcart: Bool = false;
+
+    @runtimeProperty("ModSettings.mod", "NightMap")
+    @runtimeProperty("ModSettings.category", "Map filters")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Your Apartments")
     @runtimeProperty("ModSettings.description", "Show your apartments, vehicles and waypoint.")
     public let filterYourProperty: Bool = true;

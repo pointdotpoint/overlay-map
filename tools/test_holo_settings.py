@@ -59,3 +59,12 @@ def test_vhs_settings_live_under_display_with_their_defaults():
     # Every knob is read into one config and handed to the panel and the layer stack.
     system = (SCRIPTS / "Core" / "NightMapSystem.reds").read_text()
     assert "NMHoloFx.From(s)" in system
+
+
+def test_ncart_filter_is_a_map_filter_off_by_default():
+    s = (SCRIPTS / "Core" / "Settings.reds").read_text()
+    assert "public let filterNcart: Bool = false;" in s
+    b = _block(s, "filterNcart")
+    assert '"ModSettings.category", "Map filters"' in b and '"ModSettings.displayName", "NCART lines"' in b
+    system = (SCRIPTS / "Core" / "NightMapSystem.reds").read_text()
+    assert ".filterNcart)" in system      # handed to NMLayerStack.Create

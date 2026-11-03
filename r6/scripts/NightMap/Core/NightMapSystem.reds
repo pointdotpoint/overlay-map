@@ -971,9 +971,9 @@ public class NightMapSystem extends ScriptableSystem {
         this.imageRev = this.api.revision;
         this.layerEpoch = this.api.layerEpoch;
         let l = this.panel.layout;
-        this.layers = NMLayerStack.Create(this.panel.tiles, this.holoTheme, this.holoEffects);
-        this.layers.SetGlow(this.holoFx);
         let ms = this.Settings();
+        this.layers = NMLayerStack.Create(this.panel.tiles, this.holoTheme, this.holoEffects, IsDefined(ms) && ms.filterNcart);
+        this.layers.SetGlow(this.holoFx);
         let markerSize = IsDefined(ms) ? ms.markerSize : 0.5;
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, NMTheme.MapMarkerScale(l.scale, markerSize));
         this.renderer.SetShotHandler(this.Photos().Handler());

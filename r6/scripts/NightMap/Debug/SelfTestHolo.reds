@@ -26,6 +26,27 @@ public abstract class NMHoloTests {
         NMHoloTests.EffectsCases(t);
         NMHoloTests.RendererCases(t);
         NMHoloTests.VhsCases(t);
+        NMHoloTests.NcartCases(t);
+    }
+
+    // NCART lines: a full-colour tile set shown only with the "NCART lines" filter, never themed.
+    private static func NcartCases(t: ref<NMSelfTest>) {
+        t.Check("ncart.wants_only_when_on", !NMLayerStack.WantsSet("metro", true, false) && NMLayerStack.WantsSet("metro", false, true)
+            && NMLayerStack.WantsSet("road", false, false) && !NMLayerStack.WantsSet("glow", false, true), "");
+        let canvas = new inkCanvas();
+        let off = NMLayerStack.Create(canvas, 0, true);
+        let on = NMLayerStack.Create(canvas, 0, true, true);
+        let hasSet = Equals(NMTileManifest.SetName(NMHoloTests.SetIndex("metro")), "metro");
+        t.Check("ncart.no_layer_when_off", !IsDefined(off.Layer("metro")), ToString(off.LayerCount()));
+        t.Check("ncart.layer_when_on", hasSet && IsDefined(on.Layer("metro")) && on.LayerCount() == off.LayerCount() + 1,
+            ToString(hasSet) + " " + ToString(on.LayerCount()) + "/" + ToString(off.LayerCount()));
+        let prev = NMTheme.Palette();
+        let pal = NMHudPalette.Fixed(new HDRColor(0.9, 0.1, 0.1, 1.0));
+        NMTheme.Use(pal);
+        let tint: HDRColor = NMTheme.TileTint("metro", 3);
+        NMTheme.Use(prev);
+        t.Check("ncart.tint_is_white_and_unthemed", tint.Red == 1.0 && tint.Green == 1.0 && tint.Blue == 1.0
+            && NMTheme.TileOpacity("metro") == 1.0, t.F(tint.Red) + "," + t.F(tint.Green));
     }
 
     private static func GlowCases(t: ref<NMSelfTest>) {
@@ -59,7 +80,7 @@ public abstract class NMHoloTests {
         t.Check("holo.glow_layer_level_offset", near.CurrentLevel() == 2 && far.CurrentLevel() == n - 1 && near.LevelOffset() == 2,
             ToString(near.CurrentLevel()) + "/" + ToString(far.CurrentLevel()));
         t.Check("holo.glow_has_no_l0_tiles", !near.Has(0, 0, 0) && !near.Has(1, 0, 0), "");
-        t.Check("holo.set_offsets", NMLayerStack.WantsSet("glow", true) && NMLayerStack.SetOffset("glow") == 2 && NMLayerStack.SetOffset("road") == 0, "");
+        t.Check("holo.set_offsets", NMLayerStack.WantsSet("glow", true, false) && NMLayerStack.SetOffset("glow") == 2 && NMLayerStack.SetOffset("road") == 0, "");
         let stack = NMLayerStack.Create(canvas, 0, false);
         let withFx = NMLayerStack.Create(canvas, 0, true);
         t.Check("holo.effects_off_drops_glow_layer", !IsDefined(stack.Layer("glow")) && stack.LayerCount() == NMTileManifest.SetCount() - 1 && IsDefined(withFx.Layer("glow")) && withFx.LayerCount() == NMTileManifest.SetCount(),
