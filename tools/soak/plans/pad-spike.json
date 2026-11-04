@@ -57,6 +57,10 @@
      "cmd": "vpos"
     },
     {
+     "cmd": "set padopen view",
+     "expect": "^padopen"
+    },
+    {
      "padhold": "VIEW",
      "seconds": 0.8
     },

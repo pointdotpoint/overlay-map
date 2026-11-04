@@ -944,6 +944,11 @@
         if Equals(name, "tracking") { s.vhsTracking = Equals(value, "1"); return "tracking " + ToString(s.vhsTracking); }
         if Equals(name, "glitch") { s.vhsGlitch = Equals(value, "1"); return "glitch " + ToString(s.vhsGlitch); }
         if Equals(name, "ncart") { s.filterNcart = Equals(value, "1"); return "ncart " + ToString(s.filterNcart); }
+        // Controller open: view|off. Pad steps set it explicitly, so they don't depend on the player's saved choice.
+        if Equals(name, "padopen") {
+            s.padOpen = Equals(value, "off") ? OverlayMapPadOpen.Off : OverlayMapPadOpen.HoldView;
+            return "padopen " + ToString(s.padOpen);
+        }
         // Corner minimap: replace 0|1, style circle|square|strip, hudpainter 0|1, debug 0|1, enemies 0|1. The corner poll
         // picks a change up within a second.
         if Equals(name, "replace") { s.replaceMinimap = Equals(value, "1"); return "replace " + ToString(s.replaceMinimap); }

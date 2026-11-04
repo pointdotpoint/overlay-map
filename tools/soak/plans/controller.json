@@ -67,6 +67,10 @@
      "expect": "IK_Pad_Back_Select"
     },
     {
+     "cmd": "set padopen view",
+     "expect": "^padopen"
+    },
+    {
      "padhold": "VIEW",
      "seconds": 0.8
     },

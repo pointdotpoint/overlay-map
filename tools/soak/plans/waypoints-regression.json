@@ -298,6 +298,10 @@
      "wait": 15
     },
     {
+     "cmd": "set padopen view",
+     "expect": "^padopen"
+    },
+    {
      "padhold": "VIEW",
      "seconds": 0.8
     },
@@ -427,6 +431,10 @@
     {
      "cmd": "last_keys",
      "expect": "IK_Pad_Back_Select"
+    },
+    {
+     "cmd": "set padopen view",
+     "expect": "^padopen"
     },
     {
      "padhold": "VIEW",
