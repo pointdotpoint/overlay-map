@@ -443,22 +443,89 @@ def _travel_signs(routes: dict[int, list[tuple[int, bool]]]) -> dict[int, int]:
     return sign
 
 
-def slots(routes: dict[int, list[tuple[int, bool]]]) -> dict[int, dict[int, float]]:
+PART_M = 15.0      # how far along a parting edge its direction is measured
+WALK_MAX = 400     # edges walked along a shared run before giving up
+
+
+def _oriented(g: TrackGraph, ei: int, fwd: bool) -> np.ndarray:
+    return g.edges[ei].pts if fwd else g.edges[ei].pts[::-1]
+
+
+def _walk(route: list[tuple[int, bool]], j: int, along: bool):
+    """Oriented edges of a route after step j, travelling the way edge route[j] runs a -> b (along) or b -> a."""
+    ahead = route[j][1] == along
+    k = j + (1 if ahead else -1)
+    while 0 <= k < len(route):
+        ei, f = route[k]
+        yield ei, (f if ahead else not f)
+        k += 1 if ahead else -1
+
+
+def _away(q: np.ndarray, d: float) -> np.ndarray:
+    seg = np.hypot(*np.diff(q, axis=0).T)
+    s = np.concatenate([[0.0], np.cumsum(seg)])
+    t = min(d, s[-1])
+    v = np.array([np.interp(t, s, q[:, 0]), np.interp(t, s, q[:, 1])]) - q[0]
+    return v / max(float(np.hypot(*v)), 1e-9)
+
+
+def _parting_side(g: TrackGraph, routes, ei: int, n: int, jn: int, m: int, jm: int, first_along: bool = True) -> int:
+    """+1 when line n should ride left of line m on edge ei (left of a -> b), -1 when right, 0 when the shape says
+    nothing. Both lines are walked edge by edge while they share track, first one way (past b when first_along, else
+    past a) and then the other; at the node where they part, the one whose next edge leaves more to the left of the
+    shared direction is left. The walk is not limited in length, and every edge of a run must look the same way
+    first (the caller passes the bundle's travel direction): when the two ends of a run disagree, a crossing is
+    unavoidable, and looking the same way puts it once, at a junction, instead of flipping edge by edge."""
+    for along in (first_along, not first_along):
+        last = (ei, along)
+        wn, wm = _walk(routes[n], jn, along), _walk(routes[m], jm, along)
+        for _ in range(WALK_MAX):
+            en, em = next(wn, None), next(wm, None)
+            if en is None or em is None:
+                break
+            if en == em:
+                last = en
+                continue
+            q = _oriented(g, *last)
+            t = q[-1] - q[max(0, len(q) - 4)]
+            t = t / max(float(np.hypot(*t)), 1e-9)
+            dn, dm = _away(_oriented(g, *en), PART_M), _away(_oriented(g, *em), PART_M)
+            an = float(np.arctan2(t[0] * dn[1] - t[1] * dn[0], t @ dn))
+            am = float(np.arctan2(t[0] * dm[1] - t[1] * dm[0], t @ dm))
+            if abs(an - am) > 1e-3:
+                side = 1 if an > am else -1        # more counter-clockwise = further left of the walk direction
+                return side if along else -side    # walking b -> a, the walk's left is the edge's right
+            break
+    return 0
+
+
+def slots(routes: dict[int, list[tuple[int, bool]]], g: TrackGraph | None = None) -> dict[int, dict[int, float]]:
     """Per edge, per line number: its slot across the track, measured to the left of the edge's canonical direction
-    (node a -> b). Lines on an edge are ordered by number, left to right in the travel direction of the lowest line
-    there (after _travel_signs has aligned the lines), and centred: i - (n - 1) / 2. Ordering in a travel frame rather
-    than the edge's stored direction keeps every line on its side where a chain of edges flips direction at a node, so
-    lines sharing track never braid."""
+    (node a -> b), centred: i - (n - 1) / 2. With the graph, lines are ordered geometrically, the way transit maps do:
+    a line that parts from another to the left (ahead, or behind) rides on its left, so lines part and join without
+    crossing (_parting_side). Lines that never part are ordered by number in the travel direction of the lowest line
+    there (after _travel_signs has aligned the lines): a travel frame rather than each edge's stored direction keeps
+    every line on its side where a chain of edges flips direction at a node, so lines sharing track never braid."""
+    from functools import cmp_to_key
     sign = _travel_signs(routes)
-    on: dict[int, dict[int, bool]] = {}         # edge -> line -> runs along a -> b (after alignment)
+    on: dict[int, dict[int, bool]] = {}                  # edge -> line -> runs along a -> b (after alignment)
+    first: dict[int, dict[int, int]] = {}                # edge -> line -> route step of its first visit
     for n, r in routes.items():
-        for ei, fwd in r:
+        for j, (ei, fwd) in enumerate(r):
             on.setdefault(ei, {})[n] = fwd if sign[n] > 0 else not fwd
+            first.setdefault(ei, {}).setdefault(n, j)
     out: dict[int, dict[int, float]] = {}
     for ei, ls in on.items():
         ns = sorted(ls)
-        frame = 1.0 if ls[ns[0]] else -1.0
-        out[ei] = {n: frame * (i - (len(ns) - 1) / 2) for i, n in enumerate(ns)}
+        frame = 1 if ls[ns[0]] else -1
+
+        def cmp(n: int, m: int) -> int:     # positive: n sorts later, i.e. further left
+            side = _parting_side(g, routes, ei, n, first[ei][n], m, first[ei][m], frame > 0) if g is not None else 0
+            if side:
+                return side
+            return (frame * n > frame * m) - (frame * n < frame * m)
+        order = sorted(ns, key=cmp_to_key(cmp))
+        out[ei] = {n: i - (len(ns) - 1) / 2 for i, n in enumerate(order)}
     return out
 
 
@@ -494,29 +561,65 @@ def _smooth_route(p: np.ndarray, k: int) -> np.ndarray:
     return p
 
 
+SIZE_EASE = 3     # where a bundle grows or shrinks, the one-sided ease is this many ease lengths long (no notch)
+
+
+def _eased_offsets(runs: list[tuple[int, float, int]], k: int) -> np.ndarray:
+    """Per-sample sideways offset from runs of (samples, offset, lines on that edge), with a smoothstep of k samples
+    at every change. The ease is one-sided where the bundle size changes: a line leaving a bundle keeps its bundle
+    offset through the junction and eases on the smaller side, after the tracks have parted; a line joining eases in
+    before the junction. A centred ease would pull every line of a splitting bundle onto the junction point (a pinch).
+    Equal sizes (a reordering) ease centred."""
+    merged: list[tuple[int, float, int]] = []
+    for m, v, n in runs:                  # consecutive edges with the same offset and bundle are one stretch
+        if merged and merged[-1][1] == v and merged[-1][2] == n:
+            merged[-1] = (merged[-1][0] + m, v, n)
+        else:
+            merged.append((m, v, n))
+    runs = merged
+    o = np.concatenate([np.full(m, v) for m, v, _ in runs]) if runs else np.zeros(0)
+    if k < 1:
+        return o
+    start = 0
+    for i in range(1, len(runs)):
+        (m1, v1, n1), (m2, v2, n2) = runs[i - 1], runs[i]
+        start += m1
+        if v1 == v2:
+            continue
+        if n2 < n1:
+            w0, w1 = start, start + min(SIZE_EASE * k, m2)
+        elif n2 > n1:
+            w0, w1 = start - min(SIZE_EASE * k, m1), start
+        else:
+            w0, w1 = start - min(k // 2, m1), start + min(k // 2, m2)
+        w0, w1 = max(w0, 0), min(w1, len(o))
+        if w1 - w0 < 2:
+            continue
+        a = o[w0 - 1] if w0 > 0 else v1
+        t = np.linspace(0.0, 1.0, w1 - w0)
+        o[w0:w1] = a + (v2 - a) * (t * t * (3 - 2 * t))
+        o[w1:start + m2] = v2
+    return o
+
+
 def offset_polyline(g: TrackGraph, route: list[tuple[int, bool]], sl: dict[int, dict[int, float]],
                     spacing_m: float, ease_m: float, number: int) -> np.ndarray:
     """The line's polyline shifted sideways by its slot x spacing_m on every edge. The shift is a scalar in the
     line's own left frame (an edge run backwards flips the sign, so every line on an edge uses the edge's frame) and
-    is smoothed over ease_m of arc length, so the line eases in and out where it joins or leaves others. The joined
-    centre line is smoothed first (ROUTE_SMOOTH_M): each edge was smoothed alone with its ends pinned to the skeleton
-    nodes, which sit off the track centre at wide junctions and would otherwise leave a spike."""
-    pts, off = [], []
+    eases over ease_m of arc length where it changes (_eased_offsets), so the line eases in and out where it joins or
+    leaves others. The joined centre line is smoothed first (ROUTE_SMOOTH_M): each edge was smoothed alone with its
+    ends pinned to the skeleton nodes, which sit off the track centre at wide junctions and would otherwise spike."""
+    pts, runs = [], []
     for ei, fwd in route:
         p = _resample(g.edges[ei].pts if fwd else g.edges[ei].pts[::-1], STEP_M)
-        o = sl[ei][number] * spacing_m * (1.0 if fwd else -1.0)
         if pts:
             p = p[1:]
         pts.append(p)
-        off.append(np.full(len(p), o))
+        runs.append((len(p), sl[ei][number] * spacing_m * (1.0 if fwd else -1.0), len(sl[ei])))
     if not pts:
         return np.zeros((0, 2))
-    p, o = np.vstack(pts), np.concatenate(off)
-    p = _smooth_route(p, int(round(ROUTE_SMOOTH_M / STEP_M)))
-    k = max(1, int(round(ease_m / STEP_M)))
-    if k > 1 and len(o) > 1:   # centred box filter of width 2k + 1, ends held
-        c = np.cumsum(np.concatenate([[0.0], np.full(k, o[0]), o, np.full(k, o[-1])]))
-        o = (c[2 * k + 1:] - c[: len(o)]) / (2 * k + 1)
+    p = _smooth_route(np.vstack(pts), int(round(ROUTE_SMOOTH_M / STEP_M)))
+    o = _eased_offsets(runs, max(1, int(round(ease_m / STEP_M))))
     return p + _left_normals(p) * o[:, None]
 
 
@@ -551,22 +654,62 @@ class Network:
     @staticmethod
     def build(g: TrackGraph, lines: list[Line], stations: dict[str, Station]) -> "Network":
         gs, node_of = with_stations(g, stations)
-        routes = {l.number: route_edges(gs, node_of, l) for l in lines}
+        routes = {l.number: trim_spur_visits(gs, route_edges(gs, node_of, l)) for l in lines}
         centre = {n: edges_polyline(gs, r) for n, r in routes.items()}
-        return Network(gs, lines, routes, slots(routes), connectors(centre, lines, stations))
+        return Network(gs, lines, routes, slots(routes, gs), connectors(centre, lines, stations))
 
     @staticmethod
     def from_game(glb: Path, lines_json: Path = LINES, stations_json: Path = DATA) -> "Network":
         return Network.build(track_graph(metro_tris(glb)), load_lines(lines_json), load_stations(stations_json))
 
 
+SPUR_TRIM_M = 40.0   # a visit into a dead-end edge shorter than this is left to a station connector
+
+
+def trim_spur_visits(g: TrackGraph, route: list[tuple[int, bool]]) -> list[tuple[int, bool]]:
+    """The route without out-and-back visits into short dead-end edges (a station a few metres off the track): drawn,
+    such a visit curls the line into a hook. connectors() joins the station marker instead."""
+    deg: dict[int, int] = {}
+    for e in g.edges:
+        deg[e.a] = deg.get(e.a, 0) + 1
+        deg[e.b] = deg.get(e.b, 0) + 1
+    r = list(route)
+    i = 0
+    while i + 1 < len(r):
+        (ei, f), (ej, h) = r[i], r[i + 1]
+        e = g.edges[ei]
+        tip = e.b if f else e.a
+        if ei == ej and f != h and deg.get(tip, 0) == 1 and _edge_len(g, ei) < SPUR_TRIM_M:
+            del r[i:i + 2]
+            i = max(i - 1, 0)
+            continue
+        i += 1
+    return r
+
+
+def split_at_reversals(route: list[tuple[int, bool]]) -> list[list[tuple[int, bool]]]:
+    """A route cut where it turns back onto the edge it came along (an out-and-back to a terminus station). Drawn as
+    one polyline, the U-turn would be smoothed into a hook; drawn as two, the halves overlap and simply end there."""
+    parts, cur = [], []
+    for step in route:
+        if cur and step[0] == cur[-1][0] and step[1] != cur[-1][1]:
+            parts.append(cur)
+            cur = []
+        cur.append(step)
+    if cur:
+        parts.append(cur)
+    return parts
+
+
 def level_paths(net: Network, mpp: float) -> list[tuple[np.ndarray, tuple[int, int, int], str]]:
-    """What a level draws, bottom to top: connectors, then the lines offset by SPACING_PX at this level's mpp."""
+    """What a level draws, bottom to top: connectors, then the lines offset by SPACING_PX at this level's mpp, each
+    line as one polyline per stretch between reversals (split_at_reversals)."""
     spacing, ease = SPACING_PX * mpp, max(EASE_MIN_M, EASE_PX * mpp)
     rgb = {l.number: l.rgb for l in net.lines}
     out = [(c, rgb[n], "connector") for c, n in net.connectors]
     for l in net.lines:
-        out.append((offset_polyline(net.g, net.routes[l.number], net.slots, spacing, ease, l.number), l.rgb, "line"))
+        for part in split_at_reversals(net.routes[l.number]):
+            out.append((offset_polyline(net.g, part, net.slots, spacing, ease, l.number), l.rgb, "line"))
     return out
 
 

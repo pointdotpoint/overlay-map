@@ -3,28 +3,208 @@
   "runs": [
     {
       "name": "ncart",
-      "parts": ["scripts", "archive", "bootstrap", "autopilot"],
+      "parts": [
+        "scripts",
+        "archive",
+        "bootstrap",
+        "autopilot"
+      ],
       "repeats": 1,
       "steps": [
-        {"wait": 8},
-        {"cmd": "selftest", "timeout": 60, "expect": "failed=0\\|"},
-        {"cmd": "set ncart 0", "expect": "^ncart false"},
-        {"cmd": "open"}, {"wait": 3},
-        {"cmd": "focus_at -1250 -150 2", "expect": "^focus"}, {"wait": 4}, {"shot": "off_downtown_2"},
-        {"cmd": "close"}, {"wait": 2},
-        {"cmd": "set ncart 1", "expect": "^ncart true"},
-        {"cmd": "open"}, {"wait": 3},
-        {"cmd": "focus_at -1250 -150 2", "expect": "^focus"}, {"wait": 4}, {"shot": "on_downtown_2"},
-        {"cmd": "focus_at -1250 -150 1", "expect": "^focus"}, {"wait": 4}, {"shot": "on_downtown_1"},
-        {"cmd": "focus_at -1300 -100 0.5", "expect": "^focus"}, {"wait": 4}, {"shot": "on_memorial_05"},
-        {"cmd": "focus_at -1030 -350 0.5", "expect": "^focus"}, {"wait": 4}, {"shot": "on_congress_05"},
-        {"cmd": "focus_at -1500 1600 1", "expect": "^focus"}, {"wait": 4}, {"shot": "on_watson_1"},
-        {"cmd": "focus_at -1600 -600 2", "expect": "^focus"}, {"wait": 4}, {"shot": "on_glen_2"},
-        {"cmd": "focus_at -1300 -1650 2", "expect": "^focus"}, {"wait": 4}, {"shot": "on_pacifica_2"},
-        {"cmd": "focus_at -1100 50 4", "expect": "^focus"}, {"wait": 4}, {"shot": "on_city_4"},
-        {"cmd": "focus_at -1100 50 8", "expect": "^focus"}, {"wait": 4}, {"shot": "on_city_8"},
-        {"cmd": "close"}, {"wait": 2},
-        {"cmd": "set ncart 0", "expect": "^ncart false"}
+        {
+          "wait": 8
+        },
+        {
+          "cmd": "selftest",
+          "timeout": 60,
+          "expect": "failed=0\\|"
+        },
+        {
+          "cmd": "set ncart 0",
+          "expect": "^ncart false"
+        },
+        {
+          "cmd": "open"
+        },
+        {
+          "wait": 3
+        },
+        {
+          "cmd": "focus_at -1250 -150 2",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "off_downtown_2"
+        },
+        {
+          "cmd": "close"
+        },
+        {
+          "wait": 2
+        },
+        {
+          "cmd": "set ncart 1",
+          "expect": "^ncart true"
+        },
+        {
+          "cmd": "open"
+        },
+        {
+          "wait": 3
+        },
+        {
+          "cmd": "focus_at -1250 -150 2",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_downtown_2"
+        },
+        {
+          "cmd": "focus_at -1250 -150 1",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_downtown_1"
+        },
+        {
+          "cmd": "focus_at -1300 -100 0.5",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_memorial_05"
+        },
+        {
+          "cmd": "focus_at -1030 -350 0.5",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_congress_05"
+        },
+        {
+          "cmd": "focus_at -1500 1600 1",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_watson_1"
+        },
+        {
+          "cmd": "focus_at -1600 -600 2",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_glen_2"
+        },
+        {
+          "cmd": "focus_at -1300 -1650 2",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_pacifica_2"
+        },
+        {
+          "cmd": "focus_at -1100 50 4",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_city_4"
+        },
+        {
+          "cmd": "focus_at -1100 50 8",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_city_8"
+        },
+        {
+          "cmd": "focus_at -1060 -1425 0.5",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_wollesen_05"
+        },
+        {
+          "cmd": "focus_at -1230 1360 0.5",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_watsonrun_05"
+        },
+        {
+          "cmd": "focus_at -1350 1250 1",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_japantown_1"
+        },
+        {
+          "cmd": "focus_at -1410 433 0.5",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_sarasti_05"
+        },
+        {
+          "cmd": "focus_at -2050 700 1",
+          "expect": "^focus"
+        },
+        {
+          "wait": 4
+        },
+        {
+          "shot": "on_h10_1"
+        },
+        {
+          "cmd": "close"
+        },
+        {
+          "wait": 2
+        },
+        {
+          "cmd": "set ncart 0",
+          "expect": "^ncart false"
+        }
       ]
     }
   ]

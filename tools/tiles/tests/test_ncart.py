@@ -119,7 +119,7 @@ def mk(n, *stations, looped=False):
 def offset_lines(g, lines, st, spacing=5.0, ease=30.0):
     gs, node_of = ncart.with_stations(g, st)
     routes = {l.number: ncart.route_edges(gs, node_of, l) for l in lines}
-    sl = ncart.slots(routes)
+    sl = ncart.slots(routes, gs)
     return {n: ncart.offset_polyline(gs, r, sl, spacing, ease, n) for n, r in routes.items()}
 
 
@@ -198,7 +198,10 @@ def test_three_share_then_one_leaves():
     st = places(S=(10, 0), T=(390, 0), N=(200, 190))
     o = offset_lines(g, [mk(1, "S", "T"), mk(2, "S", "N"), mk(3, "S", "T")], st, spacing=5.0, ease=30.0)
     share = o[1][(o[1][:, 0] > 50) & (o[1][:, 0] < 150)]
-    assert np.allclose(dist_to(o[3], share), 10.0, rtol=0.02)          # outer slots: 2 x spacing apart
+    assert np.allclose(dist_to(o[3], share), 5.0, rtol=0.02)           # 1 and 3 side by side: line 2, which turns
+    mid2 = o[2][(o[2][:, 0] > 50) & (o[2][:, 0] < 150)]                # north (left), rides on the north edge
+    assert mid2[:, 1].mean() > max(o[1][(o[1][:, 0] > 50) & (o[1][:, 0] < 150), 1].mean(),
+                                   o[3][(o[3][:, 0] > 50) & (o[3][:, 0] < 150), 1].mean())
     after = o[1][(o[1][:, 0] > 260) & (o[1][:, 0] < 360)]
     assert np.allclose(dist_to(o[3], after), 5.0, rtol=0.02)           # eased to +-spacing/2
     for n in (1, 3):
@@ -330,3 +333,120 @@ def test_engine_encoding_undoes_the_games_gamma():
     shown = np.where(c <= 0.0031308, 12.92 * c, 1.055 * c ** (1 / 2.4) - 0.055) * 255.0
     assert np.abs(shown[0] - src[0, :, :3]).max() <= 6                  # the game's encode lands on the intended colour
     assert enc[0, 0, 1] < 70                                             # 131 is stored as linear light (~58)
+
+
+def y_split():
+    # Shared track 0 -> 1, then line 1 runs straight on to 2 and line 2 branches off to 3.
+    nodes = np.array([[0.0, 0.0], [200.0, 0.0], [400.0, 0.0], [400.0, 120.0]])
+    e0 = ncart.Edge(0, 1, np.array([[0.0, 0.0], [200.0, 0.0]]))
+    e1 = ncart.Edge(1, 2, np.array([[200.0, 0.0], [400.0, 0.0]]))
+    e2 = ncart.Edge(1, 3, np.array([[200.0, 0.0], [400.0, 120.0]]))
+    return ncart.TrackGraph(nodes, [e0, e1, e2]), {1: [(0, True), (1, True)], 2: [(0, True), (2, True)]}
+
+
+def _gap_near(o, x0, x1):
+    a = o[1][(o[1][:, 0] > x0) & (o[1][:, 0] < x1)]
+    return dist_to(o[2], a)
+
+
+def test_lines_do_not_pinch_where_a_bundle_splits():
+    g, routes = y_split()
+    sl = ncart.slots(routes, g)
+    o = {n: ncart.offset_polyline(g, r, sl, 5.0, 30.0, n) for n, r in routes.items()}
+    assert _gap_near(o, 150, 230).min() > 0.9 * 5.0        # still a spacing apart through the junction
+    assert np.allclose(_gap_near(o, 60, 140), 5.0, rtol=0.03)   # and side by side before it
+
+
+def test_lines_do_not_pinch_where_they_merge():
+    g, routes = y_split()
+    # The same layout travelled the other way: the lines come together at node 1.
+    rev = {n: [(ei, not f) for ei, f in reversed(r)] for n, r in routes.items()}
+    sl = ncart.slots(rev, g)
+    o = {n: ncart.offset_polyline(g, r, sl, 5.0, 30.0, n) for n, r in rev.items()}
+    assert _gap_near(o, 150, 230).min() > 0.9 * 5.0
+
+
+def test_a_branch_leaving_left_rides_on_the_left():
+    # Line 1 (lower number) branches off to the LEFT (+y) and line 2 runs straight: number order would put line 1 on
+    # the right of travel and force a crossing at the junction. Geometric order puts it on the left.
+    nodes = np.array([[0.0, 0.0], [200.0, 0.0], [400.0, 0.0], [400.0, 120.0]])
+    e0 = ncart.Edge(0, 1, np.array([[0.0, 0.0], [200.0, 0.0]]))
+    e1 = ncart.Edge(1, 2, np.array([[200.0, 0.0], [400.0, 0.0]]))
+    e2 = ncart.Edge(1, 3, np.array([[200.0, 0.0], [400.0, 120.0]]))
+    g = ncart.TrackGraph(nodes, [e0, e1, e2])
+    for routes in ({1: [(0, True), (2, True)], 2: [(0, True), (1, True)]},
+                   {1: [(2, False), (0, False)], 2: [(1, False), (0, False)]}):      # and the same, travelled back
+        sl = ncart.slots(routes, g)
+        assert sl[0][1] > sl[0][2]                                   # line 1 left of line 2 on the shared edge
+        o = {n: ncart.offset_polyline(g, r, sl, 5.0, 30.0, n) for n, r in routes.items()}
+        assert _gap_near(o, 120, 230).min() > 0.9 * 5.0
+
+
+def test_a_run_with_conflicting_ends_crosses_once_not_per_edge():
+    # Lines 1 and 2 share a run of three edges (the middle one stored backwards). At the west end line 1 comes in
+    # from the north, at the east end it leaves to the south: one crossing is unavoidable, but the order must be the
+    # same on every edge of the run (in a common travel frame), so the lines cross once, not on each edge.
+    xs = [0.0, 100.0, 200.0, 300.0, 400.0, 500.0]
+    nodes = np.array([[x, 0.0] for x in xs] + [[-100.0, 100.0], [-100.0, -100.0], [600.0, -100.0], [600.0, 100.0]])
+    seg = lambda a, b: np.array([nodes[a], (nodes[a] + nodes[b]) / 2, nodes[b]])
+    E = [ncart.Edge(6, 0, seg(6, 0)), ncart.Edge(7, 0, seg(7, 0)),          # 0, 1: approaches (north, south)
+         ncart.Edge(0, 1, seg(0, 1)), ncart.Edge(2, 1, seg(2, 1)),          # 2, 3 (3 stored backwards)
+         ncart.Edge(2, 3, seg(2, 3)), ncart.Edge(3, 4, seg(3, 4)),          # 4, 5
+         ncart.Edge(4, 5, seg(4, 5)),                                        # 6
+         ncart.Edge(5, 8, seg(5, 8)), ncart.Edge(5, 9, seg(5, 9))]          # 7, 8: exits (south, north)
+    g = ncart.TrackGraph(nodes, E)
+    run = [(2, True), (3, False), (4, True), (5, True), (6, True)]
+    routes = {1: [(0, True)] + run + [(7, True)], 2: [(1, True)] + run + [(8, True)]}
+    sl = ncart.slots(routes, g)
+    travel = {2: 1, 3: -1, 4: 1, 5: 1, 6: 1}                                 # +1: edge stored the way the run goes
+    sides = {travel[e] * np.sign(sl[e][1] - sl[e][2]) for e in travel}
+    assert len(sides) == 1                                                   # same order on every edge of the run
+
+
+def test_an_out_and_back_spur_ends_cleanly_instead_of_a_hairpin():
+    # The line runs out along a spur to a terminus station and back the same way: drawn as one route, the U-turn at
+    # the tip is smoothed into a hook. Split at the reversal, the line simply ends at the station.
+    nodes = np.array([[0.0, 0.0], [200.0, 0.0], [200.0, 300.0], [400.0, 0.0]])
+    E = [ncart.Edge(0, 1, np.array([[0.0, 0.0], [200.0, 0.0]])),
+         ncart.Edge(1, 2, np.array([[200.0, 0.0], [200.0, 300.0]])),
+         ncart.Edge(1, 3, np.array([[200.0, 0.0], [400.0, 0.0]]))]
+    g = ncart.TrackGraph(nodes, E)
+    line = ncart.Line(1, "A", (229, 25, 25), ("S", "W", "T"), False)
+    net = ncart.Network(g, [line], {1: [(0, True), (1, True), (1, False), (2, True)]},
+                        ncart.slots({1: [(0, True), (1, True), (1, False), (2, True)]}, g), [])
+    polys = [p for p, rgb, kind in ncart.level_paths(net, 1.0) if kind == "line"]
+    assert len(polys) == 2
+    tip = np.array([200.0, 300.0])
+    assert all(min(np.hypot(*(p[0] - tip)), np.hypot(*(p[-1] - tip))) < 1.0 for p in polys)   # both end at the tip
+    for p in polys:                                                       # and neither turns back on itself
+        d = np.diff(p, axis=0)
+        d = d[np.hypot(*d.T) > 1e-6]
+        cos = (d[:-1] * d[1:]).sum(1) / (np.hypot(*d[:-1].T) * np.hypot(*d[1:].T))
+        assert cos.min() > -0.2
+
+
+def test_a_short_spur_at_a_reversal_becomes_a_connector():
+    # The line runs east, dips into a 12 m dead-end spur to its terminus station W, and goes back west. The spur
+    # would curl the line's end; it is dropped from the route and a connector joins W instead.
+    nodes = np.array([[0.0, 0.0], [300.0, 0.0], [300.0, 12.0]])
+    E = [ncart.Edge(0, 1, np.array([[0.0, 0.0], [150.0, 0.0], [300.0, 0.0]])),
+         ncart.Edge(1, 2, np.array([[300.0, 0.0], [300.0, 12.0]]))]
+    g = ncart.TrackGraph(nodes, E)
+    route = [(0, True), (1, True), (1, False), (0, False)]
+    assert ncart.trim_spur_visits(g, route) == [(0, True), (0, False)]
+    long = [(0, True)]
+    assert ncart.trim_spur_visits(g, long) == long
+
+
+def test_size_change_ease_is_gentle():
+    runs = [(100, 2.5, 2), (100, 0.0, 1)]
+    o = ncart._eased_offsets(runs, 25)
+    assert np.abs(np.diff(o)).max() < 2.5 / 40          # spread over well beyond 25 samples
+
+
+def test_ease_spans_short_edges_with_the_same_offset():
+    # The bundle shrinks onto a 3-sample edge followed by more edges with the same offset: the ease must use the
+    # whole stretch, not stop at the short edge (a jog).
+    runs = [(100, 2.5, 2), (3, 0.0, 1), (100, 0.0, 1)]
+    o = ncart._eased_offsets(runs, 25)
+    assert np.abs(np.diff(o)).max() < 2.5 / 40
