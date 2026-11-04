@@ -1,0 +1,25 @@
+{
+  "name": "glow-probe",
+  "runs": [
+    {
+      "name": "glowprobe",
+      "parts": ["scripts", "archive", "bootstrap", "autopilot"],
+      "repeats": 1,
+      "steps": [
+        {"wait": 8},
+        {"cmd": "set effects 0", "expect": "^effects"},
+        {"cmd": "set scan 0", "expect": "^scan"},
+        {"cmd": "set tracking 0", "expect": "^tracking"},
+        {"cmd": "set glitch 0", "expect": "^glitch"},
+        {"cmd": "set glow 3", "expect": "^glow"},
+        {"cmd": "open"}, {"wait": 3},
+        {"cmd": "focus_at -1250 -150 1", "expect": "^focus"}, {"wait": 4},
+        {"cmd": "fx_probe bloom 1", "expect": "^bloom"}, {"wait": 2}, {"shot": "g3_bloom_on"},
+        {"cmd": "fx_probe bloom 0", "expect": "^bloom"}, {"wait": 2}, {"shot": "g3_bloom_off"},
+        {"cmd": "focus_at -1250 -150 4", "expect": "^focus"}, {"wait": 4}, {"shot": "g3_bloom_off_city"},
+        {"cmd": "fx_probe bloom 1", "expect": "^bloom"}, {"wait": 2}, {"shot": "g3_bloom_on_city"},
+        {"cmd": "close"}, {"wait": 2}
+      ]
+    }
+  ]
+}

@@ -61,12 +61,12 @@ public abstract class NMHoloTests {
         let l1: array<Int32> = NMTileManifest.SetTiles(g, 1);
         let l2: array<Int32> = NMTileManifest.SetTiles(g, 2);
         let l5: array<Int32> = NMTileManifest.SetTiles(g, n - 1);
-        t.Check("holo.glow_only_from_l2", ArraySize(l0) == 0 && ArraySize(l1) == 0 && ArraySize(l2) > 0 && ArraySize(l5) > 0,
+        t.Check("holo.glow_at_every_level", ArraySize(l0) > 0 && ArraySize(l1) > 0 && ArraySize(l2) > 0 && ArraySize(l5) > 0,
             ToString(ArraySize(l0)) + "/" + ToString(ArraySize(l1)) + "/" + ToString(ArraySize(l2)) + "/" + ToString(ArraySize(l5)));
         t.Check("holo.pick_offset_math", NMTileLayer.PickLevelOffset(0.5, 2) == 2 && NMTileLayer.PickLevelOffset(16.0, 2) == n - 1
             && NMTileLayer.PickLevelOffset(2.0, 0) == NMTileLayer.PickLevel(2.0) && NMTileLayer.PickLevelOffset(4.0, 2) == n - 1,
             ToString(NMTileLayer.PickLevelOffset(0.5, 2)) + "/" + ToString(NMTileLayer.PickLevelOffset(16.0, 2)));
-        // A glow layer (offset 2) at 0.5 m/px shows level index 2; at 16 m/px it clamps to the last level.
+        // The glow layer draws at the camera's own level (offset 0), so its halo stays tight: level 0 at 0.5 m/px.
         let canvas = new inkCanvas();
         let b = NMRect.Create(NMTileManifest.WorldMinX(), NMTileManifest.WorldMinY(), NMTileManifest.WorldMaxX(), NMTileManifest.WorldMaxY());
         let cam = NMCamera.Create(1880.0, 1480.0, b, NightMapSystem.MinMpp(), NightMapSystem.MaxMpp());
@@ -77,10 +77,11 @@ public abstract class NMHoloTests {
         let far = NMTileLayer.Create(canvas, g, NMTheme.GlowLevelOffset());
         cam.SetMpp(16.0);
         far.Update(cam, 16.0);
-        t.Check("holo.glow_layer_level_offset", near.CurrentLevel() == 2 && far.CurrentLevel() == n - 1 && near.LevelOffset() == 2,
+        t.Check("holo.glow_layer_level_offset", near.CurrentLevel() == 0 && far.CurrentLevel() == n - 1 && near.LevelOffset() == 0,
             ToString(near.CurrentLevel()) + "/" + ToString(far.CurrentLevel()));
-        t.Check("holo.glow_has_no_l0_tiles", !near.Has(0, 0, 0) && !near.Has(1, 0, 0), "");
-        t.Check("holo.set_offsets", NMLayerStack.WantsSet("glow", true, false) && NMLayerStack.SetOffset("glow") == 2 && NMLayerStack.SetOffset("road") == 0, "");
+        let l0glow = NMTileManifest.SetTiles(g, 0);
+        t.Check("holo.glow_has_l0_tiles", Equals(NMTileManifest.SetName(g), "glow") && ArraySize(l0glow) > 0, ToString(ArraySize(l0glow)));
+        t.Check("holo.set_offsets", NMLayerStack.WantsSet("glow", true, false) && NMLayerStack.SetOffset("glow") == 0 && NMLayerStack.SetOffset("road") == 0, "");
         let stack = NMLayerStack.Create(canvas, 0, false);
         let withFx = NMLayerStack.Create(canvas, 0, true);
         // The metro set only gets a layer while the NCART filter is on, so both counts leave it out.
@@ -333,13 +334,16 @@ public abstract class NMHoloTests {
         t.Check("holo.fx_glitch_covers_map", t.Near(gx, 1880.0, 0.01) && t.Near(gy, 1480.0, 0.01), t.F(gx) + "x" + t.F(gy));
         // Tracking band bright enough to read over the light map.
         t.Check("holo.fx_track_visible", NMTheme.HoloTrackOpacity() >= 0.3, t.F(NMTheme.HoloTrackOpacity()));
-        // The bloom blur keeps one shape at every gain: its sample spacing grows with intensity, and widening it with the
-        // gain stamped shifted copies of the road network across the whole map. The glow tint is pushed past 1 above gain
-        // 1 so the top of the slider still adds light.
+        // No engine blur on the glow layer: it smeared the glow across the whole map as a haze (in-game probe). The
+        // halo is baked into the tiles instead. The glow tint is pushed past 1 above gain 1 so the top of the slider
+        // still adds light.
         let lo = NMHoloFx.Make(0.3, 1.0, true, true);
         let hi = NMHoloFx.Make(0.3, 3.0, true, true);
-        t.Check("holo.fx_bloom_fixed", t.Near(hi.BloomIntensity(), lo.BloomIntensity(), 0.0001) && t.Near(lo.BloomIntensity(), NMTheme.BloomIntensity(), 0.0001),
-            t.F(lo.BloomIntensity()) + "/" + t.F(hi.BloomIntensity()));
+        let glowStack = NMLayerStack.Create(canvas, 0, true);
+        glowStack.SetGlow(hi);
+        let gl = glowStack.Layer("glow");
+        t.Check("holo.glow_has_no_engine_blur", IsDefined(gl) && IsDefined(gl.Root()) && NMFx.EffectCount(gl.Root()) == 0,
+            IsDefined(gl) && IsDefined(gl.Root()) ? ToString(NMFx.EffectCount(gl.Root())) : "no layer");
         // Glow strength works on its own: the glow layer exists whenever the gain is above 0, with or without Hologram effects.
         t.Check("holo.fx_glow_own_switch", hi.WantsGlow() && !NMHoloFx.Make(0.3, 0.0, true, true).WantsGlow(), "");
         t.Check("holo.fx_glow_boost", t.Near(lo.GlowBoost(), 1.0, 0.0001) && t.Near(hi.GlowBoost(), 3.0, 0.0001)
@@ -364,9 +368,8 @@ public abstract class NMHoloTests {
         let road = st.Layer("road");
         t.Check("holo.fx_glow_gain", IsDefined(g) && t.Near(g.Opacity(), 1.0, 0.0001) && IsDefined(road) && t.Near(road.Opacity(), NMTheme.TileOpacity("road"), 0.0001),
             IsDefined(g) ? t.F(g.Opacity()) : "no glow layer");
-        t.Check("holo.fx_bloom_once", IsDefined(g) && NMFx.EffectCount(g.Root()) == 2, IsDefined(g) ? ToString(NMFx.EffectCount(g.Root())) : "no glow layer");
         st.SetGlow(NMHoloFx.Make(0.3, 2.0, true, true));
-        t.Check("holo.fx_bloom_not_doubled", IsDefined(g) && NMFx.EffectCount(g.Root()) == 2, "");
+        t.Check("holo.fx_glow_reapplied_adds_no_effects", IsDefined(g) && NMFx.EffectCount(g.Root()) == 0, IsDefined(g) ? ToString(NMFx.EffectCount(g.Root())) : "no glow layer");
         st.SetGlow(NMHoloFx.Make(0.3, 0.0, true, true));
         t.Check("holo.fx_glow_zero", IsDefined(g) && t.Near(g.Opacity(), 0.0, 0.0001), IsDefined(g) ? t.F(g.Opacity()) : "no glow layer");
     }

@@ -1162,7 +1162,21 @@
             return "glitch effects=" + NMFx.EffectCount(this.panel.mapContent) + " set=" + FloatToStringPrec(r, 2)
                 + " read=" + FloatToStringPrec(this.panel.mapContent.GetEffectParamValue(inkEffectType.Glitch, NMFx.GlitchName(), n"intensity"), 2);
         }
-        return "usage: fx_probe blur|glitch <value>";
+        if Equals(mode, "bloom") {
+            // v = 1 / 0: switch the glow layer's engine blur on or off, and report what that layer is.
+            let g = IsDefined(this.layers) ? this.layers.Layer("glow") : null;
+            if !IsDefined(g) || !IsDefined(g.Root()) { return "bloom no glow layer"; }
+            let root = g.Root();
+            let on = v > 0.5;
+            root.SetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Horizontal), on);
+            root.SetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Vertical), on);
+            let tint = root.GetTintColor();
+            return "bloom on=" + ToString(root.GetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Horizontal)))
+                + " effects=" + NMFx.EffectCount(root) + " op=" + FloatToStringPrec(root.GetOpacity(), 2)
+                + " tint=" + FloatToStringPrec(tint.Red, 2) + "," + FloatToStringPrec(tint.Green, 2) + "," + FloatToStringPrec(tint.Blue, 2)
+                + " size=" + FloatToStringPrec(root.GetWidth(), 0) + "x" + FloatToStringPrec(root.GetHeight(), 0);
+        }
+        return "usage: fx_probe blur|glitch|bloom <value>";
     }
 
     // NCART station positions for tools/tiles (nmtiles.ncart): one NCART| line per station mappin, record id first.

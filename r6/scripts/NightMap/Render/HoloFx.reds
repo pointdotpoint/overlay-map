@@ -31,12 +31,6 @@ public class NMHoloFx {
         return ClampF(NMTheme.TileOpacity("glow") * this.glow, 0.0, 1.0);
     }
 
-    // Box blur intensity on the glow layer. Fixed at every gain: the engine blur's sample spacing grows with its
-    // intensity, so widening it with the gain stamped shifted copies of the road network across the whole map.
-    public func BloomIntensity() -> Float {
-        return NMTheme.BloomIntensity();
-    }
-
     // Does the map get a glow layer? Glow strength is its own switch (0 = off), independent of Hologram effects.
     public func WantsGlow() -> Bool {
         return this.glow > 0.001;

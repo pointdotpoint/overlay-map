@@ -25,7 +25,6 @@ public class NMLayerStack {
     private let layers: array<ref<NMMapLayer>>;
     public let available: Bool;
     private let theme: Int32;
-    private let bloomed: Bool;
     private let fx: ref<NMHoloFx>;   // unset: the glow layer keeps NMTheme.TileOpacity("glow")
 
     // Does a set get a layer? The glow set only exists while the hologram effects are on, the metro set (NCART lines)
@@ -75,24 +74,12 @@ public class NMLayerStack {
         }
     }
 
-    // The glow knobs: the glow layer's opacity follows the gain (Glow strength); 0 hides it.
-    // The glow layer is also blurred (an engine box blur on its container), so bright roads bloom instead of
-    // showing the coarse tiles' edges.
+    // The glow knobs: the glow layer's opacity and brightness follow the gain (Glow strength); 0 hides it. There is
+    // no engine blur: on this layer the engine box blur smeared the glow across the whole map as a haze, so the soft
+    // halo is baked into the glow tiles instead (tools/tiles, drawn at the camera's own level).
     public func SetGlow(fx: ref<NMHoloFx>) {
         this.fx = fx;
         this.ApplyTheme(this.theme);
-        let g = this.Layer("glow");
-        if !this.bloomed && IsDefined(fx) && fx.glow > 0.001 && IsDefined(g) && IsDefined(g.Root()) {
-            let root = g.Root();
-            NMFx.AddBlur2D(root, fx.BloomIntensity(), NMTheme.BloomSamples());
-            root.SetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Horizontal), true);
-            root.SetEffectEnabled(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Vertical), true);
-            this.bloomed = true;
-        }
-        if this.bloomed && IsDefined(fx) && IsDefined(g) && IsDefined(g.Root()) {
-            g.Root().SetEffectParamValue(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Horizontal), n"intensity", fx.BloomIntensity());
-            g.Root().SetEffectParamValue(inkEffectType.BoxBlur, NMFx.BlurName(inkEBlurDimension.Vertical), n"intensity", fx.BloomIntensity());
-        }
     }
 
     public func Layer(name: String) -> ref<NMMapLayer> {

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from nmtiles.render import LevelGrid
-from nmtiles.render_minimap import DOT_PITCH_PX, FILL_BASE, GLOW_MIN_MPP, SETS, TileSources, TriIndex, dot_pattern, make_sources, render_tile
+from nmtiles.render_minimap import DOT_PITCH_PX, FILL_BASE, GLOW_MIN_MPP, GLOW_RADIUS, SETS, TileSources, TriIndex, dot_pattern, make_sources, render_tile
 
 # 2x2 tiles of 512 px at 1 m/px: tile (ix, iy) covers x in [512 ix, 512 ix + 512), y in (1024 - 512 (iy+1), 1024 - 512 iy]
 GRID = LevelGrid(1.0, 0.0, 1024.0, 2, 2, 512)
@@ -45,7 +45,7 @@ def test_tri_index_returns_overlapping_bboxes_and_nothing_far():
 
 def test_road_triangle_paints_centroid_and_leaves_far_pixels_clear():
     out = render_tile(src(road=tri((100, 900), (200, 900), (150, 1000))), GRID, 0, 0)
-    assert set(out) == {"road"}
+    assert set(out) == {"road", "glow"}                  # roads glow at every level
     a = alpha(out["road"])
     assert a.shape == (512, 512) and a[int(1024 - 933), 150] == 255
     assert (np.asarray(out["road"])[91, 150, :3] == 255).all()                # white mask
@@ -91,7 +91,7 @@ def test_render_is_deterministic():
     assert {k: v.tobytes() for k, v in a.items()} == {k: v.tobytes() for k, v in b.items()}
 
 
-# ---- glow set: only at levels with mpp >= GLOW_MIN_MPP (L2..L5 of 0.5,1,2,4,8,16) ----
+# ---- glow set: at every level, drawn at the camera's own level (no upscaling), so the halo stays tight on screen ----
 GRID2 = LevelGrid(2.0, 0.0, 2048.0, 2, 2, 512)    # tile (0,0): x in [0,1024), y in (1024,2048]; world y = 2048 - 2 * row
 
 
@@ -103,17 +103,22 @@ def quad(x0, y0, x1, y1):
     return np.array([[(x0, y0), (x1, y0), (x1, y1)], [(x0, y0), (x1, y1), (x0, y1)]], np.float32)
 
 
-def test_glow_exists_only_at_levels_with_mpp_at_least_two():
-    have = []
+def test_glow_exists_at_every_level_and_stays_tight():
+    # The glow is drawn at the camera's own level, so it must exist at every level, and its halo must hug the road:
+    # a few pixels past the rim it is gone, so the dark background between roads stays dark.
     for mpp in [0.5, 1.0, 2.0, 4.0, 8.0, 16.0]:
         g = LevelGrid(mpp, 0.0, 1024.0 * mpp, 2, 2, 512)
-        road = tri((50 * mpp, 1000 * mpp), (150 * mpp, 1000 * mpp), (100 * mpp, 900 * mpp))   # px (50..150, 24..124)
-        foot = [box(200 * mpp, 800 * mpp, 300 * mpp, 900 * mpp)]
+        road = quad(100 * mpp, 600 * mpp, 200 * mpp, 900 * mpp)                 # px columns 100..200, rows 124..424
+        foot = [box(300 * mpp, 800 * mpp, 400 * mpp, 900 * mpp)]
         out = render_tile(make_sources(road, foot, g.tile_world, NOROAD), g, 0, 0)
-        assert {"road", "bfill", "outline"} <= set(out)
-        have.append("glow" in out)
-    assert have == [False, False, True, True, True, True]
-    assert GLOW_MIN_MPP == 2.0
+        assert {"road", "bfill", "outline", "glow"} <= set(out), mpp
+        a = alpha(out["glow"]).astype(int)
+        row = 274 * a.shape[0] // 512
+        rim = 100 * a.shape[1] // 512
+        reach = int(np.ceil((GLOW_RADIUS * 4 + 2) * a.shape[1] / 512))
+        assert a[row, rim] > 10, mpp                                          # the rim glows
+        assert a[row, max(rim - reach, 0)] == 0, mpp                           # and the halo ends within ~4 sigma
+    assert GLOW_MIN_MPP <= 0.5
 
 
 def test_glow_is_a_soft_halo_around_the_road_rim():
@@ -143,7 +148,7 @@ def test_glow_is_the_same_for_every_road():
 def test_render_tile_merges_roads_into_one_set():
     s = src(road=quad(100, 600, 200, 606), major=quad(300, 700, 340, 720))   # 6 m narrow, 20 m wide
     out = render_tile(s, GRID, 0, 0)
-    assert set(out) == {"road"}
+    assert set(out) == {"road", "glow"}                  # one road set (plus its glow), no major/minor split
     r = alpha(out["road"])
     assert r[1024 - 603, 150] == 255 and r[1024 - 710, 320] == 255
 
@@ -195,7 +200,8 @@ def test_margin_change_leaves_the_other_sets_identical():
 def test_glow_gain_falls_with_level_so_far_zoom_is_not_haze():
     from nmtiles.render_minimap import GLOW_GAIN, glow_gain
     g = [glow_gain(m) for m in (2.0, 4.0, 8.0, 16.0)]
-    assert g[0] == GLOW_GAIN and all(a > b for a, b in zip(g, g[1:])) and g[3] < 1.0
+    assert g[0] == GLOW_GAIN and all(a > b for a, b in zip(g, g[1:])) and abs(g[3] - GLOW_GAIN / 8) < 1e-9
+    assert glow_gain(0.5) == glow_gain(1.0) == GLOW_GAIN               # street levels glow like 2 m/px
 
 
 def test_road_major_is_required():

@@ -223,8 +223,6 @@ public abstract class NMTheme {
     public static func HoloTrackOpacity() -> Float { return 0.6; }      // VHS tracking band at its brightest (0.35 measured ~3% brighter: too faint)
     public static func HoloTrackHeight() -> Float { return 0.07; }      // of the map height
     public static func GlitchIntensity() -> Float { return 0.35; }      // inkGlitchEffect intensity at a burst's peak
-    public static func BloomIntensity() -> Float { return 2.0; }        // inkBoxBlurEffect on the glow layer at gain 1 (NMHoloFx scales it)
-    public static func BloomSamples() -> Int32 { return 12; }
     public static func HoloEdgeOpacity() -> Float { return 0.3; }
     public static func HoloBracketGain() -> Float { return 1.25; }   // brackets brighten with HDR gain (bloom not verified)
     public static func ScanPeriod() -> Float { return 4.0; }          // holo_scan line spacing in 4K units
@@ -238,7 +236,7 @@ public abstract class NMTheme {
         return AbsF(saved - 0.45) < 0.0005 ? NMTheme.DefaultPanelOpacity() : saved;   // float 0.449 is 0.0009999 away
     }
     // The glow layer draws a level this many steps coarser than the camera's, upscaled (bilinear = soft bloom).
-    public static func GlowLevelOffset() -> Int32 { return 2; }
+    public static func GlowLevelOffset() -> Int32 { return 0; }   // glow draws at the camera's own level: a tight halo
 
     // Tile-set tints. Tiles are colourless masks; these are applied at runtime, so a theme change needs no rebuild.
     // Keys are NMTileManifest.SetName values.

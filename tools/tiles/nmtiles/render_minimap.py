@@ -1,9 +1,8 @@
 """Colourless mask tiles (white RGB, alpha = coverage) from the game's minimap geometry (spec 11.6).
 
 One tile set per class, in draw order; the runtime tints them with SetTintColor from NMTheme:
-  glow     blurred road rims (every road alike; buildings do not glow); levels with
-           mpp >= GLOW_MIN_MPP only; the runtime draws it from a level 2 steps coarser than the camera's, upscaled,
-           so bilinear filtering makes the bloom soft
+  glow     blurred road rims (every road alike; buildings do not glow), at every level; the runtime draws it at
+           the camera's own level, so the halo stays a few screen pixels wide and the background between roads dark
   bfill    building footprint fill
   outline  footprint exterior as a 1 px line at the level's resolution (drawn at 2x, width 2, downsampled)
   metro    the NCART lines in their own colours (RGBA, nmtiles.ncart; tinted white at runtime)
@@ -30,15 +29,17 @@ from nmtiles.render import LevelGrid
 SETS = ("glow", "bfill", "outline", "road", "metro")      # draw order, back to front: roads over buildings
 SS = 2
 DEFAULT_JOBS = 4
-GLOW_MIN_MPP = 2.0                                       # glow tiles exist only at m/px >= this (L2..L5)
-GLOW_RADIUS = 1.5                                        # Gaussian sigma in px at every glow level: 3 m at 2 m/px, reach ~9 m
-GLOW_GAIN = 2.5                                          # gain at 2 m/px (a blurred 1 px line peaks near 0.26); falls with sqrt(mpp)
+GLOW_MIN_MPP = 0.5                                       # glow tiles exist at every level: the runtime draws the glow
+                                                         # at the camera's own level, so the halo stays a few screen px
+GLOW_RADIUS = 2.5                                        # Gaussian sigma in px at every level (a tight bloom, not a haze)
+GLOW_GAIN = 4.2                                          # gain up to GLOW_REF_MPP (a blurred 1 px line peaks near 0.26)
+GLOW_REF_MPP = 2.0                                       # coarser levels get less gain, falling as 1 / mpp
 
 
 def glow_gain(mpp: float) -> float:
-    """Coarser levels are drawn at the same screen size from a blur whose reach grows with mpp, so they get less gain:
-    otherwise the far zoom reads as haze, not glow."""
-    return GLOW_GAIN * math.sqrt(GLOW_MIN_MPP / max(mpp, GLOW_MIN_MPP))
+    """Far zoom packs many roads into each pixel, so coarser levels get less gain, in proportion to the road density
+    (1 / mpp): otherwise the halos of a dense city merge and the far zoom reads as one bright blob."""
+    return GLOW_GAIN * GLOW_REF_MPP / max(mpp, GLOW_REF_MPP)
 
 GLOW_MARGIN = math.ceil(3 * GLOW_RADIUS) + 3             # >= 3 sigma plus the LANCZOS support
 DOT_PITCH_PX = 8                                         # building fill dot matrix: pitch and dot size in px
