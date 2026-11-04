@@ -528,13 +528,13 @@ SPACING_PX = 9.5               # centre-to-centre distance of side-by-side lines
 CASING_PX = 1.75               # dark casing beyond each side of a line; between neighbours it fills the gap
 CASING_RGB = (8, 6, 16)
 CASING_ALPHA = 0.92
-HILITE_PX = 2.0                # pale centre of the core: the neon-tube look of the NCART diagram
-HILITE_MIX = 0.55              # share of white in the centre colour
+HILITE_PX = 1.25               # pale centre of the core: the neon-tube look of the NCART diagram
+HILITE_MIX = 0.25              # share of white in the centre colour
 EASE_PX = 24.0                 # ease length where lines join or split, in pixels (at least EASE_MIN_M)
 EASE_MIN_M = 25.0
 GLOW_PX = 18.0                 # width of the glow stroke before the blur; drawn under the casing, so it only shows
 GLOW_SIGMA = 5.0               # outside a bundle and never tints a neighbour
-GLOW_ALPHA = 0.5
+GLOW_ALPHA = 0.4
 CONNECTOR_PX = 2.5
 RSS = 4                        # supersampling of the strokes
 MARGIN_PX = int(GLOW_PX / 2 + 4 * GLOW_SIGMA) + 4
@@ -585,6 +585,19 @@ def _unpremul(p: np.ndarray) -> np.ndarray:
 def _box_down(p: np.ndarray, k: int) -> np.ndarray:
     h, w = p.shape[0] // k, p.shape[1] // k
     return p[:h * k, :w * k].reshape(h, k, w, k, 4).mean(axis=(1, 3))
+
+
+def to_engine_linear(img):
+    """The metro tiles carry real colours (every other set is a white mask tinted at runtime). The game samples the
+    texture as linear colour and gamma-encodes it for the screen, which lifts the colours to pastel and the dark
+    casing to grey. Storing linear light (sRGB decode of each colour channel; coverage alpha unchanged) makes the
+    on-screen colour the intended one."""
+    from PIL import Image
+    a = np.asarray(img.convert("RGBA")).astype(np.float64)
+    c = a[..., :3] / 255.0
+    lin = np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    out = np.concatenate([lin * 255.0, a[..., 3:4]], -1)
+    return Image.fromarray(np.clip(out + 0.5, 0, 255).astype(np.uint8), "RGBA")
 
 
 def render_metro_tile(paths: list[tuple[np.ndarray, tuple[int, int, int], str]], grid, ix: int, iy: int):

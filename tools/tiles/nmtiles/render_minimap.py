@@ -225,10 +225,10 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
         g = _glow(road, glow_gain(grid.mpp))
         put("glow", None if g is None else _crop(g, margin))
     if src.metro:
-        from nmtiles.ncart import render_metro_tile
+        from nmtiles.ncart import render_metro_tile, to_engine_linear
         img = render_metro_tile(src.metro, grid, ix, iy)     # full colour, not a white mask
         if img is not None:
-            out["metro"] = img
+            out["metro"] = to_engine_linear(img)              # the game reads it as linear colour
     return out
 
 

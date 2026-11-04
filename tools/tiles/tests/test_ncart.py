@@ -260,7 +260,7 @@ def test_metro_tile_is_coloured_and_transparent_elsewhere():
     pure = [p for p in col if p[3] == 255 and abs(p[0] - 229) <= 3 and abs(p[1] - 25) <= 3 and abs(p[2] - 25) <= 3]
     assert pure                                                  # the core keeps the line colour
     centre = col[np.argmax(col[:, 1])]
-    assert centre[3] == 255 and centre[1] > 100 and centre[0] >= 229   # a paler centre: the neon-tube highlight
+    assert centre[3] == 255 and centre[1] > 25 + 30 and centre[0] >= 229    # a paler centre: the neon-tube highlight
     assert a[1024 - 900 - 40, 250, 3] == 0 and a[1024 - 900, 480, 3] == 0
     assert ncart.render_metro_tile(paths, GRID, 1, 1) is None
 
@@ -314,3 +314,19 @@ def test_level_paths_space_lines_by_pixels():
         lines = [pts for pts, rgb, kind in ncart.level_paths(net, mpp) if kind == "line"]
         mid = lines[0][(lines[0][:, 0] > 100) & (lines[0][:, 0] < 300)]
         assert np.allclose(dist_to(lines[1], mid), ncart.SPACING_PX * mpp, rtol=0.02)
+
+
+def test_engine_encoding_undoes_the_games_gamma():
+    # The game reads the metro texture as linear colour and gamma-encodes it for the screen. Baking linear light
+    # makes the on-screen colour the intended sRGB colour: (250, 131, 0) would otherwise show as about (253, 190, 0).
+    from PIL import Image
+    src = np.zeros((2, 3, 4), np.uint8)
+    src[0, 0] = (250, 131, 0, 255)
+    src[0, 1] = (8, 6, 16, 235)
+    src[0, 2] = (27, 233, 32, 128)
+    enc = np.asarray(ncart.to_engine_linear(Image.fromarray(src, "RGBA"))).astype(float)
+    assert np.array_equal(enc[..., 3], src[..., 3])                     # coverage is untouched
+    c = enc[..., :3] / 255.0
+    shown = np.where(c <= 0.0031308, 12.92 * c, 1.055 * c ** (1 / 2.4) - 0.055) * 255.0
+    assert np.abs(shown[0] - src[0, :, :3]).max() <= 6                  # the game's encode lands on the intended colour
+    assert enc[0, 0, 1] < 70                                             # 131 is stored as linear light (~58)
