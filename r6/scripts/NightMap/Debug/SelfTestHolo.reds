@@ -333,11 +333,15 @@ public abstract class NMHoloTests {
         t.Check("holo.fx_glitch_covers_map", t.Near(gx, 1880.0, 0.01) && t.Near(gy, 1480.0, 0.01), t.F(gx) + "x" + t.F(gy));
         // Tracking band bright enough to read over the light map.
         t.Check("holo.fx_track_visible", NMTheme.HoloTrackOpacity() >= 0.3, t.F(NMTheme.HoloTrackOpacity()));
-        // Bloom widens with the gain, and the glow tint is pushed past 1 above gain 1 so the top of the slider still adds light.
+        // The bloom blur keeps one shape at every gain: its sample spacing grows with intensity, and widening it with the
+        // gain stamped shifted copies of the road network across the whole map. The glow tint is pushed past 1 above gain
+        // 1 so the top of the slider still adds light.
         let lo = NMHoloFx.Make(0.3, 1.0, true, true);
         let hi = NMHoloFx.Make(0.3, 3.0, true, true);
-        t.Check("holo.fx_bloom_scales", hi.BloomIntensity() > lo.BloomIntensity() + 1.0 && lo.BloomIntensity() >= 2.0,
+        t.Check("holo.fx_bloom_fixed", t.Near(hi.BloomIntensity(), lo.BloomIntensity(), 0.0001) && t.Near(lo.BloomIntensity(), NMTheme.BloomIntensity(), 0.0001),
             t.F(lo.BloomIntensity()) + "/" + t.F(hi.BloomIntensity()));
+        // Glow strength works on its own: the glow layer exists whenever the gain is above 0, with or without Hologram effects.
+        t.Check("holo.fx_glow_own_switch", hi.WantsGlow() && !NMHoloFx.Make(0.3, 0.0, true, true).WantsGlow(), "");
         t.Check("holo.fx_glow_boost", t.Near(lo.GlowBoost(), 1.0, 0.0001) && t.Near(hi.GlowBoost(), 3.0, 0.0001)
             && t.Near(NMHoloFx.Make(0.3, 0.5, true, true).GlowBoost(), 1.0, 0.0001), t.F(hi.GlowBoost()));
 

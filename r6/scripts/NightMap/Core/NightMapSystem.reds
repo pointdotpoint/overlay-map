@@ -972,7 +972,8 @@ public class NightMapSystem extends ScriptableSystem {
         this.layerEpoch = this.api.layerEpoch;
         let l = this.panel.layout;
         let ms = this.Settings();
-        this.layers = NMLayerStack.Create(this.panel.tiles, this.holoTheme, this.holoEffects, IsDefined(ms) && ms.filterNcart);
+        // The glow layer follows Glow strength, not Hologram effects: a plain map can still glow.
+        this.layers = NMLayerStack.Create(this.panel.tiles, this.holoTheme, IsDefined(this.holoFx) && this.holoFx.WantsGlow(), IsDefined(ms) && ms.filterNcart);
         this.layers.SetGlow(this.holoFx);
         let markerSize = IsDefined(ms) ? ms.markerSize : 0.5;
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, NMTheme.MapMarkerScale(l.scale, markerSize));

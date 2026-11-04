@@ -240,7 +240,7 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Hologram effects")
-    @runtimeProperty("ModSettings.description", "Glow, grid, scanlines, noise, scan bar, edge glow and marker halos, with their animations. Off looks like the plain map (applies on next open).")
+    @runtimeProperty("ModSettings.description", "Grid, scanlines, noise, scan bar, edge glow and marker halos, with their animations. Off gives a plain background. Glow strength is separate (applies on next open).")
     public let hologramEffects: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "NightMap")
@@ -257,7 +257,7 @@ public class NightMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Glow strength")
-    @runtimeProperty("ModSettings.description", "How strongly roads and buildings glow. 0 turns the glow off. Needs Hologram effects (applies on next open).")
+    @runtimeProperty("ModSettings.description", "How strongly the roads glow. 0 turns the glow off. Works with or without Hologram effects (applies on next open).")
     @runtimeProperty("ModSettings.step", "0.1")
     @runtimeProperty("ModSettings.min", "0")
     @runtimeProperty("ModSettings.max", "3")
