@@ -65,3 +65,18 @@ def test_changed_options_invalidate_cache(tmp_path, monkeypatch):
     monkeypatch.setattr(encode, "TEXCONV_OPTS", ["-pmalpha"])
     encode.encode_bc7([a], out)
     assert len(calls) == 2
+
+
+def test_ncart_tiles_get_the_thorough_bc7_mode(tmp_path, monkeypatch):
+    # The coloured NCART lines get blocky notches from the quick mode at close zoom; the white masks keep it (speed).
+    calls = []
+    monkeypatch.setattr(encode.subprocess, "run", _fake_texconv(calls))
+    m, r = tmp_path / "metro_L0_t_1_2.png", tmp_path / "road_L0_t_1_2.png"
+    m.write_bytes(b"one")
+    r.write_bytes(b"two")
+    encode.encode_bc7([m, r], tmp_path / "dds")
+    assert len(calls) == 2                                    # one option set per texconv call
+    metro = next(c for c in calls if any("metro_" in a for a in c))
+    road = next(c for c in calls if any("road_" in a for a in c))
+    assert "-bc" not in metro and "-pmalpha" in metro and "-vflip" in metro
+    assert road[road.index("-bc") + 1] == "q"

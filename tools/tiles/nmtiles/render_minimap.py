@@ -4,7 +4,7 @@ One tile set per class, in draw order; the runtime tints them with SetTintColor 
   glow     blurred road rims (every road alike; buildings do not glow), at every level; the runtime draws it at
            the camera's own level, so the halo stays a few screen pixels wide and the background between roads dark
   bfill    building footprint fill
-  outline  footprint exterior as a 1 px line at the level's resolution (drawn at 2x, width 2, downsampled)
+  outline  footprint exterior as a 1 px line at the level's resolution (drawn at SS x, width SS, downsampled)
   metro    the NCART lines in their own colours (RGBA, nmtiles.ncart; tinted white at runtime)
   road     every minimap road triangle in one mask, like the vanilla minimap draws them. The minimap classifies each
            road shape by width (minimap.MAJOR_WIDTH_M), but one highway is many shapes whose widths fall either side of
@@ -27,7 +27,9 @@ from PIL import Image, ImageDraw, ImageFilter
 from nmtiles.render import LevelGrid
 
 SETS = ("glow", "bfill", "outline", "road", "metro")      # draw order, back to front: roads over buildings
-SS = 2
+SS = 4                                                   # supersampling: the closest zoom shows each texel ~5x enlarged,
+                                                         # and at 2x thin diagonal outlines visibly beaded (coverage
+                                                         # swung 0.64-0.91 px along the line; 0.95-1.10 at 4x)
 DEFAULT_JOBS = 4
 GLOW_MIN_MPP = 0.5                                       # glow tiles exist at every level: the runtime draws the glow
                                                          # at the camera's own level, so the halo stays a few screen px

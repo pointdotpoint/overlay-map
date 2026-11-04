@@ -226,3 +226,18 @@ def test_bfill_has_floor_and_dots():
     out = render_tile(src(polys=[box(-10, 500, 600, 1100)]), GRID, 0, 0)
     a = alpha(out["bfill"])
     assert a.min() == pytest.approx(FILL_BASE * 255, abs=1) and a.max() == 255
+
+
+def test_diagonal_outline_is_smooth_when_magnified():
+    # A building edge at a shallow angle: per column, the line's coverage (its brightness) must stay even and its
+    # coverage-weighted centre must follow a straight line, or the edge reads as beads and stair steps once the map
+    # shows each texel 5x enlarged at the closest zoom.
+    poly = np.array([(50.0, 700.0), (450.0, 840.0), (450.0, 600.0), (50.0, 600.0)])
+    a = alpha(render_tile(src(polys=[poly]), GRID, 0, 0)["outline"]).astype(float)
+    cols = np.arange(80, 420)
+    band = a[100:340, cols]                                    # rows around the slanted edge only
+    y = (band * np.arange(100, 340)[:, None]).sum(0) / band.sum(0)
+    resid = y - np.polyval(np.polyfit(cols, y, 1), cols)
+    width = band.sum(0) / 255
+    assert width.max() - width.min() < 0.2, (width.min(), width.max())
+    assert np.abs(resid).max() < 0.1, np.abs(resid).max()
