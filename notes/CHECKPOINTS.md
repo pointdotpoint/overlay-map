@@ -2,13 +2,13 @@
 
 ## Checkpoint 1 (2026-10-11)
 
-Build: `feat/nightmap-core` @ 222efc7, plus the test fix c313f03. Game 2.31 under Proton, at 2560×1440.
+Build: `feat/overlaymap-core` @ 222efc7, plus the test fix c313f03. Game 2.31 under Proton, at 2560×1440.
 
 | Step | Result |
 |---|---|
 | 1. Install | Pass. `tools/install.sh` printed COMPILE OK and installed the archive and scripts. |
 | 2. Open/close and visuals | Pass. The panel is centred on the curved HUD layer and shows the corner brackets, the "NIGHT CITY" header, a scale bar, the card column and the hint bar. The map area is empty, as expected before Task 12. The pink clip probe is confined to the map area, which confirms clipping. `\` does not register on the user's ABNT2 keyboard, so the user rebound Toggle to `'` in Mod Settings. |
-| 3. Self-test | First run: 2 FAIL (`input.toggle`, `input.ctrl_toggle_is_selftest`). Mod Settings applies saved bindings to class defaults, so the test's `new NightMapSettings()` carried the user's `'` binding; this was a bug in the test. Fixed in c313f03, which pins the key bindings in `InputCases`. Re-run: `TEST|SUMMARY|passed=43|failed=0`. |
+| 3. Self-test | First run: 2 FAIL (`input.toggle`, `input.ctrl_toggle_is_selftest`). Mod Settings applies saved bindings to class defaults, so the test's `new OverlayMapSettings()` carried the user's `'` binding; this was a bug in the test. Fixed in c313f03, which pins the key bindings in `InputCases`. Re-run: `TEST|SUMMARY|passed=43|failed=0`. |
 | 4. Controls while driving | Pass for the conflict check. Numpad keys do nothing to the car or the game while driving, and WASD steering is unaffected. Whether pan, zoom and follow move the map can't be seen while the map area is empty, so that check moves to Checkpoint 2. |
 | 4b. NumLock off | Not separately reported. Arrow keys are ignored by design (`input.arrows_never_pan` passes). Re-check at Checkpoint 2. |
 | 5. HUD hiding | Pass. Esc menu hides the panel and it returns afterwards; photo mode hides it. |
@@ -20,7 +20,7 @@ Follow-ups:
 
 ## Checkpoint 2 (2026-10-12)
 
-Build: `feat/nightmap-core`. The first run used 8b51d7a. The final verified build is 36b12de, which adds the fixes listed below. Game 2.31 under Proton, at 2560×1440.
+Build: `feat/overlaymap-core`. The first run used 8b51d7a. The final verified build is 36b12de, which adds the fixes listed below. Game 2.31 under Proton, at 2560×1440.
 
 | Step | Result |
 |---|---|
@@ -74,7 +74,7 @@ Gates: idle ≤ +1.0 avg / +2.0 p95. Pan/zoom ≤ +1.5 / +3.0. items_50000 ≤ +
 
 ## GPS routes, checkpoint A (2026-10-27)
 
-Build: `feat/gps-route`. Game 2.5 under Proton, at 2560×1440 (tiles built for 2.31; NightMap logs the version warning).
+Build: `feat/gps-route`. Game 2.5 under Proton, at 2560×1440 (tiles built for 2.31; OverlayMap logs the version warning).
 
 | Step | Result |
 |---|---|
@@ -86,9 +86,9 @@ Build: `feat/gps-route`. Game 2.5 under Proton, at 2560×1440 (tiles built for 2
 Checkpoint B (perf suite with a route tracked, `route_open`) not run yet.
 
 ## Fast travel (feat/teleport), merged 2026-10-28 untested in game
-- The free teleport was replaced by fast travel to fast travel markers (spec 2026-10-27-nightmap-teleport-design.md §12).
+- The free teleport was replaced by fast travel to fast travel markers (spec 2026-10-27-overlaymap-teleport-design.md §12).
 - Merged at the user's request before any in-game run of the fast travel build (`c5dd34c`). Still to check: the 8
-  `ft.*` self-tests, a fast travel from NightMap, the refusals (non-point marker, in a vehicle), and the last-used dataterm.
+  `ft.*` self-tests, a fast travel from OverlayMap, the refusals (non-point marker, in a vehicle), and the last-used dataterm.
 
 ## Soak harness and bug fixes (2026-10-30, branch feat/soak-harness)
 
@@ -199,7 +199,7 @@ Run-to-run p95 noise was about ±10 % on idle scenarios with identical script co
 | `HoloEdgeOpacity` | 0.6 → 0.3 | heavier than frame.jpg |
 | `DeclutterOverlap` | 0.75 → 1.0 | plate rings may touch, never overlap; z2 placed markers 187 → 120 |
 | NCPD Scanner (Story filter) priority | 80 → 45 | was placed before services and collectibles at mid zoom |
-| NCPD Scanner fade | Minor 4–6 → ambient 2.5–4 m/unit (`NightMapLayer.SetAmbient`, `NMTiers.LayerFade`) | z4 was a wall of teal NCPD icons; mid zoom keeps vendors and collectibles |
+| NCPD Scanner fade | Minor 4–6 → ambient 2.5–4 m/unit (`OverlayMapLayer.SetAmbient`, `NMTiers.LayerFade`) | z4 was a wall of teal NCPD icons; mid zoom keeps vendors and collectibles |
 | declutter cull cap | 300 per relayout → Major layers 160 together, each Minor layer 24 of its own (fix round 1) | perf gate (above); a shared total starved the collectibles (last by priority) at z2/z4 |
 | hint keycaps | letter-spacing 0 → 4 (4K units), width estimate counts spaces at 7 | PAN read "8462" |
 | `NMTiers` thresholds, minimum scale | unchanged (Minor 4–6, Major 24–32, 0.7 at 8+) | z8/z16 already show only Major + tracked |

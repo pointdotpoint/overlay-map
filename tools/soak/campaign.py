@@ -56,7 +56,7 @@ def run_campaign(plan: dict, save: str, paths: Paths, game, *, runner, lock, pre
     records: list[dict] = []
     stopped: str | None = None
     restored = True
-    lock.acquire(f"nightmap soak campaign {name}")
+    lock.acquire(f"overlaymap soak campaign {name}")
     snapshot = Snapshot(paths, name)
     owns_game = False   # a game running before preflight passed is the player's: never kill it
     try:

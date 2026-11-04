@@ -1,4 +1,4 @@
-module NightMap
+module OverlayMap
 import SoakBootstrap.*
 
 // Corner-minimap parity spike (Task 1 of the corner-minimap plan). Overlaid into the scripts ONLY during a campaign
@@ -20,7 +20,7 @@ public class NMMinimapSpikeReg extends ScriptableService {
     public let container: wref<MinimapContainerController>;
 
     public static func Get() -> ref<NMMinimapSpikeReg> {
-        return GameInstance.GetScriptableServiceContainer().GetService(n"NightMap.NMMinimapSpikeReg") as NMMinimapSpikeReg;
+        return GameInstance.GetScriptableServiceContainer().GetService(n"OverlayMap.NMMinimapSpikeReg") as NMMinimapSpikeReg;
     }
 
     public func Reset() {

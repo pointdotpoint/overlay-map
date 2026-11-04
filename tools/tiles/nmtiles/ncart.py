@@ -1,5 +1,5 @@
 """NCART metro lines for the map: line definitions, station places, track routes, shared-track slots and the `metro`
-tile set (design: docs/superpowers/specs/2026-11-03-nightmap-ncart-lines-design.md).
+tile set (design: docs/superpowers/specs/2026-11-03-overlaymap-ncart-lines-design.md).
 
 Sources: the line list of the game's in-train route diagram (ue_metro_route_diagram.inkwidget, LinesList: number,
 colour, ordered ENcartStations, looped), the NCART map markers dumped in game (data/ncart_stations.json) and the 3D

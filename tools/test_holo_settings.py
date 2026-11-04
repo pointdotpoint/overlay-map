@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "r6" / "scripts" / "NightMap"
+SCRIPTS = Path(__file__).resolve().parents[1] / "r6" / "scripts" / "OverlayMap"
 
 
 def test_panel_opacity_default_is_half_and_matches_theme():
@@ -28,16 +28,16 @@ def _block(src: str, field: str) -> str:
 
 def test_hologram_settings_live_under_display_with_the_right_defaults():
     s = (SCRIPTS / "Core" / "Settings.reds").read_text()
-    assert "public let holoColor: NightMapHoloColor = NightMapHoloColor.Cyan;" in s
+    assert "public let holoColor: OverlayMapHoloColor = OverlayMapHoloColor.Cyan;" in s
     assert "public let hologramEffects: Bool = true;" in s and "greenHologram" not in s
-    assert re.search(r"enum NightMapHoloColor \{\s*Cyan = 0,\s*Green = 1,\s*Red = 2,\s*Purple = 3,\s*Amber = 4\s*\}", s)
+    assert re.search(r"enum OverlayMapHoloColor \{\s*Cyan = 0,\s*Green = 1,\s*Red = 2,\s*Purple = 3,\s*Amber = 4\s*\}", s)
     for field, name in (("holoColor", "Hologram colour"), ("hologramEffects", "Hologram effects")):
         b = _block(s, field)
         assert '"ModSettings.category", "Display"' in b and f'"ModSettings.displayName", "{name}"' in b
     b = _block(s, "holoColor")
     for v in ("Cyan", "Green", "Red", "Purple", "Amber"):
         assert f'"ModSettings.displayValues.{v}", "{v}"' in b
-    system = (SCRIPTS / "Core" / "NightMapSystem.reds").read_text()
+    system = (SCRIPTS / "Core" / "OverlayMapSystem.reds").read_text()
     assert "NMTheme.ThemeIndex(s.holoColor)" in system
 
 
@@ -57,7 +57,7 @@ def test_vhs_settings_live_under_display_with_their_defaults():
         b = _block(s, field)
         assert '"ModSettings.category", "Display"' in b and f'"ModSettings.displayName", "{name}"' in b
     # Every knob is read into one config and handed to the panel and the layer stack.
-    system = (SCRIPTS / "Core" / "NightMapSystem.reds").read_text()
+    system = (SCRIPTS / "Core" / "OverlayMapSystem.reds").read_text()
     assert "NMHoloFx.From(s)" in system
 
 
@@ -66,5 +66,5 @@ def test_ncart_filter_is_a_map_filter_off_by_default():
     assert "public let filterNcart: Bool = false;" in s
     b = _block(s, "filterNcart")
     assert '"ModSettings.category", "Map filters"' in b and '"ModSettings.displayName", "NCART lines"' in b
-    system = (SCRIPTS / "Core" / "NightMapSystem.reds").read_text()
+    system = (SCRIPTS / "Core" / "OverlayMapSystem.reds").read_text()
     assert ".filterNcart)" in system      # handed to NMLayerStack.Create

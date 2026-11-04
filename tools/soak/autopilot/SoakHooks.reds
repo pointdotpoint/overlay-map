@@ -1,17 +1,17 @@
-module NightMap
+module OverlayMap
 
-@if(ModuleExists("NightMapNative"))
-import NightMapNative.*
+@if(ModuleExists("OverlayMapNative"))
+import OverlayMapNative.*
 import SoakBootstrap.*
 import RedFileSystem.*
 
 // The soak harness's commands, overlaid into the scripts only during a campaign (tools/soak/builds.py); never shipped.
 // tools/soak/runner.py sends one command at a time and reads the answer as a "done" state. redscript's annotations
-// can't target classes defined in scripts, so the bootstrap calls this directly and NightMapSystem's Soak_* methods are
+// can't target classes defined in scripts, so the bootstrap calls this directly and OverlayMapSystem's Soak_* methods are
 // spliced into the staged class from SystemBody.inc, which gives them its private fields.
 public abstract class NMSoak {
     public static func Run(command: String) -> String {
-        let sys = NightMapSystem.Get(GetGameInstance());
+        let sys = OverlayMapSystem.Get(GetGameInstance());
         if !IsDefined(sys) { return "no system"; }
         if Equals(command, "open") {
             sys.Open();
@@ -336,7 +336,7 @@ public abstract class NMSoak {
 
 // One frame of the tp probe, re-armed from Soak_TpTick.
 public class NMSoakTpFrame extends DelayCallback {
-    public let system: wref<NightMapSystem>;
+    public let system: wref<OverlayMapSystem>;
     public func Call() {
         if IsDefined(this.system) { this.system.Soak_TpTick(); }
     }
@@ -376,7 +376,7 @@ public class NMSoakSaves extends IScriptable {
     public let ready: Bool;
 
     private static func Listener() -> ref<NMSoakSaves> {
-        return NightMapSystem.Get(GetGameInstance()).Soak_SavesListener();
+        return OverlayMapSystem.Get(GetGameInstance()).Soak_SavesListener();
     }
 
     public cb func OnSaves(saves: array<String>) {
@@ -462,21 +462,21 @@ public class NMSoakSaves extends IScriptable {
 
 // A look check for the sidebar card's three-line description cap: one Always-tier marker next to V whose details carry a
 // long description (no loaded vanilla marker has one), centred under the reticle.
-public class NMSoakDesc extends NightMapLayerListener {
-    public func GetDetails(id: Int32) -> ref<NightMapDetails> {
+public class NMSoakDesc extends OverlayMapLayerListener {
+    public func GetDetails(id: Int32) -> ref<OverlayMapDetails> {
         let desc = "Wakako wants a shipment intercepted before it reaches the checkpoint. The convoy leaves Japantown at dusk; "
             + "stop it before the bridge, keep the cargo intact and bring the driver back alive for questioning.";
-        return NightMapDetails.Create("Gig", "Shoot to Thrill").WithDescription(desc).AddRow("Distance", "640 M")
+        return OverlayMapDetails.Create("Gig", "Shoot to Thrill").WithDescription(desc).AddRow("Distance", "640 M")
             .AddAction("NUM 0", "Track").AddAction("NUM .", "Fast travel");
     }
 
-    public static func Add(sys: ref<NightMapSystem>) -> String {
+    public static func Add(sys: ref<OverlayMapSystem>) -> String {
         if !IsDefined(sys.Camera()) { return "map closed"; }
         let p = GetPlayer(GetGameInstance()).GetWorldPosition();
         let L = sys.Api().CreateLayer(n"Soak.Desc", "Soak", 99);
-        L.SetTier(NightMapTier.Always);
+        L.SetTier(OverlayMapTier.Always);
         L.SetCategory(n"soak.desc", "GIG", NMTheme.Cyan());
-        L.Add(NightMapItem.Create(new Vector4(p.X + 40.0, p.Y + 40.0, p.Z, 1.0), n"soak.desc", NMTheme.UiAtlas(), n"icon_dot"));
+        L.Add(OverlayMapItem.Create(new Vector4(p.X + 40.0, p.Y + 40.0, p.Z, 1.0), n"soak.desc", NMTheme.UiAtlas(), n"icon_dot"));
         L.SetListener(new NMSoakDesc());
         let cam = sys.Camera();
         cam.follow = false;
@@ -486,19 +486,19 @@ public class NMSoakDesc extends NightMapLayerListener {
     }
 }
 
-// NightMapNative (optional plugin): answers "no plugin" when the plugin's module isn't loaded.
-@if(ModuleExists("NightMapNative"))
+// OverlayMapNative (optional plugin): answers "no plugin" when the plugin's module isn't loaded.
+@if(ModuleExists("OverlayMapNative"))
 public abstract class NMSoakNative {
-    public static func Version() -> String { return IntToString(NightMapNative_Version()); }
-    public static func Rvas() -> String { return NightMapNative_Rvas(); }
-    public static func Why() -> String { return "available=" + ToString(NightMapNative_Available()) + " " + NightMapNative_Why(); }
+    public static func Version() -> String { return IntToString(OverlayMapNative_Version()); }
+    public static func Rvas() -> String { return OverlayMapNative_Rvas(); }
+    public static func Why() -> String { return "available=" + ToString(OverlayMapNative_Available()) + " " + OverlayMapNative_Why(); }
     public static func Track(id: NewMappinID) -> String {
         let ms = GameInstance.GetMappinSystem(GetGameInstance());
-        return ToString(NightMapNative_TrackMappin(ms, id));
+        return ToString(OverlayMapNative_TrackMappin(ms, id));
     }
 }
 
-@if(!ModuleExists("NightMapNative"))
+@if(!ModuleExists("OverlayMapNative"))
 public abstract class NMSoakNative {
     public static func Version() -> String { return "no plugin"; }
     public static func Rvas() -> String { return "no plugin"; }
@@ -534,9 +534,9 @@ public abstract class NMSoakWp {
         return NMSoakWp.SetAt(new Vector4(p.X + dx, p.Y + dy, p.Z, 1.0));
     }
 
-    // Through NightMap's own waypoint code (register, then track once the mappin system has the pin).
+    // Through OverlayMap's own waypoint code (register, then track once the mappin system has the pin).
     public static func SetAt(pos: Vector4) -> String {
-        let sys = NightMapSystem.Get(GetGameInstance());
+        let sys = OverlayMapSystem.Get(GetGameInstance());
         let w = sys.Waypoint();
         let ok = w.SetCustom(pos.X, pos.Y, pos.Z);
         return "set=" + ToString(ok) + " " + w.lastAction;

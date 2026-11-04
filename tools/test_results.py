@@ -6,15 +6,15 @@ results = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(results)
 
 LOG = """
-[t] [1] [NightMap] PERF|SUITE|start
-[t] [1] [NightMap] RESULT|closed_baseline|items=0|frames=300|setup_ms=0.1|frame_avg=20.0|frame_p95=29.0|frame_p99=40.0|frame_max=60.0|script_avg=0.01|script_p95=0.02
-[t] [1] [NightMap] RESULT|items_50000|items=50000|frames=300|setup_ms=900.0|frame_avg=22.5|frame_p95=33.0|frame_p99=45.0|frame_max=70.0|script_avg=1.9|script_p95=3.0
-[t] [1] [NightMap] PERF|SUITE|done
+[t] [1] [OverlayMap] PERF|SUITE|start
+[t] [1] [OverlayMap] RESULT|closed_baseline|items=0|frames=300|setup_ms=0.1|frame_avg=20.0|frame_p95=29.0|frame_p99=40.0|frame_max=60.0|script_avg=0.01|script_p95=0.02
+[t] [1] [OverlayMap] RESULT|items_50000|items=50000|frames=300|setup_ms=900.0|frame_avg=22.5|frame_p95=33.0|frame_p99=45.0|frame_max=70.0|script_avg=1.9|script_p95=3.0
+[t] [1] [OverlayMap] PERF|SUITE|done
 """
 
 
 def test_parse_reads_latest_suite():
-    rows = results.parse("[t] [1] [NightMap] RESULT|old|items=1|frames=1|setup_ms=0|frame_avg=1|frame_p95=1|frame_p99=1|frame_max=1|script_avg=0|script_p95=0\n" + LOG)
+    rows = results.parse("[t] [1] [OverlayMap] RESULT|old|items=1|frames=1|setup_ms=0|frame_avg=1|frame_p95=1|frame_p99=1|frame_max=1|script_avg=0|script_p95=0\n" + LOG)
     assert [r["name"] for r in rows] == ["closed_baseline", "items_50000"]
     assert rows[1]["frame_avg"] == 22.5
 
@@ -37,7 +37,7 @@ def _suite(extra=""):
 
 
 def test_parse_requires_done_after_last_start():
-    partial = LOG + "[t] [1] [NightMap] PERF|SUITE|start\n[t] [1] [NightMap] RESULT|closed_baseline|items=0|frames=300|setup_ms=0.1|frame_avg=1.0|frame_p95=1.0|frame_p99=1.0|frame_max=1.0|script_avg=0|script_p95=0\n"
+    partial = LOG + "[t] [1] [OverlayMap] PERF|SUITE|start\n[t] [1] [OverlayMap] RESULT|closed_baseline|items=0|frames=300|setup_ms=0.1|frame_avg=1.0|frame_p95=1.0|frame_p99=1.0|frame_max=1.0|script_avg=0|script_p95=0\n"
     try:
         results.parse(partial)
         assert False, "should raise"
@@ -47,7 +47,7 @@ def test_parse_requires_done_after_last_start():
 
 def test_parse_no_start_fails():
     try:
-        results.parse("[t] [1] [NightMap] RESULT|x|items=1\n")
+        results.parse("[t] [1] [OverlayMap] RESULT|x|items=1\n")
         assert False
     except results.SuiteError as e:
         assert "no PERF|SUITE|start" in str(e)
@@ -59,7 +59,7 @@ def test_missing_baseline():
 
 
 def test_malformed_line_skipped(capsys):
-    bad = LOG.replace("PERF|SUITE|done", "PERF|SUITE|done\n[t] [1] [NightMap] RESULT|junk|items=abc|frames")
+    bad = LOG.replace("PERF|SUITE|done", "PERF|SUITE|done\n[t] [1] [OverlayMap] RESULT|junk|items=abc|frames")
     rows = results.parse(bad)
     assert [r["name"] for r in rows] == ["closed_baseline", "items_50000"]
     assert "malformed" in capsys.readouterr().err
@@ -86,7 +86,7 @@ def test_cli_exit_codes(tmp_path):
 
 
 def _row(name, avg, p95, script_avg=0.1, script_p95=0.2, extra=""):
-    return (f"[t] [1] [NightMap] RESULT|{name}|items=0|frames=300|setup_ms=0|frame_avg={avg}|frame_p95={p95}"
+    return (f"[t] [1] [OverlayMap] RESULT|{name}|items=0|frames=300|setup_ms=0|frame_avg={avg}|frame_p95={p95}"
             f"|frame_p99=40.0|frame_max=60.0|script_avg={script_avg}|script_p95={script_p95}{extra}\n")
 
 
@@ -109,7 +109,7 @@ def _tiles(idle_avg=20.5, idle_p95=30.5, sweep_avg=21.0, sweep_p95=31.5, skip=()
             return _row(n, a, p, extra=f"|route_drawn={route_drawn}|route_read_ms_max={route_read}")
         return _row(n, a, p)
     body = "".join(row(n, a, p) for n, (a, p) in rows.items() if n not in skip)
-    return LOG.replace("[t] [1] [NightMap] PERF|SUITE|done", body + "[t] [1] [NightMap] PERF|SUITE|done")
+    return LOG.replace("[t] [1] [OverlayMap] PERF|SUITE|done", body + "[t] [1] [OverlayMap] PERF|SUITE|done")
 
 
 def test_tile_rows_pass_within_budget():
@@ -212,7 +212,7 @@ def test_missing_row_in_a_valid_run_fails():
 
 def test_only_the_current_game_session_is_judged(tmp_path):
     import subprocess, sys
-    loaded = "[t] [1] [NightMap] loaded (tiles present, precise clock true)\n"
+    loaded = "[t] [1] [OverlayMap] loaded (tiles present, precise clock true)\n"
     log = tmp_path / "s.log"
     log.write_text(loaded + _tiles(idle_avg=25.0) * 3 + loaded + _tiles() * 3)   # old session over budget, new fine
     script = Path(__file__).with_name("results.py")

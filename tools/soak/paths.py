@@ -1,6 +1,6 @@
 """Where everything the soak harness touches lives. Tests build a Paths over a temp folder.
 
-Ported from ~/photomode_ui_improvements/scripts/soak. One Steam launch option can name one wrapper, so NightMap
+Ported from ~/photomode_ui_improvements/scripts/soak. One Steam launch option can name one wrapper, so OverlayMap
 shares that repo's gamescope-wrap.sh and its flag folder, and the deploy lock: only one harness may hold the game."""
 from __future__ import annotations
 
@@ -15,11 +15,11 @@ PMUI_REPO = Path.home() / "photomode_ui_improvements"
 
 # Game-relative paths of each installable part. builds.py stages them, snapshot.py swaps them.
 PARTS: dict[str, list[str]] = {
-    "scripts": ["r6/scripts/NightMap"],
-    "archive": ["archive/pc/mod/NightMap.archive"],
+    "scripts": ["r6/scripts/OverlayMap"],
+    "archive": ["archive/pc/mod/OverlayMap.archive"],
     "bootstrap": ["r6/scripts/SoakBootstrap"],
-    "native": ["red4ext/plugins/NightMapNative"],   # the optional plugin, staged by tools/native/build.sh
-    "autopilot": ["r6/scripts/NightMap/Debug/SoakHooks.reds", "r6/scripts/NightMap/Debug/MinimapSpike.reds"],
+    "native": ["red4ext/plugins/OverlayMapNative"],   # the optional plugin, staged by tools/native/build.sh
+    "autopilot": ["r6/scripts/OverlayMap/Debug/SoakHooks.reds", "r6/scripts/OverlayMap/Debug/MinimapSpike.reds"],
 }
 # Parts nothing writes into at runtime: a change between runs means another writer.
 VERIFY_PARTS = ["scripts", "archive", "bootstrap"]
@@ -56,7 +56,7 @@ class Paths:
 
     @property
     def mod_storage(self) -> Path:
-        return self.game / "r6/storages/NightMap"
+        return self.game / "r6/storages/OverlayMap"
 
     @property
     def channel(self) -> Path:

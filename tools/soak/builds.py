@@ -16,12 +16,12 @@ else:     # run as a script by tools/check.sh --soak
     from soak.paths import PARTS, Paths, rels, tree_hash
 
 BOOTSTRAP_REL = "r6/scripts/SoakBootstrap"
-SCRIPTS_REL = "r6/scripts/NightMap"
-SYSTEM = "Core/NightMapSystem.reds"
+SCRIPTS_REL = "r6/scripts/OverlayMap"
+SYSTEM = "Core/OverlayMapSystem.reds"
 RENDERER = "Render/ItemRenderer.reds"
 # Spliced into classes, with their private fields in reach: redscript's annotations can't target classes defined in
 # scripts. (file under the scripts folder, class, file under tools/soak/autopilot)
-BODIES = [(SYSTEM, "NightMapSystem", "SystemBody.inc"), (RENDERER, "NMItemRenderer", "RendererBody.inc")]
+BODIES = [(SYSTEM, "OverlayMapSystem", "SystemBody.inc"), (RENDERER, "NMItemRenderer", "RendererBody.inc")]
 # Calls added at one exact place. (file, text, replacement)
 PATCHES = [
     (SYSTEM, "    private func UpdateModules(dt: Float) {\n",
@@ -69,7 +69,7 @@ def apply_overlay(scripts: Path, autopilot: Path) -> None:
 def _source(paths: Paths, part: str, rel: str) -> Path:
     repo = paths.repo
     if part == "scripts":
-        return repo / "r6/scripts/NightMap"
+        return repo / "r6/scripts/OverlayMap"
     if part == "archive":
         return repo / rel
     if part == "bootstrap":

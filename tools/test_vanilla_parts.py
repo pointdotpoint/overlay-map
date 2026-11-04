@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SPIKE = ROOT / "docs/superpowers/specs/2026-10-13-vanilla-markers-spike"
-STYLE = ROOT / "r6/scripts/NightMap/Vanilla/Style.reds"
+STYLE = ROOT / "r6/scripts/OverlayMap/Vanilla/Style.reds"
 
 
 def atlas_parts() -> set[str]:

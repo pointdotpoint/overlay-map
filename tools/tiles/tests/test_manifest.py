@@ -12,7 +12,7 @@ def lv(mpp, nx, ny, **tiles):
 def test_emit_manifest_contains_levels_sets_and_tiles():
     levels = [lv(0.5, 40, 40, road=[(3, 2), (0, 0)]), lv(4.0, 6, 7, bfill=[(1, 1)])]
     src = emit_manifest(levels, (-6012.0, -4608.0, 4589.0, 7381.0), "2.31", SETS)
-    assert src.startswith("// GENERATED") and "module NightMap" in src
+    assert src.startswith("// GENERATED") and "module OverlayMap" in src
     assert "public static func Available() -> Bool {\n        return true;" in src
     assert "case 0: return 0.5;" in src and "case 1: return 4.0;" in src
     assert "public static func LevelCount() -> Int32 {\n        return 2;" in src

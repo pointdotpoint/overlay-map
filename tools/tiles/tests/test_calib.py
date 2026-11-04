@@ -17,10 +17,10 @@ ROADS = [_road(x - 2, y - 2, x + 2, y + 2) for x, y in CROSSINGS]
 
 def test_parse_gamelog_keeps_last_per_name():
     text = "\n".join([
-        "[2026-10-11 10:00:00 UTC-03:00] [1] [NightMap] CALIB|Corpo Plaza|-1520.5|120.25|7.0",
+        "[2026-10-11 10:00:00 UTC-03:00] [1] [OverlayMap] CALIB|Corpo Plaza|-1520.5|120.25|7.0",
         "[2026-10-11 10:00:00 UTC-03:00] [1] [Other] CALIB|ignored|1|2|3",
-        "[2026-10-11 10:00:01 UTC-03:00] [1] [NightMap] CALIB|Corpo Plaza|-1521.0|121.0|7.0",
-        "[2026-10-11 10:00:01 UTC-03:00] [1] [NightMap] CALIB|Kabuki|10|-20|0",
+        "[2026-10-11 10:00:01 UTC-03:00] [1] [OverlayMap] CALIB|Corpo Plaza|-1521.0|121.0|7.0",
+        "[2026-10-11 10:00:01 UTC-03:00] [1] [OverlayMap] CALIB|Kabuki|10|-20|0",
     ])
     assert parse_gamelog(text) == [("Corpo Plaza", -1521.0, 121.0), ("Kabuki", 10.0, -20.0)]
 

@@ -630,7 +630,7 @@
             + " uizoom " + ToString(bb.GetBool(d.IsUIZoomDevice)) + " mg " + ToString(bb.GetBool(d.IsInMinigame));
     }
 
-    // Pause menus NightMap opened for a View tap.
+    // Pause menus OverlayMap opened for a View tap.
     public func Soak_Pauses() -> String { return "pauses " + IntToString(this.padPauses); }
 
     // Which keys the game itself reports, for telling "the key never arrived" from "the map ignored it".
@@ -930,11 +930,11 @@
         if !IsDefined(s) { return "no settings"; }
         if Equals(name, "effects") { s.hologramEffects = Equals(value, "1"); return "effects " + ToString(s.hologramEffects); }
         if Equals(name, "theme") {
-            s.holoColor = NightMapHoloColor.Cyan;
-            if Equals(value, "green") { s.holoColor = NightMapHoloColor.Green; }
-            if Equals(value, "red") { s.holoColor = NightMapHoloColor.Red; }
-            if Equals(value, "purple") { s.holoColor = NightMapHoloColor.Purple; }
-            if Equals(value, "amber") { s.holoColor = NightMapHoloColor.Amber; }
+            s.holoColor = OverlayMapHoloColor.Cyan;
+            if Equals(value, "green") { s.holoColor = OverlayMapHoloColor.Green; }
+            if Equals(value, "red") { s.holoColor = OverlayMapHoloColor.Red; }
+            if Equals(value, "purple") { s.holoColor = OverlayMapHoloColor.Purple; }
+            if Equals(value, "amber") { s.holoColor = OverlayMapHoloColor.Amber; }
             return "theme " + ToString(NMTheme.ThemeIndex(s.holoColor));
         }
         if Equals(name, "opacity") { s.panelOpacity = StringToFloat(value); return "opacity " + FloatToStringPrec(s.panelOpacity, 2); }
@@ -948,7 +948,7 @@
         // picks a change up within a second.
         if Equals(name, "replace") { s.replaceMinimap = Equals(value, "1"); return "replace " + ToString(s.replaceMinimap); }
         if Equals(name, "style") {
-            s.cornerStyle = Equals(value, "circle") ? NightMapCornerStyle.Circle : (Equals(value, "square") ? NightMapCornerStyle.Square : NightMapCornerStyle.SquareStrip);
+            s.cornerStyle = Equals(value, "circle") ? OverlayMapCornerStyle.Circle : (Equals(value, "square") ? OverlayMapCornerStyle.Square : OverlayMapCornerStyle.SquareStrip);
             return "style " + ToString(s.cornerStyle);
         }
         if Equals(name, "hudpainter") { s.followHudPainter = Equals(value, "1"); return "hudpainter " + ToString(s.followHudPainter); }

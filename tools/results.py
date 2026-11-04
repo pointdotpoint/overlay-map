@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize NightMap PerfSuite results from CET's gamelog.log (latest suite run) and judge the spec target."""
+"""Summarize OverlayMap PerfSuite results from CET's gamelog.log (latest suite run) and judge the spec target."""
 import argparse
 import re
 import statistics
@@ -29,7 +29,7 @@ SCRIPT_AVG_MARGIN_MS = 0.5     # vanilla_open.script_avg <= open_empty.script_av
 SCRIPT_P95_MARGIN_MS = 1.5     # vanilla_open.script_p95 <= open_empty.script_p95 + this
 POLL_MAX_MS = 1.0              # vanilla_open.poll_ms_max <= this (one poll, absolute)
 DRIFT_MAX_MS = 0.5       # |closed_end - closed_baseline| above this: the run's machine state moved, exclude it
-LOADED_MARK = "[NightMap] loaded"  # logged at every game start; --all-sessions ignores it
+LOADED_MARK = "[OverlayMap] loaded"  # logged at every game start; --all-sessions ignores it
 # (scenario, avg budget, p95 budget) in report order
 GATES = ([("items_50000", AVG_BUDGET_MS, P95_BUDGET_MS)] + [(n, IDLE_AVG_BUDGET_MS, IDLE_P95_BUDGET_MS) for n in IDLE_ROWS]
          + [(n, SWEEP_AVG_BUDGET_MS, SWEEP_P95_BUDGET_MS) for n in SWEEP_ROWS])
@@ -61,7 +61,7 @@ def _rows(run: list[str]) -> list[dict]:
 
 def parse(text: str) -> list[dict]:
     """Rows of the latest suite run; raises SuiteError unless it has a start and a following done."""
-    lines = [l for l in text.splitlines() if "[NightMap]" in l]
+    lines = [l for l in text.splitlines() if "[OverlayMap]" in l]
     starts = [i for i, l in enumerate(lines) if "PERF|SUITE|start" in l]
     if not starts:
         raise SuiteError("no PERF|SUITE|start found")
@@ -73,7 +73,7 @@ def parse(text: str) -> list[dict]:
 
 def parse_suites(text: str) -> list[list[dict]]:
     """Rows of every complete suite (start followed by done before the next start) in the log, oldest first."""
-    lines = [l for l in text.splitlines() if "[NightMap]" in l]
+    lines = [l for l in text.splitlines() if "[OverlayMap]" in l]
     starts = [i for i, l in enumerate(lines) if "PERF|SUITE|start" in l]
     out = []
     for k, i in enumerate(starts):
@@ -186,7 +186,7 @@ def select_valid(suites: list[list[dict]], n: int) -> tuple[list[list[dict]], li
 
 
 def current_session(text: str) -> str:
-    """The log from the last NightMap load on, so suites from earlier game sessions (older builds) are not judged."""
+    """The log from the last OverlayMap load on, so suites from earlier game sessions (older builds) are not judged."""
     i = text.rfind(LOADED_MARK)
     return text if i < 0 else text[i:]
 

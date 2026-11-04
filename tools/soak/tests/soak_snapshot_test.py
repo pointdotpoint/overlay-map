@@ -14,8 +14,8 @@ with tempfile.TemporaryDirectory() as d:
     root = Path(d)
     p = fake_paths(root)
     # The normal install: the mod's scripts and ACM present, the bootstrap absent.
-    (p.game / "r6/scripts/NightMap").mkdir(parents=True)
-    (p.game / "r6/scripts/NightMap/A.reds").write_text("normal")
+    (p.game / "r6/scripts/OverlayMap").mkdir(parents=True)
+    (p.game / "r6/scripts/OverlayMap/A.reds").write_text("normal")
     p.persistent.parent.mkdir(parents=True)
     p.persistent.write_text("favorites")
     (p.saves / "ManualSave-1").mkdir(parents=True)
@@ -25,21 +25,21 @@ with tempfile.TemporaryDirectory() as d:
     s = Snapshot(p, "c1")
     s.take()
     s.take()  # idempotent
-    assert s.journal["present"]["r6/scripts/NightMap"] is True
+    assert s.journal["present"]["r6/scripts/OverlayMap"] is True
     assert s.journal["present"]["r6/scripts/SoakBootstrap"] is False
 
     # A build: test scripts + the bootstrap, no ACM.
     build = root / "build"
-    (build / "r6/scripts/NightMap").mkdir(parents=True)
-    (build / "r6/scripts/NightMap/A.reds").write_text("test")
+    (build / "r6/scripts/OverlayMap").mkdir(parents=True)
+    (build / "r6/scripts/OverlayMap/A.reds").write_text("test")
     (build / "r6/scripts/SoakBootstrap").mkdir(parents=True)
     (build / "r6/scripts/SoakBootstrap/B.reds").write_text("boot")
     s.install(build, "b1")
-    assert (p.game / "r6/scripts/NightMap/A.reds").read_text() == "test"
+    assert (p.game / "r6/scripts/OverlayMap/A.reds").read_text() == "test"
     assert (p.game / "r6/scripts/SoakBootstrap/B.reds").exists()
     assert s.verify_installed()
     # A foreign writer between runs is noticed.
-    (p.game / "r6/scripts/NightMap/A.reds").write_text("other session")
+    (p.game / "r6/scripts/OverlayMap/A.reds").write_text("other session")
     assert not s.verify_installed()
     s.install(build, "b1")
     assert s.verify_installed()

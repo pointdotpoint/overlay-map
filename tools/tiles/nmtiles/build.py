@@ -1,4 +1,4 @@
-"""End-to-end tile build: minimap geometry (+ Dogtown from the 3D map) -> footprints -> colourless mask tile sets -> BC7 tiles + UI atlas -> NightMap.archive + manifest."""
+"""End-to-end tile build: minimap geometry (+ Dogtown from the 3D map) -> footprints -> colourless mask tile sets -> BC7 tiles + UI atlas -> OverlayMap.archive + manifest."""
 from __future__ import annotations
 
 import argparse
@@ -109,21 +109,21 @@ def main(argv: list[str] | None = None) -> int:
     shutil.rmtree(ws, ignore_errors=True)
     for s in SETS:
         for (li, ix, iy), p in set_pngs[s].items():
-            base = f"nightmap\\tiles\\{s}\\L{li}\\t_{ix}_{iy}"
+            base = f"overlaymap\\tiles\\{s}\\L{li}\\t_{ix}_{iy}"
             tex = GLOW_TEX if s == "glow" else 512
             write_resource(ws, base + ".xbm", make_xbm_json(xbm_t, tex, tex, payloads[p]))
             write_resource(ws, base + ".inkatlas",
                            make_inkatlas_json(atl_t, base + ".xbm", {"full": (0, 0, tex, tex)}, tex, tex))
-    write_resource(ws, "nightmap\\ui\\ui.xbm", make_xbm_json(xbm_t, 1024, 1024, payloads[ui_png]))
-    write_resource(ws, "nightmap\\ui\\ui.inkatlas",
-                   make_inkatlas_json(atl_t, "nightmap\\ui\\ui.xbm", ui_parts, 1024, 1024))
-    write_resource(ws, "nightmap\\ui\\holo.xbm", make_xbm_json(xbm_t, holo_img.width, holo_img.height, payloads[holo_png]))
-    write_resource(ws, "nightmap\\ui\\holo.inkatlas",
-                   make_inkatlas_json(atl_t, "nightmap\\ui\\holo.xbm", holo_parts, holo_img.width, holo_img.height))
+    write_resource(ws, "overlaymap\\ui\\ui.xbm", make_xbm_json(xbm_t, 1024, 1024, payloads[ui_png]))
+    write_resource(ws, "overlaymap\\ui\\ui.inkatlas",
+                   make_inkatlas_json(atl_t, "overlaymap\\ui\\ui.xbm", ui_parts, 1024, 1024))
+    write_resource(ws, "overlaymap\\ui\\holo.xbm", make_xbm_json(xbm_t, holo_img.width, holo_img.height, payloads[holo_png]))
+    write_resource(ws, "overlaymap\\ui\\holo.inkatlas",
+                   make_inkatlas_json(atl_t, "overlaymap\\ui\\holo.xbm", holo_parts, holo_img.width, holo_img.height))
 
     deserialize_all(ws)
-    archive = pack_archive(ws, REPO / "archive" / "pc" / "mod" / "NightMap.archive")
-    manifest = REPO / "r6" / "scripts" / "NightMap" / "Generated" / "TileManifest.reds"
+    archive = pack_archive(ws, REPO / "archive" / "pc" / "mod" / "OverlayMap.archive")
+    manifest = REPO / "r6" / "scripts" / "OverlayMap" / "Generated" / "TileManifest.reds"
     manifest.parent.mkdir(parents=True, exist_ok=True)
     manifest.write_text(emit_manifest(levels, bounds, args.game_version, SETS))
     mb = archive.stat().st_size / 1e6
@@ -145,23 +145,23 @@ def write_ui(ws: Path, png_dir: Path, dds: Path, jobs: int) -> None:
     payloads = encode_bc7([ui_png, holo_png], dds, min(jobs, 2))
     xbm_t = json.loads((TPL / "tile.xbm.json").read_text())
     atl_t = json.loads((TPL / "atlas.inkatlas.json").read_text())
-    write_resource(ws, "nightmap\\ui\\ui.xbm", make_xbm_json(xbm_t, 1024, 1024, payloads[ui_png]))
-    write_resource(ws, "nightmap\\ui\\ui.inkatlas", make_inkatlas_json(atl_t, "nightmap\\ui\\ui.xbm", ui_parts, 1024, 1024))
-    write_resource(ws, "nightmap\\ui\\holo.xbm", make_xbm_json(xbm_t, holo_img.width, holo_img.height, payloads[holo_png]))
-    write_resource(ws, "nightmap\\ui\\holo.inkatlas",
-                   make_inkatlas_json(atl_t, "nightmap\\ui\\holo.xbm", holo_parts, holo_img.width, holo_img.height))
+    write_resource(ws, "overlaymap\\ui\\ui.xbm", make_xbm_json(xbm_t, 1024, 1024, payloads[ui_png]))
+    write_resource(ws, "overlaymap\\ui\\ui.inkatlas", make_inkatlas_json(atl_t, "overlaymap\\ui\\ui.xbm", ui_parts, 1024, 1024))
+    write_resource(ws, "overlaymap\\ui\\holo.xbm", make_xbm_json(xbm_t, holo_img.width, holo_img.height, payloads[holo_png]))
+    write_resource(ws, "overlaymap\\ui\\holo.inkatlas",
+                   make_inkatlas_json(atl_t, "overlaymap\\ui\\holo.xbm", holo_parts, holo_img.width, holo_img.height))
 
 
 def ui_only(out: Path, jobs: int) -> int:
     """Repack the archive with fresh UI atlases, keeping the tiles a full build left in out/workspace."""
     ws = out / "workspace"
-    if not (ws / "nightmap" / "tiles").is_dir():
+    if not (ws / "overlaymap" / "tiles").is_dir():
         raise SystemExit(f"error: no tiles in {ws}; run a full build first")
     png_dir = out / "png"
     png_dir.mkdir(parents=True, exist_ok=True)
     write_ui(ws, png_dir, out / "dds", jobs)
     deserialize_all(ws)
-    archive = pack_archive(ws, REPO / "archive" / "pc" / "mod" / "NightMap.archive")
+    archive = pack_archive(ws, REPO / "archive" / "pc" / "mod" / "OverlayMap.archive")
     print(f"archive {archive} {archive.stat().st_size / 1e6:.1f} MB (UI atlases only)")
     return 0
 

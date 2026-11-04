@@ -1,7 +1,7 @@
-# SDD ledger — plan: docs/superpowers/plans/2026-10-11-nightmap-core.md
+# SDD ledger — plan: docs/superpowers/plans/2026-10-11-overlaymap-core.md
 
-Spec: docs/superpowers/specs/2026-10-11-nightmap-core-design.md (reachable, approved)
-Branch: feat/nightmap-core (from main @ 09a91b7)
+Spec: docs/superpowers/specs/2026-10-11-overlaymap-core-design.md (reachable, approved)
+Branch: feat/overlaymap-core (from main @ 09a91b7)
 
 ## Preflight rulings
 - Ruling: all subagents (implementers, task reviewers, re-reviewers, final reviewer) run on model `sonnet` — user's explicit instruction ("subagent-driven using sonnet 5.5 for the subagents") overrides the skill's "most capable model for final review" — cost if wrong: final review may miss subtle cross-task issues a stronger model would catch.
@@ -16,15 +16,15 @@ Branch: feat/nightmap-core (from main @ 09a91b7)
 | T5/T7 ↔ T8/T10/T13/T14 | UI atlas part names | ui_atlas parts → NMUi.Image parts | match (chip, chip_sel, cluster, cluster_sel, mini, ring, player, bracket_*, icon_*) |
 | T6 ↔ T7 | templates/tile.xbm.json, atlas.inkatlas.json | T6 creates → build.py loads | match |
 | T7 ↔ T8–T15 | Generated/TileManifest.reds | emit_manifest functions → NMTileManifest.* calls | all called functions emitted (Available, LevelCount/Mpp/OriginX/OriginTop/Nx/Ny/Tiles, WorldMin/Max) |
-| T7 ↔ T12 | tile depot path `nightmap\tiles\L{i}\t_{ix}_{iy}.inkatlas` part `full` | build.py → TileLayer ResRef string | match |
+| T7 ↔ T12 | tile depot path `overlaymap\tiles\L{i}\t_{ix}_{iy}.inkatlas` part `full` | build.py → TileLayer ResRef string | match |
 | T1 ↔ T8+ | tools/check.sh deps (Codeware, RedIMG, ModSettings scripts) | check.sh → @if(ModuleExists) code | match |
 | T8 ↔ T9,T10,T12,T13,T14 | Debug/SelfTest.reds Run() | each task appends a case group call | consistent append order |
-| T9 ↔ T10 | Core/NightMapSystem.reds | T9 minimal → T10 replaces whole file (keeps Api()) | consistent |
+| T9 ↔ T10 | Core/OverlayMapSystem.reds | T9 minimal → T10 replaces whole file (keeps Api()) | consistent |
 | T10 ↔ T12/T13/T14 | OnOpened/OnClosing/UpdateModules hooks | T10 empty hooks → later full replacements | each replacement supersedes prior, consistent |
 | T13 ↔ T15 | HandleDebug | T13 version ends with debugPerf/debugCalib=false lines → T15 replaces those two lines | consistent |
 | T10 ↔ T15 | Tick() | T10 defines → T15 replaces (adds perf, raw dt) | consistent |
 | T13 ↔ T14 | renderer candidates, candSlot, clCats/clCatCount/clCatN, clWx/Wy/World/Total, selChip/selCluster | renderer fields → crosshair/card/Activate | names match |
-| T9 ↔ T13 | layer internals (cnt,sumX,sumY,tally,head,nextIn,catGlobal,...) | NightMapLayer public fields → renderer | names match |
+| T9 ↔ T13 | layer internals (cnt,sumX,sumY,tally,head,nextIn,catGlobal,...) | OverlayMapLayer public fields → renderer | names match |
 | T13 ↔ T15 | NMDebugLayer.Fill/Remove/Id | debug layer → perf suite | match |
 
 | Task | Self-consistency (tests vs code, files created vs touched) |
@@ -113,7 +113,7 @@ Task 11: installed (HEAD 222efc7, archive 3.4 MB); gamelog baseline 6952 lines; 
 Building research 1 (proxy meshes): partial — worldBuildingProxyMeshNode proxies cover west/north only; downtown core is modular kit pieces (impractical). Scratch: scratchpad/buildings/
 Building research 2 (controller): vanilla per-district building-outline masks found — base\fx\textures\3dmap\static\*_m.xbm (BC4 512², city_center/heywood/santo_domingo/ep1_dogtown/ep1_spaceport/c_watson/c_westbrook/c_pacifica); decoded in scratchpad/m3d/masks.png. Placement research dispatched (sonnet).
 Task 11: user step 2 — panel renders (2560x1440): header, scale bar, card column, hint bar; pink clip probe confined to map area (clipping OK); map area empty as expected pre-T12. User rebound Toggle to IK_SingleQuote (user.ini).
-Task 11: self-test — all math/camera/grid/api PASS; input.toggle + input.ctrl_toggle_is_selftest FAIL: ModSettings applies saved values to class defaults so `new NightMapSettings()` carries the user's SingleQuote binding — test bug. Remaining lines (+SUMMARY) not yet in gamelog (game running; log likely unflushed).
+Task 11: self-test — all math/camera/grid/api PASS; input.toggle + input.ctrl_toggle_is_selftest FAIL: ModSettings applies saved values to class defaults so `new OverlayMapSettings()` carries the user's SingleQuote binding — test bug. Remaining lines (+SUMMARY) not yet in gamelog (game running; log likely unflushed).
 Task 10: checkpoint fix round 2 dispatched — InputCases pins explicit key bindings
 Ruling: Task 10 checkpoint fix round 2 (c313f03, +10 test-only lines pinning key bindings) re-reviewed by controller directly instead of a subagent — trivial, fully visible diff — cost if wrong: in-game re-run of self-test catches it
 Task 10: checkpoint fix round 2 verified (222efc7..c313f03); reinstalled (applies on next game launch)

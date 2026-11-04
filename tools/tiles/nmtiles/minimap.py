@@ -251,9 +251,9 @@ def shadowed_base(base: list[str], ep1: list[str]) -> dict[str, str]:
 
 
 def wolvenkit_exe() -> str:
-    """WolvenKit CLI executable: env NIGHTMAP_WOLVENKIT, default ``WolvenKit.CLI`` (8.19 cannot read the current
+    """WolvenKit CLI executable: env OVERLAYMAP_WOLVENKIT, default ``WolvenKit.CLI`` (8.19 cannot read the current
     game's LOD-3 sectors; use WolvenKit 10)."""
-    return os.path.expanduser(os.environ.get("NIGHTMAP_WOLVENKIT") or "WolvenKit.CLI")
+    return os.path.expanduser(os.environ.get("OVERLAYMAP_WOLVENKIT") or "WolvenKit.CLI")
 
 
 def _wk(*args: str, check: bool = True) -> subprocess.CompletedProcess:

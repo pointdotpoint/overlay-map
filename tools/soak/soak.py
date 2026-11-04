@@ -70,7 +70,7 @@ def main(argv: list[str]) -> int:
             game.kill()
         game.clear()
         lock = DeployLock(paths.lock)
-        lock.acquire(f"nightmap soak restore {name}")
+        lock.acquire(f"overlaymap soak restore {name}")
         try:
             ok = Snapshot(paths, name).restore()
         finally:

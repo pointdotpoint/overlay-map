@@ -1,4 +1,4 @@
-"""Procedural hologram overlay atlas `nightmap\\ui\\holo.inkatlas` (white RGB, alpha = shape; tinted in game).
+"""Procedural hologram overlay atlas `overlaymap\\ui\\holo.inkatlas` (white RGB, alpha = shape; tinted in game).
 
 Separate from ui_atlas.py (whose size/space tests are fixed). Everything is deterministic: same bytes every build.
 

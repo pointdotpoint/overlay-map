@@ -259,9 +259,9 @@ def test_wolvenkit10_node_lookup_and_transform_check():
 
 
 def test_wolvenkit_executable_comes_from_env(monkeypatch):
-    monkeypatch.delenv("NIGHTMAP_WOLVENKIT", raising=False)
+    monkeypatch.delenv("OVERLAYMAP_WOLVENKIT", raising=False)
     assert wolvenkit_exe() == "WolvenKit.CLI"
-    monkeypatch.setenv("NIGHTMAP_WOLVENKIT", "~/x/wk10")
+    monkeypatch.setenv("OVERLAYMAP_WOLVENKIT", "~/x/wk10")
     assert wolvenkit_exe().endswith("/x/wk10") and not wolvenkit_exe().startswith("~")
 
 

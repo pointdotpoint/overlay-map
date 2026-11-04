@@ -1,7 +1,7 @@
 module SoakBootstrap
 import RedFileSystem.*
-@if(ModuleExists("NightMap"))
-import NightMap.*
+@if(ModuleExists("OverlayMap"))
+import OverlayMap.*
 
 // Soak harness bootstrap, ported from ~/photomode_ui_improvements/scripts/soak/bootstrap. Installed only during a
 // campaign, never shipped. Talks to the supervisor through r6/storages/SoakBootstrap (tools/soak/channel.py): reads
@@ -195,10 +195,10 @@ public class SoakChannel extends ScriptableService {
 }
 
 // The mod's commands (tools/soak/autopilot/SoakHooks.reds); a no-mod control run has none.
-@if(ModuleExists("NightMap"))
+@if(ModuleExists("OverlayMap"))
 public func Soak_RunCommand(command: String) -> String = NMSoak.Run(command)
 
-@if(!ModuleExists("NightMap"))
+@if(!ModuleExists("OverlayMap"))
 public func Soak_RunCommand(command: String) -> String = "unknown"
 
 @wrapMethod(SingleplayerMenuGameController)

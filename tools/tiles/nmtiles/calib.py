@@ -16,7 +16,7 @@ from nmtiles.render import rasterize_mask
 from nmtiles.world import Transform
 
 GATE_METERS = 15.0
-_LINE = re.compile(r"\[NightMap\] CALIB\|(?P<name>[^|]*)\|(?P<x>-?[\d.]+)\|(?P<y>-?[\d.]+)\|(?P<z>-?[\d.]+)")
+_LINE = re.compile(r"\[OverlayMap\] CALIB\|(?P<name>[^|]*)\|(?P<x>-?[\d.]+)\|(?P<y>-?[\d.]+)\|(?P<z>-?[\d.]+)")
 _SIGNS = [(1.0, -1.0), (1.0, 1.0), (-1.0, -1.0), (-1.0, 1.0)]
 
 

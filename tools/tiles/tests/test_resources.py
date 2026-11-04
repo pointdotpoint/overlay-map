@@ -43,11 +43,11 @@ def test_make_xbm_json_rejects_wrong_payload_size():
 
 def test_make_inkatlas_json_points_all_slots_at_texture_with_uv_parts():
     parts = {"full": (0, 0, 512, 512), "chip": (0, 0, 112, 112)}
-    j = make_inkatlas_json(_tpl("atlas.inkatlas.json"), r"nightmap\tiles\L0\t_1_2.xbm", parts, 512, 512)
+    j = make_inkatlas_json(_tpl("atlas.inkatlas.json"), r"overlaymap\tiles\L0\t_1_2.xbm", parts, 512, 512)
     slots = j["Data"]["RootChunk"]["slots"]["Elements"]
     assert len(slots) == 3
     for s in slots:
-        assert s["texture"]["DepotPath"]["$value"] == r"nightmap\tiles\L0\t_1_2.xbm"
+        assert s["texture"]["DepotPath"]["$value"] == r"overlaymap\tiles\L0\t_1_2.xbm"
         names = [p["partName"]["$value"] for p in s["parts"]]
         assert names == ["full", "chip"]
         chip = s["parts"][1]["clippingRectInUVCoords"]
@@ -55,7 +55,7 @@ def test_make_inkatlas_json_points_all_slots_at_texture_with_uv_parts():
 
 
 @pytest.mark.slow
-@pytest.mark.skipif(os.environ.get("NIGHTMAP_SLOW") != "1", reason="needs wine/texconv/WolvenKit")
+@pytest.mark.skipif(os.environ.get("OVERLAYMAP_SLOW") != "1", reason="needs wine/texconv/WolvenKit")
 def test_encode_write_pack_roundtrip(tmp_path):
     from PIL import Image
 
@@ -67,11 +67,11 @@ def test_encode_write_pack_roundtrip(tmp_path):
     payload = encode_bc7([png], tmp_path / "dds")[png]
     assert len(payload) == 262144
     ws = tmp_path / "ws"
-    write_resource(ws, r"nightmap\test\t.xbm", make_xbm_json(_tpl("tile.xbm.json"), 512, 512, payload))
-    write_resource(ws, r"nightmap\test\t.inkatlas",
-                   make_inkatlas_json(_tpl("atlas.inkatlas.json"), r"nightmap\test\t.xbm", {"full": (0, 0, 512, 512)}, 512, 512))
+    write_resource(ws, r"overlaymap\test\t.xbm", make_xbm_json(_tpl("tile.xbm.json"), 512, 512, payload))
+    write_resource(ws, r"overlaymap\test\t.inkatlas",
+                   make_inkatlas_json(_tpl("atlas.inkatlas.json"), r"overlaymap\test\t.xbm", {"full": (0, 0, 512, 512)}, 512, 512))
     deserialize_all(ws)
-    assert (ws / "nightmap/test/t.xbm").stat().st_size > 262144
+    assert (ws / "overlaymap/test/t.xbm").stat().st_size > 262144
     arc = pack_archive(ws, tmp_path / "out" / "Test.archive")
     assert arc.stat().st_size > 262144
 
