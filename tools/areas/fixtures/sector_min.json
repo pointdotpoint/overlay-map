@@ -1,0 +1,102 @@
+{
+ "Header": {},
+ "Data": {
+  "RootChunk": {
+   "$type": "worldStreamingSector",
+   "nodes": [
+    {
+     "HandleId": "0",
+     "Data": {
+      "$type": "worldLocationAreaNode",
+      "debugName": {
+       "$type": "CName",
+       "$storage": "string",
+       "$value": "{test_loc_area}"
+      },
+      "notifiers": [
+       {
+        "HandleId": "1",
+        "Data": {
+         "$type": "worldLocationAreaNotifier",
+         "districtID": {
+          "$type": "TweakDBID",
+          "$storage": "string",
+          "$value": "Districts.Kabuki"
+         }
+        }
+       }
+      ],
+      "outline": {
+       "HandleId": "2",
+       "Data": {
+        "$type": "AreaShapeOutline",
+        "buffer": "AwAAAAAAAAAAAAAAAAAAAAAAgD8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAgD8AAAAAAACAPw==",
+        "height": 2,
+        "points": [
+         {
+          "$type": "Vector3",
+          "X": -1,
+          "Y": -1,
+          "Z": 0
+         },
+         {
+          "$type": "Vector3",
+          "X": 1,
+          "Y": -1,
+          "Z": 0
+         },
+         {
+          "$type": "Vector3",
+          "X": 1,
+          "Y": 1,
+          "Z": 0
+         },
+         {
+          "$type": "Vector3",
+          "X": -1,
+          "Y": 1,
+          "Z": 0
+         }
+        ]
+       }
+      }
+     }
+    }
+   ],
+   "nodeData": {
+    "BufferId": "0",
+    "Flags": 0,
+    "Type": "WolvenKit.RED4.Archive.Buffer.worldNodeDataBuffer",
+    "Data": [
+     {
+      "$type": "worldCompiledNodeInstanceSetupInfo",
+      "nodeIdx": "0",
+      "scale": {
+       "$type": "Vector3",
+       "X": 10,
+       "Y": 20,
+       "Z": 1
+      },
+      "transform": {
+       "$type": "Transform",
+       "position": {
+        "$type": "Vector4",
+        "X": 100,
+        "Y": 200,
+        "Z": 0,
+        "W": 0
+       },
+       "orientation": {
+        "$type": "Quaternion",
+        "i": 0,
+        "j": 0,
+        "k": 0.70710678,
+        "r": 0.70710678
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}
