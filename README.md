@@ -58,6 +58,9 @@ Collectible spots come from the game's own files (never from a fan map), regener
     python3 tools/collectibles/scan.py --wolvenkit <WolvenKit 10 CLI> --dotnet <.NET 10 runtime>   # world sectors
     python3 tools/soak/soak.py campaign tools/soak/plans/lootdump.json --save <save>              # item records
     python3 tools/collectibles/gen.py --scan ~/.cache/overlaymap-sectors/scan --dump <run>/dump-1/channel/lootdump.txt
+Area names come from the game's world sectors (area outlines) plus hand-made outlines in `tools/areas/custom_areas.json`:
+    python3 tools/areas/scan.py    # outlines -> ~/.cache/nightmap-sectors/areas/outlines.json (WolvenKit 10)
+    python3 tools/areas/gen.py     # -> r6/scripts/OverlayMap/Generated/AreaData.reds; --preview PNG draws them
 UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only`.
 
 ## Using it
@@ -76,6 +79,7 @@ UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only
 - `Numpad /` cycles the markers shown: All → Jobs (quests, gigs, psycho) → Services (ripperdoc, vendors, autofixer, drop points, fast travel, your property), like the vanilla quick lists; NCPD scanner and apartments to rent show only in All. A filter keeps its categories visible as long as quests and fast travel when zooming out.
 - There is no clustering. Markers shrink and fade out by tier as the map zooms out: minor ones (gigs, vendors, NCPD, collectibles, photo pins) first, quests and fast travel last, the tracked quest and V never. Markers never overlap: where two would, the more important one is drawn, and the district title and scale bar stay clear. Mod Settings → Overlay Map → Map filters turns each vanilla category on or off.
 - NCART lines (Map filters → NCART lines, off by default) draws the five metro lines over the map in their NCART colours (A red, B yellow, C cyan, D green, E orange), on the real track positions from the game's 3D map. Where lines share track they run side by side, like the NCART diagram; short connectors join the line to station markers that sit off the track. The lines keep their colours in every theme.
+- With no marker selected, the sidebar names the area under the cursor (the smallest one: Afterlife inside Little China), with its district chain above it; game areas are localized. Outside every area it stays empty. Places the game doesn't name, such as the Landfill, have hand-made outlines.
 - The district title sits top left (with the active filter under it) and the scale bar top right. The sidebar's bottom shows the tracked quest and its current objective.
 - The map background is half see-through by default (Display → Panel opacity, 0.5); installs still on the old 0.45 default move to 0.5 once.
 - Display → Map marker size scales the open map's markers; the default is half the original size (0.5).
