@@ -178,6 +178,8 @@ public abstract class NMHoloTests {
             mkOn.Update(pcam, pl, 1880.0, 1480.0);
             let ra: Vector2 = mkOn.RingsTranslation();
             let aa: Vector2 = mkOn.ArrowTranslation();
+            t.Check("player.cone_follows_arrow", t.Near(mkOn.ConeTranslation().X, aa.X, 0.01) && t.Near(mkOn.ConeTranslation().Y, aa.Y, 0.01)
+                && t.Near(mkOn.ConeRotation(), mkOn.ArrowRotation(), 0.01), t.F(mkOn.ConeRotation()) + " / " + t.F(mkOn.ArrowRotation()));
             t.Check("holo.rings_follow_player", t.Near(ra.X, aa.X, 0.01) && t.Near(ra.Y, aa.Y, 0.01) && t.Near(aa.X, 940.0, 1.0),
                 t.F(ra.X) + "," + t.F(ra.Y) + " / " + t.F(aa.X) + "," + t.F(aa.Y));
         } else {
@@ -192,6 +194,7 @@ public abstract class NMHoloTests {
         let mk = NMPlayerMarker.Create(canvas, 1.0, true, 0);
         let pc: HDRColor = mk.ArrowTint();
         t.Check("player.tint", NMHoloTests.SameRgb(pc, NMTheme.VanillaStateColor(n"Player")), t.F(pc.Red) + "," + t.F(pc.Green) + "," + t.F(pc.Blue));
+        t.Check("player.cone_tint", NMHoloTests.SameRgb(mk.ConeTint(), pc), "");
         let rc: HDRColor = NMTheme.ReticleColor(0);
         let rg: HDRColor = NMTheme.ReticleColor(1);
         let ret = NMReticle.Create(canvas, 1.0, 0);

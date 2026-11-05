@@ -76,7 +76,7 @@ public abstract class NMTheme {
         if Equals(state, n"FastTravel") { return new HDRColor(0.349, 0.706, 1.0, 1.0); }     // #59B4FF
         if Equals(state, n"FastTravelMetro") { return new HDRColor(0.8, 0.506, 1.0, 1.0); }  // #CC81FF
         if Equals(state, n"Relic") { return new HDRColor(0.471, 0.678, 1.0, 1.0); }          // #78ADFF
-        if Equals(state, n"Player") { return new HDRColor(0.161, 1.0, 0.725, 1.0); }         // #29FFB9
+        if Equals(state, n"Player") { return new HDRColor(0.161, 1.314, 0.726, 1.0); }       // #29FFB9, HDR as player_mappin
         if Equals(state, n"Prevention_LightBlue") { return new HDRColor(0.369, 0.965, 1.0, 1.0); }   // MainColors.Blue #5EF6FF
         return new HDRColor(1.0, 1.0, 1.0, 1.0);   // ServicePoint, Vehicle, VehicleForPurchase and anything unknown
     }
@@ -90,7 +90,6 @@ public abstract class NMTheme {
     public static func DeclutterOverlap() -> Float { return 1.0; }
     public static func PlateOpacity() -> Float { return 1.0; }    // times the icon's own opacity
     public static func IconSize() -> Float { return 24.0; }       // a hex chip's centre dot
-    public static func PlayerSize() -> Float { return 112.0; }
     public static func BracketSize() -> Float { return 110.0; }
 
     public static func HintHeight() -> Float { return 110.0; }
