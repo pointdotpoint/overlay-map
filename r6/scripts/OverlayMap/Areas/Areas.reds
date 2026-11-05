@@ -36,6 +36,11 @@ public class NMAreaIndex {
         return idx;
     }
 
+    // gen.py writes an empty field as "~": the game's StrSplit may drop empty fields.
+    private static func Field(s: String) -> String {
+        return Equals(s, "~") ? "" : s;
+    }
+
     // key|name|parent|desc|x1,y1,...; null when malformed or under 3 points.
     private static func ParseEntry(e: String) -> ref<NMArea> {
         let f = StrSplit(e, "|", false);
@@ -49,9 +54,9 @@ public class NMAreaIndex {
         }
         let a = new NMArea();
         a.key = f[0];
-        a.name = f[1];
-        a.parent = f[2];
-        a.desc = f[3];
+        a.name = NMAreaIndex.Field(f[1]);
+        a.parent = NMAreaIndex.Field(f[2]);
+        a.desc = NMAreaIndex.Field(f[3]);
         let i = 0;
         while i < n {
             let x = StringToFloat(c[2 * i]);
@@ -74,7 +79,9 @@ public class NMAreaIndex {
             ArrayPush(chunks, NMAreaData.Chunk(k));
             k += 1;
         }
-        return NMAreaIndex.Parse(chunks);
+        let idx = NMAreaIndex.Parse(chunks);
+        NMLog.Info("areas|loaded|" + ToString(idx.Count()) + "|of|" + ToString(NMAreaData.Count()));
+        return idx;
     }
 
     public func Count() -> Int32 {

@@ -42,8 +42,20 @@ def test_emit_round_trip_and_chunk_limit():
     bodies = re.findall(r'case \d+: return "(.*)";', src)
     assert all(len(b) <= 8000 for b in bodies)
     entries = ";".join(bodies).split(";")
-    assert len(entries) == 400 and entries[0] == "Districts.X0||||0.0,0.0,1.3,0.0,0.0,1.0"
+    assert len(entries) == 400 and entries[0] == "Districts.X0|~|~|~|0.0,0.0,1.3,0.0,0.0,1.0"
     assert "return 400;" in src
+
+
+def test_emit_never_writes_empty_fields():
+    # The game's StrSplit may drop empty fields, so empty name/parent/desc are written as "~".
+    src = emit([Area("Landfill", "Landfill", "Districts.RedPeaks", "", [(0, 0), (1, 0), (0, 1)])])
+    body = re.findall(r'case \d+: return "(.*)";', src)[0]
+    assert "||" not in body and body.startswith("Landfill|Landfill|Districts.RedPeaks|~|")
+
+
+def test_emit_rejects_tilde_values():
+    with pytest.raises(ValueError):
+        emit([Area("K", "~", "", "", [(0, 0), (1, 0), (0, 1)])])
 
 
 def test_emit_rejects_separators():

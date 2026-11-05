@@ -5,11 +5,12 @@ public abstract class NMAreaTests {
     public static func Run(t: ref<NMSelfTest>) {
         let chunks: array<String>;
         // Smallest first, as gen.py emits them. The Tot pair stacks two same-name outlines.
-        ArrayPush(chunks, "Tot|Tot|||301,301,309,301,309,309,301,309;Tot|Tot|||300,300,310,300,310,310,300,310");
-        ArrayPush(chunks, "Small|Small|||0,0,10,0,10,10,0,10;Blank||||200,200,210,200,210,210,200,210");
-        ArrayPush(chunks, "Notch|Notch|||0,0,100,0,100,100,60,100,60,40,40,40,40,100,0,100;Big|Big|||-500,-500,500,-500,500,500,-500,500");
+        ArrayPush(chunks, "Tot|Tot|~|~|301,301,309,301,309,309,301,309;Tot|Tot|~|~|300,300,310,300,310,310,300,310");
+        ArrayPush(chunks, "Small|Small|~|~|0,0,10,0,10,10,0,10;Blank|~|~|~|200,200,210,200,210,210,200,210");
+        ArrayPush(chunks, "Notch|Notch|~|~|0,0,100,0,100,100,60,100,60,40,40,40,40,100,0,100;Big|Big|~|~|-500,-500,500,-500,500,500,-500,500");
         let idx = NMAreaIndex.Parse(chunks);
         t.Check("areas.parse_count", idx.Count() == 6, ToString(idx.Count()));
+        t.Check("areas.empty_field_sentinel", Equals(idx.Title(3), "") && Equals(idx.Desc(0), ""), idx.Title(3) + "|" + idx.Desc(0));
         t.Check("areas.smallest_wins", idx.At(5.0, 5.0) == 2, ToString(idx.At(5.0, 5.0)));
         t.Check("areas.concave_notch", idx.At(50.0, 80.0) == 5 && idx.At(20.0, 80.0) == 4,
             ToString(idx.At(50.0, 80.0)) + "," + ToString(idx.At(20.0, 80.0)));
