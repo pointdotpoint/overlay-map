@@ -1,4 +1,4 @@
-"""End-to-end tile build: minimap geometry (+ Dogtown from the 3D map) -> footprints -> colourless mask tile sets -> BC7 tiles + UI atlas -> OverlayMap.archive + manifest."""
+"""End-to-end tile build: minimap buildings + the 3D map's roads (+ Dogtown's buildings from the 3D map) -> footprints -> colourless mask tile sets -> BC7 tiles + UI atlas -> OverlayMap.archive + manifest."""
 from __future__ import annotations
 
 import argparse
@@ -16,7 +16,7 @@ from nmtiles.encode import encode_bc7
 from nmtiles.holo_atlas import build_holo_atlas
 from nmtiles.holo_preview import write_holo_previews
 from nmtiles.manifest import emit_manifest
-from nmtiles import boxfill, dogtown, ncart
+from nmtiles import boxfill, dogtown, ncart, vanilla_roads
 from nmtiles.footprints import load_or_build
 from nmtiles.minimap import load_city
 from nmtiles.pack import deserialize_all, pack_archive, write_resource
@@ -51,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     city = load_city(game, out / "minimap_cache", workers=args.jobs)
     mesh_dir, data_dir = dogtown.ensure_sources(game, out)
     city = dogtown.apply(city, mesh_dir, data_dir)
+    city = vanilla_roads.apply_from_mesh(city, mesh_dir)
     city = boxfill.apply(city, boxfill.district_boxes(data_dir))
     fp = load_or_build(city["road"], city["stroke"], out / "minimap_cache" / "footprints.npz", args.jobs,
                          road_major=city["road_major"])

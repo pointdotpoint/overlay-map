@@ -3,8 +3,8 @@
 Phantom Liberty re-cooked Dogtown's streaming sectors without any MinimapDataNode, and the base-game copies they
 replace still hold the old Combat Zone layout. The only Dogtown geometry that matches the game is the vanilla 3D map:
 the ``ep1_dogtown`` building point cloud (buildings.py) and the ``3dmap_roads`` mesh. Inside the district (a region
-grown from its building boxes), the minimap triangles are dropped and replaced by those: the boxes join the building
-triangles the footprints are cut from, the road mesh joins the road sets, split into minor and major by width.
+grown from its building boxes), the minimap triangles are dropped and the boxes join the building triangles the
+footprints are cut from. The road mesh supplies every road of the city, Dogtown's included (vanilla_roads.py).
 """
 from __future__ import annotations
 
@@ -118,18 +118,12 @@ def ensure_sources(game: Path, out: Path, log: Callable[[str], None] = print) ->
 
 def apply(city: dict[str, np.ndarray], mesh_dir: Path, data_dir: Path,
           log: Callable[[str], None] = print) -> dict[str, np.ndarray]:
-    """city with Dogtown's minimap triangles replaced by the 3D map's roads and building boxes."""
+    """city with Dogtown's minimap triangles replaced by the 3D map's building boxes. Its roads, like every other
+    road, come from the 3D map's road mesh (vanilla_roads), which runs after this."""
     boxes = district_boxes(data_dir)
     g = region(boxes)
-    roads = road_tris(mesh_dir)
-    c = roads.mean(axis=1)
-    roads = roads[shapely.contains_xy(g, c[:, 0], c[:, 1])]
-    minor, major = split_major(roads)
     out = {k: drop_inside(v, g) for k, v in city.items()}
     dropped = {k: len(city[k]) - len(out[k]) for k in city}
-    out["road"] = np.concatenate([out["road"], minor])
-    out["road_major"] = np.concatenate([out["road_major"], major])
     out["stroke"] = np.concatenate([out["stroke"], box_tris(boxes)])
-    log(f"dogtown: region {g.area / 1e6:.2f} km2; dropped minimap {dropped}; "
-        f"added {len(boxes)} boxes, roads minor {len(minor)} major {len(major)}")
+    log(f"dogtown: region {g.area / 1e6:.2f} km2; dropped minimap {dropped}; added {len(boxes)} boxes")
     return out
