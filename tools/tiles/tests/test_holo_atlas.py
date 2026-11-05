@@ -9,7 +9,7 @@ def part(img, parts, name):
 
 def test_parts_sizes_bounds_and_no_overlap():
     img, parts = build_holo_atlas()
-    assert img.size == (ATLAS_W, ATLAS_H) == (1024, 512) and img.mode == "RGBA"
+    assert img.size == (ATLAS_W, ATLAS_H) == (1024, 1536) and img.mode == "RGBA"
     assert set(parts) == set(SIZES)
     assert {"holo_scan", "holo_grid", "holo_noise", "holo_bar", "holo_halo"} <= set(parts)
     assert SIZES["holo_scan"] == (64, 64) and SIZES["holo_grid"] == (48, 48) and SIZES["holo_noise"] == (256, 256)
@@ -132,16 +132,18 @@ def test_line_is_opaque_in_the_middle_and_fades_to_zero_on_both_sides():
     assert (np.diff(col[:8]) >= 0).all() and 0 < col[1] < 255 # a ramp, not a step
 
 
-def test_rings_have_four_circles():
+def test_rings_have_thirty_circles_at_an_even_gap():
+    """30 range rings, evenly spaced (the gap the old four rings had on screen, now carried outwards)."""
     img, parts = build_holo_atlas()
-    assert SIZES["holo_rings"] == (256, 256)
+    assert SIZES["holo_rings"] == (1024, 1024)
     a = part(img, parts, "holo_rings")[..., 3].astype(int)
-    row = a[128]
-    peaks = [x for x in range(1, 255) if row[x] > 100 and row[x] >= row[x - 1] and row[x] > row[x + 1]]
-    assert len(peaks) == 8
-    centre = 127.5
-    assert sorted(round(abs(x - centre)) for x in peaks) == [32, 32, 64, 64, 96, 96, 124, 124]
-    assert a[128, 128] == 0 and a[0, 0] == 0
+    row = a[512]
+    peaks = [x for x in range(512, 1023) if row[x] > 60 and row[x] >= row[x - 1] and row[x] > row[x + 1]]
+    assert len(peaks) == 30
+    gaps = np.diff(peaks)
+    assert gaps.min() >= 16 and gaps.max() <= 18
+    assert a[512, 512] == 0 and a[0, 0] == 0 and a[1023, 1023] == 0
+    assert row[1023] < 20                                     # the outer ring stays inside the part
 
 
 def test_corner_ring_and_disc():

@@ -7,7 +7,7 @@ Tileable parts are periodic in both axes, so the first row/column continues the 
   holo_grid   48x48    2x2 px dot every 24 px (dot grid)
   holo_noise  256x256  fine random noise (wrap-around smoothed, so it tiles)
 Others:
-  holo_rings 256x256   four concentric rings, radii 32/64/96/124 px, 2 px (stretched; faint ambient texture)
+  holo_rings 1024x1024 30 concentric rings, RINGS_GAP_PX apart, ~1 px (stretched; faint ambient texture)
   holo_vignette 256x256 radial alpha, 0 at the centre to 1 at the corners
   holo_bar    512x160  scan band: alpha rises from 0 to a bright core and back to 0 (vertical gradient)
   holo_edge_t/_b 16x64, holo_edge_l/_r 64x16  soft glowing frame line, bright on the outer pixel row, fading inward;
@@ -25,17 +25,17 @@ from __future__ import annotations
 import numpy as np
 from PIL import Image
 
-ATLAS_W, ATLAS_H = 1024, 512
+ATLAS_W, ATLAS_H = 1024, 1536
 SIZES = {   # name -> (w, h)
     "holo_scan": (64, 64), "holo_grid": (48, 48), "holo_noise": (256, 256), "holo_bar": (512, 160),
-    "holo_halo": (128, 128), "holo_line": (16, 16), "holo_vignette": (256, 256), "holo_rings": (256, 256),
+    "holo_halo": (128, 128), "holo_line": (16, 16), "holo_vignette": (256, 256), "holo_rings": (1024, 1024),
     "holo_edge_t": (16, 64), "holo_edge_b": (16, 64), "holo_edge_l": (64, 16), "holo_edge_r": (64, 16),
     "holo_ring": (128, 128), "holo_disc": (128, 128), "holo_arrow": (32, 32), "holo_track": (512, 80),
 }
 TILEABLE = {"holo_scan": 4, "holo_grid": 24, "holo_noise": 256}     # name -> period in px (both axes)
 # Fixed layout (4 px gaps so bilinear sampling never bleeds a neighbour in).
 LAYOUT = {
-    "holo_grid": (870, 0), "holo_rings": (0, 0), "holo_noise": (260, 0), "holo_halo": (520, 0), "holo_scan": (652, 0),
+    "holo_grid": (870, 0), "holo_rings": (0, 512), "holo_noise": (260, 0), "holo_halo": (520, 0), "holo_scan": (652, 0),
     "holo_edge_t": (720, 0), "holo_edge_b": (740, 0), "holo_edge_l": (760, 0), "holo_edge_r": (760, 20),
     "holo_bar": (0, 260), "holo_line": (840, 0), "holo_vignette": (520, 132),
     "holo_ring": (780, 132), "holo_disc": (780, 264), "holo_arrow": (912, 132), "holo_track": (0, 428),
@@ -67,14 +67,20 @@ def _grid() -> Image.Image:
     return _white(a)
 
 
+RINGS_COUNT = 30
+RINGS_GAP_PX = 16.9      # the outer ring at 507 px stays inside the 1024 part. NMTheme.RingsSize() = 1024 / 16.9 x 180,
+                         # so on screen the rings sit 180 units apart, the gap the original four rings had
+RINGS_WIDTH_PX = 1.06    # 11 units on screen, the width the original rings had
+
+
 def _rings() -> Image.Image:
-    """Four concentric rings (radii 32, 64, 96, 124 px, 2 px wide, antialiased)."""
-    n = 256
+    """RINGS_COUNT concentric rings, RINGS_GAP_PX apart from the centre outwards, antialiased."""
+    n = 1024
     y, x = np.mgrid[0:n, 0:n].astype(np.float32)
     r = np.hypot(x - (n - 1) / 2, y - (n - 1) / 2)
     a = np.zeros((n, n), np.float32)
-    for rad in (32, 64, 96, 124):
-        a = np.maximum(a, np.clip(1.0 - (np.abs(r - rad) - 0.5), 0.0, 1.0))   # 2 px wide: full within 1 px
+    for k in range(1, RINGS_COUNT + 1):
+        a = np.maximum(a, np.clip(RINGS_WIDTH_PX / 2 + 0.5 - np.abs(r - k * RINGS_GAP_PX), 0.0, 1.0))
     return _white(a * 255.0)
 
 
