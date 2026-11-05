@@ -140,6 +140,10 @@ public class NMAreaIndex {
         return out;
     }
 
+    public func Key(i: Int32) -> String {
+        return i >= 0 && i < ArraySize(this.areas) ? this.areas[i].key : "";
+    }
+
     public func Desc(i: Int32) -> String {
         return i >= 0 && i < ArraySize(this.areas) ? this.areas[i].desc : "";
     }

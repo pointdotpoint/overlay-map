@@ -93,6 +93,8 @@ public class OverlayMapSystem extends ScriptableSystem {
     private let drawerShift: Float;   // px the focus point sits left of the map-area centre (middle of the map left of the sidebar)
     private let marker: ref<NMPlayerMarker>;
     private let tipApiRev: Int32;
+    private let areas: ref<NMAreaIndex>;   // named areas under the focus, loaded on first use
+    private let areaAt: Int32;             // the area the sidebar card shows, -1 none
     private let scaleRev: Int32;
     private let perf: ref<NMPerfSuite>;
     private let perfHidden: Bool;
@@ -959,6 +961,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     private func OnOpened() {
         this.Photos().OnMapOpened();
         this.tipApiRev = -1;
+        this.areaAt = -1;
         this.scaleRev = -1;
         this.hdrDistrict = "\n";   // sentinels no real text equals: force the first header write
         this.hdrFilter = "\n";
@@ -1117,9 +1120,12 @@ public class OverlayMapSystem extends ScriptableSystem {
             // mapW, not viewW: the focus is the map-area centre less the sidebar shift, i.e. the middle of the culled view
             // (NMCrosshair.FocusX, pick.focus_mid_view).
             let changed = this.crosshair.Update(this.renderer, l.mapW, l.mapH, l.scale, this.drawerShift);
-            // Re-query tooltip content only when the selection or the data changed, not on every pan frame.
-            if changed || this.api.revision != this.tipApiRev {
+            let a = this.AreaAtFocus();
+            // Re-query tooltip content only when the selection, the area under the focus or the data changed,
+            // not on every pan frame.
+            if changed || a != this.areaAt || this.api.revision != this.tipApiRev {
                 this.tipApiRev = this.api.revision;
+                this.areaAt = a;
                 this.RefreshSidebar(changed);
             }
             // The camera moved (relayout): selX/selY changed, so follow the marker. No-op while hidden.
@@ -1219,9 +1225,22 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.tooltip.ShowCard(d, d.hasColor ? d.color : cat, this.renderer.IconOf(L, id), L.hasTint[id] ? L.tint[id] : cat,
                 L.pinStyle != 1);
         } else {
-            this.tooltip.Hide();
             this.drawer.Hide();
+            // No marker: name the area under the focus (smallest first), or leave the sidebar empty.
+            if this.areaAt >= 0 {
+                this.tooltip.ShowDetails(OverlayMapDetails.Create(this.areas.Label(this.areaAt), this.areas.Title(this.areaAt))
+                    .WithDescription(this.areas.Desc(this.areaAt)), NMTheme.Cyan());
+            } else {
+                this.tooltip.Hide();
+            }
         }
+    }
+
+    private func AreaAtFocus() -> Int32 {
+        if !IsDefined(this.areas) {
+            this.areas = NMAreaIndex.Load();
+        }
+        return this.areas.At(this.camera.cx, this.camera.cy);
     }
 
     private func ShowDrawer(spot: ref<NMPhotoSpot>) {
