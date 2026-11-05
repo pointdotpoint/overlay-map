@@ -208,7 +208,7 @@ public abstract class NMTheme {
     public static func HoloScanOpacity() -> Float { return 0.14; }
     public static func RingsOpacity() -> Float { return 0.05; }   // at close zoom; RingsFade thins them out further
     public static func VignetteOpacity() -> Float { return 0.55; }
-    public static func RingsSize() -> Float { return 1440.0; }   // 4K units across
+    public static func RingsSize() -> Float { return 10906.0; }  // 4K units across: 30 rings 180 units apart (holo_atlas RINGS_GAP_PX)
     // The range rings keep their screen size, so zoomed out they span districts: 1 up to 1 m/unit, linear in log2(mpp)
     // down to 0.2 at 8 m/unit and beyond (an ambient texture, not a target over the city).
     public static func RingsFade(mpp: Float) -> Float {
