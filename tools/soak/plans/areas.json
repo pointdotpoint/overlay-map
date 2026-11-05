@@ -1,0 +1,137 @@
+{
+ "name": "areas",
+ "runs": [
+  {
+   "name": "names",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "expect": [
+    {
+     "log": "TEST\\|SUMMARY\\|passed=\\d+\\|failed=0",
+     "min": 1
+    }
+   ],
+   "forbid": [
+    "TEST\\|FAIL\\|areas\\."
+   ],
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 120
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "area_names",
+     "expect": "^areas \\d+"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_empty 1377.9 -1903.3 4",
+     "expect": "^focus"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "area",
+     "expect": "^area\\|.* · .*\\|Landfill$"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_empty -373.8 1038.6 4",
+     "expect": "^focus"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "area",
+     "expect": "^area\\|.+\\|.+"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_ft far"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "area",
+     "expect": "^marker$"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_empty -373.8 1038.6 4",
+     "expect": "^focus"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "area",
+     "expect": "^area\\|"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_at -6000 4000 4",
+     "expect": "^focus"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "area",
+     "expect": "^none$"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_empty 1377.9 -1903.3 4",
+     "expect": "^focus"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "landfill"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    }
+   ]
+  }
+ ]
+}

@@ -39,6 +39,7 @@ public class NMSelfTest {
         NMPaletteTests.Run(this);
         NMParityTests.Run(this);
         NMWaypointTests.Run(this);
+        NMAreaTests.Run(this);
         NMLog.Info("TEST|SUMMARY|passed=" + ToString(this.passed) + "|failed=" + ToString(this.failed));
     }
 

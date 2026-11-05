@@ -23,6 +23,8 @@ public abstract class NMSoak {
         }
         if Equals(command, "focus_ft far") { return sys.Soak_FocusFastTravel(); }
         if Equals(command, "selected") { return sys.Soak_Selected(); }
+        if Equals(command, "area") { return sys.Soak_Area(); }
+        if Equals(command, "area_names") { return sys.Soak_AreaNames(); }
         if Equals(command, "counts") { return sys.Soak_Counts(); }
         if Equals(command, "layers") { return sys.Soak_Layers(); }
         if Equals(command, "act") { return sys.Soak_Act(); }

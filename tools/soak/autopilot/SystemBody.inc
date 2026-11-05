@@ -83,6 +83,25 @@
     private let soakHoldLeft: Float;
     private let soakLoadsSeen: Int32;
 
+    // What the sidebar's area card shows: "marker" while a marker or photo is selected, else the area or "none".
+    public func Soak_Area() -> String {
+        let c = this.crosshair;
+        if IsDefined(this.SelectedPhoto()) || (IsDefined(c) && c.selKind >= 0) { return "marker"; }
+        if this.areaAt < 0 || !IsDefined(this.areas) { return "none"; }
+        return "area|" + this.areas.Label(this.areaAt) + "|" + this.areas.Title(this.areaAt);
+    }
+
+    // Every area's resolved names, one AREA| line each, for reviewing the localized titles.
+    public func Soak_AreaNames() -> String {
+        if !IsDefined(this.areas) { this.areas = NMAreaIndex.Load(); }
+        let i = 0;
+        while i < this.areas.Count() {
+            NMLog.Info("AREA|" + this.areas.Key(i) + "|" + this.areas.Label(i) + "|" + this.areas.Title(i));
+            i += 1;
+        }
+        return "areas " + ToString(this.areas.Count());
+    }
+
     public func Soak_StartSweep(tag: String, mpp: Float, seconds: Float, holds: Int32) -> String {
         if !IsDefined(this.camera) || !IsDefined(this.renderer) { return "map closed"; }
         let p = GetPlayer(this.GetGameInstance()).GetWorldPosition();
