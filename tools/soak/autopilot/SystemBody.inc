@@ -535,8 +535,11 @@
     }
 
     // Focuses the nearest spot to (cx, cy), on a 20 m grid out to 300 m, with no layer item within 30 m.
+    // The nearest spot (20 m grid, up to 300 m out) where the crosshair at this zoom picks nothing: clear of every item
+    // by the pick radius in metres (SelectRadius map units at this m/unit), plus a margin.
     public func Soak_FocusEmpty(cx: Float, cy: Float, mpp: Float) -> String {
         if !IsDefined(this.camera) || !this.isOpen { return "map closed"; }
+        let clear = NMTheme.SelectRadius() * this.panel.layout.scale * mpp * 1.25;
         let ring = 0;
         while ring <= 15 {
             let i = -ring;
@@ -546,7 +549,7 @@
                     if AbsF(Cast<Float>(i)) == Cast<Float>(ring) || AbsF(Cast<Float>(j)) == Cast<Float>(ring) {
                         let x = cx + 20.0 * Cast<Float>(i);
                         let y = cy + 20.0 * Cast<Float>(j);
-                        if this.Soak_Clear(x, y, 30.0) { return this.Soak_FocusAt(x, y, mpp); }
+                        if this.Soak_Clear(x, y, clear) { return this.Soak_FocusAt(x, y, mpp); }
                     }
                     j += 1;
                 }
@@ -991,12 +994,12 @@
     // RESULT| and PERF| lines go to CET's gamelog.log, which the harness keeps with the run (gamelog-tail.log).
     private let soakPerfWatch: Bool;
 
-    public func Soak_Perf() -> String {
+    public func Soak_Perf(only: String) -> String {
         if !NMClock.Precise() { return "no precise clock"; }
         if !this.isOpen { this.Open(); }
         if !this.isOpen { return "not open"; }
         this.perf = new NMPerfSuite();
-        this.perf.Start();
+        this.perf.StartOnly(only);
         this.soakPerfWatch = true;
         return "started";
     }

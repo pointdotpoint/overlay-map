@@ -1,0 +1,51 @@
+{
+ "name": "route-check",
+ "runs": [
+  {
+   "name": "route",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "expect": [
+    {
+     "log": "TEST\\|SUMMARY",
+     "min": 1
+    },
+    {
+     "log": "PERF\\|SUITE\\|done",
+     "min": 1
+    }
+   ],
+   "forbid": [
+    "TEST\\|FAIL\\|(route|geom|gps)\\."
+   ],
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 60
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "perf_route",
+     "expect": "^started"
+    },
+    {
+     "await_state": "perf_done",
+     "timeout": 240
+    },
+    {
+     "wait": 3
+    }
+   ]
+  }
+ ]
+}

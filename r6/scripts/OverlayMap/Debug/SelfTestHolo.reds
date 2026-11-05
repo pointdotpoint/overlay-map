@@ -179,7 +179,8 @@ public abstract class NMHoloTests {
             let ra: Vector2 = mkOn.RingsTranslation();
             let aa: Vector2 = mkOn.ArrowTranslation();
             t.Check("player.cone_follows_arrow", t.Near(mkOn.ConeTranslation().X, aa.X, 0.01) && t.Near(mkOn.ConeTranslation().Y, aa.Y, 0.01)
-                && t.Near(mkOn.ConeRotation(), mkOn.ArrowRotation(), 0.01), t.F(mkOn.ConeRotation()) + " / " + t.F(mkOn.ArrowRotation()));
+                && t.Near(mkOn.ConeRotation(), mkOn.ArrowRotation(), 0.01), "rot " + t.F(mkOn.ConeRotation()) + " / " + t.F(mkOn.ArrowRotation())
+                + " at " + t.F(mkOn.ConeTranslation().X) + "," + t.F(mkOn.ConeTranslation().Y) + " / " + t.F(aa.X) + "," + t.F(aa.Y));
             t.Check("holo.rings_follow_player", t.Near(ra.X, aa.X, 0.01) && t.Near(ra.Y, aa.Y, 0.01) && t.Near(aa.X, 940.0, 1.0),
                 t.F(ra.X) + "," + t.F(ra.Y) + " / " + t.F(aa.X) + "," + t.F(aa.Y));
         } else {
