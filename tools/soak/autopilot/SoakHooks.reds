@@ -35,7 +35,8 @@ public abstract class NMSoak {
             return sys.Soak_FocusLayer(fl[1], StringToFloat(fl[2]));
         }
         if StrBeginsWith(command, "focus_quest ") { return sys.Soak_FocusQuest(StringToFloat(StrAfterFirst(command, " "))); }
-        if Equals(command, "perf") { return sys.Soak_Perf(); }
+        if Equals(command, "perf") { return sys.Soak_Perf(""); }
+        if Equals(command, "perf_route") { return sys.Soak_Perf("route"); }
         if StrBeginsWith(command, "set ") {
             let sv = StrSplit(command, " ");
             if ArraySize(sv) < 3 { return "usage: set <name> <value>"; }

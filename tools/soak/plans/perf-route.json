@@ -1,0 +1,41 @@
+{
+ "name": "perf-route",
+ "runs": [
+  {
+   "name": "route",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "expect": [
+    {
+     "log": "PERF\\|SUITE\\|done",
+     "min": 1
+    },
+    {
+     "log": "RESULT\\|closed_end\\|",
+     "min": 1
+    }
+   ],
+   "steps": [
+    {
+     "wait": 20
+    },
+    {
+     "cmd": "perf_route",
+     "expect": "^started"
+    },
+    {
+     "await_state": "perf_done",
+     "timeout": 240
+    },
+    {
+     "wait": 3
+    }
+   ]
+  }
+ ]
+}

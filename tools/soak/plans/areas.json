@@ -44,7 +44,7 @@
      "wait": 3
     },
     {
-     "cmd": "focus_empty 1377.9 -1903.3 4",
+     "cmd": "focus_empty 1377.9 -1903.3 1",
      "expect": "^focus"
     },
     {
@@ -58,7 +58,7 @@
      "wait": 3
     },
     {
-     "cmd": "focus_empty -373.8 1038.6 4",
+     "cmd": "focus_empty -373.8 1038.6 1",
      "expect": "^focus"
     },
     {
@@ -85,7 +85,7 @@
      "wait": 3
     },
     {
-     "cmd": "focus_empty -373.8 1038.6 4",
+     "cmd": "focus_empty -373.8 1038.6 1",
      "expect": "^focus"
     },
     {
@@ -113,7 +113,7 @@
      "wait": 3
     },
     {
-     "cmd": "focus_empty 1377.9 -1903.3 4",
+     "cmd": "focus_empty 1377.9 -1903.3 1",
      "expect": "^focus"
     },
     {

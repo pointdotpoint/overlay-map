@@ -111,6 +111,21 @@ public abstract class NMGpsTests {
         P.Update(cam, 0.0, 5.0, 100.0, 400.0, 400.0);
         t.Check("route.static", t.Near(NMGpsTests.TopDashY(P), y1, 0.01), t.F(NMGpsTests.TopDashY(P)));
 
+        // A pan only shifts the line: the cached world-space simplification is reused, and the line moves by exactly
+        // the pan. A zoom simplifies again (the tolerance is one map pixel in metres).
+        let runs0 = P.SimplifyRuns();
+        cam.SetCenter(0.0, 45.0);   // 5 m south at 0.25 m/px: the line moves 20 px up
+        P.Update(cam, 0.0, 5.0, 0.0, 400.0, 400.0);
+        t.Check("route.pan_reuses_simplify", P.SimplifyRuns() == runs0, ToString(runs0) + " -> " + ToString(P.SimplifyRuns()));
+        t.Check("route.pan_shifts_line", t.Near(NMGpsTests.TopDashY(P), y1 - 20.0, 0.5), t.F(y1) + " -> " + t.F(NMGpsTests.TopDashY(P)));
+        cam.SetMpp(0.5);
+        P.Update(cam, 0.0, 5.0, 0.0, 400.0, 400.0);
+        t.Check("route.zoom_resimplifies", P.SimplifyRuns() == runs0 + 1, ToString(runs0) + " -> " + ToString(P.SimplifyRuns()));
+        t.Check("route.zoom_keeps_importance", P.ImportanceRuns() == 1, ToString(P.ImportanceRuns()));
+        cam.SetMpp(0.25);
+        cam.SetCenter(0.0, 50.0);
+        P.Update(cam, 0.0, 5.0, 0.0, 400.0, 400.0);
+
         // Corners are rounded before dashes are placed: a 90 degree turn becomes several gentle ones.
         let ell: array<Vector2>;
         ArrayPush(ell, new Vector2(0.0, 0.0));
@@ -223,6 +238,30 @@ public abstract class NMGpsTests {
         let sb = NMRouteGeom.Simplify(bent, 1.0);
         t.Check("geom.simplify_keeps_corner", ArraySize(sb) == 3 && NMGpsTests.Same(sb[0], 0.0, 0.0) && NMGpsTests.Same(sb[1], 0.0, 10.0)
             && NMGpsTests.Same(sb[2], 10.0, 10.0), NMGpsTests.Dump(sb));
+        // Per-point importance (computed once per route) keeps exactly Douglas-Peucker's points at any tolerance.
+        let wig: array<Vector2>;
+        let wi = 0;
+        while wi < 300 {
+            let x = Cast<Float>(wi) * 1.7;
+            ArrayPush(wig, new Vector2(x, 6.0 * SinF(x * 0.05) + 0.8 * SinF(x * 0.9) + (wi % 7 == 0 ? 0.6 : 0.0)));
+            wi += 1;
+        }
+        let imp = NMRouteGeom.Importance(wig);
+        let impBad = "";
+        for tol in [0.05, 0.3, 1.0, 2.5, 8.0, 50.0] {
+            let want = NMRouteGeom.SimplifyIdx(wig, tol);
+            let got = NMRouteGeom.KeepIdx(imp, tol);
+            let same = ArraySize(want) == ArraySize(got);
+            let k = 0;
+            while same && k < ArraySize(want) {
+                same = want[k] == got[k];
+                k += 1;
+            }
+            if !same { impBad += " " + FloatToStringPrec(tol, 2) + ":" + ToString(ArraySize(want)) + "/" + ToString(ArraySize(got)); }
+        }
+        t.Check("geom.importance_matches_simplify", Equals(impBad, ""), impBad);
+        let ib = NMRouteGeom.SimplifyIdx(bent, 1.0);
+        t.Check("geom.simplify_idx", ArraySize(ib) == 3 && ib[0] == 0 && ib[1] == 2 && ib[2] == 3, ToString(ArraySize(ib)));
         let two: array<Vector2>;
         ArrayPush(two, new Vector2(1.0, 2.0));
         ArrayPush(two, new Vector2(3.0, 4.0));

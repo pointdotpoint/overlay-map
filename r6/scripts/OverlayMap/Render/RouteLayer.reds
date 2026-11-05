@@ -9,6 +9,13 @@ public class NMRouteLine {
     public let tintDirty: Bool;
     public let dirty: Bool;                // world changed since the last projection
     public let cursor: Int32;              // last matched world segment (the trim search starts here)
+    // The world route simplified at one map pixel (in metres): kept indices, valid for simpleTol. A pan reuses them;
+    // a zoom filters the per-point importance again (one Douglas-Peucker run per route, its most expensive step).
+    public let imp: array<Float>;
+    public let impOk: Bool;
+    public let simpleIdx: array<Int32>;
+    public let simpleTol: Float;
+    public let simpleOk: Bool;
     public let canvas: ref<inkCanvas>;
     public let glowCanvas: ref<inkCanvas>;   // empty; kept so the core canvas stays child 1
     public let coreCanvas: ref<inkCanvas>;
@@ -66,6 +73,20 @@ public class NMRouteLayer {
     private let lastPx: Float;
     private let lastPy: Float;
     private let shown: Int32;
+    private let simplifyRuns: Int32;
+    private let importanceRuns: Int32;
+    // Perf suite only (profile on): the last Update's stage times and sizes.
+    public let profile: Bool;
+    public let projMs: Float;
+    public let layoutMs: Float;
+    public let placeMs: Float;    // widget calls, part of layoutMs
+    public let trimMs: Float;     // projMs stages: trim (closest + copy), WorldToMap, Simplify, Smooth + lengths
+    public let mapMs: Float;
+    public let simpMs: Float;
+    public let smoothMs: Float;
+    public let iters: Int32;      // pieces stepped along the route, on screen or not
+    public let worldPts: Int32;
+    public let screenPts: Int32;
 
     public static func DashCap() -> Int32 { return 500; }       // pieces, shared by both routes; the waypoint route first
     public static func LineWidth() -> Float { return 10.0; }    // line width, 4K units (before the UI scale)
@@ -97,6 +118,8 @@ public class NMRouteLayer {
 
     public func Root() -> ref<inkCanvas> { return this.root; }
     public func DashesShown() -> Int32 { return this.shown; }
+    public func SimplifyRuns() -> Int32 { return this.simplifyRuns; }
+    public func ImportanceRuns() -> Int32 { return this.importanceRuns; }
     public func DashesUsed(tracked: Bool) -> Int32 { return tracked ? this.tracked.used : this.quest.used; }
     public func SetVisible(on: Bool) { this.root.SetVisible(on); }
     public func HasStyle() -> Bool { return IsDefined(this.style); }
@@ -126,6 +149,8 @@ public class NMRouteLayer {
             l.world = pts;
             l.dirty = true;
             l.cursor = 0;
+            l.simpleOk = false;
+            l.impOk = false;
         }
     }
 
@@ -137,32 +162,68 @@ public class NMRouteLayer {
             this.lastPx = px;
             this.lastPy = py;
         }
+        if this.profile { this.projMs = 0.0; this.layoutMs = 0.0; this.placeMs = 0.0; this.iters = 0; this.trimMs = 0.0; this.mapMs = 0.0; this.simpMs = 0.0; this.smoothMs = 0.0; }
         if !reproject && !this.tracked.dirty && !this.quest.dirty && !this.tracked.tintDirty && !this.quest.tintDirty { return; }
+        let t0 = this.profile ? NMClock.NowMs() : 0.0;
         this.Project(this.tracked, cam, px, py, reproject);
         this.Project(this.quest, cam, px, py, reproject);
+        let t1 = this.profile ? NMClock.NowMs() : 0.0;
         let budget = NMRouteLayer.DashCap();
         this.Layout(this.tracked, mapW, mapH, budget);
         budget -= this.tracked.used;
         this.Layout(this.quest, mapW, mapH, budget);
         this.shown = this.tracked.used + this.quest.used;
+        if this.profile {
+            this.projMs = t1 - t0;
+            this.layoutMs = NMClock.NowMs() - t1;
+            this.worldPts = ArraySize(this.tracked.world) + ArraySize(this.quest.world);
+            this.screenPts = ArraySize(this.tracked.screen) + ArraySize(this.quest.screen);
+        }
     }
 
     private func W() -> Float { return NMRouteLayer.LineWidth() * this.s; }
     private func Step() -> Float { return NMRouteLayer.PieceStep() * this.W(); }
 
-    // Trim the passed part (world metres), project, simplify at 1 px, round the corners and cache cumulative lengths.
+    // Trim the passed part (world metres), simplify at 1 px (cached per route and zoom), project, round the corners and
+    // cache cumulative lengths. The trimmed line is [V, V on the cursor segment, the kept points after that segment]:
+    // simplifying the whole route instead of the trimmed one moves the line at most ~2 px near V.
     private func Project(l: ref<NMRouteLine>, cam: ref<NMCamera>, px: Float, py: Float, force: Bool) {
         if !force && !l.dirty { return; }
         l.dirty = false;
         ArrayClear(l.screen);
         ArrayClear(l.cum);
-        if ArraySize(l.world) < 2 { return; }
-        let proj: array<Vector2>;
+        let n = ArraySize(l.world);
+        if n < 2 { return; }
+        let t0 = this.profile ? NMClock.NowMs() : 0.0;
         l.cursor = Max(NMRouteGeom.Closest(l.world, px, py, l.cursor), 0);
-        for w in NMRouteGeom.TrimAt(l.world, px, py, l.cursor) {
-            ArrayPush(proj, cam.WorldToMap(w.X, w.Y));
+        let seg = l.cursor;
+        let t1 = this.profile ? NMClock.NowMs() : 0.0;
+        let tol = NMRouteLayer.PixelMetres(cam);
+        if !l.simpleOk || AbsF(tol - l.simpleTol) > tol * 0.0001 {
+            if !l.impOk {
+                l.imp = NMRouteGeom.Importance(l.world);
+                l.impOk = true;
+                this.importanceRuns += 1;
+            }
+            l.simpleIdx = NMRouteGeom.KeepIdx(l.imp, tol);
+            l.simpleTol = tol;
+            l.simpleOk = true;
+            this.simplifyRuns += 1;
         }
-        l.screen = NMRouteLayer.Smooth(NMRouteGeom.Simplify(proj, 1.0), 2);
+        let t2 = this.profile ? NMClock.NowMs() : 0.0;
+        let p = new Vector2(px, py);
+        let q = NMRouteGeom.Project(p, l.world[seg], l.world[seg + 1]);
+        let proj: array<Vector2>;
+        ArrayPush(proj, cam.WorldToMap(p.X, p.Y));
+        ArrayPush(proj, cam.WorldToMap(q.X, q.Y));
+        for k in l.simpleIdx {
+            if k > seg {
+                let w = l.world[k];
+                ArrayPush(proj, cam.WorldToMap(w.X, w.Y));
+            }
+        }
+        let t3 = this.profile ? NMClock.NowMs() : 0.0;
+        l.screen = NMRouteLayer.Smooth(proj, 2);
         let acc = 0.0;
         let i = 0;
         while i < ArraySize(l.screen) {
@@ -170,6 +231,21 @@ public class NMRouteLayer {
             ArrayPush(l.cum, acc);
             i += 1;
         }
+        if this.profile {
+            this.trimMs += t1 - t0;
+            this.simpMs += t2 - t1;
+            this.mapMs += t3 - t2;
+            this.smoothMs += NMClock.NowMs() - t3;
+        }
+    }
+
+    // Metres per map pixel at this zoom: Douglas-Peucker is unchanged by the camera's move and uniform scale, so
+    // simplifying the world route at this tolerance keeps the same points as simplifying the projected one at 1 px.
+    public static func PixelMetres(cam: ref<NMCamera>) -> Float {
+        let a = cam.WorldToMap(0.0, 0.0);
+        let b = cam.WorldToMap(1.0, 0.0);
+        let d = SqrtF(NMRouteGeom.Dist2(a, b));
+        return d > 0.0 ? 1.0 / d : 1.0;
     }
 
     // Chaikin corner cutting, `passes` times; the end points stay where they are.
@@ -231,9 +307,12 @@ public class NMRouteLayer {
                 let a = this.At(l, st, seg);
                 let b = this.At(l, en, this.SegAt(l, en, seg));
                 if MaxF(a.X, b.X) >= -m && MinF(a.X, b.X) <= mapW + m && MaxF(a.Y, b.Y) >= -m && MinF(a.Y, b.Y) <= mapH + m {
+                    let tp = this.profile ? NMClock.NowMs() : 0.0;
                     this.PlacePiece(l, used, a, b);
+                    if this.profile { this.placeMs += NMClock.NowMs() - tp; }
                     used += 1;
                 }
+                if this.profile { this.iters += 1; }
                 e += step;
             }
         }

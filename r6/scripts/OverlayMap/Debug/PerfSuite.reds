@@ -8,7 +8,8 @@ public class NMPerfSuite {
     private let names: array<String>;
     private let counts: array<Int32>;
     private let shows: array<Bool>;
-    private let modes: array<Int32>;      // 0 = circle + 1..16 sweep, 1 = fixed downtown view, 2 = circle + 0.5..16 sweep
+    private let modes: array<Int32>;      // 0 = circle + 1..16 sweep, 1 = fixed downtown view, 2 = circle + 0.5..16 sweep,
+                                          // 3 = circle at a fixed m/unit (pan only)
     private let mpps: array<Float>;
     private let vanillas: array<Bool>;   // vanilla map markers enabled during the scenario
     private let routeRows: array<Bool>;  // GPS routes enabled during the scenario (route_open only)
@@ -22,6 +23,17 @@ public class NMPerfSuite {
     private let script: array<Float>;
     private let tiles: array<Float>;   // the tile layers' share of script (sys.perfTileMs)
     private let items: array<Float>;   // the item relayout's share (sys.perfItemMs)
+    private let route: array<Float>;   // UpdateRoutes (sys.perfRouteMs) and its stages
+    private let routeProj: array<Float>;
+    private let routeLay: array<Float>;
+    private let routePlace: array<Float>;
+    private let rTrim: array<Float>;
+    private let rMap: array<Float>;
+    private let rSimp: array<Float>;
+    private let rSmooth: array<Float>;
+    private let routeIters: Int32;     // max per frame
+    private let routeWorld: Int32;
+    private let routeScreen: Int32;
     private let savedFollow: Bool;
     private let savedMpp: Float;
     private let savedX: Float;
@@ -39,6 +51,31 @@ public class NMPerfSuite {
         ArrayPush(this.photoCounts, 0);
     }
 
+    private let only: String;   // StartOnly: keep the scenarios whose name contains this, plus the closed baselines
+
+    public func StartOnly(only: String) {
+        this.only = only;
+        this.Start();
+    }
+
+    private func Filter() {
+        if StrLen(this.only) == 0 { return; }
+        let i = ArraySize(this.names) - 1;
+        while i >= 0 {
+            if !StrContains(this.names[i], this.only) && !StrBeginsWith(this.names[i], "closed_") {
+                ArrayErase(this.names, i);
+                ArrayErase(this.counts, i);
+                ArrayErase(this.shows, i);
+                ArrayErase(this.modes, i);
+                ArrayErase(this.mpps, i);
+                ArrayErase(this.vanillas, i);
+                ArrayErase(this.routeRows, i);
+                ArrayErase(this.photoCounts, i);
+            }
+            i -= 1;
+        }
+    }
+
     public func Start() {
         ArrayClear(this.names);
         ArrayClear(this.counts);
@@ -52,6 +89,9 @@ public class NMPerfSuite {
         this.Add("open_empty", 0, true, 0, 0.0, false, false);
         this.Add("vanilla_open", 0, true, 0, 0.0, true, false);
         this.Add("route_open", 0, true, 0, 0.0, false, true);   // track a quest ~700 m away before starting the suite
+        this.Add("pan_1", 0, true, 3, 1.0, false, false);       // pan only at 1 m/unit around V, no route
+        this.Add("pan_vanilla_1", 0, true, 3, 1.0, true, false); // likewise with the vanilla map markers
+        this.Add("route_pan_1", 0, true, 3, 1.0, false, true);  // the same route, pan only at 1 m/unit
         this.Add("photos_500", 0, true, 0, 0.0, false, false);  // 500 seeded photo spots, real shot hashes
         this.photoCounts[ArraySize(this.photoCounts) - 1] = 500;
         this.Add("items_5000", 5000, true, 0, 0.0, false, false);
@@ -62,6 +102,7 @@ public class NMPerfSuite {
         this.Add("idle_8", 0, true, 1, 8.0, false, false);
         this.Add("panzoom_0p5_16", 0, true, 2, 0.0, false, false);
         this.Add("closed_end", 0, false, 0, 0.0, false, false);
+        this.Filter();
         this.idx = 0;
         this.phase = 0;
         this.saved = false;
@@ -110,6 +151,17 @@ public class NMPerfSuite {
                 ArrayClear(this.script);
                 ArrayClear(this.tiles);
                 ArrayClear(this.items);
+                ArrayClear(this.route);
+                ArrayClear(this.routeProj);
+                ArrayClear(this.routeLay);
+                ArrayClear(this.routePlace);
+                ArrayClear(this.rTrim);
+                ArrayClear(this.rMap);
+                ArrayClear(this.rSimp);
+                ArrayClear(this.rSmooth);
+                this.routeIters = 0;
+                this.routeWorld = 0;
+                this.routeScreen = 0;
                 sys.Vanilla().ResetPollStats();   // poll_ms_max covers the measured frames only
                 sys.Gps().ResetReadStats();       // route_read_ms_max likewise
                 this.routeDrawn = this.routeRows[this.idx] && IsDefined(sys.Routes()) && sys.Routes().HasRoute();
@@ -124,17 +176,38 @@ public class NMPerfSuite {
             cam.SetCenter(-1800.0, 150.0);
             cam.SetMpp(this.mpps[this.idx]);
         } else {
-            cam.SetCenter(-700.0 + 2500.0 * CosF(a), 1500.0 + 2500.0 * SinF(a));
-            if mode == 2 {
-                cam.SetMpp(0.5 * PowF(32.0, 0.5 - 0.5 * CosF(2.0 * a)));
+            if mode == 3 {
+                // Around where the map opened (V), so the tracked route stays on screen.
+                cam.SetCenter(this.savedX + 300.0 * CosF(a), this.savedY + 300.0 * SinF(a));
+                cam.SetMpp(this.mpps[this.idx]);
             } else {
-                cam.SetMpp(PowF(16.0, 0.5 - 0.5 * CosF(2.0 * a)));
+                cam.SetCenter(-700.0 + 2500.0 * CosF(a), 1500.0 + 2500.0 * SinF(a));
+                if mode == 2 {
+                    cam.SetMpp(0.5 * PowF(32.0, 0.5 - 0.5 * CosF(2.0 * a)));
+                } else {
+                    cam.SetMpp(PowF(16.0, 0.5 - 0.5 * CosF(2.0 * a)));
+                }
             }
         }
         ArrayPush(this.samples, dt);
         ArrayPush(this.script, scriptMs);
         ArrayPush(this.tiles, this.shows[this.idx] ? sys.perfTileMs : 0.0);
         ArrayPush(this.items, this.shows[this.idx] ? sys.perfItemMs : 0.0);
+        let rl = sys.Routes();
+        let on = this.shows[this.idx] && IsDefined(rl);
+        ArrayPush(this.route, on ? sys.perfRouteMs : 0.0);
+        ArrayPush(this.routeProj, on ? rl.projMs : 0.0);
+        ArrayPush(this.routeLay, on ? rl.layoutMs : 0.0);
+        ArrayPush(this.routePlace, on ? rl.placeMs : 0.0);
+        ArrayPush(this.rTrim, on ? rl.trimMs : 0.0);
+        ArrayPush(this.rMap, on ? rl.mapMs : 0.0);
+        ArrayPush(this.rSimp, on ? rl.simpMs : 0.0);
+        ArrayPush(this.rSmooth, on ? rl.smoothMs : 0.0);
+        if on {
+            this.routeIters = Max(this.routeIters, rl.iters);
+            this.routeWorld = Max(this.routeWorld, rl.worldPts);
+            this.routeScreen = Max(this.routeScreen, rl.screenPts);
+        }
         if this.frames >= 300 {
             this.Report(sys);
             this.idx += 1;
@@ -161,7 +234,13 @@ public class NMPerfSuite {
             + "|" + NMPerfSuite.Stats("tiles", this.tiles, false) + "|" + NMPerfSuite.Stats("items", this.items, false)
             + "|poll_ms_max=" + FloatToStringPrec(this.vanillas[this.idx] ? sys.Vanilla().pollMsMax : 0.0, 3)
             + "|route_drawn=" + (this.routeDrawn ? "1" : "0")
-            + "|route_read_ms_max=" + FloatToStringPrec(this.routeRows[this.idx] ? sys.Gps().readMsMax : 0.0, 3));
+            + "|route_read_ms_max=" + FloatToStringPrec(this.routeRows[this.idx] ? sys.Gps().readMsMax : 0.0, 3)
+            + "|" + NMPerfSuite.Stats("route", this.route, false) + "|" + NMPerfSuite.Stats("rproj", this.routeProj, false)
+            + "|" + NMPerfSuite.Stats("rlay", this.routeLay, false) + "|" + NMPerfSuite.Stats("rplace", this.routePlace, false)
+            + "|" + NMPerfSuite.Stats("rtrim", this.rTrim, false) + "|" + NMPerfSuite.Stats("rmap", this.rMap, false)
+            + "|" + NMPerfSuite.Stats("rsimp", this.rSimp, false) + "|" + NMPerfSuite.Stats("rsmooth", this.rSmooth, false)
+            + "|route_iters_max=" + ToString(this.routeIters) + "|route_world_pts=" + ToString(this.routeWorld)
+            + "|route_screen_pts=" + ToString(this.routeScreen));
     }
 
     private static func MaxOf(values: array<Float>) -> Float {

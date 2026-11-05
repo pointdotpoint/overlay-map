@@ -100,6 +100,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     private let perfHidden: Bool;
     public let perfTileMs: Float;   // this frame's tile layers and item relayout, timed only while the perf suite runs
     public let perfItemMs: Float;
+    public let perfRouteMs: Float;   // UpdateRoutes, likewise
     private let versionLogged: Bool;
     private let layerEpoch: Int32;
     private let imageRetries: Int32;
@@ -1108,7 +1109,10 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.crosshair.Reset();
             this.tipApiRev = -1;
         }
+        let rp = prof ? NMClock.NowMs() : 0.0;
+        if IsDefined(this.routes) { this.routes.profile = prof; }
         this.UpdateRoutes(dt);
+        if prof { this.perfRouteMs = NMClock.NowMs() - rp; }
         if IsDefined(this.panelMirror) { this.panelMirror.Update(this.camera, this.mirror, l.viewW, l.mapH, true, true, this.MiniScale(GetPlayer(this.GetGameInstance())), this.CameraYaw(), this.vanilla.diff); }
         if this.Photos().Revision() != this.Photos().SyncedRevision() {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());

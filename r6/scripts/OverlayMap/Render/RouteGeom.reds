@@ -62,10 +62,20 @@ public abstract class NMRouteGeom {
 
     // Douglas-Peucker with an explicit stack. Always keeps the first and last points.
     public static func Simplify(pts: array<Vector2>, tol: Float) -> array<Vector2> {
-        let n = ArraySize(pts);
         let out: array<Vector2>;
+        for k in NMRouteGeom.SimplifyIdx(pts, tol) {
+            ArrayPush(out, pts[k]);
+        }
+        return out;
+    }
+
+    // Simplify's kept indices, ascending.
+    public static func SimplifyIdx(pts: array<Vector2>, tol: Float) -> array<Int32> {
+        let n = ArraySize(pts);
+        let out: array<Int32>;
         if n <= 2 {
-            for p in pts { ArrayPush(out, p); }
+            let i = 0;
+            while i < n { ArrayPush(out, i); i += 1; }
             return out;
         }
         let keep: array<Bool>;
@@ -100,7 +110,70 @@ public abstract class NMRouteGeom {
         }
         let k = 0;
         while k < n {
-            if keep[k] { ArrayPush(out, pts[k]); }
+            if keep[k] { ArrayPush(out, k); }
+            k += 1;
+        }
+        return out;
+    }
+
+    // Douglas-Peucker run once to the end: for each point, the squared tolerance below which it is kept. Splits do not
+    // depend on the tolerance (always the first farthest point), and a point survives only if every split above it
+    // does, so its importance is its own split distance capped by its parent's. Ends are always kept.
+    public static func Importance(pts: array<Vector2>) -> array<Float> {
+        let n = ArraySize(pts);
+        let imp: array<Float>;
+        ArrayResize(imp, n);
+        if n == 0 { return imp; }
+        imp[0] = 1000000000000.0;
+        imp[n - 1] = 1000000000000.0;
+        let stack: array<Int32>;
+        let caps: array<Float>;
+        if n > 2 {
+            ArrayPush(stack, 0);
+            ArrayPush(stack, n - 1);
+            ArrayPush(caps, 1000000000000.0);
+        }
+        while ArraySize(stack) > 0 {
+            let hi = ArrayPop(stack);
+            let lo = ArrayPop(stack);
+            let cap = ArrayPop(caps);
+            let worst = -1;
+            let worstD = -1.0;
+            let a = pts[lo];
+            let b = pts[hi];
+            let j = lo + 1;
+            while j < hi {
+                let d = NMRouteGeom.Dist2(pts[j], NMRouteGeom.Project(pts[j], a, b));
+                if d > worstD {
+                    worst = j;
+                    worstD = d;
+                }
+                j += 1;
+            }
+            let v = MinF(worstD, cap);
+            imp[worst] = v;
+            if worst - lo > 1 {
+                ArrayPush(stack, lo);
+                ArrayPush(stack, worst);
+                ArrayPush(caps, v);
+            }
+            if hi - worst > 1 {
+                ArrayPush(stack, worst);
+                ArrayPush(stack, hi);
+                ArrayPush(caps, v);
+            }
+        }
+        return imp;
+    }
+
+    // The indices SimplifyIdx(pts, tol) keeps, from Importance(pts).
+    public static func KeepIdx(imp: array<Float>, tol: Float) -> array<Int32> {
+        let out: array<Int32>;
+        let tol2 = tol * tol;
+        let n = ArraySize(imp);
+        let k = 0;
+        while k < n {
+            if imp[k] > tol2 || k == 0 || k == n - 1 { ArrayPush(out, k); }
             k += 1;
         }
         return out;
