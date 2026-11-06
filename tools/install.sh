@@ -7,7 +7,8 @@ DEST="$GAME/r6/scripts/OverlayMap"
 ARCH="$GAME/archive/pc/mod/OverlayMap.archive"
 
 # Replacing the archive under a running game makes every OverlayMap resource load fail until a restart.
-if ps -eo args | grep -qi "[C]yberpunk2077.exe"; then
+# Match the program (argv[0]) only: a shell whose command line merely mentions the name is not the game.
+if ps -eo args | awk '{print $1}' | grep -qiE '(^|[\\/])Cyberpunk2077\.exe$'; then
   echo "Cyberpunk 2077 is running: close the game, then install." >&2; exit 1
 fi
 
