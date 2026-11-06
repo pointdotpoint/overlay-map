@@ -609,7 +609,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     private func UpdateWarning() {
         let text = "";
         if !NMTileManifest.Available() {
-            text = "TILE ARCHIVE MISSING - run tools/tiles build";
+            text = "Map data missing: reinstall Overlay Map (OverlayMap.archive)";
         } else if IsDefined(this.layers) && !this.layers.available {
             text = "Map tiles not found: install OverlayMap.archive";
         }
@@ -632,7 +632,7 @@ public class OverlayMapSystem extends ScriptableSystem {
                 if NotEquals(text, "") {
                     text += "  |  ";
                 }
-                text += "Tiles built for " + a + ", game is " + b + " - rebuild tiles";
+                text += OverlayMapSystem.VersionWarning(a, b);
             }
         }
         if NotEquals(text, "") {
@@ -641,9 +641,14 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
     }
 
+    // The panel warning when the map was built from another game version: worded for players.
+    public static func VersionWarning(built: String, running: String) -> String {
+        return "Map built for game " + built + ", you run " + running + ": some places may not match";
+    }
+
     // Canonical "major.minor" from the leading digits.digits token ("" = unknown, which never warns). A one-digit minor
-    // is joined with the patch number ("2.3.1" -> "2.31", as the game's 2.31 is spelled); a one-digit minor with no
-    // patch is ambiguous ("2.3") and unknown.
+    // is joined with the patch number ("2.3.1" -> "2.31", as the game's 2.31 is spelled); with no patch it stands as
+    // is ("2.5", as the game reports 2.5).
     public static func Normalise(v: String) -> String {
         let digits = "0123456789";
         let n = StrLen(v);
@@ -675,8 +680,6 @@ public class OverlayMapSystem extends ScriptableSystem {
                     minor += StrMid(v, i, 1);
                     i += 1;
                 }
-            } else {
-                return "";
             }
         }
         return major + "." + minor;

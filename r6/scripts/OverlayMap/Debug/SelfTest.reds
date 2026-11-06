@@ -1022,6 +1022,10 @@ public class NMSelfTest {
         this.Check("version.normalise.suffix", Equals(OverlayMapSystem.Normalise("2.31 (build 12345)"), "2.31"), "");
         this.Check("version.normalise.leading_space", Equals(OverlayMapSystem.Normalise(" 2.31"), "2.31"), "");
         this.Check("version.normalise.garbage_unknown", Equals(OverlayMapSystem.Normalise("unknown"), ""), "");
+        this.Check("version.normalise.one_digit_minor", Equals(OverlayMapSystem.Normalise("2.5"), "2.5"), OverlayMapSystem.Normalise("2.5"));
+        this.Check("version.normalise.differs", NotEquals(OverlayMapSystem.Normalise("2.5"), OverlayMapSystem.Normalise("2.31")), "");
+        let w = OverlayMapSystem.VersionWarning("2.5", "2.31");
+        this.Check("version.warning_for_players", StrContains(w, "2.5") && StrContains(w, "2.31") && !StrContains(w, "rebuild") && !StrContains(w, "tools"), w);
     }
 
     private func TooltipCases() {

@@ -7,7 +7,7 @@ public abstract class NMTileManifest {
     }
 
     public static func SourceGameVersion() -> String {
-        return "2.31";
+        return "2.5";
     }
 
     public static func LevelCount() -> Int32 {

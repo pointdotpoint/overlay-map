@@ -345,7 +345,7 @@ public class NMVanilla extends NMVanillaSink {
             if IsDefined(m) && NMWaypoint.Available() {
                 d.AddAction(this.WaypointKey(), "Track");
             } else if IsDefined(m) && !ft {
-                d.AddRow("Waypoint", "Needs the OverlayMapNative plugin");
+                d.AddRow("Waypoint", "Needs RED4ext (waypoint plugin not loaded)");
             }
         }
         return d;

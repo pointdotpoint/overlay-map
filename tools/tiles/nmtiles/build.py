@@ -37,7 +37,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--levels", default="0.5,1,2,4,8,16")
     ap.add_argument("--skip-export", action="store_true", help="accepted for compatibility; the build no longer reads 3D-map meshes")
     ap.add_argument("--jobs", type=int, default=4, help="workers for every process pool (BC7 encoding uses min(jobs, 2))")
-    ap.add_argument("--game-version", default="2.31")
+    ap.add_argument("--game-version", default="2.5")   # the game version the tiles are built from
     ap.add_argument("--ui-only", action="store_true", help="re-render only the UI and holo atlases into the last build's workspace and repack")
     args = ap.parse_args(argv)
     if args.ui_only:
