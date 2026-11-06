@@ -406,6 +406,7 @@ public class NMSelfTest {
         this.Check("input.key_names", Equals(NMInput.KeyName(EInputKey.IK_NumPad8), "NUM 8") && Equals(NMInput.KeyName(EInputKey.IK_Backslash), "\\")
             && Equals(NMInput.KeyName(EInputKey.IK_NumPlus), "NUM +")
             && Equals(NMInput.KeyName(EInputKey.IK_SingleQuote), "'"), NMInput.KeyName(EInputKey.IK_NumPad8));
+        this.TakeKeysCases();
         this.HintCases();
     }
 
@@ -423,9 +424,83 @@ public class NMSelfTest {
         s.keyAct = EInputKey.IK_NumPad0;
         s.keyFilter = EInputKey.IK_NumSlash;
         s.keyTeleport = EInputKey.IK_NumPeriod;
+        s.keyMapPanUp = EInputKey.IK_W;
+        s.keyMapPanDown = EInputKey.IK_S;
+        s.keyMapPanLeft = EInputKey.IK_A;
+        s.keyMapPanRight = EInputKey.IK_D;
+        s.keyMapRecenter = EInputKey.IK_Space;
+        s.keyMapAct = EInputKey.IK_F;
+        s.keyMapFilter = EInputKey.IK_R;
+        s.keyMapTeleport = EInputKey.IK_T;
         s.teleportEnabled = true;
         s.holdToShow = holdToShow;
         return s;
+    }
+
+    // Any-keyboard set: only while the map holds the keyboard (V stopped) do WASD, arrows and the wheel drive it.
+    private func TakeKeysCases() {
+        let s = NMSelfTest.HintSettings(false);
+        let press = EInputAction.IACT_Press;
+        let release = EInputAction.IACT_Release;
+        let free = new NMInput();
+        let usedW = free.Handle(s, EInputKey.IK_W, press, false, false, false, true);
+        free.Handle(s, EInputKey.IK_MouseWheelUp, press, false, false, false, true);
+        let fv = free.PanVector();
+        free.Axis(EInputKey.IK_MouseZ, 1.0, true);
+        this.Check("keys.wasd_ignored_while_v_moves", !usedW && fv.X == 0.0 && fv.Y == 0.0 && free.wheel == 0, ToString(free.wheel));
+        let k = new NMInput();
+        k.takesKeys = true;
+        k.Handle(s, EInputKey.IK_W, press, false, false, false, true);
+        let up = k.PanVector();
+        k.Handle(s, EInputKey.IK_W, release, false, false, false, true);
+        k.Handle(s, EInputKey.IK_D, press, false, false, false, true);
+        let right = k.PanVector();
+        k.ResetHeld();
+        this.Check("keys.wasd_pans", up.X == 0.0 && up.Y == -1.0 && right.X == 1.0 && right.Y == 0.0, this.F(up.Y) + "," + this.F(right.X));
+        let usedArrow = k.Handle(s, EInputKey.IK_Left, press, false, false, false, true);
+        let left = k.PanVector();
+        k.ResetHeld();
+        this.Check("keys.arrows_pan_when_taken", usedArrow && left.X == -1.0 && !k.arrowSeen, this.F(left.X));
+        k.Handle(s, EInputKey.IK_MouseWheelUp, press, false, false, false, true);
+        k.Handle(s, EInputKey.IK_MouseWheelUp, press, false, false, false, true);
+        k.Handle(s, EInputKey.IK_MouseWheelDown, press, false, false, false, true);
+        k.Handle(s, EInputKey.IK_MouseWheelUp, release, false, false, false, true);
+        this.Check("keys.wheel_counts_notches", k.wheel == 1, ToString(k.wheel));
+        k.wheel = 0;
+        let usedZ = k.Axis(EInputKey.IK_MouseZ, -1.0, true);
+        k.Axis(EInputKey.IK_MouseZ, -1.0, true);
+        k.Axis(EInputKey.IK_MouseZ, 1.0, true);
+        let otherAxis = k.Axis(EInputKey.IK_MouseX, 5.0, true);
+        let closedZ = k.Axis(EInputKey.IK_MouseZ, 1.0, false);
+        this.Check("keys.wheel_axis", usedZ && !otherAxis && !closedZ && k.wheel == -1, ToString(k.wheel));
+        k.wheel = 0;
+        k.Handle(s, EInputKey.IK_Space, press, false, false, false, true);
+        k.Handle(s, EInputKey.IK_F, press, false, false, false, true);
+        k.Handle(s, EInputKey.IK_R, press, false, false, false, true);
+        k.Handle(s, EInputKey.IK_T, press, false, false, false, true);
+        this.Check("keys.actions", k.recenter && k.act && k.filter && k.teleport, "");
+        k.ResetHeld();
+        k.Handle(s, EInputKey.IK_NumPad8, press, false, false, false, true);
+        let np = k.PanVector();
+        k.ResetHeld();
+        this.Check("keys.numpad_still_works", np.Y == -1.0 && k.wheel == 0, this.F(np.Y));
+        let closed = new NMInput();
+        closed.takesKeys = true;
+        this.Check("keys.ignored_when_closed", !closed.Handle(s, EInputKey.IK_W, press, false, false, false, false), "");
+        let h = NMHints.Join(NMInput.TakeHints(s, "ALL", "TELEPORT"));
+        let want = "W/A/S/D PAN   ·   WHEEL ZOOM   ·   SPACE FOLLOW   ·   F ACT   ·   T TELEPORT   ·   R FILTER: ALL   ·   \\ CLOSE";
+        this.Check("keys.hints", Equals(h, want), h);
+        // Wheel notches ease the zoom; notches during an ease stack on its target.
+        let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
+        cam.SetMpp(4.0);
+        cam.ZoomSteps(1, 150.0);
+        cam.ZoomSteps(1, 150.0);
+        cam.Tick(200.0);
+        let twoIn = cam.mpp;
+        cam.ZoomSteps(-40, 150.0);
+        cam.Tick(200.0);
+        this.Check("keys.wheel_zoom_steps", this.Near(twoIn, 4.0 / (NMCamera.WheelStep() * NMCamera.WheelStep()), 0.001) && cam.mpp == 16.0,
+            this.F(twoIn) + " " + this.F(cam.mpp));
     }
 
     private static func LastLabel(h: array<NMHint>) -> String {

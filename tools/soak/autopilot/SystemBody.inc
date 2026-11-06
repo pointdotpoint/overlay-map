@@ -609,10 +609,10 @@
 
     // Camera centre, zoom and follow, plus the pad state: "cam x y mpp follow|pad owned ctx".
     public func Soak_Cam() -> String {
-        if !IsDefined(this.camera) || !this.isOpen { return "map closed|pad " + (this.padOwned ? "owned" : "free") + " ctx " + (this.padCtx ? "held" : "free"); }
+        if !IsDefined(this.camera) || !this.isOpen { return "map closed|pad " + (this.padOwned ? "owned" : "free") + " kb " + (this.kbOwned ? "owned" : "free") + " ctx " + (this.padCtx ? "held" : "free"); }
         let x = this.camera.cx; let y = this.camera.cy; let m = this.camera.mpp;
         return "cam " + FloatToStringPrec(x, 1) + " " + FloatToStringPrec(y, 1) + " " + FloatToStringPrec(m, 3) + " " + (this.camera.follow ? "follow" : "free")
-            + "|pad " + (this.padOwned ? "owned" : "free") + " ctx " + (this.padCtx ? "held" : "free");
+            + "|pad " + (this.padOwned ? "owned" : "free") + " kb " + (this.kbOwned ? "owned" : "free") + " ctx " + (this.padCtx ? "held" : "free");
     }
 
     // Probe: the player state machine's UI input context, as non-pausing tutorial popups use it.
@@ -678,7 +678,8 @@
 
     private cb func Soak_OnAxis(evt: ref<AxisInputEvent>) {
         let k = ToString(evt.GetKey());
-        if StrBeginsWith(k, "IK_Pad") && AbsF(evt.GetValue()) > 0.05 && StrLen(this.soakAxis) < 1500 {
+        let wheelAxis = StrContains(k, "Wheel") || Equals(k, "IK_MouseZ");
+        if (StrBeginsWith(k, "IK_Pad") || wheelAxis) && AbsF(evt.GetValue()) > 0.05 && StrLen(this.soakAxis) < 1500 {
             this.soakAxis += k + "=" + FloatToStringPrec(evt.GetValue(), 2) + " ";
         }
     }

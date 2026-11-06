@@ -96,6 +96,22 @@ public class NMCamera {
         }
     }
 
+    // One mouse wheel notch zooms by this factor.
+    public static func WheelStep() -> Float = 1.25
+
+    // Wheel zoom: eases to the new zoom; notches during an ease stack on its target, so fast scrolling isn't lost.
+    public func ZoomSteps(notches: Int32, durMs: Float) {
+        if notches == 0 {
+            return;
+        }
+        let base = this.easing ? this.e1m : this.mpp;
+        let x = this.easing ? this.e1x : this.cx;
+        let y = this.easing ? this.e1y : this.cy;
+        let follow = this.follow;
+        this.EaseTo(x, y, base / PowF(NMCamera.WheelStep(), Cast<Float>(notches)), durMs);
+        this.follow = follow;
+    }
+
     public func PanPixels(dx: Float, dy: Float) {
         this.follow = false;
         this.easing = false;

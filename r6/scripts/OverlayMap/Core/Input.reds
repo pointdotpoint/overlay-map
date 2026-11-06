@@ -1,7 +1,8 @@
 module OverlayMap
 
-// Key state for the live overlay. Arrow keys are never used: they steer vehicles, and with NumLock off
-// the numpad reports arrows, so seeing one sets arrowSeen (the hint bar then asks for NumLock).
+// Key state for the live overlay. While V keeps moving, arrow keys are never used: they steer vehicles, and with
+// NumLock off the numpad reports arrows, so seeing one sets arrowSeen (the hint bar then asks for NumLock).
+// takesKeys: the map holds keyboard and mouse (V stopped), so the any-keyboard set (WASD, arrows, wheel) drives it.
 public class NMInput {
     public let toggle: Bool;
     public let recenter: Bool;
@@ -16,6 +17,8 @@ public class NMInput {
     public let debugCalib: Bool;
     public let debugLayer: Bool;
     public let arrowSeen: Bool;
+    public let takesKeys: Bool;
+    public let wheel: Int32;    // wheel notches since the last frame: + zooms in
     private let up: Bool;
     private let down: Bool;
     private let left: Bool;
@@ -52,6 +55,9 @@ public class NMInput {
         }
         if !mapOpen {
             return false;
+        }
+        if this.takesKeys && this.HandleTaken(s, key, pressed) {
+            return true;
         }
         if Equals(key, EInputKey.IK_Up) || Equals(key, EInputKey.IK_Down) || Equals(key, EInputKey.IK_Left) || Equals(key, EInputKey.IK_Right) {
             if pressed {
@@ -92,6 +98,46 @@ public class NMInput {
         return false;
     }
 
+    // The any-keyboard set, only while the map holds the keyboard. The wheel arrives as presses (and releases).
+    private func HandleTaken(s: ref<OverlayMapSettings>, key: EInputKey, pressed: Bool) -> Bool {
+        if Equals(key, EInputKey.IK_MouseWheelUp) || Equals(key, EInputKey.IK_MouseWheelDown) {
+            if pressed { this.wheel += Equals(key, EInputKey.IK_MouseWheelUp) ? 1 : -1; }
+            return true;
+        }
+        if Equals(key, s.keyMapPanUp) || Equals(key, EInputKey.IK_Up) { this.up = pressed; return true; }
+        if Equals(key, s.keyMapPanDown) || Equals(key, EInputKey.IK_Down) { this.down = pressed; return true; }
+        if Equals(key, s.keyMapPanLeft) || Equals(key, EInputKey.IK_Left) { this.left = pressed; return true; }
+        if Equals(key, s.keyMapPanRight) || Equals(key, EInputKey.IK_Right) { this.right = pressed; return true; }
+        if Equals(key, s.keyMapRecenter) {
+            if pressed { this.recenter = true; }
+            return true;
+        }
+        if Equals(key, s.keyMapAct) {
+            if pressed { this.act = true; }
+            return true;
+        }
+        if Equals(key, s.keyMapFilter) {
+            if pressed { this.filter = true; }
+            return true;
+        }
+        if s.teleportEnabled && Equals(key, s.keyMapTeleport) {
+            if pressed { this.teleport = true; }
+            return true;
+        }
+        return false;
+    }
+
+    // The game reports the mouse wheel as the IK_MouseZ axis, one event per notch (+ is up). Only while the map
+    // holds the keyboard: otherwise the wheel stays the game's (weapon switching). Returns true when used.
+    public func Axis(key: EInputKey, value: Float, mapOpen: Bool) -> Bool {
+        if !mapOpen || !this.takesKeys || !Equals(key, EInputKey.IK_MouseZ) {
+            return false;
+        }
+        if value > 0.0 { this.wheel += 1; }
+        if value < 0.0 { this.wheel -= 1; }
+        return true;
+    }
+
     // Snap: when the pan keys are let go and a marker is in focus range, the map eases it under the focus point.
     public static func SnapOnRelease(wasPanning: Bool, panning: Bool, hasSelection: Bool) -> Bool {
         return wasPanning && !panning && hasSelection;
@@ -123,6 +169,7 @@ public class NMInput {
         this.d3 = false;
         this.zoomIn = false;
         this.zoomOut = false;
+        this.wheel = 0;
         this.recenter = false;
         this.act = false;
         this.waypoint = false;
@@ -160,6 +207,21 @@ public class NMInput {
             ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyTeleport), teleportLabel));
         }
         ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyFilter), "FILTER: " + view));
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyToggle), "CLOSE", s.holdToShow ? "RELEASE" : ""));
+        return h;
+    }
+
+    // The hint bar while the map holds the keyboard: the any-keyboard set (the numpad keys still work, unlisted).
+    public static func TakeHints(s: ref<OverlayMapSettings>, view: String, teleportLabel: String) -> array<NMHint> {
+        let h: array<NMHint>;
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapPanUp) + "/" + NMInput.KeyName(s.keyMapPanLeft) + "/" + NMInput.KeyName(s.keyMapPanDown) + "/" + NMInput.KeyName(s.keyMapPanRight), "PAN"));
+        ArrayPush(h, NMHints.Of("WHEEL", "ZOOM"));
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapRecenter), "FOLLOW"));
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapAct), "ACT"));
+        if s.teleportEnabled {
+            ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapTeleport), teleportLabel));
+        }
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapFilter), "FILTER: " + view));
         ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyToggle), "CLOSE", s.holdToShow ? "RELEASE" : ""));
         return h;
     }

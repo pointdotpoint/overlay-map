@@ -16,6 +16,9 @@ Steps, in order:
   {"paddown": "B"}, {"padup": "B"}    held across the steps between them
   {"padaxis": "LX", "value": 1.0}     a stick (-1..1, up/right positive) or trigger (LT/RT, 0..1); stays until changed
                                       A plan with any pad step gets the pad before launch; it is released at the end.
+  {"kbd": "W", "seconds": 1.0}        a virtual keyboard and mouse (tools/soak/kbm.py): a held key, reaching the game
+  {"kbddown": "D"}, {"kbdup": "D"}    on a Wayland desktop where xdotool can't; held across the steps between them
+  {"wheel": 3}                        mouse wheel notches, + is up. The device exists only for plans that use it.
 
 pass: every step done and the game exited by itself. crash: a new crash report, or the process gone.
 hang: no heartbeat for Timeouts.beat, or the game not exiting. black_screen: the game runs but shows nothing.
@@ -103,13 +106,27 @@ def uses_pad(steps: list[dict]) -> bool:
     return any(k in step for step in steps for k in PAD_STEPS)
 
 
+KBM_STEPS = ("kbd", "kbddown", "kbdup", "wheel")
+
+
+def _virtual_kbm():
+    from .kbm import VirtualKbm
+    return VirtualKbm()
+
+
+def uses_kbm(steps: list[dict]) -> bool:
+    return any(k in step for step in steps for k in KBM_STEPS)
+
+
 class Runner:
     def __init__(self, paths: Paths, game, clock=time.monotonic, sleep=time.sleep,
                  timeouts: Timeouts | None = None, stop=lambda: False, luma=image_luma, changed=changed_cells,
-                 pad_factory=None):
+                 pad_factory=None, kbm_factory=None):
         self.paths, self.game, self.clock, self.sleep = paths, game, clock, sleep
         self.pad_factory = pad_factory or _virtual_pad
         self.pad = None
+        self.kbm_factory = kbm_factory or _virtual_kbm
+        self.kbm = None
         self.t = timeouts or Timeouts()
         self.stop, self.luma, self.changed = stop, luma, changed
 
@@ -141,6 +158,13 @@ class Runner:
                 except OSError as e:
                     self.pad = None
                     raise Verdict("infra_error", f"no virtual pad: {e}")
+            if uses_kbm(steps):
+                try:
+                    self.kbm = self.kbm_factory()
+                    self.kbm.open()
+                except OSError as e:
+                    self.kbm = None
+                    raise Verdict("infra_error", f"no virtual keyboard: {e}")
             self.game.launch()
             self._wait(self.game.running, self.t.launch, "infra_error", "the game didn't start")
             self.started = True
@@ -170,6 +194,12 @@ class Runner:
             return self._result(v.verdict, v.detail)
         finally:
             self.game.release_all()
+            if self.kbm is not None:
+                try:
+                    self.kbm.release_all()
+                finally:
+                    self.kbm.close()
+                    self.kbm = None
             if self.pad is not None:
                 try:
                     self.pad.neutral()
@@ -208,6 +238,21 @@ class Runner:
             self.pad.up(step["padup"])
         elif "padaxis" in step:
             self.pad.axis(step["padaxis"], float(step.get("value", 0.0)))
+        elif "kbd" in step:
+            self.game.focus()
+            self.kbm.down(step["kbd"])
+            try:
+                self._pause(step.get("seconds", 0.1))
+            finally:
+                self.kbm.up(step["kbd"])
+        elif "kbddown" in step:
+            self.game.focus()
+            self.kbm.down(step["kbddown"])
+        elif "kbdup" in step:
+            self.kbm.up(step["kbdup"])
+        elif "wheel" in step:
+            self.game.focus()
+            self.kbm.wheel(int(step["wheel"]))
         elif "wait" in step:
             self._pause(step["wait"])
         elif "shot" in step:
