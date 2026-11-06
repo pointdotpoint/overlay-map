@@ -64,6 +64,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     private let padFromPad: Bool;     // the open map was opened with the pad
     private let padOwned: Bool;       // the map holds the pad: the game's actions are held off
     private let padCtx: Bool;         // UIGameContext.ModalPopup pushed by OverlayMap
+    private let kbOwned: Bool;        // the map holds keyboard and mouse (Keyboard map: Takes keyboard and mouse)
     private let padCtxToken: Int32;   // invalidates a scheduled release when the map takes the pad again
     private let padReleaseWait: Bool; // closed by a pad button: release the context after that button's release
     private let padPolling: Bool;
@@ -304,6 +305,7 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.OnPadButton(s, key, action);
             return true;
         }
+        this.input.takesKeys = this.isOpen && (this.kbOwned || this.padOwned);
         let used = this.input.Handle(s, key, action, shift, ctrl, alt, this.isOpen);
         if used && this.isOpen {
             this.pad.lastWasPad = false;
@@ -314,6 +316,9 @@ public class OverlayMapSystem extends ScriptableSystem {
                 this.Close();
             } else {
                 this.Open();
+                if this.isOpen && Equals(s.keyboardMode, OverlayMapKeyboardMode.TakeKeys) {
+                    this.TakeKeyboard();
+                }
             }
         }
         this.HandleDebug(s);
@@ -380,6 +385,9 @@ public class OverlayMapSystem extends ScriptableSystem {
         let key = evt.GetKey();
         if NMPad.IsPad(key) {
             this.pad.Axis(key, evt.GetValue());
+        } else if Equals(key, EInputKey.IK_MouseZ) {
+            this.input.takesKeys = this.isOpen && (this.kbOwned || this.padOwned);
+            this.input.Axis(key, evt.GetValue(), this.isOpen);
         }
     }
 
@@ -459,6 +467,18 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
     }
 
+    // Opened from the keyboard with Keyboard map on Takes keyboard and mouse: V stops as in pad mode, so WASD, the
+    // arrows and the wheel are free for the map (the wheel no longer switches weapons).
+    private func TakeKeyboard() {
+        this.kbOwned = true;
+        this.padCtxToken += 1;
+        if !this.padCtx {
+            this.padCtx = true;
+            GameInstance.GetUISystem(this.GetGameInstance()).PushGameContext(UIGameContext.ModalPopup);
+            this.SetPlayerUiContext(true);
+        }
+    }
+
     private func SchedulePadRelease(seconds: Float) {
         let cb = new OverlayMapPadRelease();
         cb.system = this;
@@ -467,7 +487,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     }
 
     public func PadReleaseCtx(token: Int32) {
-        if !this.padCtx || token != this.padCtxToken || this.padOwned {
+        if !this.padCtx || token != this.padCtxToken || this.padOwned || this.kbOwned {
             return;
         }
         this.padCtx = false;
@@ -812,12 +832,19 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.pad.ClearAxes();
         }
         this.padFromPad = false;
+        let padWasOwned = this.padOwned;
         if this.padOwned {
             this.padOwned = false;
             // Pad buttons still down (B, View, X that closed it): wait for their release (OnPadButton), with a
             // fallback in case a release never arrives; else release shortly.
             this.padReleaseWait = this.pad.HeldCount() > 0;
             this.SchedulePadRelease(this.padReleaseWait ? 1.5 : 0.1);
+        }
+        if this.kbOwned {
+            this.kbOwned = false;
+            if !padWasOwned {
+                this.SchedulePadRelease(0.1);
+            }
         }
         this.OnClosing();
         if IsDefined(this.hud) {
@@ -944,6 +971,10 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
         if this.input.zoomOut {
             this.camera.ZoomBy(1.0 / PowF(NMTheme.ZoomRatePerSecond(), dt / 1000.0));
+        }
+        if this.input.wheel != 0 {
+            this.camera.ZoomSteps(this.input.wheel, 150.0);
+            this.input.wheel = 0;
         }
         let padZoom = this.padOwned ? this.pad.ZoomRate() : 0.0;
         if padZoom != 0.0 {
@@ -1413,7 +1444,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
         if IsDefined(s) {
             let view = NMVanillaFilters.ViewName(this.filterView);
-            let hints = NMInput.Hints(s, view, this.TeleportLabel());
+            let hints = this.kbOwned ? NMInput.TakeHints(s, view, this.TeleportLabel()) : NMInput.Hints(s, view, this.TeleportLabel());
             if this.padOwned && this.pad.lastWasPad {
                 hints = NMPad.Hints(view, this.TeleportLabel(), s.teleportEnabled, s.holdToShow);
             } else if this.padFromPad && !this.padOwned {

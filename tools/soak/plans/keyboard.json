@@ -1,0 +1,128 @@
+{
+ "name": "keyboard",
+ "runs": [
+  {
+   "name": "any-keyboard",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "watch_keys"
+    },
+    {
+     "cmd": "watch_axis"
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 120
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "cam",
+     "expect": "kb owned ctx held"
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "cmd": "last_axis"
+    },
+    {
+     "kbd": "W",
+     "seconds": 1.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "cam",
+     "expect": "free\\|"
+    },
+    {
+     "cmd": "last_keys",
+     "expect": "IK_W"
+    },
+    {
+     "shot": "after_w"
+    },
+    {
+     "wheel": -3
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "cam",
+     "expect": " 0\\.977 "
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "cmd": "last_axis",
+     "expect": "IK_MouseZ=-1"
+    },
+    {
+     "shot": "after_wheel_out"
+    },
+    {
+     "wheel": 2
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "cam",
+     "expect": " 0\\.625 "
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "cmd": "last_axis"
+    },
+    {
+     "kbd": "SPACE",
+     "seconds": 0.2
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "cam",
+     "expect": "follow"
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "cam",
+     "expect": "kb free ctx free"
+    }
+   ]
+  }
+ ]
+}

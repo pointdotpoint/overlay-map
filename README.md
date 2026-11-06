@@ -64,8 +64,9 @@ Area names come from the game's world sectors (area outlines) plus hand-made out
 UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only`.
 
 ## Using it
-- `'` open/close · Numpad 8/4/6/2 (7/9/1/3) pan · Numpad +/- zoom · Numpad 5 follow V · Numpad 0 act. Every key can be rebound in Mod Settings → Overlay Map.
-- Arrow keys are never used (they steer vehicles). Keep NumLock on.
+- `'` open/close. By default the map takes keyboard and mouse while it is open, so V stops: W A S D (or the arrows) pan · mouse wheel zooms · Space follows V · F acts · T teleports · R cycles the filter · Enter sets a waypoint. Works on any keyboard, and the numpad keys below work too.
+- Mod Settings → Overlay Map → Keys → Keyboard map → V keeps moving: the map uses only the numpad, so V can walk and drive while it is open: Numpad 8/4/6/2 (7/9/1/3) pan · Numpad +/- zoom · Numpad 5 follow V · Numpad 0 act. Arrow keys are not used then (they steer vehicles); keep NumLock on.
+- Every key can be rebound in Mod Settings → Overlay Map.
 - Controller: hold View for half a second to open the map (a tap still does what it does in the game). While it is open the map takes the controller, so V stops: left stick pans, LT/RT zoom, A acts, RB sets a waypoint, X teleports, Y cycles the filter, R3 follows V, B (or View) closes. In a car the car coasts meanwhile. A map opened with the keyboard ignores the controller, so you can drive with a pad and use the numpad map. Mod Settings → Overlay Map → Controller → Open map button (Hold View / Off).
 - Zoom crossfades between six baked levels, from 0.5 m/px (single buildings) to 16 m/px (the whole city).
 - The game's own map markers (quests, gigs, NCPD, vendors, fast travel, …) appear with their vanilla icons, each on a dark plate ringed in its own colour. Move the map so a marker is nearest the centre to see its details card in the sidebar; `Numpad 0` tracks its quest, or clears your vanilla waypoint.
