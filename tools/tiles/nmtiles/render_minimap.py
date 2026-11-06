@@ -3,8 +3,9 @@
 One tile set per class, in draw order; the runtime tints them with SetTintColor from NMTheme:
   glow     blurred road rims (every road alike; buildings do not glow), at every level; the runtime draws it at
            the camera's own level, so the halo stays a few screen pixels wide and the background between roads dark
-  bfill    building footprint fill
-  outline  footprint exterior as a 1 px line at the level's resolution (drawn at SS x, width SS, downsampled)
+  bfill    lit buildings (nmtiles.lit): grey RGB = brightness (roofs, shadows on lower roofs), alpha = coverage; ground
+           shadows are black with partial alpha. The runtime tint multiplies the grey, so themes still apply.
+  outline  a ~1 px line wherever the building height jumps (nmtiles.lit)
   metro    the NCART lines in their own colours (RGBA, nmtiles.ncart; tinted white at runtime)
   road     every minimap road triangle in one mask, like the vanilla minimap draws them. The minimap classifies each
            road shape by width (minimap.MAJOR_WIDTH_M), but one highway is many shapes whose widths fall either side of
@@ -24,6 +25,8 @@ from typing import Callable
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+from nmtiles import lit
+from nmtiles.lit import LitBoxes
 from nmtiles.render import LevelGrid
 
 SETS = ("glow", "bfill", "outline", "road", "metro")      # draw order, back to front: roads over buildings
@@ -35,7 +38,7 @@ GLOW_MIN_MPP = 0.5                                       # glow tiles exist at e
                                                          # at the camera's own level, so the halo stays a few screen px
 GLOW_RADIUS = 2.5                                        # Gaussian sigma in px at every level (a tight bloom, not a haze)
 GLOW_GAIN = 4.2                                          # gain up to GLOW_REF_MPP (a blurred 1 px line peaks near 0.26)
-GLOW_REF_MPP = 2.0                                       # coarser levels get less gain, falling as 1 / mpp
+GLOW_REF_MPP = 2.0
 
 
 def glow_gain(mpp: float) -> float:
@@ -44,10 +47,6 @@ def glow_gain(mpp: float) -> float:
     return GLOW_GAIN * GLOW_REF_MPP / max(mpp, GLOW_REF_MPP)
 
 GLOW_MARGIN = math.ceil(3 * GLOW_RADIUS) + 3             # >= 3 sigma plus the LANCZOS support
-DOT_PITCH_PX = 8                                         # building fill dot matrix: pitch and dot size in px
-DOT_SIZE_PX = 3
-FILL_BASE = 0.45                                         # fill alpha between dots, relative to the dots
-TILE_PX = 512                                            # tile pitch the dot grid is anchored to
 EDGE_MARGIN = 3                                          # px: >= the LANCZOS support, so the kernel sees the neighbouring tile
 BATCH = 100_000                                          # primitives drawn per Python list conversion (bounded memory)
 
@@ -99,14 +98,14 @@ class TriIndex:
 class TileSources:
     road: TriIndex                  # minor roads
     road_major: TriIndex
-    foot: TriIndex                  # over the footprints' bboxes, as (n, 2, 2) corner pairs
-    polys: list[np.ndarray]         # footprint exteriors, world xy
+    boxes: LitBoxes | None = None   # buildings (nmtiles.lit); None = no buildings
+    box_index: TriIndex | None = None   # over the boxes' shadow sweeps, as (n, 2, 2) corner pairs
     metro: list | None = None       # this level's NCART paths (ncart.level_paths); None = no metro set
 
 
-def make_sources(road: np.ndarray, polys: list[np.ndarray], cell: float, road_major: np.ndarray) -> TileSources:
-    boxes = np.array([[p.min(axis=0), p.max(axis=0)] for p in polys], np.float64).reshape(-1, 2, 2)
-    return TileSources(TriIndex(road, cell), TriIndex(road_major, cell), TriIndex(boxes, cell), polys)
+def make_sources(road: np.ndarray, boxes: LitBoxes | None, cell: float, road_major: np.ndarray) -> TileSources:
+    index = None if boxes is None or not len(boxes) else TriIndex(boxes.sweep, cell)
+    return TileSources(TriIndex(road, cell), TriIndex(road_major, cell), boxes, index)
 
 
 def _window(grid: LevelGrid, ix: int, iy: int, margin: int) -> tuple[float, float, float, float, int]:
@@ -142,22 +141,20 @@ def _down(img: Image.Image) -> np.ndarray:
     return np.asarray(img.resize((img.width // SS, img.height // SS), Image.LANCZOS))
 
 
-def _foot_masks(src: TileSources, grid: LevelGrid, ix: int, iy: int, margin: int) -> tuple[np.ndarray, np.ndarray] | None:
-    """(fill, outline) coverage of the footprints, margin included."""
+def _building_masks(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> tuple[np.ndarray, np.ndarray] | None:
+    """(bfill RGBA, outline alpha) of tile (ix, iy), cropped. Rendered with nmtiles.lit's own margin, wide enough for
+    its blurs to see the neighbouring tiles, so tiles stitch without seams."""
+    if src.boxes is None or src.box_index is None:
+        return None
+    margin = max(EDGE_MARGIN, lit.margin_px(grid.mpp))
     x0, y1, x1, y0, size = _window(grid, ix, iy, margin)
-    sel = src.foot.query(x0, y0, x1, y1)
+    sel = src.box_index.query(x0, y0, x1, y1)
     if not len(sel):
         return None
-    fill, line = Image.new("L", (size, size), 0), Image.new("L", (size, size), 0)
-    df, dl = ImageDraw.Draw(fill), ImageDraw.Draw(line)
-    s = SS / grid.mpp
-    for i in sel:
-        p = src.polys[i]
-        c = np.column_stack((np.floor((p[:, 0] - x0) * s), np.floor((y1 - p[:, 1]) * s)))
-        pts = [tuple(v) for v in c.tolist()]
-        df.polygon(pts, fill=255)
-        dl.line(pts + pts[:1], fill=255, width=SS, joint="curve")
-    return _down(fill), _down(line)
+    out = lit.shade(src.boxes.quads[sel], src.boxes.top[sel], x0, y1, size, SS, grid.mpp)
+    if out is None:
+        return None
+    return out[0][margin:-margin, margin:-margin], _crop(out[1], margin)
 
 
 def _crop(a: np.ndarray, margin: int) -> np.ndarray:
@@ -189,21 +186,6 @@ def _glow(road: np.ndarray | None, gain: float = GLOW_GAIN) -> np.ndarray | None
     return np.minimum(blurred.astype(np.float32) * gain, 255).astype(np.uint8)
 
 
-def dot_pattern(ix: int, iy: int, size: int) -> np.ndarray:
-    """Dot matrix 0..1 for a size x size tile, anchored to the global pixel grid (tile pitch TILE_PX); rows stagger."""
-    x = ix * TILE_PX + np.arange(size)[None, :]
-    y = iy * TILE_PX + np.arange(size)[:, None]
-    row = y // DOT_PITCH_PX
-    inx = ((x - (row % 2) * (DOT_PITCH_PX // 2)) % DOT_PITCH_PX) < DOT_SIZE_PX
-    iny = (y % DOT_PITCH_PX) < DOT_SIZE_PX
-    return (inx & iny).astype(np.float32)
-
-
-def _dot_fill(fill: np.ndarray, ix: int, iy: int) -> np.ndarray:
-    d = dot_pattern(ix, iy, fill.shape[0])
-    return np.rint(fill * (FILL_BASE + (1 - FILL_BASE) * d)).astype(np.uint8)
-
-
 def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str, Image.Image]:
     """The non-empty mask tiles of tile (ix, iy), by set name. An empty dict means: write nothing."""
     out: dict[str, Image.Image] = {}
@@ -220,10 +202,12 @@ def render_tile(src: TileSources, grid: LevelGrid, ix: int, iy: int) -> dict[str
     road = _fill_mask((src.road, src.road_major), grid, ix, iy, margin)
     road = None if road is None or not road.any() else road
     put("road", None if road is None else _crop(road, margin))
-    masks = _foot_masks(src, grid, ix, iy, margin)
+    masks = _building_masks(src, grid, ix, iy)
     if masks is not None:
-        put("bfill", _dot_fill(_crop(masks[0], margin), ix, iy))
-        put("outline", _crop(masks[1], margin))
+        fill = masks[0]
+        if fill[..., 3].any():
+            out["bfill"] = Image.fromarray(np.ascontiguousarray(fill), "RGBA")
+        put("outline", masks[1])
     if glow_on:
         g = _glow(road, glow_gain(grid.mpp))
         put("glow", None if g is None else _crop(g, margin))

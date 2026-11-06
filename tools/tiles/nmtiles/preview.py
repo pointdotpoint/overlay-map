@@ -33,10 +33,11 @@ def composite_sets(tiles: dict[str, dict[tuple[int, int], Path]], level: dict, c
             im = Image.open(path).convert("RGBA")
             if im.size != (TILE, TILE):     # half-resolution glow tiles are stretched to 512 in game
                 im = im.resize((TILE, TILE), Image.BILINEAR)
-            a = np.asarray(im)[cy0 - y0:cy1 - y0, cx0 - x0:cx1 - x0, 3]
-            a = (a.astype(np.float32) / 255.0 * scale)[..., None]
+            px = np.asarray(im)[cy0 - y0:cy1 - y0, cx0 - x0:cx1 - x0].astype(np.float32) / 255.0
+            a = px[..., 3:] * scale
+            col = np.array(rgb, np.float32) * px[..., :3]          # the runtime tint multiplies the tile's colour
             region = canvas[cy0:cy1, cx0:cx1]
-            region[:] = region * (1 - a) + np.array(rgb, np.float32) * a
+            region[:] = region * (1 - a) + col * a
     return Image.fromarray(np.clip(canvas + 0.5, 0, 255).astype(np.uint8), "RGB")
 
 

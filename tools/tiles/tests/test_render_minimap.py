@@ -2,7 +2,9 @@ import numpy as np
 import pytest
 
 from nmtiles.render import LevelGrid
-from nmtiles.render_minimap import DOT_PITCH_PX, FILL_BASE, GLOW_MIN_MPP, GLOW_RADIUS, SETS, TileSources, TriIndex, dot_pattern, make_sources, render_tile
+from nmtiles.buildings import Boxes
+from nmtiles.lit import lit_boxes
+from nmtiles.render_minimap import GLOW_MIN_MPP, GLOW_RADIUS, SETS, TileSources, TriIndex, make_sources, render_tile
 
 # 2x2 tiles of 512 px at 1 m/px: tile (ix, iy) covers x in [512 ix, 512 ix + 512), y in (1024 - 512 (iy+1), 1024 - 512 iy]
 GRID = LevelGrid(1.0, 0.0, 1024.0, 2, 2, 512)
@@ -13,12 +15,22 @@ def tri(*pts):
     return np.array([pts], np.float32)
 
 
-def box(x0, y0, x1, y1):
-    return np.array([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], np.float64)
+def box(x0, y0, x1, y1, h=20.0):
+    """An axis-aligned building h metres tall, standing on the ground (z = 0)."""
+    return (x0, y0, x1, y1, h)
+
+
+def blocks(rects):
+    """LitBoxes from box() tuples, or None for none."""
+    if not rects:
+        return None
+    r = np.array(rects, np.float64)
+    x0, y0, x1, y1, h = r.T
+    return lit_boxes(Boxes((x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0, h, np.zeros(len(r)), h / 2))
 
 
 def src(road=NOROAD, polys=(), major=NOROAD):
-    return make_sources(road, list(polys), GRID.tile_world, major)
+    return make_sources(road, blocks(list(polys)), GRID.tile_world, major)
 
 
 def alpha(img):
@@ -43,6 +55,17 @@ def test_tri_index_returns_overlapping_bboxes_and_nothing_far():
     assert TriIndex(np.zeros((0, 3, 2), np.float32), 256.0).query(0, 0, 10, 10).size == 0
 
 
+def test_building_gives_lit_fill_and_edge_and_empty_tiles_are_none():
+    s = src(polys=[box(100, 800, 200, 900)])
+    out = render_tile(s, GRID, 0, 0)
+    assert set(out) == {"bfill", "outline"}
+    fill, line = np.asarray(out["bfill"]), alpha(out["outline"])
+    inside = fill[1024 - 870, 130]                                             # north-west part: out of its own shadow
+    assert inside[3] == 255 and inside[0] == inside[1] == inside[2] > 0 and line[1024 - 850, 150] == 0
+    assert line[1024 - 850, 100] > 100                                         # edge on the silhouette
+    assert render_tile(s, GRID, 1, 1) == {} and render_tile(src(), GRID, 0, 0) == {}
+
+
 def test_road_triangle_paints_centroid_and_leaves_far_pixels_clear():
     out = render_tile(src(road=tri((100, 900), (200, 900), (150, 1000))), GRID, 0, 0)
     assert set(out) == {"road", "glow"}                  # roads glow at every level
@@ -52,34 +75,21 @@ def test_road_triangle_paints_centroid_and_leaves_far_pixels_clear():
     assert a[300:, 300:].max() == 0 and a[:, 400:].max() == 0
 
 
-def test_footprint_gives_fill_and_outline_and_empty_tiles_are_none():
-    s = src(polys=[box(100, 800, 200, 900)])
-    out = render_tile(s, GRID, 0, 0)
-    assert set(out) == {"bfill", "outline"}
-    fill, line = (alpha(out[k]) for k in ("bfill", "outline"))
-    assert fill[1024 - 850, 150] >= round(FILL_BASE * 255) - 1 and line[1024 - 850, 150] == 0     # interior
-    assert line[1024 - 850, 100] > 100                                         # outline on the edge
-    assert render_tile(s, GRID, 1, 1) == {} and render_tile(src(), GRID, 0, 0) == {}
-
-
-def test_outline_is_about_one_pixel_wide():
-    out = render_tile(src(polys=[box(100, 800, 200, 900)]), GRID, 0, 0)
-    row = alpha(out["outline"])[1024 - 850].astype(float) / 255
-    assert 0.8 < row[90:112].sum() < 1.3
-
-
 def test_adjacent_tiles_agree_with_one_big_render_for_fractional_vertices():
     rng = np.random.default_rng(7)
     c = rng.uniform((440, 700), (580, 1000), (60, 2))
     road = (c[:, None, :] + rng.uniform(-25, 25, (60, 3, 2))).astype(np.float32)
-    polys = [box(500.2 + i * 13.7, 830.3, 520.6 + i * 13.7, 861.9) + rng.uniform(-3, 3, (4, 2)) for i in range(3)]
-    polys.append(np.array([(470.3, 600.2), (555.7, 610.9), (548.1, 650.4), (480.9, 641.3)]))
+    polys = [box(500.2 + i * 13.7, 830.3 + rng.uniform(-3, 3), 520.6 + i * 13.7, 861.9, 15.0 + 40 * i) for i in range(3)]
+    polys.append(box(470.3, 600.2, 555.7, 650.4, 90.0))     # tall: its shadow and base shading cross the tile edge
     s = src(road, polys)
     l, r = render_tile(s, GRID, 0, 0), render_tile(s, GRID, 1, 0)
     big = LevelGrid(1.0, 0.0, 1024.0, 1, 1, 1024)
-    whole = render_tile(make_sources(road, polys, big.tile_world, NOROAD), big, 0, 0)
+    whole = render_tile(make_sources(road, blocks(polys), big.tile_world, NOROAD), big, 0, 0)
     for name in ("road", "bfill", "outline"):      # glow needs mpp >= 2: covered below
         left, right = alpha(l[name]).astype(int), alpha(r[name]).astype(int)
+        if name == "bfill":                        # lit buildings: the grey (brightness) must stitch too
+            lg, rg = (np.asarray(t[name])[..., 0].astype(int) for t in (l, r))
+            assert np.abs(np.hstack([lg, rg]) - np.asarray(whole[name])[:512, :, 0].astype(int)).max() <= 2
         assert left[:, 511].max() > 0 and right[:, 0].max() > 0, name        # painted on both sides of the shared edge
         top = alpha(whole[name]).astype(int)[:512]
         assert np.abs(np.hstack([left, right]) - top).max() <= 2, name        # stitched == one render: no seam
@@ -96,7 +106,7 @@ GRID2 = LevelGrid(2.0, 0.0, 2048.0, 2, 2, 512)    # tile (0,0): x in [0,1024), y
 
 
 def src2(road=NOROAD, polys=(), major=NOROAD):
-    return make_sources(road, list(polys), GRID2.tile_world, major)
+    return make_sources(road, blocks(list(polys)), GRID2.tile_world, major)
 
 
 def quad(x0, y0, x1, y1):
@@ -110,7 +120,7 @@ def test_glow_exists_at_every_level_and_stays_tight():
         g = LevelGrid(mpp, 0.0, 1024.0 * mpp, 2, 2, 512)
         road = quad(100 * mpp, 600 * mpp, 200 * mpp, 900 * mpp)                 # px columns 100..200, rows 124..424
         foot = [box(300 * mpp, 800 * mpp, 400 * mpp, 900 * mpp)]
-        out = render_tile(make_sources(road, foot, g.tile_world, NOROAD), g, 0, 0)
+        out = render_tile(make_sources(road, blocks(foot), g.tile_world, NOROAD), g, 0, 0)
         assert {"road", "bfill", "outline", "glow"} <= set(out), mpp
         a = alpha(out["glow"]).astype(int)
         row = 274 * a.shape[0] // 512
@@ -172,7 +182,7 @@ def test_glow_stitches_across_a_tile_edge_and_is_deterministic():
     s = src2(road, polys)
     l, r = render_tile(s, GRID2, 0, 0), render_tile(s, GRID2, 1, 0)
     big = LevelGrid(2.0, 0.0, 2048.0, 1, 1, 1024)
-    whole = render_tile(make_sources(road, polys, big.tile_world, NOROAD), big, 0, 0)
+    whole = render_tile(make_sources(road, blocks(polys), big.tile_world, NOROAD), big, 0, 0)
     left, right = alpha(l["glow"]).astype(int), alpha(r["glow"]).astype(int)
     top = alpha(whole["glow"]).astype(int)[:512]
     assert left[:, 511].max() > 0 and right[:, 0].max() > 0
@@ -208,36 +218,4 @@ def test_road_major_is_required():
     with pytest.raises(TypeError):
         make_sources(NOROAD, [], 256.0)
     with pytest.raises(TypeError):
-        TileSources(TriIndex(NOROAD, 256.0), TriIndex(NOROAD, 256.0), [])
-
-
-def test_dot_pattern_is_seamless():
-    assert np.array_equal(dot_pattern(0, 0, 520)[:512, 512], dot_pattern(1, 0, 512)[:, 0])
-
-
-def test_dot_pattern_pitch():
-    d = dot_pattern(0, 0, 64)
-    assert DOT_PITCH_PX == 8
-    assert [int(v) for v in d[0, :16]] == [1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0]
-    assert [int(v) for v in d[8, :16]] == [0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0]
-
-
-def test_bfill_has_floor_and_dots():
-    out = render_tile(src(polys=[box(-10, 500, 600, 1100)]), GRID, 0, 0)
-    a = alpha(out["bfill"])
-    assert a.min() == pytest.approx(FILL_BASE * 255, abs=1) and a.max() == 255
-
-
-def test_diagonal_outline_is_smooth_when_magnified():
-    # A building edge at a shallow angle: per column, the line's coverage (its brightness) must stay even and its
-    # coverage-weighted centre must follow a straight line, or the edge reads as beads and stair steps once the map
-    # shows each texel 5x enlarged at the closest zoom.
-    poly = np.array([(50.0, 700.0), (450.0, 840.0), (450.0, 600.0), (50.0, 600.0)])
-    a = alpha(render_tile(src(polys=[poly]), GRID, 0, 0)["outline"]).astype(float)
-    cols = np.arange(80, 420)
-    band = a[100:340, cols]                                    # rows around the slanted edge only
-    y = (band * np.arange(100, 340)[:, None]).sum(0) / band.sum(0)
-    resid = y - np.polyval(np.polyfit(cols, y, 1), cols)
-    width = band.sum(0) / 255
-    assert width.max() - width.min() < 0.2, (width.min(), width.max())
-    assert np.abs(resid).max() < 0.1, np.abs(resid).max()
+        TileSources(TriIndex(NOROAD, 256.0))

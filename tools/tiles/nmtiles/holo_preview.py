@@ -20,8 +20,8 @@ GLOW_OFFSET = 2
 PREVIEWS = (("close", 0.5), ("far", 4.0))
 ACCENT = (0x4f, 0xe3, 0xff)
 SETS = (            # set, rgb, opacity (NMTheme.TileTint / TileOpacity, cyan)
-    ("bfill", (0x9f, 0xf3, 0xff), 0.12),
-    ("outline", (0x9f, 0xf3, 0xff), 0.90),
+    ("bfill", (0x2f, 0x78, 0xbf), 0.90),
+    ("outline", (0x3a, 0x8f, 0xd0), 0.40),
     ("road", (0x5c, 0xb1, 0xec), 0.90),
 )
 PANEL_BG = (0x08, 0x12, 0x1a)
@@ -40,8 +40,9 @@ def pick_level(levels: list[dict], mpp: float) -> int:
 
 
 def _window_alpha(tiles: dict[tuple[int, int, int], Path], li: int, level: dict, centre: tuple[float, float],
-                  box: tuple[float, float, float, float]) -> np.ndarray:
-    """Alpha (float 0..1) of the level-pixel box (left, top, right, bottom), integer-aligned outward."""
+                  box: tuple[float, float, float, float], channel: int = 3) -> np.ndarray:
+    """One channel (float 0..1; alpha by default) of the level-pixel box (left, top, right, bottom), integer-aligned
+    outward."""
     l0, t0 = int(np.floor(box[0])), int(np.floor(box[1]))
     r0, b0 = int(np.ceil(box[2])), int(np.ceil(box[3]))
     out = np.zeros((b0 - t0, r0 - l0), np.float32)
@@ -55,21 +56,21 @@ def _window_alpha(tiles: dict[tuple[int, int, int], Path], li: int, level: dict,
         im = Image.open(path).convert("RGBA")
         if im.size != (TILE, TILE):     # half-resolution glow tiles are stretched to the tile's 512 units in game
             im = im.resize((TILE, TILE), Image.BILINEAR)
-        a = np.asarray(im)[cy0 - y0:cy1 - y0, cx0 - x0:cx1 - x0, 3]
+        a = np.asarray(im)[cy0 - y0:cy1 - y0, cx0 - x0:cx1 - x0, channel]
         out[cy0 - t0:cy1 - t0, cx0 - l0:cx1 - l0] = a.astype(np.float32) / 255.0
     return out
 
 
 def _layer(tiles: dict, levels: list[dict], li: int, centre: tuple[float, float], mpp: float,
-           size: tuple[int, int]) -> np.ndarray:
-    """Alpha of level li drawn scaled by levels[li].mpp / mpp so it covers `size` screen px around `centre`."""
+           size: tuple[int, int], channel: int = 3) -> np.ndarray:
+    """One channel (alpha by default) of level li drawn scaled by levels[li].mpp / mpp so it covers `size` screen px around `centre`."""
     w, h = size
     lvl = levels[li]
     k = lvl["mpp"] / mpp                                    # screen px per level px
     cx = (centre[0] - lvl["origin_x"]) / lvl["mpp"]
     cy = (lvl["origin_top"] - centre[1]) / lvl["mpp"]
     box = (cx - w / 2 / k, cy - h / 2 / k, cx + w / 2 / k, cy + h / 2 / k)
-    a = _window_alpha(tiles, li, lvl, centre, box)
+    a = _window_alpha(tiles, li, lvl, centre, box, channel)
     l0, t0 = int(np.floor(box[0])), int(np.floor(box[1]))
     img = Image.fromarray(a, "F")
     return np.asarray(img.resize((w, h), Image.BILINEAR, box=(box[0] - l0, box[1] - t0, box[2] - l0, box[3] - t0)),
@@ -77,6 +78,7 @@ def _layer(tiles: dict, levels: list[dict], li: int, centre: tuple[float, float]
 
 
 def _over(canvas: np.ndarray, rgb, alpha: np.ndarray) -> None:
+    """Plain "over" blend; rgb is one colour or a per-pixel (h, w, 3) array."""
     a = alpha[..., None]
     canvas[:] = canvas * (1.0 - a) + np.array(rgb, np.float32) * a
 
@@ -120,7 +122,10 @@ def compose(tiles: dict[str, dict[tuple[int, int, int], Path]], levels: list[dic
     if tiles.get("glow"):
         _over(canvas, ACCENT, _layer(tiles["glow"], levels, gl, centre, mpp, size) * 0.45)
     for name, rgb, op in SETS:
-        _over(canvas, rgb, _layer(tiles[name], levels, base, centre, mpp, size) * op)
+        col = np.array(rgb, np.float32)
+        if name == "bfill":             # lit buildings: the tint multiplies the baked brightness (grey RGB)
+            col = col * _layer(tiles[name], levels, base, centre, mpp, size, 0)[..., None]
+        _over(canvas, col, _layer(tiles[name], levels, base, centre, mpp, size) * op)
     _over(canvas, (0, 0, 0), _tiled(part("holo_scan"), size) * 0.20)
     _over(canvas, ACCENT, _tiled(part("holo_noise"), size) * 0.12)
     halo = part("holo_halo")
