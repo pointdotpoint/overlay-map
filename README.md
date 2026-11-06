@@ -64,7 +64,7 @@ Area names come from the game's world sectors (area outlines) plus hand-made out
 UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only`.
 
 ## Using it
-- `'` open/close. By default the map takes keyboard and mouse while it is open, so V stops: W A S D (or the arrows) pan · mouse wheel zooms · Space follows V · F acts · T teleports · R cycles the filter · Enter sets a waypoint. Works on any keyboard, and the numpad keys below work too.
+- `'` open/close. By default the map takes keyboard and mouse while it is open, so V stops: W A S D (or the arrows) pan · mouse wheel zooms · Space follows V · F acts · E (or Enter) sets a waypoint · T teleports · R cycles the filter. Works on any keyboard, and the numpad keys below work too.
 - Mod Settings → Overlay Map → Keys → Keyboard map → V keeps moving: the map uses only the numpad, so V can walk and drive while it is open: Numpad 8/4/6/2 (7/9/1/3) pan · Numpad +/- zoom · Numpad 5 follow V · Numpad 0 act. Arrow keys are not used then (they steer vehicles); keep NumLock on.
 - Every key can be rebound in Mod Settings → Overlay Map.
 - Controller: hold View for half a second to open the map (a tap still does what it does in the game). While it is open the map takes the controller, so V stops: left stick pans, LT/RT zoom, A acts, RB sets a waypoint, X teleports, Y cycles the filter, R3 follows V, B (or View) closes. In a car the car coasts meanwhile. A map opened with the keyboard ignores the controller, so you can drive with a pad and use the numpad map. Mod Settings → Overlay Map → Controller → Open map button (Hold View / Off).
@@ -85,7 +85,7 @@ UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only
 - The map background is half see-through by default (Display → Panel opacity, 0.5); installs still on the old 0.45 default move to 0.5 once.
 - Display → Map marker size scales the open map's markers; the default is half the original size (0.5).
 - Glow strength (Display, 0 to 3, default 1.5; 0 turns it off) makes the roads glow, with or without Hologram effects, so a plain background can still glow. The glow layer is blurred by the engine so bright roads bloom.
-- VHS look on the open map (Display, all need Hologram effects): Scanline strength (0 to 0.6, default 0.3), VHS tracking band (a noisy band rolls down the map every 11 s) and VHS glitch (two short engine glitch bursts every 6.5 s). Each applies on the next open.
+- VHS look on the open map (Display, all need Hologram effects): Scanline strength (0 to 0.6, default 0.3), VHS tracking band (a noisy band rolls down the map every 11 s) and VHS glitch (two short engine glitch bursts every 6.5 s); both are off by default. Each applies on the next open.
 - GPS routes: the route to your vanilla waypoint (white) and to the tracked quest (yellow, teal for gigs) are mirrored from the minimap as flowing dots. Mod Settings → Overlay Map → Display → GPS routes.
 - The game's HUD fades out while the map is open (Display → Hide HUD while open).
 - Numpad . on any spot teleports V there: onto the roof or ground below, or into the water. On a fast travel marker it fast-travels, on a photo pin it goes to the photo's spot, and V's car comes along. Long jumps show the game's loading screen for a few seconds first.

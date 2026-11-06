@@ -183,6 +183,7 @@ public class OverlayMapSystem extends ScriptableSystem {
 
     public func Api() -> ref<OverlayMap> { return this.api; }
     public func Vanilla() -> ref<NMVanilla> { return this.vanilla; }
+    public func KeyboardTaken() -> Bool { return this.isOpen && this.kbOwned; }   // sidebar shows the any-keyboard keys
 
     // Created on first use: the minimap may attach before this system's OnAttach.
     // Created on first use: photo mode and the minimap may call in before this system's OnAttach.
@@ -1451,7 +1452,7 @@ public class OverlayMapSystem extends ScriptableSystem {
                 hints = NMPad.PassThroughHints(hints);
             }
             let padHints = this.padOwned && this.pad.lastWasPad;
-            hints = NMWaypoint.WithHint(hints, padHints ? "RB" : NMInput.KeyName(s.keyWaypoint), this.WaypointLabel());
+            hints = NMWaypoint.WithHint(hints, padHints ? "RB" : NMInput.KeyName(this.kbOwned ? s.keyMapWaypoint : s.keyWaypoint), this.WaypointLabel());
             if this.input.arrowSeen {
                 hints = NMInput.NumLockHints(hints);
             }

@@ -53,7 +53,7 @@ def test_vhs_settings_live_under_display_with_their_defaults():
         assert '"ModSettings.category", "Display"' in b and f'"ModSettings.displayName", "{name}"' in b
         assert f'"ModSettings.min", "{lo}"' in b and f'"ModSettings.max", "{hi}"' in b and f'"ModSettings.step", "{step}"' in b
     for field, name in (("vhsTracking", "VHS tracking band"), ("vhsGlitch", "VHS glitch")):
-        assert f"public let {field}: Bool = true;" in s
+        assert f"public let {field}: Bool = false;" in s
         b = _block(s, field)
         assert '"ModSettings.category", "Display"' in b and f'"ModSettings.displayName", "{name}"' in b
     # Every knob is read into one config and handed to the panel and the layer stack.

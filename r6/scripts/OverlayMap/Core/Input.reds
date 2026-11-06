@@ -116,6 +116,10 @@ public class NMInput {
             if pressed { this.act = true; }
             return true;
         }
+        if Equals(key, s.keyMapWaypoint) {
+            if pressed { this.waypoint = true; }
+            return true;
+        }
         if Equals(key, s.keyMapFilter) {
             if pressed { this.filter = true; }
             return true;
