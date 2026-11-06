@@ -275,9 +275,20 @@ public class NMVanilla extends NMVanillaSink {
         return GameInstance.GetMappinSystem(this.gi).GetMappin(id);
     }
 
+    // True while the map holds the keyboard: the sidebar then names the any-keyboard keys (E, F, T).
+    private func Taken() -> Bool {
+        let sys = OverlayMapSystem.Get(this.gi);
+        return IsDefined(sys) && sys.KeyboardTaken();
+    }
+
     private func WaypointKey() -> String {
         let s = OverlayMapSettings.Get(this.gi);
-        return IsDefined(s) ? NMInput.KeyName(s.keyWaypoint) : "ENTER";
+        if !IsDefined(s) { return "ENTER"; }
+        return NMInput.KeyName(this.Taken() ? s.keyMapWaypoint : s.keyWaypoint);
+    }
+
+    private func TeleportKey(s: ref<OverlayMapSettings>) -> String {
+        return NMInput.KeyName(this.Taken() ? s.keyMapTeleport : s.keyTeleport);
     }
 
     // The vanilla mappin under a OverlayMap layer item, or null when the item isn't a vanilla marker (or is gone).
@@ -294,7 +305,8 @@ public class NMVanilla extends NMVanillaSink {
 
     private func ActKey() -> String {
         let s = OverlayMapSettings.Get(this.gi);
-        return IsDefined(s) ? NMInput.KeyName(s.keyAct) : "NUM 0";
+        if !IsDefined(s) { return "NUM 0"; }
+        return NMInput.KeyName(this.Taken() ? s.keyMapAct : s.keyAct);
     }
 
     public func Details(e: ref<NMVanillaEntry>) -> ref<OverlayMapDetails> {
@@ -329,7 +341,7 @@ public class NMVanilla extends NMVanillaSink {
         } else {
             let ft = IsDefined(NMFastTravel.PointOf(m));
             let st = OverlayMapSettings.Get(this.gi);
-            if ft && IsDefined(st) && st.teleportEnabled { d.AddAction(NMInput.KeyName(st.keyTeleport), "Fast travel"); }
+            if ft && IsDefined(st) && st.teleportEnabled { d.AddAction(this.TeleportKey(st), "Fast travel"); }
             if IsDefined(m) && NMWaypoint.Available() {
                 d.AddAction(this.WaypointKey(), "Track");
             } else if IsDefined(m) && !ft {

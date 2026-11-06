@@ -430,6 +430,7 @@ public class NMSelfTest {
         s.keyMapPanRight = EInputKey.IK_D;
         s.keyMapRecenter = EInputKey.IK_Space;
         s.keyMapAct = EInputKey.IK_F;
+        s.keyMapWaypoint = EInputKey.IK_E;
         s.keyMapFilter = EInputKey.IK_R;
         s.keyMapTeleport = EInputKey.IK_T;
         s.teleportEnabled = true;
@@ -478,7 +479,10 @@ public class NMSelfTest {
         k.Handle(s, EInputKey.IK_F, press, false, false, false, true);
         k.Handle(s, EInputKey.IK_R, press, false, false, false, true);
         k.Handle(s, EInputKey.IK_T, press, false, false, false, true);
-        this.Check("keys.actions", k.recenter && k.act && k.filter && k.teleport, "");
+        let usedE = k.Handle(s, EInputKey.IK_E, press, false, false, false, true);
+        this.Check("keys.actions", k.recenter && k.act && k.filter && k.teleport && usedE && k.waypoint, "");
+        let freeE = new NMInput();
+        this.Check("keys.e_ignored_while_v_moves", !freeE.Handle(s, EInputKey.IK_E, press, false, false, false, true), "");
         k.ResetHeld();
         k.Handle(s, EInputKey.IK_NumPad8, press, false, false, false, true);
         let np = k.PanVector();

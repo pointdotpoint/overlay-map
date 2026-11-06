@@ -113,7 +113,7 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category", "Keys")
     @runtimeProperty("ModSettings.category.order", "0")
     @runtimeProperty("ModSettings.displayName", "Keyboard map")
-    @runtimeProperty("ModSettings.description", "Takes keyboard and mouse: while the map is open V stops, and W A S D (or the arrows) pan, the mouse wheel zooms, Space follows V, F acts, T teleports and R cycles the filter; the numpad keys work too. Works on any keyboard. V keeps moving: the map only uses the numpad keys above, so V can walk and drive meanwhile.")
+    @runtimeProperty("ModSettings.description", "Takes keyboard and mouse: while the map is open V stops, and W A S D (or the arrows) pan, the mouse wheel zooms, Space follows V, F acts, E sets a waypoint, T teleports and R cycles the filter; the numpad keys work too. Works on any keyboard. V keeps moving: the map only uses the numpad keys above, so V can walk and drive meanwhile.")
     @runtimeProperty("ModSettings.displayValues.TakeKeys", "Takes keyboard and mouse")
     @runtimeProperty("ModSettings.displayValues.KeepMoving", "V keeps moving (numpad)")
     public let keyboardMode: OverlayMapKeyboardMode = OverlayMapKeyboardMode.TakeKeys;
@@ -159,6 +159,13 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.displayName", "Act on selection")
     @runtimeProperty("ModSettings.description", "Activates the selected item.")
     public let keyMapAct: EInputKey = EInputKey.IK_F;
+
+    @runtimeProperty("ModSettings.mod", "Overlay Map")
+    @runtimeProperty("ModSettings.category", "Keys (map takes keyboard)")
+    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Set waypoint / track")
+    @runtimeProperty("ModSettings.description", "On an empty spot or a pin: sets the custom waypoint there. On a job or gig: tracks its quest. On any other marker: tracks it. On the tracked one: clears it. Enter works too.")
+    public let keyMapWaypoint: EInputKey = EInputKey.IK_E;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Keys (map takes keyboard)")
