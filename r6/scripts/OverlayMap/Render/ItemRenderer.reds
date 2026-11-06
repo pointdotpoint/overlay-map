@@ -109,7 +109,7 @@ public class NMItemRenderer {
     private let prevStart: array<Int32>;
     private let prevOrd: array<Int32>;
     private let prevEpoch: Int32;
-    private let stamp: Int32;       // this relayout's NightMap.placeStamp: an item with placedAt == stamp was tested
+    private let stamp: Int32;       // this relayout's OverlayMap.placeStamp: an item with placedAt == stamp was tested
     private let reserved: array<ref<NMRect>>;   // screen areas markers keep clear of (the panel header), padded
     private let hHead: array<Int32>;   // per hash cell: last placed marker in it, -1 none
     private let hNext: array<Int32>;   // per placed marker: the previous one in its cell
@@ -456,7 +456,7 @@ public class NMItemRenderer {
 
     // The last relayout's placements of layer L, before its walk: a pin stays while it is in view and nothing placed
     // before it (a higher layer, the selection, or an earlier pin of its own layer) covers it. Off under noDeclutter.
-    private func PlacePrev(L: ref<NightMapLayer>, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
+    private func PlacePrev(L: ref<OverlayMapLayer>, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
         if this.noDeclutter || L.index < 0 || L.index + 1 >= ArraySize(this.prevStart) { return; }
         let k = this.prevStart[L.index];
         let end = this.prevStart[L.index + 1];

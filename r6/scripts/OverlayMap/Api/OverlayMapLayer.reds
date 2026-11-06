@@ -58,7 +58,7 @@ public class OverlayMapLayer {
     public let alpha: array<Float>;
     public let struck: array<Bool>;
     public let dot: array<Bool>;
-    // Renderer scratch: the relayout stamp (NightMap.placeStamp) that last tested the item for placement, so a
+    // Renderer scratch: the relayout stamp (OverlayMap.placeStamp) that last tested the item for placement, so a
     // relayout tests each item at most once (NMItemRenderer replays the last placements before walking the cells).
     public let placedAt: array<Int32>;
     public let count: Int32;

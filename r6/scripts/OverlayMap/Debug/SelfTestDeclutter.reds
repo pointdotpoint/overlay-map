@@ -354,7 +354,7 @@ public abstract class NMDeclutterTests {
         // the view centre in the lone item's cell, the ring walk places it before the pile; 20 m west, the centre is in
         // the pile's cell, the pile runs first and the slice ends before the lone item. Persistence keeps it placed.
         let api13 = NMDeclutterTests.Api();
-        let pan = NMDeclutterTests.Layer(api13, n"test.dc.pan", 40, NightMapTier.Minor);
+        let pan = NMDeclutterTests.Layer(api13, n"test.dc.pan", 40, OverlayMapTier.Minor);
         i = 0;
         while i < 70 {
             NMDeclutterTests.At(pan, -100.0, 0.0);
@@ -376,7 +376,7 @@ public abstract class NMDeclutterTests {
         t.Check("declutter.fresh_walk_unchanged", !NMDeclutterTests.Placed(r13f, pan, lone)
             && r13f.culled == NMItemRenderer.LayerCullCap(), NMDeclutterTests.Info(r13f));
         // Persistence keeps the layer order: a higher-priority marker added on the lone item's spot still wins.
-        let over = NMDeclutterTests.Layer(api13, n"test.dc.panover", 90, NightMapTier.Major);
+        let over = NMDeclutterTests.Layer(api13, n"test.dc.panover", 90, OverlayMapTier.Major);
         NMDeclutterTests.At(over, 100.0, 50.0);
         r13p.Update(cam13, w, h);
         t.Check("declutter.persist_yields_to_higher", !NMDeclutterTests.Placed(r13p, pan, lone), NMDeclutterTests.Info(r13p));
