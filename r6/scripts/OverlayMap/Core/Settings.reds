@@ -345,14 +345,14 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "VHS tracking band")
     @runtimeProperty("ModSettings.description", "A noisy band that rolls down the map now and then, like a worn tape. Needs Hologram effects (applies on next open).")
-    public let vhsTracking: Bool = true;
+    public let vhsTracking: Bool = false;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "VHS glitch")
     @runtimeProperty("ModSettings.description", "A short picture glitch every few seconds. Needs Hologram effects (applies on next open).")
-    public let vhsGlitch: Bool = true;
+    public let vhsGlitch: Bool = false;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Display")
