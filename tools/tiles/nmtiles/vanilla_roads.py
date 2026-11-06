@@ -4,7 +4,7 @@ The vanilla world map draws its roads from one mesh, ``3dmap_roads``. The minima
 disagrees with it in places: at Border Crossing the minimap tags the highway through the checkpoint as wall lines, so
 the road broke off there; parts of Pacifica have no minimap roads at all; and widths differ. Measured 2026-11-05 at
 4 m/px, about 15% of each set's road area is missing from the other. Every road triangle therefore comes from the
-mesh, so the road network matches the vanilla map exactly. The minimap still supplies the buildings (``stroke``).
+mesh, so the road network matches the vanilla map exactly. Buildings come from vanilla_buildings.py.
 """
 from __future__ import annotations
 
@@ -23,8 +23,8 @@ def apply(city: dict[str, np.ndarray], roads: np.ndarray,
     minor, major = split_major(roads)
     out = dict(city)
     out["road"], out["road_major"] = minor.astype(np.float32), major.astype(np.float32)
-    log(f"vanilla roads: replaced minimap roads minor {len(city['road'])} major {len(city['road_major'])} "
-        f"with mesh roads minor {len(minor)} major {len(major)}")
+    log(f"vanilla roads: mesh roads minor {len(minor)} major {len(major)} "
+        f"(replacing {len(city['road'])} + {len(city['road_major'])} road triangles)")
     return out
 
 

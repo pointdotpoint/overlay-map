@@ -1,14 +1,11 @@
-"""Dogtown from the vanilla 3D map.
+"""Vanilla 3D-map helpers: exporting its sources, its road mesh in world space, road widths and building-box triangles.
 
-Phantom Liberty re-cooked Dogtown's streaming sectors without any MinimapDataNode, and the base-game copies they
-replace still hold the old Combat Zone layout. The only Dogtown geometry that matches the game is the vanilla 3D map:
-the ``ep1_dogtown`` building point cloud (buildings.py) and the ``3dmap_roads`` mesh. Inside the district (a region
-grown from its building boxes), the minimap triangles are dropped and the boxes join the building triangles the
-footprints are cut from. The road mesh supplies every road of the city, Dogtown's included (vanilla_roads.py).
+The module started as Dogtown's fix (Phantom Liberty re-cooked Dogtown without minimap data, so its roads and buildings
+came from the 3D map); since 2026-11-05 the whole map is drawn from these sources (vanilla_roads.py,
+vanilla_buildings.py).
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Callable
 
@@ -17,40 +14,12 @@ import shapely
 from PIL import Image, ImageDraw
 from scipy.ndimage import distance_transform_edt
 
-from nmtiles import buildings
 from nmtiles.minimap import MAJOR_WIDTH_M
 
-DISTRICT = "ep1_dogtown"
-REGION_BUFFER = 25.0    # m around each building box: covers the streets between them and the one along the wall
-REGION_CLOSE = 60.0     # m closing: joins the blocks across the widest boulevard and plaza
 WIDTH_RES = 1.0         # m per pixel of the road-width raster
 MAJOR_MIN_AREA = 2000.0  # m2: a wide patch smaller than this (a junction, a turning circle) is not a major road
 MESH_DIR = Path("meshes/base/entities/cameras/3dmap")   # under the build dir, as nmtiles.export writes it
 DATA_DIR = Path("bdata")
-
-
-def box_tris(b: buildings.Boxes) -> np.ndarray:
-    """(2N,3,2) float32: two triangles per box footprint."""
-    c = buildings.box_corners(b)
-    return np.concatenate([c[:, [0, 1, 2]], c[:, [0, 2, 3]]]).astype(np.float32)
-
-
-def region(b: buildings.Boxes):
-    """The district as a shapely geometry: the box footprints grown by REGION_BUFFER, closed, holes filled."""
-    polys = shapely.polygons(buildings.box_corners(b))
-    g = shapely.union_all(shapely.buffer(polys, REGION_BUFFER, quad_segs=2))
-    r = REGION_CLOSE / 2
-    g = g.buffer(r, join_style="mitre").buffer(-r, join_style="mitre")
-    return shapely.union_all([shapely.Polygon(p.exterior) for p in shapely.get_parts(g)
-                              if p.geom_type == "Polygon" and not p.is_empty])
-
-
-def drop_inside(tris: np.ndarray, g) -> np.ndarray:
-    """The triangles whose centre lies outside g."""
-    if not len(tris):
-        return tris
-    c = tris.mean(axis=1)
-    return tris[~shapely.contains_xy(g, c[:, 0], c[:, 1])]
 
 
 def split_major(tris: np.ndarray, res: float = WIDTH_RES) -> tuple[np.ndarray, np.ndarray]:
@@ -95,13 +64,6 @@ def road_tris(mesh_dir: Path) -> np.ndarray:
     return _mesh_tris(mesh_dir / "3dmap_roads.glb", flip, offset)[:, :, :2].astype(np.float32)
 
 
-def district_boxes(data_dir: Path) -> buildings.Boxes:
-    mesh = json.loads((data_dir / "3dmap_triangle_soup.mesh.json").read_text())
-    mat = buildings.parse_materials(mesh)[DISTRICT]
-    offset = buildings.parse_offsets(json.loads((data_dir / "3dmap_view.ent.json").read_text()))[DISTRICT]
-    return buildings.decode_boxes(json.loads((data_dir / f"{mat.texture}.xbm.json").read_text()), mat, offset)
-
-
 def ensure_sources(game: Path, out: Path, log: Callable[[str], None] = print) -> tuple[Path, Path]:
     """(mesh_dir, data_dir) under the build dir, exported from the game with WolvenKit when missing."""
     from nmtiles.export import export_building_data, export_meshes
@@ -114,16 +76,3 @@ def ensure_sources(game: Path, out: Path, log: Callable[[str], None] = print) ->
         log(f"dogtown: exporting the building point clouds into {data_dir}")
         export_building_data(game, data_dir, wolvenkit_exe())
     return mesh_dir, data_dir
-
-
-def apply(city: dict[str, np.ndarray], mesh_dir: Path, data_dir: Path,
-          log: Callable[[str], None] = print) -> dict[str, np.ndarray]:
-    """city with Dogtown's minimap triangles replaced by the 3D map's building boxes. Its roads, like every other
-    road, come from the 3D map's road mesh (vanilla_roads), which runs after this."""
-    boxes = district_boxes(data_dir)
-    g = region(boxes)
-    out = {k: drop_inside(v, g) for k, v in city.items()}
-    dropped = {k: len(city[k]) - len(out[k]) for k in city}
-    out["stroke"] = np.concatenate([out["stroke"], box_tris(boxes)])
-    log(f"dogtown: region {g.area / 1e6:.2f} km2; dropped minimap {dropped}; added {len(boxes)} boxes")
-    return out

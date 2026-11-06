@@ -251,36 +251,38 @@ public abstract class NMTheme {
             if Equals(set, "glow") { return new HDRColor(0.184, 1.0, 0.456, 1.0); }          // #2fff74
             if Equals(set, "outline") { return new HDRColor(0.227, 0.816, 0.424, 1.0); }     // #3ad06c
             if Equals(set, "road") { return new HDRColor(0.363, 0.924, 0.550, 1.0); }
-            return new HDRColor(0.106, 0.471, 0.227, 1.0);                                   // #1b783a (bfill)
+            return new HDRColor(0.175, 0.777, 0.375, 1.0);                                   // #2dc660 (bfill)
         }
         if theme == 2 {   // red, hue ~352 degrees; same lightness and saturation as cyan
             if Equals(set, "glow") { return new HDRColor(1.0, 0.184, 0.293, 1.0); }
             if Equals(set, "outline") { return new HDRColor(0.816, 0.227, 0.306, 1.0); }
             if Equals(set, "road") { return new HDRColor(0.924, 0.363, 0.438, 1.0); }
-            return new HDRColor(0.471, 0.106, 0.155, 1.0);   // bfill
+            return new HDRColor(0.777, 0.175, 0.256, 1.0);   // bfill
         }
         if theme == 3 {   // purple, hue ~275 degrees; same lightness and saturation as cyan
             if Equals(set, "glow") { return new HDRColor(0.660, 0.184, 1.0, 1.0); }
             if Equals(set, "outline") { return new HDRColor(0.571, 0.227, 0.816, 1.0); }
             if Equals(set, "road") { return new HDRColor(0.690, 0.363, 0.924, 1.0); }
-            return new HDRColor(0.319, 0.106, 0.471, 1.0);   // bfill
+            return new HDRColor(0.526, 0.175, 0.777, 1.0);   // bfill
         }
         if theme == 4 {   // amber, hue ~36 degrees; same lightness and saturation as cyan
             if Equals(set, "glow") { return new HDRColor(1.0, 0.674, 0.184, 1.0); }
             if Equals(set, "outline") { return new HDRColor(0.816, 0.580, 0.227, 1.0); }
             if Equals(set, "road") { return new HDRColor(0.924, 0.699, 0.363, 1.0); }
-            return new HDRColor(0.471, 0.325, 0.106, 1.0);   // bfill
+            return new HDRColor(0.777, 0.536, 0.175, 1.0);   // bfill
         }
         if Equals(set, "glow") { return new HDRColor(0.184, 0.612, 1.0, 1.0); }              // #2f9cff
         if Equals(set, "outline") { return new HDRColor(0.227, 0.561, 0.816, 1.0); }         // #3a8fd0
         // One road colour like the vanilla minimap (halfway between the old minor and major tints): one highway is
         // many road shapes, so tinting them by width striped it.
         if Equals(set, "road") { return new HDRColor(0.363, 0.694, 0.924, 1.0); }            // #5cb1ec
-        return new HDRColor(0.106, 0.290, 0.471, 1.0);                                       // #1b4a78 (bfill; one tint for fill and dots)
+        // Buildings are baked lit (grey = brightness, nmtiles.lit): this is a tall roof in full light; lower and
+        // shadowed roofs come out darker, so the tint is brighter than the old flat fill's #1b4a78.
+        return new HDRColor(0.184, 0.471, 0.749, 1.0);                                       // #2f78bf (bfill)
     }
     public static func TileOpacity(set: String) -> Float {
         if Equals(set, "glow") { return 0.50; }
-        if Equals(set, "bfill") { return 0.40; }
+        if Equals(set, "bfill") { return 0.90; }   // lit buildings: nearly opaque, so their shading reads
         if Equals(set, "outline") { return 0.40; }
         if Equals(set, "road") { return 0.90; }
         return 1.0;   // metro: full colour tiles

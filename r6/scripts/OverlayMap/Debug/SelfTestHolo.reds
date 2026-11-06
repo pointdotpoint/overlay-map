@@ -107,11 +107,12 @@ public abstract class NMHoloTests {
         t.Check("holo.accent_cyan_vs_green", t.Near(accC.Red, 0.310, 0.002) && t.Near(accC.Green, 0.890, 0.002) && t.Near(accC.Blue, 1.0, 0.002)
             && t.Near(accG.Red, 0.365, 0.002) && t.Near(accG.Green, 1.0, 0.002) && t.Near(accG.Blue, 0.541, 0.002), "");
         t.Check("holo.road_tint_cyan_vs_green", t.Near(roadC.Red, 0.363, 0.002) && t.Near(roadC.Green, 0.694, 0.002) && t.Near(roadG.Red, 0.363, 0.002) && t.Near(roadG.Green, 0.924, 0.002) && t.Near(roadG.Blue, 0.550, 0.002), "");
-        t.Check("holo.line_tints_cyan_vs_green", t.Near(fillC.Red, 0.106, 0.002) && t.Near(fillC.Blue, 0.471, 0.002) && t.Near(outG.Red, 0.227, 0.002) && t.Near(outG.Green, 0.816, 0.002) && t.Near(outG.Blue, 0.424, 0.002), "");
+        t.Check("holo.line_tints_cyan_vs_green", t.Near(fillC.Red, 0.184, 0.002) && t.Near(fillC.Blue, 0.749, 0.002) && t.Near(outG.Red, 0.227, 0.002) && t.Near(outG.Green, 0.816, 0.002) && t.Near(outG.Blue, 0.424, 0.002), "");
         t.Check("holo.glow_tint_is_accent", t.Near(glowC.Red, 0.184, 0.002) && t.Near(glowC.Blue, 1.0, 0.002) && t.Near(glowG.Green, 1.0, 0.002) && t.Near(glowG.Red, 0.184, 0.002), "");
         t.Check("holo.background_cyan_vs_green", t.Near(bgC.Red, 0.020, 0.002) && t.Near(bgC.Green, 0.051, 0.002) && t.Near(bgC.Blue, 0.094, 0.002) && t.Near(bgG.Green, 0.063, 0.002) && t.Near(bgG.Blue, 0.031, 0.002), "");
-        let lumFx = NMHoloTests.Lum("road", 0) > NMHoloTests.Lum("outline", 0) && NMHoloTests.Lum("outline", 0) > NMHoloTests.Lum("bfill", 0);
-        let lumFxG = NMHoloTests.Lum("road", 1) > NMHoloTests.Lum("outline", 1) && NMHoloTests.Lum("outline", 1) > NMHoloTests.Lum("bfill", 1);
+        // Lit buildings (2026-11-06) are a near-opaque shaded fill with faint step lines: roads must still read brightest.
+        let lumFx = NMHoloTests.Lum("road", 0) > NMHoloTests.Lum("bfill", 0) && NMHoloTests.Lum("road", 0) > NMHoloTests.Lum("outline", 0);
+        let lumFxG = NMHoloTests.Lum("road", 1) > NMHoloTests.Lum("bfill", 1) && NMHoloTests.Lum("road", 1) > NMHoloTests.Lum("outline", 1);
         t.Check("theme.roads_brighter_than_buildings", lumFx && lumFxG,
             t.F(NMHoloTests.Lum("road", 0)) + "/" + t.F(NMHoloTests.Lum("bfill", 0)) + "/" + t.F(NMHoloTests.Lum("outline", 0)));
         t.Check("theme.overlay_opacities", t.Near(NMTheme.RingsOpacity(), 0.05, 0.0001) && t.Near(NMTheme.VignetteOpacity(), 0.55, 0.0001)

@@ -1,4 +1,4 @@
-"""End-to-end tile build: minimap buildings + the 3D map's roads (+ Dogtown's buildings from the 3D map) -> footprints -> colourless mask tile sets -> BC7 tiles + UI atlas -> OverlayMap.archive + manifest."""
+"""End-to-end tile build: the vanilla 3D map's roads (3dmap_roads) and building boxes (district point clouds) -> lit building and mask tile sets -> BC7 tiles + UI atlas -> OverlayMap.archive + manifest."""
 from __future__ import annotations
 
 import argparse
@@ -16,9 +16,7 @@ from nmtiles.encode import encode_bc7
 from nmtiles.holo_atlas import build_holo_atlas
 from nmtiles.holo_preview import write_holo_previews
 from nmtiles.manifest import emit_manifest
-from nmtiles import boxfill, dogtown, ncart, vanilla_roads
-from nmtiles.footprints import load_or_build
-from nmtiles.minimap import load_city
+from nmtiles import dogtown, lit, ncart, vanilla_buildings, vanilla_roads
 from nmtiles.pack import deserialize_all, pack_archive, write_resource
 from nmtiles.preview import write_previews
 from nmtiles.render import level_grid
@@ -48,19 +46,17 @@ def main(argv: list[str] | None = None) -> int:
     os.nice(19)
     game = args.game.resolve()
     out = args.out
-    city = load_city(game, out / "minimap_cache", workers=args.jobs)
+    # Everything is drawn from the vanilla world map's own data, so the map matches it (review 2026-11-05).
     mesh_dir, data_dir = dogtown.ensure_sources(game, out)
-    city = dogtown.apply(city, mesh_dir, data_dir)
-    city = vanilla_roads.apply_from_mesh(city, mesh_dir)
-    city = boxfill.apply(city, boxfill.district_boxes(data_dir))
-    fp = load_or_build(city["road"], city["stroke"], out / "minimap_cache" / "footprints.npz", args.jobs,
-                         road_major=city["road_major"])
-    if not fp.polys:
-        raise SystemExit("error: no building footprints were produced")
-    pts = np.concatenate(fp.polys + [city["road"].reshape(-1, 2), city["road_major"].reshape(-1, 2)])
+    none = np.zeros((0, 3, 2), np.float32)
+    city = vanilla_roads.apply_from_mesh({"road": none, "road_major": none, "stroke": none}, mesh_dir)
+    boxes = lit.lit_boxes(vanilla_buildings.district_boxes(data_dir))
+    if not len(boxes):
+        raise SystemExit("error: no building boxes were loaded")
+    pts = np.concatenate([boxes.quads.reshape(-1, 2), city["road"].reshape(-1, 2), city["road_major"].reshape(-1, 2)])
     bounds = (float(pts[:, 0].min()), float(pts[:, 1].min()), float(pts[:, 0].max()), float(pts[:, 1].max()))
     del pts
-    print(f"road tris={len(city['road'])} major={len(city['road_major'])} building tris={len(city['stroke'])} footprints={len(fp.polys)} "
+    print(f"road tris={len(city['road'])} major={len(city['road_major'])} building boxes={len(boxes)} "
           f"bounds={bounds}", flush=True)
 
     net = ncart.Network.from_game(mesh_dir / "3dmap_metro.glb")
@@ -73,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     for li, mpp in enumerate(float(x) for x in args.levels.split(",")):
         t_lv = time.time()
         grid = level_grid(bounds, mpp)
-        src = make_sources(city["road"], fp.polys, max(grid.tile_world, 256.0), city["road_major"])
+        src = make_sources(city["road"], boxes, max(grid.tile_world, 256.0), city["road_major"])
         src.metro = ncart.level_paths(net, mpp)
         tiles = render_level_tiles(src, grid, li, png_dir, args.jobs)
         del src

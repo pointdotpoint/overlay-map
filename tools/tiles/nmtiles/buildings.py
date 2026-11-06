@@ -41,6 +41,7 @@ class Boxes:
     dy: np.ndarray
     dz: np.ndarray      # full height
     yaw: np.ndarray     # radians, counter-clockwise from +X
+    z: np.ndarray | None = None     # centre height (world metres); None where a caller has no heights
 
     def __len__(self) -> int:
         return len(self.cx)
@@ -48,9 +49,10 @@ class Boxes:
     @staticmethod
     def concat(parts: list["Boxes"]) -> "Boxes":
         if not parts:
-            return Boxes(*(np.zeros(0) for _ in range(6)))
-        return Boxes(*(np.concatenate([getattr(p, f) for p in parts])
-                       for f in ("cx", "cy", "dx", "dy", "dz", "yaw")))
+            return Boxes(*(np.zeros(0) for _ in range(7)))
+        fields = ("cx", "cy", "dx", "dy", "dz", "yaw")
+        z = (np.concatenate([p.z for p in parts]) if all(p.z is not None for p in parts) else None)
+        return Boxes(*(np.concatenate([getattr(p, f) for p in parts]) for f in fields), z)
 
 
 def _root(js: dict) -> dict:
@@ -114,7 +116,7 @@ def decode_boxes(tex_json: dict, mat: DistrictMaterial, offset: tuple[float, flo
     q = rot[valid] * 2.0 - 1.0                      # (x, y, z, w); effectively a pure yaw
     dims = size[valid][:, :3] * mat.cube_size
     return Boxes(p[:, 0] + offset[0], p[:, 1] + offset[1], dims[:, 0], dims[:, 1], dims[:, 2],
-                 2.0 * np.arctan2(q[:, 2], q[:, 3]))
+                 2.0 * np.arctan2(q[:, 2], q[:, 3]), p[:, 2])
 
 
 def box_corners(b: Boxes) -> np.ndarray:
