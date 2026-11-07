@@ -961,6 +961,10 @@
             return "theme " + ToString(NMTheme.ThemeIndex(s.holoColor));
         }
         if Equals(name, "opacity") { s.panelOpacity = StringToFloat(value); return "opacity " + FloatToStringPrec(s.panelOpacity, 2); }
+        // Map look: mapop <float> (whole panel), bright <float>, contrast <float>.
+        if Equals(name, "mapop") { s.mapOpacity = StringToFloat(value); return "mapop " + FloatToStringPrec(s.mapOpacity, 2); }
+        if Equals(name, "bright") { s.mapBrightness = StringToFloat(value); return "bright " + FloatToStringPrec(s.mapBrightness, 2); }
+        if Equals(name, "contrast") { s.mapContrast = StringToFloat(value); return "contrast " + FloatToStringPrec(s.mapContrast, 2); }
         // VHS look: scan <float>, glow <float>, tracking 0|1, glitch 0|1.
         if Equals(name, "scan") { s.scanlineStrength = StringToFloat(value); return "scan " + FloatToStringPrec(s.scanlineStrength, 2); }
         if Equals(name, "glow") { s.glowStrength = StringToFloat(value); return "glow " + FloatToStringPrec(s.glowStrength, 2); }
@@ -1234,6 +1238,28 @@
     }
 
     // Live state of the engine-animated VHS widgets: where the tracking band is and how bright, and the glitch intensity.
+    // Map look as applied on open: the tile canvas's colour correction and the panel root's opacity.
+    public func Soak_LookState() -> String {
+        if !IsDefined(this.panel) { return "map not open"; }
+        let out = "op=" + FloatToStringPrec(this.panel.root.GetOpacity(), 2) + " fx=" + ToString(NMFx.EffectCount(this.panel.tiles));
+        let i = 0;
+        while i < NMFx.EffectCount(this.panel.tiles) {
+            let cc = this.panel.tiles.effects[i] as inkColorCorrectionEffect;
+            if IsDefined(cc) {
+                out += " cc=" + FloatToStringPrec(cc.brightness, 2) + "/" + ToString(cc.isEnabled);
+            }
+            i += 1;
+        }
+        let bg = this.panel.mapBg.GetTintColor();
+        out += " bg=" + FloatToStringPrec(bg.Red, 3) + "," + FloatToStringPrec(bg.Green, 3) + "," + FloatToStringPrec(bg.Blue, 3);
+        let road = IsDefined(this.layers) ? this.layers.Layer("road") as NMTileLayer : null;
+        if IsDefined(road) {
+            let rt = road.Tint();
+            out += " road=" + FloatToStringPrec(rt.Red, 3) + "," + FloatToStringPrec(rt.Green, 3) + "," + FloatToStringPrec(rt.Blue, 3);
+        }
+        return out;
+    }
+
     public func Soak_FxState() -> String {
         if !IsDefined(this.panel) || !IsDefined(this.panel.holo) { return "map not open"; }
         let s = "track=";

@@ -137,6 +137,7 @@ public abstract class NMSoak {
             return sys.Soak_FxProbe(fp[1], ArraySize(fp) > 2 ? StringToFloat(fp[2]) : 1.0);
         }
         if Equals(command, "fx_state") { return sys.Soak_FxState(); }
+        if Equals(command, "look_state") { return sys.Soak_LookState(); }
         if Equals(command, "ncart_dump") { return sys.Soak_NcartDump(); }
         if Equals(command, "gps") { return sys.Soak_GpsRoute(); }
         if StrBeginsWith(command, "focus_at ") {
