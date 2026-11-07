@@ -348,6 +348,38 @@ public abstract class NMDeclutterTests {
         }
         t.Check("declutter.header_reserved", padOk && !anyIn && NMDeclutterTests.Placed(r12, al12, aId) && NMDeclutterTests.Placed(r12, mi12, outId),
             ToString(padOk) + ToString(anyIn) + " rect " + t.F(q.minX) + "," + t.F(q.minY) + "-" + t.F(q.maxX) + "," + t.F(q.maxY) + " " + NMDeclutterTests.Info(r12));
+
+        // 13. Panning never drops a pin that stays in view (the shards bug, 2026-11-02). A pile of 70 at (-100, 0) spends
+        // the layer's whole cull slice in its own cell, and a lone item sits at (100, 50), 400 px away at mpp 0.5. With
+        // the view centre in the lone item's cell, the ring walk places it before the pile; 20 m west, the centre is in
+        // the pile's cell, the pile runs first and the slice ends before the lone item. Persistence keeps it placed.
+        let api13 = NMDeclutterTests.Api();
+        let pan = NMDeclutterTests.Layer(api13, n"test.dc.pan", 40, OverlayMapTier.Minor);
+        i = 0;
+        while i < 70 {
+            NMDeclutterTests.At(pan, -100.0, 0.0);
+            i += 1;
+        }
+        let lone = NMDeclutterTests.At(pan, 100.0, 50.0);
+        let cam13 = NMDeclutterTests.Cam(0.5);
+        let r13p = NMItemRenderer.Create(api13, new inkCanvas(), 1.0);
+        cam13.SetCenter(10.0, 25.0);
+        r13p.Update(cam13, w, h);
+        let firstIn = NMDeclutterTests.Placed(r13p, pan, lone);
+        cam13.SetCenter(-10.0, 25.0);
+        r13p.Update(cam13, w, h);
+        t.Check("declutter.pan_keeps_placed", firstIn && NMDeclutterTests.Placed(r13p, pan, lone),
+            ToString(firstIn) + " " + NMDeclutterTests.Info(r13p));
+        // A fresh renderer at the second view still walks from scratch: the pile's cell first, so the lone item is out.
+        let r13f = NMItemRenderer.Create(api13, new inkCanvas(), 1.0);
+        r13f.Update(cam13, w, h);
+        t.Check("declutter.fresh_walk_unchanged", !NMDeclutterTests.Placed(r13f, pan, lone)
+            && r13f.culled == NMItemRenderer.LayerCullCap(), NMDeclutterTests.Info(r13f));
+        // Persistence keeps the layer order: a higher-priority marker added on the lone item's spot still wins.
+        let over = NMDeclutterTests.Layer(api13, n"test.dc.panover", 90, OverlayMapTier.Major);
+        NMDeclutterTests.At(over, 100.0, 50.0);
+        r13p.Update(cam13, w, h);
+        t.Check("declutter.persist_yields_to_higher", !NMDeclutterTests.Placed(r13p, pan, lone), NMDeclutterTests.Info(r13p));
         NMDeclutterTests.Cost();
     }
 

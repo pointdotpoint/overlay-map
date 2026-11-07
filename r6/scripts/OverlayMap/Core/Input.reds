@@ -206,7 +206,6 @@ public class NMInput {
         ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyPanUp) + "/" + NMInput.KeyName(s.keyPanLeft) + "/" + NMInput.KeyName(s.keyPanRight) + "/" + NMInput.KeyName(s.keyPanDown), "PAN"));
         ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyZoomIn) + " " + NMInput.KeyName(s.keyZoomOut), "ZOOM"));
         ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyRecenter), "FOLLOW"));
-        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyAct), "ACT"));
         if s.teleportEnabled {
             ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyTeleport), teleportLabel));
         }
@@ -215,13 +214,13 @@ public class NMInput {
         return h;
     }
 
-    // The hint bar while the map holds the keyboard: the any-keyboard set (the numpad keys still work, unlisted).
+    // The hint bar while the map holds the keyboard: the any-keyboard set (the numpad keys still work, unlisted). The act
+    // key is left out (as on every hint bar): the sidebar names it next to what it does on the selected marker.
     public static func TakeHints(s: ref<OverlayMapSettings>, view: String, teleportLabel: String) -> array<NMHint> {
         let h: array<NMHint>;
         ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapPanUp) + "/" + NMInput.KeyName(s.keyMapPanLeft) + "/" + NMInput.KeyName(s.keyMapPanDown) + "/" + NMInput.KeyName(s.keyMapPanRight), "PAN"));
         ArrayPush(h, NMHints.Of("WHEEL", "ZOOM"));
         ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapRecenter), "FOLLOW"));
-        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapAct), "ACT"));
         if s.teleportEnabled {
             ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapTeleport), teleportLabel));
         }

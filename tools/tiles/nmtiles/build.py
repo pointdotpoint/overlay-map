@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import shutil
+import re
 import sys
 import time
 from pathlib import Path
@@ -30,6 +31,22 @@ TPL = HERE / "templates"
 GLOW_TEX = 256     # glow tile texture size (other sets are 512)
 
 
+COLLECT_DATA = Path(__file__).resolve().parents[3] / "r6/scripts/OverlayMap/Generated/CollectData.reds"
+WORLD_MARGIN = 250.0   # metres of open map around the outermost geometry or pin
+
+
+def collect_spots(path: Path) -> np.ndarray:
+    """(x, y) of every collectible in the generated CollectData.reds ("C,x,y,z,record;..." strings)."""
+    pts = re.findall(r"(?:^|[\";])[A-Z],(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),-?\d+(?:\.\d+)?,", Path(path).read_text(), re.M)
+    return np.array(pts, np.float64).reshape(-1, 2)
+
+
+def world_bounds(point_sets: list[np.ndarray], margin: float) -> tuple[float, float, float, float]:
+    pts = np.concatenate([np.asarray(p, np.float64).reshape(-1, 2) for p in point_sets if len(p)])
+    return (float(pts[:, 0].min()) - margin, float(pts[:, 1].min()) - margin,
+            float(pts[:, 0].max()) + margin, float(pts[:, 1].max()) + margin)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--game", type=Path, default=Path.home() / "cyberpunk_symlink")
@@ -37,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--levels", default="0.5,1,2,4,8,16")
     ap.add_argument("--skip-export", action="store_true", help="accepted for compatibility; the build no longer reads 3D-map meshes")
     ap.add_argument("--jobs", type=int, default=4, help="workers for every process pool (BC7 encoding uses min(jobs, 2))")
-    ap.add_argument("--game-version", default="2.31")
+    ap.add_argument("--game-version", default="2.5")   # the game version the tiles are built from
     ap.add_argument("--ui-only", action="store_true", help="re-render only the UI and holo atlases into the last build's workspace and repack")
     args = ap.parse_args(argv)
     if args.ui_only:
@@ -53,9 +70,10 @@ def main(argv: list[str] | None = None) -> int:
     boxes = lit.lit_boxes(vanilla_buildings.district_boxes(data_dir))
     if not len(boxes):
         raise SystemExit("error: no building boxes were loaded")
-    pts = np.concatenate([boxes.quads.reshape(-1, 2), city["road"].reshape(-1, 2), city["road_major"].reshape(-1, 2)])
-    bounds = (float(pts[:, 0].min()), float(pts[:, 1].min()), float(pts[:, 0].max()), float(pts[:, 1].max()))
-    del pts
+    # The world also covers every collectible pin (some lie off the coast, past every road and building) plus a margin,
+    # or the map would reject those pins and stop panning short of them.
+    bounds = world_bounds([boxes.quads.reshape(-1, 2), city["road"].reshape(-1, 2), city["road_major"].reshape(-1, 2),
+                           collect_spots(COLLECT_DATA)], margin=WORLD_MARGIN)
     print(f"road tris={len(city['road'])} major={len(city['road_major'])} building boxes={len(boxes)} "
           f"bounds={bounds}", flush=True)
 

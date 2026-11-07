@@ -296,6 +296,17 @@ public class OverlayMapSystem extends ScriptableSystem {
         this.HandleKey(evt.GetKey(), evt.GetAction(), evt.IsShiftDown(), evt.IsControlDown(), evt.IsAltDown());
     }
 
+    // Free play: no menu (pause, hub, vendors, settings) and no photo mode.
+    private func GameplayActive() -> Bool {
+        let gi = this.GetGameInstance();
+        let photo = GameInstance.GetPhotoModeSystem(gi);
+        if IsDefined(photo) && photo.IsPhotoModeActive() {
+            return false;
+        }
+        let ui = GameInstance.GetBlackboardSystem(gi).Get(GetAllBlackboardDefs().UI_System);
+        return !IsDefined(ui) || !ui.GetBool(GetAllBlackboardDefs().UI_System.IsInMenu);
+    }
+
     // One key event, from the game's Input/Key callback (or the soak harness, which can't send real keys on a desktop).
     public func HandleKey(key: EInputKey, action: EInputAction, shift: Bool, ctrl: Bool, alt: Bool) -> Bool {
         let s = this.Settings();
@@ -305,6 +316,10 @@ public class OverlayMapSystem extends ScriptableSystem {
         if NMPad.IsPad(key) && (Equals(s.padOpen, OverlayMapPadOpen.HoldView) || this.padOwned || this.padCtx) {
             this.OnPadButton(s, key, action);
             return true;
+        }
+        // The open key is a letter by default: typed into menu search bars, and photo mode's zoom. Only gameplay opens.
+        if Equals(key, s.keyToggle) && !this.isOpen && !this.GameplayActive() {
+            return false;
         }
         this.input.takesKeys = this.isOpen && (this.kbOwned || this.padOwned);
         let used = this.input.Handle(s, key, action, shift, ctrl, alt, this.isOpen);
@@ -609,7 +624,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     private func UpdateWarning() {
         let text = "";
         if !NMTileManifest.Available() {
-            text = "TILE ARCHIVE MISSING - run tools/tiles build";
+            text = "Map data missing: reinstall Overlay Map (OverlayMap.archive)";
         } else if IsDefined(this.layers) && !this.layers.available {
             text = "Map tiles not found: install OverlayMap.archive";
         }
@@ -632,7 +647,7 @@ public class OverlayMapSystem extends ScriptableSystem {
                 if NotEquals(text, "") {
                     text += "  |  ";
                 }
-                text += "Tiles built for " + a + ", game is " + b + " - rebuild tiles";
+                text += OverlayMapSystem.VersionWarning(a, b);
             }
         }
         if NotEquals(text, "") {
@@ -641,9 +656,14 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
     }
 
+    // The panel warning when the map was built from another game version: worded for players.
+    public static func VersionWarning(built: String, running: String) -> String {
+        return "Map built for game " + built + ", you run " + running + ": some places may not match";
+    }
+
     // Canonical "major.minor" from the leading digits.digits token ("" = unknown, which never warns). A one-digit minor
-    // is joined with the patch number ("2.3.1" -> "2.31", as the game's 2.31 is spelled); a one-digit minor with no
-    // patch is ambiguous ("2.3") and unknown.
+    // is joined with the patch number ("2.3.1" -> "2.31", as the game's 2.31 is spelled); with no patch it stands as
+    // is ("2.5", as the game reports 2.5).
     public static func Normalise(v: String) -> String {
         let digits = "0123456789";
         let n = StrLen(v);
@@ -675,8 +695,6 @@ public class OverlayMapSystem extends ScriptableSystem {
                     minor += StrMid(v, i, 1);
                     i += 1;
                 }
-            } else {
-                return "";
             }
         }
         return major + "." + minor;

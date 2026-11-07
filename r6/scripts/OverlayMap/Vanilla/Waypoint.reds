@@ -96,14 +96,14 @@ public class NMWaypoint {
     // The waypoint's height on an empty spot: the cell's baked street level (open sea and off the grid read 0).
     public static func GroundZ(x: Float, y: Float) -> Float { return NMHeight.Low(x, y); }
 
-    // The waypoint hint, right after ACT; nothing when there is nothing to do.
+    // The waypoint hint, right after FOLLOW; nothing when there is nothing to do.
     public static func WithHint(hints: array<NMHint>, key: String, label: String) -> array<NMHint> {
         if StrLen(label) == 0 { return hints; }
         let out: array<NMHint>;
         let placed = false;
         for h in hints {
             ArrayPush(out, h);
-            if !placed && Equals(h.label, "ACT") {
+            if !placed && Equals(h.label, "FOLLOW") {
                 ArrayPush(out, NMHints.Of(key, label));
                 placed = true;
             }

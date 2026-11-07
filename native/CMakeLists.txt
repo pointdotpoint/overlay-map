@@ -25,6 +25,7 @@ add_library(OverlayMapNative SHARED OverlayMapNative/Main.cpp)
 set_target_properties(OverlayMapNative PROPERTIES PREFIX "" SUFFIX ".dll")
 target_link_libraries(OverlayMapNative PRIVATE RED4ext::SDK)
 if(MINGW)
-  target_link_options(OverlayMapNative PRIVATE -static-libgcc -static-libstdc++ -static)
+  # -s strips debug info (the static C++ runtime carries ~13 MB of it); the export table stays.
+  target_link_options(OverlayMapNative PRIVATE -static-libgcc -static-libstdc++ -static -s)
   target_compile_options(OverlayMapNative PRIVATE -include ${CMAKE_SOURCE_DIR}/shim/mingw-case-fix/mingw-compat.hpp)
 endif()

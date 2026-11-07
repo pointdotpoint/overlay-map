@@ -109,6 +109,9 @@
      "wait": 1
     },
     {
+     "cmd": "last_keys"
+    },
+    {
      "cmd": "cam",
      "expect": "follow"
     },

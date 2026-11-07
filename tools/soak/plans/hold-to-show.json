@@ -29,7 +29,7 @@
      "expect": "^closed"
     },
     {
-     "key": "94"
+     "key": "32"
     },
     {
      "wait": 2
@@ -39,7 +39,7 @@
      "expect": "^open"
     },
     {
-     "key": "94"
+     "key": "32"
     },
     {
      "wait": 2
@@ -52,7 +52,7 @@
      "cmd": "hold_mode"
     },
     {
-     "keydown": "94"
+     "keydown": "32"
     },
     {
      "wait": 2
@@ -75,7 +75,7 @@
      "cmd": "last_keys"
     },
     {
-     "keyup": "94"
+     "keyup": "32"
     },
     {
      "wait": 2
@@ -88,7 +88,7 @@
      "shot": "released"
     },
     {
-     "keydown": "94"
+     "keydown": "32"
     },
     {
      "wait": 1.5
@@ -98,7 +98,7 @@
      "expect": "^open"
     },
     {
-     "keyup": "94"
+     "keyup": "32"
     },
     {
      "wait": 1.5

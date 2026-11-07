@@ -12,6 +12,7 @@ public class OverlayMap {
     public let catPart: array<CName>;
     public let catKey: array<String>;   // "cat<i>": the renderer's atlas identity for a category icon (no per-frame string build)
     public let revision: Int32;
+    public let placeStamp: Int32;   // bumped by every renderer relayout (OverlayMapLayer.placedAt): stamps never clash
     // Bumped when layers are removed or reordered (indices change).
     public let layerEpoch: Int32;
     public let world: ref<NMRect>;

@@ -5,7 +5,7 @@ Steps, in order:
   {"key": "apostrophe"}               a real key press in the game's display
   {"keydown": "94"}, {"keyup": "94"}   the same, held across the steps between them. A key names an X keysym or a
                                       keycode; the session's layout decides what the game sees, so a keysym can land on
-                                      another key. Under gamescope, keycode 94 is the one the game calls IK_SingleQuote.
+                                      another key. Under gamescope, keycode 32 is O (the default open key); 94 is IK_SingleQuote.
   {"wait": 2.0}                       seconds, still watching for crashes
   {"shot": "name"}                    a screenshot into the run's screens/; "min_luma" fails it as black_screen
   {"await_visible": 90, "min_luma": 0.02}   screenshots until the frame isn't black, else black_screen

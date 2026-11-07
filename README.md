@@ -1,125 +1,92 @@
 # Overlay Map
 
-Formerly NightMap. Installing over the old version removes it and keeps your Mod Settings values and photo pins.
+A hologram-style 2D world map for Cyberpunk 2077 that opens over the game with one key, so you can check the map
+without leaving gameplay. It draws the vanilla map's own roads and buildings, shows the game's markers with their
+vanilla icons, mirrors your GPS routes, names the area under the cursor, and lets you set waypoints, fast travel and
+teleport from it.
 
-Hologram-style 2D world map overlay for Cyberpunk 2077 (redscript + Codeware). Opens on `'` alongside the vanilla map.
-
-- Spec: docs/superpowers/specs/2026-10-11-overlaymap-core-design.md
-- Plan: docs/superpowers/plans/2026-10-11-overlaymap-core.md
-- Map layer (sub-project 1b): docs/superpowers/specs/2026-10-12-overlaymap-vector-layer-design.md §11
+Developers and mod authors: see [docs/DEVELOPING.md](docs/DEVELOPING.md) and [docs/api.md](docs/api.md).
 
 ## Requirements
-- Cyberpunk 2077 2.31 or later (tiles are built for 2.31; a different major.minor shows a warning in the panel). The
-  waypoint plugin is tested on 2.5.
-- redscript and Codeware (required)
-- RED4ext (required by Codeware). Overlay Map also ships an optional RED4ext plugin, `OverlayMapNative`, for setting
-  waypoints (see Using it). Without it everything else works; the plugin finds the game's own tracking function at
-  runtime, checks its bytes, and switches the feature off on a game build where it can't find it.
-- Mod Settings (optional): settings menu and key rebinding; without it the defaults apply
-- RedFileSystem (optional): stores photo-pin spots in Overlay Map's own `photos.txt`; without it photo pins aren't kept
-- RedIMGRetriever (optional): photo thumbnails (image items)
 
-Every optional mod is detected with `@if(ModuleExists(...))`, so Overlay Map compiles and runs without it.
+- Cyberpunk 2077 **2.5**. The map is built from 2.5's game data; on another version the map shows a notice that some
+  places may not match.
+- [redscript](https://www.nexusmods.com/cyberpunk2077/mods/1511)
+- [Codeware](https://www.nexusmods.com/cyberpunk2077/mods/7780)
+- [RED4ext](https://www.nexusmods.com/cyberpunk2077/mods/2380) (Codeware needs it too)
 
-To build tiles: WolvenKit CLI (the build runs the executable named by `OVERLAYMAP_WOLVENKIT`, default `WolvenKit.CLI`), Wine + `texconv.exe`, Python 3 with numpy, Pillow, scipy and shapely.
+Optional, each adds one feature:
 
-## Build & install
-    cd tools/tiles && python3 -m nmtiles.build --game ~/cyberpunk_symlink   # tiles + UI atlas -> archive + manifest
-    # WolvenKit.CLI 8.19 cannot read the LOD-3 EP1 sectors of game 2.31+ (0-byte JSON). Use WolvenKit 10:
-    OVERLAYMAP_WOLVENKIT=~/.local/share/overlaymap-tools/wk10 python3 -m nmtiles.build --game ~/cyberpunk_symlink
-    tools/check.sh                                                          # offline redscript compile
-    tools/native/build.sh                                                   # optional plugin -> dist-native/ (mingw-w64)
-    tools/native/test.sh                                                    # host tests for the plugin's byte matchers
-    tools/install.sh                                                        # check + copy into the game (plugin too)
+- [Mod Settings](https://www.nexusmods.com/cyberpunk2077/mods/4885): the settings menu and key rebinding. Without it
+  every option keeps its default.
+- RedFileSystem: keeps your photo pins between sessions.
+- RedIMGRetriever: photo thumbnails in the sidebar.
 
-Install only while the game is closed. If the archive is replaced while the game runs, every resource load fails until
-a restart.
+## Install
 
-The map is drawn from the game's own minimap geometry:
-- The build decodes the `minimapEncodedShapes` embedded in the `exterior_*` streaming sectors. EP1 copies replace the
-  base ones.
-- It classifies roads, then merges buildings into clean footprints.
-- It bakes five colourless mask tile sets: `road_minor`, `road_major` (wide arterials, and short pieces bridging them),
-  `bfill` (building fill with a baked dot matrix), `glow` (from road rims) and `outline`. Each has six levels from
-  0.5 to 16 m/px, as BC7 512 px tiles.
-- Scripts and the archive must be installed together: scripts that expect five sets over an older four-set archive
-  draw no roads.
-- At runtime each set is tinted from `NMTheme` (`TileTint` / `TileOpacity`), so themes recolour the map without a
-  rebuild.
+Unzip into your Cyberpunk 2077 folder (the one with `bin`, `archive` and `r6`), or install with Vortex or Mod Organizer.
+The zip adds:
 
-Build options and caches:
-- Decoded sectors and footprints are cached in `tools/tiles/build/`, and encoded tiles are cached by content hash.
-  Rebuilds only redo what changed.
-- `--jobs N` caps the worker processes (default 4; BC7 encoding uses at most 2). Everything runs at low priority.
-- Previews are written to `tools/tiles/build/preview_minimap_{close,mid,far}.png`.
-- Calibration lives in `tools/tiles/calibration.json`.
+    archive/pc/mod/OverlayMap.archive
+    r6/scripts/OverlayMap/
+    red4ext/plugins/OverlayMapNative/
 
-Collectible spots come from the game's own files (never from a fan map), regenerated after a game patch:
-    python3 tools/collectibles/scan.py --wolvenkit <WolvenKit 10 CLI> --dotnet <.NET 10 runtime>   # world sectors
-    python3 tools/soak/soak.py campaign tools/soak/plans/lootdump.json --save <save>              # item records
-    python3 tools/collectibles/gen.py --scan ~/.cache/overlaymap-sectors/scan --dump <run>/dump-1/channel/lootdump.txt
-Area names come from the game's world sectors (area outlines) plus hand-made outlines in `tools/areas/custom_areas.json`:
-    python3 tools/areas/scan.py    # outlines -> ~/.cache/nightmap-sectors/areas/outlines.json (WolvenKit 10)
-    python3 tools/areas/gen.py     # -> r6/scripts/OverlayMap/Generated/AreaData.reds; --preview PNG draws them
-UI atlas only (new icons): `cd tools/tiles && python3 -m nmtiles.build --ui-only`.
+To uninstall, delete those three.
 
-## Using it
-- `'` open/close. By default the map takes keyboard and mouse while it is open, so V stops: W A S D (or the arrows) pan · mouse wheel zooms · Space follows V · F acts · E (or Enter) sets a waypoint · T teleports · R cycles the filter. Works on any keyboard, and the numpad keys below work too.
-- Mod Settings → Overlay Map → Keys → Keyboard map → V keeps moving: the map uses only the numpad, so V can walk and drive while it is open: Numpad 8/4/6/2 (7/9/1/3) pan · Numpad +/- zoom · Numpad 5 follow V · Numpad 0 act. Arrow keys are not used then (they steer vehicles); keep NumLock on.
-- Every key can be rebound in Mod Settings → Overlay Map.
-- Controller: hold View for half a second to open the map (a tap still does what it does in the game). While it is open the map takes the controller, so V stops: left stick pans, LT/RT zoom, A acts, RB sets a waypoint, X teleports, Y cycles the filter, R3 follows V, B (or View) closes. In a car the car coasts meanwhile. A map opened with the keyboard ignores the controller, so you can drive with a pad and use the numpad map. Mod Settings → Overlay Map → Controller → Open map button (Hold View / Off).
-- Zoom crossfades between six baked levels, from 0.5 m/px (single buildings) to 16 m/px (the whole city).
-- The game's own map markers (quests, gigs, NCPD, vendors, fast travel, …) appear with their vanilla icons, each on a dark plate ringed in its own colour. Move the map so a marker is nearest the centre to see its details card in the sidebar; `Numpad 0` tracks its quest, or clears your vanilla waypoint.
-- `Enter` (controller: RB) sets waypoints, like right-clicking on the vanilla map. On an empty spot it places the
-  game's own custom waypoint there, with its GPS route. On a job or gig it makes that quest the active one. On any other
-  marker (vendor, fast travel, drop point, …) it tracks that marker. On photo or collectible pins it places the
-  waypoint at the pin. On what is already tracked it clears it. There is one custom waypoint, as in vanilla: setting
-  another moves it. The game reads Numpad Enter and the main Enter as one key, so both work; rebind it in Mod Settings.
-  Everything but tracking a quest needs the `OverlayMapNative` plugin; without it Enter only tracks quests, and the hint
-  shows only where Enter does something.
-- `Numpad /` cycles the markers shown: All → Jobs (quests, gigs, psycho) → Services (ripperdoc, vendors, autofixer, drop points, fast travel, your property), like the vanilla quick lists; NCPD scanner and apartments to rent show only in All. A filter keeps its categories visible as long as quests and fast travel when zooming out.
-- There is no clustering. Markers shrink and fade out by tier as the map zooms out: minor ones (gigs, vendors, NCPD, collectibles, photo pins) first, quests and fast travel last, the tracked quest and V never. Markers never overlap: where two would, the more important one is drawn, and the district title and scale bar stay clear. Mod Settings → Overlay Map → Map filters turns each vanilla category on or off.
-- NCART lines (Map filters → NCART lines, off by default) draws the five metro lines over the map in their NCART colours (A red, B yellow, C cyan, D green, E orange), on the real track positions from the game's 3D map. Where lines share track they run side by side, like the NCART diagram; short connectors join the line to station markers that sit off the track. The lines keep their colours in every theme.
-- With no marker selected, the sidebar names the area under the cursor (the smallest one: Afterlife inside Little China), with its district chain above it; game areas are localized. Outside every area it stays empty. Places the game doesn't name, such as the Landfill, have hand-made outlines.
-- The district title sits top left (with the active filter under it) and the scale bar top right. The sidebar's bottom shows the tracked quest and its current objective.
-- The map background is half see-through by default (Display → Panel opacity, 0.5); installs still on the old 0.45 default move to 0.5 once.
-- Display → Map marker size scales the open map's markers; the default is half the original size (0.5).
-- Glow strength (Display, 0 to 3, default 1.5; 0 turns it off) makes the roads glow, with or without Hologram effects, so a plain background can still glow. The glow layer is blurred by the engine so bright roads bloom.
-- VHS look on the open map (Display, all need Hologram effects): Scanline strength (0 to 0.6, default 0.3), VHS tracking band (a noisy band rolls down the map every 11 s) and VHS glitch (two short engine glitch bursts every 6.5 s); both are off by default. Each applies on the next open.
-- GPS routes: the route to your vanilla waypoint (white) and to the tracked quest (yellow, teal for gigs) are mirrored from the minimap as flowing dots. Mod Settings → Overlay Map → Display → GPS routes.
-- The game's HUD fades out while the map is open (Display → Hide HUD while open).
-- Numpad . on any spot teleports V there: onto the roof or ground below, or into the water. On a fast travel marker it fast-travels, on a photo pin it goes to the photo's spot, and V's car comes along. Long jumps show the game's loading screen for a few seconds first.
-- Collectibles: every shard, tarot graffiti, iconic weapon, legendary cyberware and clothing, and skill shard placed in the world has its own pin (All view only). Collected ones stay on the map, scratched out and faded. Shards and tarot follow your journal; items count once they have been in V's inventory (the list is saved with the game; an item sold before this version doesn't count). Teleporting to a pin lands on the spot. Mod Settings → Overlay Map → Collectibles turns each category on or off, and hides collected ones.
-- Display → Hold key to show keeps the map up only while `'` is held, instead of pressing to open and again to close.
-- `Numpad .` on a selected fast travel marker fast travels there with the game's own fast travel (arrival at the dataterm, the game's own locks during some quests or combat). On foot only; your vehicle stays behind. Display → Fast travel key.
-- Mods can add their own items through the layer API.
+## Controls
 
-### Colours
-- Themes: Display → Hologram colour picks a prebuilt theme: Cyan (default), Green, Red, Purple or Amber. Each tints the tiles, overlays, frame, sidebar, hint bar and header text.
-- Display → Follow HUD Painter colours (off by default) takes every Overlay Map colour from the game's HUD palette, so a [HUD Painter](https://www.nexusmods.com/cyberpunk2077/mods/14935) preset recolours the map. Off keeps Overlay Map's own colours. Overlay Map has no per-colour settings of its own; HUD Painter is optional.
-- Display → Map size sets the size of the map panel.
+`O` opens and closes the map. It does nothing in menus or photo mode, where the game uses O itself.
+Change it under Mod Settings → Overlay Map → Keys → Open / close map.
 
-A corner minimap that replaces the game's own is shelved for now: its code is still in `r6/scripts/OverlayMap/Corner/` but it is switched off (`NMCornerHost.Shelved`) and its settings are hidden.
+**Keyboard (default).** While the map is open it takes the keyboard and mouse, so V stops:
 
-### Debug tools
-With Debug on (Mod Settings → Overlay Map → Debug tools), chords on the toggle key: Ctrl = self-test, Shift = perf suite (`python3 tools/results.py`), Alt = calibration dump (`cd tools/tiles && python3 -m nmtiles.calib`), Ctrl+Shift = debug layer.
+| Action | Key |
+|---|---|
+| Pan | W A S D, or the arrow keys |
+| Zoom | Mouse wheel |
+| Follow V again | Space |
+| Act on the selected marker | F |
+| Set waypoint / track | E or Enter |
+| Teleport / fast travel | T |
+| Cycle marker filter | R |
 
-## For mod authors
-See docs/api.md.
+**Numpad.** Mod Settings → Overlay Map → Keys → Keyboard map → *V keeps moving (numpad)*: the map uses only the numpad,
+so V can walk and drive while it is open. Numpad 8 4 6 2 pan (7 9 1 3 diagonally), + and − zoom, 5 follows V, 0 acts,
+Enter sets a waypoint, / cycles the filter, . teleports. Keep NumLock on.
 
-## Zoom
+**Controller.** Hold View for half a second to open the map (a tap still opens the pause menu). Left stick pans, LT/RT
+zoom, A acts, RB sets a waypoint, X teleports, Y cycles the filter, R3 follows V, B closes.
 
-The map zooms in to 0.1 m per pixel, 5x past the finest tiles, so roads and buildings get softer below the 100 M scale.
-Photo pins grow with the zoom past that point, up to 5x, and the first open of a session stays at 0.5 m per pixel.
+Every key can be rebound in Mod Settings → Overlay Map.
 
-## Automated testing
+## What it does
 
-`tools/soak` drives the real game headless in gamescope: it stages a build, backs up the install, saves and settings,
-loads a save, follows a plan in `tools/soak/plans`, and restores everything. The game must be closed: if it is open,
-preflight waits 30 s, then stops the campaign and leaves the game running (a campaign only kills a game it launched). Steam's launch
-options need `~/photomode_ui_improvements/scripts/soak/gamescope-wrap.sh` before `%command%`; normal launches pass through it.
+- **The map.** Roads and buildings come from the vanilla map's own data, with Dogtown and the Badlands included. It
+  zooms from single buildings to the whole city.
+- **Markers.** The game's markers (quests, gigs, NCPD, vendors, fast travel and more) appear with their vanilla icons.
+  Move the map so a marker is nearest the centre to see its details in the sidebar. Minor markers fade out first as you
+  zoom out; the tracked quest and V never do. Map filters in Mod Settings turn each category on or off.
+- **Waypoints.** E (or Enter) works like right-clicking on the vanilla map: on an empty spot it sets the game's custom
+  waypoint with its GPS route, on a job or gig it makes that quest active, on another marker it tracks it, and on what is
+  already tracked it clears it. Everything except tracking quests needs RED4ext.
+- **GPS routes.** Your waypoint route (white) and the tracked quest's route (yellow, teal for gigs) are drawn as
+  flowing dots.
+- **Area names.** With no marker selected, the sidebar names the area under the cursor and its district, in your game
+  language. A few places the game doesn't name, such as the Landfill, are named too (in English).
+- **Collectibles.** Every shard, tarot graffiti, iconic weapon, legendary cyberware and clothing piece, and skill shard
+  placed in the world has its own pin. Collected ones stay on the map, scratched out.
+- **Teleport and fast travel.** T on a fast travel marker fast travels there the game's way. Anywhere else it teleports
+  V (and V's car) to the spot. Turn the teleport key off under Display → Teleport key.
+- **NCART lines.** Map filters → NCART lines (off by default) draws the five metro lines in their colours.
+- **Photo pins.** Photos taken in photo mode are pinned where you took them (needs RedFileSystem).
+- **Look.** Five colour themes (Cyan, Green, Red, Purple, Amber), or follow your [HUD
+  Painter](https://www.nexusmods.com/cyberpunk2077/mods/14935) colours. Panel size and opacity, road glow, scanlines
+  and an optional VHS tracking band and glitch (off by default) are all under Display.
+- **Hold to show.** Display → Hold key to show keeps the map up only while the open key is held.
+- **For mod authors.** Other mods can add their own items to the map through a layer API.
 
-    python3 tools/soak/soak.py preflight --save QuickSave-7 --allow-cloud
-    python3 tools/soak/soak.py campaign tools/soak/plans/regression.json --save QuickSave-7 --allow-cloud
+## Known issues
 
-Results land in `.soak/results/<campaign>/report.md`. `tools/check.sh --soak` compiles with the harness's hooks.
+- The waypoint plugin has been tested on game 2.5 under Proton (Linux). If it can't find the game function it needs,
+  waypoints switch off and everything else keeps working.
+- The game's HUD fades out while the map is open (Display → Hide HUD while open turns that off).

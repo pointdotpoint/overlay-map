@@ -34,17 +34,19 @@ public abstract class NMWaypointTests {
         t.Check("wp.ground_z_finite", z == z && z > -500.0 && z < 1000.0, FloatToStringPrec(z, 1));
         t.Check("wp.ground_z_fallback", NMWaypoint.GroundZ(100000.0, 100000.0) == 0.0, "");
 
-        // The hint sits right after ACT and only when there is something to do.
+        // The hint sits right after FOLLOW and only when there is something to do.
         let s = NMSelfTest.HintSettings(false);
         let base = NMInput.Hints(s, "ALL", "TELEPORT");
         let with = NMWaypoint.WithHint(base, "ENTER", "SET WAYPOINT");
         let ok = ArraySize(with) == ArraySize(base) + 1;
         if ok {
+            let h2 = with[2];
             let h3 = with[3];
-            let h4 = with[4];
-            ok = Equals(h3.label, "ACT") && Equals(h4.label, "SET WAYPOINT") && Equals(h4.key, "ENTER");
+            ok = Equals(h2.label, "FOLLOW") && Equals(h3.label, "SET WAYPOINT") && Equals(h3.key, "ENTER");
         }
-        t.Check("wp.hint_after_act", ok, NMHints.Join(with));
+        let noAct = true;
+        for h in with { if Equals(h.label, "ACT") { noAct = false; } }
+        t.Check("wp.hint_after_follow", ok && noAct, NMHints.Join(with));
         t.Check("wp.hint_hidden_when_none", ArraySize(NMWaypoint.WithHint(base, "ENTER", "")) == ArraySize(base), "");
         t.Check("wp.key_name_enter", Equals(NMInput.KeyName(EInputKey.IK_Enter), "ENTER"), NMInput.KeyName(EInputKey.IK_Enter));
 

@@ -25,6 +25,9 @@ public class NMIconRef {
 // the map zooms out; a fully faded layer is skipped whole. Small layers are scanned item by item, larger ones cell by
 // cell nearest-first, so the budget keeps the pins around the view centre. In that order, a pin that would overlap
 // one already placed is skipped (declutter), so a more important marker wins and piles thin out as the map zooms out.
+// Markers persist: at its layer's turn, each layer first replays what the last relayout placed, then walks its cells.
+// The cull caps end a walk at a point that depends on the view centre's cell, so without the replay a pan across a
+// 250 m cell edge swapped which pins of a dense layer showed (shards around the Pacifica stadium, 2026-11-02).
 // Relayout happens only when the camera or the API revision changed.
 public class NMItemRenderer {
     private let api: wref<OverlayMap>;
@@ -101,6 +104,12 @@ public class NMItemRenderer {
     private let keepLayer: Int32;   // the selection (layer + item): never culled while selected
     private let keepItem: Int32;
     private let keptPlaced: Bool;   // this relayout placed the selection up front; the layer walk skips it
+    // The last relayout's placements, bucketed by layer index (prevOrd[prevStart[li] .. prevStart[li + 1]) are layer
+    // li's item ids, in placement order), replayed at each layer's turn. Dropped when layer indices change (layerEpoch).
+    private let prevStart: array<Int32>;
+    private let prevOrd: array<Int32>;
+    private let prevEpoch: Int32;
+    private let stamp: Int32;       // this relayout's OverlayMap.placeStamp: an item with placedAt == stamp was tested
     private let reserved: array<ref<NMRect>>;   // screen areas markers keep clear of (the panel header), padded
     private let hHead: array<Int32>;   // per hash cell: last placed marker in it, -1 none
     private let hNext: array<Int32>;   // per placed marker: the previous one in its cell
@@ -360,6 +369,9 @@ public class NMItemRenderer {
         this.relayouts += 1;
         this.thumbZoom = NMItemRenderer.ThumbZoom(cam.mpp);
         this.thumbPlan.BeginLayout();
+        this.TakeHistory();
+        api.placeStamp += 1;
+        this.stamp = api.placeStamp;
         ArrayClear(this.candX);
         ArrayClear(this.candY);
         ArrayClear(this.candReach);
@@ -392,6 +404,7 @@ public class NMItemRenderer {
                     this.curScale = NMTiers.Scale(tier, cam.mpp);
                     this.cellMiss = this.noDeclutter ? 2147483647 : this.CellMissCap(cam.mpp);
                     this.LayerRadii();
+                    this.PlacePrev(L, cam, viewW, viewH);
                     if L.count <= NMItemRenderer.ScanAllMax() {
                         this.PlaceAllOf(L, cam, viewW, viewH);
                     } else {
@@ -404,6 +417,61 @@ public class NMItemRenderer {
         this.HideUnused();
         this.FinishThumbs();
         return true;
+    }
+
+    // Buckets the last relayout's placements (the candidates, in placement order) by layer for PlacePrev.
+    private func TakeHistory() {
+        let n = ArraySize(this.api.layers);
+        ArrayResize(this.prevStart, n + 1);
+        let q = 0;
+        while q <= n { this.prevStart[q] = 0; q += 1; }
+        if this.api.layerEpoch != this.prevEpoch {   // RemoveLayer renumbered the layers: the history names others
+            this.prevEpoch = this.api.layerEpoch;
+            ArrayClear(this.candLayer);
+            ArrayClear(this.candItem);
+        }
+        let m = ArraySize(this.candLayer);
+        let k = 0;
+        while k < m {
+            let li = this.candLayer[k];
+            if li >= 0 && li < n { this.prevStart[li + 1] += 1; }
+            k += 1;
+        }
+        q = 1;
+        while q <= n { this.prevStart[q] += this.prevStart[q - 1]; q += 1; }
+        ArrayResize(this.prevOrd, this.prevStart[n]);
+        k = 0;
+        while k < m {
+            let li = this.candLayer[k];
+            if li >= 0 && li < n {   // prevStart[li] is the next free spot of bucket li; shifted back below
+                this.prevOrd[this.prevStart[li]] = this.candItem[k];
+                this.prevStart[li] += 1;
+            }
+            k += 1;
+        }
+        q = n;
+        while q > 0 { this.prevStart[q] = this.prevStart[q - 1]; q -= 1; }
+        this.prevStart[0] = 0;
+    }
+
+    // The last relayout's placements of layer L, before its walk: a pin stays while it is in view and nothing placed
+    // before it (a higher layer, the selection, or an earlier pin of its own layer) covers it. Off under noDeclutter.
+    private func PlacePrev(L: ref<OverlayMapLayer>, cam: ref<NMCamera>, viewW: Float, viewH: Float) {
+        if this.noDeclutter || L.index < 0 || L.index + 1 >= ArraySize(this.prevStart) { return; }
+        let k = this.prevStart[L.index];
+        let end = this.prevStart[L.index + 1];
+        while k < end && !this.Saturated() {
+            let id = this.prevOrd[k];
+            if L.IsAlive(id) { this.PlaceChip(L, id, cam, viewW, viewH); }
+            k += 1;
+        }
+    }
+
+    // A relayout from scratch: no placements to replay (tests comparing walks; the next Update still relays out only
+    // if the camera or the API changed, so pair it with Invalidate).
+    public func Forget() {
+        ArrayClear(this.candLayer);
+        ArrayClear(this.candItem);
     }
 
     // Rule 2: the selection is placed (and occupies its space) before every layer, like an Always item, so neither
@@ -992,11 +1060,15 @@ public class NMItemRenderer {
         if this.keptPlaced && id == this.keepItem && L.index == this.keepLayer {
             return false;   // the selection, already placed up front
         }
+        if L.placedAt[id] == this.stamp {
+            return false;   // already tested this relayout (replayed from the last one): placed, or culled for good
+        }
         let p = cam.WorldToMap(L.px[id], L.py[id]);
         let m = NMItemRenderer.CullMargin(this.scale);
         if p.X < -m || p.X > viewW + m || p.Y < -m || p.Y > viewH + m {
             return false;
         }
+        L.placedAt[id] = this.stamp;
         let style = L.shot[id] != 0u ? 3 : (L.dot[id] ? 4 : (L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0));
         if !this.noDeclutter && !this.Declutter(L, id, style, p) {
             return false;   // collides with a more important marker: no slot, no candidate

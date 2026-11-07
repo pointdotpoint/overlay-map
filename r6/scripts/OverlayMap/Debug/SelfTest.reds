@@ -405,7 +405,7 @@ public class NMSelfTest {
         this.Check("input.zoom_held", inp.zoomIn && !inp.zoomOut, "");
         this.Check("input.key_names", Equals(NMInput.KeyName(EInputKey.IK_NumPad8), "NUM 8") && Equals(NMInput.KeyName(EInputKey.IK_Backslash), "\\")
             && Equals(NMInput.KeyName(EInputKey.IK_NumPlus), "NUM +")
-            && Equals(NMInput.KeyName(EInputKey.IK_SingleQuote), "'"), NMInput.KeyName(EInputKey.IK_NumPad8));
+            && Equals(NMInput.KeyName(EInputKey.IK_SingleQuote), "'") && Equals(NMInput.KeyName(EInputKey.IK_O), "O"), NMInput.KeyName(EInputKey.IK_NumPad8));
         this.TakeKeysCases();
         this.HintCases();
     }
@@ -492,7 +492,7 @@ public class NMSelfTest {
         closed.takesKeys = true;
         this.Check("keys.ignored_when_closed", !closed.Handle(s, EInputKey.IK_W, press, false, false, false, false), "");
         let h = NMHints.Join(NMInput.TakeHints(s, "ALL", "TELEPORT"));
-        let want = "W/A/S/D PAN   ·   WHEEL ZOOM   ·   SPACE FOLLOW   ·   F ACT   ·   T TELEPORT   ·   R FILTER: ALL   ·   \\ CLOSE";
+        let want = "W/A/S/D PAN   ·   WHEEL ZOOM   ·   SPACE FOLLOW   ·   T TELEPORT   ·   R FILTER: ALL   ·   \\ CLOSE";
         this.Check("keys.hints", Equals(h, want), h);
         // Wheel notches ease the zoom; notches during an ease stack on its target.
         let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
@@ -516,11 +516,11 @@ public class NMSelfTest {
         let s = NMSelfTest.HintSettings(false);
         let hs = NMSelfTest.HintSettings(true);
         // The old NMInput.HintText / NMPad.HintText strings, captured before the bar replaced them.
-        let kb = "NUM 8/NUM 4/NUM 6/NUM 2 PAN   ·   NUM + NUM - ZOOM   ·   NUM 5 FOLLOW   ·   NUM 0 ACT   ·   NUM . TELEPORT   ·   NUM / FILTER: ALL   ·   \\ CLOSE";
-        let kbHold = "NUM 8/NUM 4/NUM 6/NUM 2 PAN   ·   NUM + NUM - ZOOM   ·   NUM 5 FOLLOW   ·   NUM 0 ACT   ·   NUM . FAST TRAVEL   ·   NUM / FILTER: SERVICES   ·   RELEASE \\ CLOSE";
-        let pad = "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT   ·   X TELEPORT   ·   Y FILTER: ALL   ·   B CLOSE";
-        let padHold = "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT   ·   X FAST TRAVEL   ·   Y FILTER: JOBS   ·   RELEASE VIEW CLOSE";
-        let padNoTp = "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT   ·   Y FILTER: ALL   ·   B CLOSE";
+        let kb = "NUM 8/NUM 4/NUM 6/NUM 2 PAN   ·   NUM + NUM - ZOOM   ·   NUM 5 FOLLOW   ·   NUM . TELEPORT   ·   NUM / FILTER: ALL   ·   \\ CLOSE";
+        let kbHold = "NUM 8/NUM 4/NUM 6/NUM 2 PAN   ·   NUM + NUM - ZOOM   ·   NUM 5 FOLLOW   ·   NUM . FAST TRAVEL   ·   NUM / FILTER: SERVICES   ·   RELEASE \\ CLOSE";
+        let pad = "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   X TELEPORT   ·   Y FILTER: ALL   ·   B CLOSE";
+        let padHold = "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   X FAST TRAVEL   ·   Y FILTER: JOBS   ·   RELEASE VIEW CLOSE";
+        let padNoTp = "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   Y FILTER: ALL   ·   B CLOSE";
         let j0 = NMHints.Join(NMInput.Hints(s, "ALL", "TELEPORT"));
         let j1 = NMHints.Join(NMInput.Hints(hs, "SERVICES", "FAST TRAVEL"));
         this.Check("hint.join_matches_legacy", Equals(j0, kb) && Equals(NMInput.HintText(s, "ALL", "TELEPORT"), kb)
@@ -691,7 +691,7 @@ public class NMSelfTest {
             this.F(gHeld.Y) + "," + this.F(zHeld) + "," + this.F(gAfter.Y));
         // Hint copy.
         this.Check("pad.hint_text", Equals(NMPad.HintText("ALL", "TELEPORT", true, false),
-            "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   A ACT   ·   X TELEPORT   ·   Y FILTER: ALL   ·   B CLOSE"), NMPad.HintText("ALL", "TELEPORT", true, false));
+            "LS PAN   ·   LT/RT ZOOM   ·   R3 FOLLOW   ·   X TELEPORT   ·   Y FILTER: ALL   ·   B CLOSE"), NMPad.HintText("ALL", "TELEPORT", true, false));
         this.Check("pad.hint_variants", StrContains(NMPad.HintText("JOBS", "FAST TRAVEL", true, true), "RELEASE VIEW CLOSE")
             && !StrContains(NMPad.HintText("ALL", "TELEPORT", false, false), "X "), "");
         this.HintBarCases();
@@ -705,7 +705,7 @@ public class NMSelfTest {
         let bar = NMHintBar.Create(new inkCanvas(), 0.0, l.mapH, l.w, l.hintH, l.scale, 0);
         bar.Set(longest);
         let right = l.w - NMHintBar.Margin() * l.scale;
-        this.Check("hint.bar_fits_1080p", ArraySize(longest) == 9 && bar.Shown() == ArraySize(longest) && bar.LaidOutWidth() > 0.0
+        this.Check("hint.bar_fits_1080p", ArraySize(longest) == 8 && bar.Shown() == ArraySize(longest) && bar.LaidOutWidth() > 0.0
             && bar.LaidOutWidth() <= l.w && this.Near(bar.LastRight(), right, 0.5),
             ToString(ArraySize(longest)) + "/" + ToString(bar.Shown()) + " " + this.F(bar.LaidOutWidth()) + "/" + this.F(l.w) + " last " + this.F(bar.LastRight()));
         bar.Set(NMInput.NumLockHints(NMPad.PassThroughHints(NMInput.Hints(NMSelfTest.HintSettings(true), "SERVICES", "FAST TRAVEL"))));
@@ -1022,6 +1022,10 @@ public class NMSelfTest {
         this.Check("version.normalise.suffix", Equals(OverlayMapSystem.Normalise("2.31 (build 12345)"), "2.31"), "");
         this.Check("version.normalise.leading_space", Equals(OverlayMapSystem.Normalise(" 2.31"), "2.31"), "");
         this.Check("version.normalise.garbage_unknown", Equals(OverlayMapSystem.Normalise("unknown"), ""), "");
+        this.Check("version.normalise.one_digit_minor", Equals(OverlayMapSystem.Normalise("2.5"), "2.5"), OverlayMapSystem.Normalise("2.5"));
+        this.Check("version.normalise.differs", NotEquals(OverlayMapSystem.Normalise("2.5"), OverlayMapSystem.Normalise("2.31")), "");
+        let w = OverlayMapSystem.VersionWarning("2.5", "2.31");
+        this.Check("version.warning_for_players", StrContains(w, "2.5") && StrContains(w, "2.31") && !StrContains(w, "rebuild") && !StrContains(w, "tools"), w);
     }
 
     private func TooltipCases() {

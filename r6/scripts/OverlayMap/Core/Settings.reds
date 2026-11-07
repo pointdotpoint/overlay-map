@@ -29,8 +29,8 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category", "Keys")
     @runtimeProperty("ModSettings.category.order", "0")
     @runtimeProperty("ModSettings.displayName", "Open / close map")
-    @runtimeProperty("ModSettings.description", "Toggles the OverlayMap overlay. With Debug on: Ctrl = self-test, Shift = perf suite, Alt = calibration dump, Ctrl+Shift = debug layer.")
-    public let keyToggle: EInputKey = EInputKey.IK_SingleQuote;
+    @runtimeProperty("ModSettings.description", "Opens and closes Overlay Map. With Debug on: Ctrl = self-test, Shift = perf suite, Alt = calibration dump, Ctrl+Shift = debug layer.")
+    public let keyToggle: EInputKey = EInputKey.IK_O;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Keys")
@@ -92,7 +92,7 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category", "Keys")
     @runtimeProperty("ModSettings.category.order", "0")
     @runtimeProperty("ModSettings.displayName", "Set waypoint / track")
-    @runtimeProperty("ModSettings.description", "On an empty spot or a pin: sets the custom waypoint there. On a job or gig: tracks its quest. On any other marker: tracks it. On the tracked one: clears it. Only while the map is open. Needs the OverlayMapNative plugin, except for quests.")
+    @runtimeProperty("ModSettings.description", "On an empty spot or a pin: sets the custom waypoint there. On a job or gig: tracks its quest. On any other marker: tracks it. On the tracked one: clears it. Only while the map is open. Needs RED4ext, except for quests.")
     public let keyWaypoint: EInputKey = EInputKey.IK_Enter;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
