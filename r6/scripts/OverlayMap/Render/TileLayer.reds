@@ -165,6 +165,7 @@ public class NMTileLayer extends NMMapLayer {
     }
 
     public func Name() -> String { return this.setName; }
+    public func Tint() -> HDRColor { return this.tint; }
 
     public func SetVisible(visible: Bool) {
         this.box.SetVisible(visible);

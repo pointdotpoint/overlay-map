@@ -40,6 +40,7 @@ public class NMPanel {
     public let root: ref<inkCanvas>;
     public let mapContent: ref<inkCanvas>;
     public let tiles: ref<inkCanvas>;
+    public let mapBg: ref<inkRectangle>;   // the map area's background fill (Map contrast scales its colour)
     public let routes: ref<inkCanvas>;
     public let shapes: ref<inkCanvas>;   // mirrored vanilla minimap markers (enemies, cones, devices)
     public let items: ref<inkCanvas>;
@@ -71,7 +72,7 @@ public class NMPanel {
         // One background layer per region (the panel fill only under the hint bar): stacking the panel fill under the map
         // fill would compound the opacity (0.45 over 0.45 reads as 0.70) and a low setting would not show the world through.
         NMUi.Rect(p.root, 0.0, layout.mapH, layout.w, layout.hintH, NMTheme.PanelBg(theme), opacity);
-        NMUi.Rect(p.root, 0.0, 0.0, layout.mapW, layout.mapH, NMTheme.HoloBackground(theme), opacity);
+        p.mapBg = NMUi.Rect(p.root, 0.0, 0.0, layout.mapW, layout.mapH, NMTheme.HoloBackground(theme), opacity);
 
         // Clipped viewport (inkScrollArea's internal mask), same pattern as Codeware's text input viewport. It clips at
         // the view's right edge: the map content is mapW wide (the camera centres on the map area), but nothing of it

@@ -1,0 +1,234 @@
+{
+ "name": "map-look",
+ "runs": [
+  {
+   "name": "look",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "expect": [
+    {
+     "log": "TEST\\|SUMMARY",
+     "min": 1
+    }
+   ],
+   "forbid": [
+    "TEST\\|FAIL"
+   ],
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 120
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "set bright 1.0"
+    },
+    {
+     "cmd": "set contrast 1.0"
+    },
+    {
+     "cmd": "set mapop 1.0"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "zoom 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "look_state"
+    },
+    {
+     "shot": "neutral"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "set bright 1.6"
+    },
+    {
+     "cmd": "set contrast 1.0"
+    },
+    {
+     "cmd": "set mapop 1.0"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "zoom 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "look_state"
+    },
+    {
+     "shot": "bright16"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "set bright 0.6"
+    },
+    {
+     "cmd": "set contrast 1.0"
+    },
+    {
+     "cmd": "set mapop 1.0"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "zoom 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "look_state"
+    },
+    {
+     "shot": "bright06"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "set bright 1.0"
+    },
+    {
+     "cmd": "set contrast 1.8"
+    },
+    {
+     "cmd": "set mapop 1.0"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "zoom 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "look_state"
+    },
+    {
+     "shot": "contrast18"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "set bright 1.0"
+    },
+    {
+     "cmd": "set contrast 0.6"
+    },
+    {
+     "cmd": "set mapop 1.0"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "zoom 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "look_state"
+    },
+    {
+     "shot": "contrast06"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "set bright 1.0"
+    },
+    {
+     "cmd": "set contrast 1.0"
+    },
+    {
+     "cmd": "set mapop 0.4"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "cmd": "zoom 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "look_state"
+    },
+    {
+     "shot": "mapop04"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    }
+   ]
+  }
+ ]
+}
