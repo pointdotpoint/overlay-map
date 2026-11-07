@@ -34,6 +34,7 @@ public class NMSelfTest {
         NMCollectTests.Run(this);
         NMTierTests.Run(this);
         NMDeclutterTests.Run(this);
+        NMRestrictTests.Run(this);
         NMPerfTests.Run(this);
         NMCornerTests.Run(this);
         NMPaletteTests.Run(this);

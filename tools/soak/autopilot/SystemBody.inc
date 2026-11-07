@@ -961,6 +961,8 @@
             return "theme " + ToString(NMTheme.ThemeIndex(s.holoColor));
         }
         if Equals(name, "opacity") { s.panelOpacity = StringToFloat(value); return "opacity " + FloatToStringPrec(s.panelOpacity, 2); }
+        // nomodal 1: take the keyboard without the modal popup game context (mouse-look probe).
+        if Equals(name, "nomodal") { this.soakNoModal = Equals(value, "1"); return "nomodal " + ToString(this.soakNoModal); }
         // Map look: mapop <float> (whole panel), bright <float>, contrast <float>.
         if Equals(name, "mapop") { s.mapOpacity = StringToFloat(value); return "mapop " + FloatToStringPrec(s.mapOpacity, 2); }
         if Equals(name, "bright") { s.mapBrightness = StringToFloat(value); return "bright " + FloatToStringPrec(s.mapBrightness, 2); }
@@ -1238,6 +1240,12 @@
     }
 
     // Live state of the engine-animated VHS widgets: where the tracking band is and how bright, and the glitch intensity.
+    // Our gameplay restrictions on V (NMRestrict) and whether the map thinks it holds them.
+    public func Soak_Restrict() -> String {
+        return "restrict " + ToString(NMRestrict.Count(GetPlayer(this.GetGameInstance()))) + " held " + ToString(this.kbRestricted)
+            + " uictx " + ToString(this.psmUiCtx) + " modal " + ToString(this.modalPushed);
+    }
+
     // Map look as applied on open: the tile canvas's colour correction and the panel root's opacity.
     public func Soak_LookState() -> String {
         if !IsDefined(this.panel) { return "map not open"; }

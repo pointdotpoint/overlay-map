@@ -1,0 +1,200 @@
+{
+ "name": "mouse-look",
+ "runs": [
+  {
+   "name": "look",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "expect": [
+    {
+     "log": "TEST\\|SUMMARY",
+     "min": 1
+    }
+   ],
+   "forbid": [
+    "TEST\\|FAIL"
+   ],
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "watch_keys"
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 120
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "cam",
+     "expect": "kb owned"
+    },
+    {
+     "cmd": "restrict",
+     "expect": "^restrict 7 held true"
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "mouse": [
+      800,
+      0
+     ],
+     "steps": 40
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "shot": "after_mouse"
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "kbd": "W",
+     "seconds": 1.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "cmd": "cam"
+    },
+    {
+     "kbd": "SPACE",
+     "seconds": 0.2
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "wheel": -2
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "shot": "after_wheel"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "kbd": "R",
+     "seconds": 0.2
+    },
+    {
+     "kbd": "F",
+     "seconds": 0.2
+    },
+    {
+     "kbd": "E",
+     "seconds": 0.2
+    },
+    {
+     "kbd": "T",
+     "seconds": 0.3
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "shot": "after_keys"
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "cam",
+     "expect": "kb free"
+    },
+    {
+     "cmd": "restrict",
+     "expect": "^restrict 0 held false"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "kbd": "W",
+     "seconds": 1.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "last_keys"
+    },
+    {
+     "cmd": "vpos"
+    },
+    {
+     "mouse": [
+      -800,
+      0
+     ],
+     "steps": 40
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "yaw"
+    }
+   ]
+  }
+ ]
+}
