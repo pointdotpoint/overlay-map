@@ -47,7 +47,7 @@ Change it under Mod Settings → Overlay Map → Keys → Open / close map.
 | Follow V again | Space |
 | Act on the selected marker | F |
 | Set waypoint / track | E or Enter |
-| Teleport / fast travel | T |
+| Teleport / fast travel | Q |
 | Cycle marker filter | R |
 
 **Numpad.** Mod Settings → Overlay Map → Keys → Keyboard map → *V keeps moving (numpad)*: the map uses only the numpad,
@@ -75,7 +75,7 @@ Every key can be rebound in Mod Settings → Overlay Map.
   language. A few places the game doesn't name, such as the Landfill, are named too (in English).
 - **Collectibles.** Every shard, tarot graffiti, iconic weapon, legendary cyberware and clothing piece, and skill shard
   placed in the world has its own pin. Collected ones stay on the map, scratched out.
-- **Teleport and fast travel.** T on a fast travel marker fast travels there the game's way. Anywhere else it teleports
+- **Teleport and fast travel.** Q on a fast travel marker fast travels there the game's way. Anywhere else it teleports
   V (and V's car) to the spot. Turn the teleport key off under Display → Teleport key.
 - **NCART lines.** Map filters → NCART lines (off by default) draws the five metro lines in their colours.
 - **Photo pins.** Photos taken in photo mode are pinned where you took them (needs RedFileSystem).
