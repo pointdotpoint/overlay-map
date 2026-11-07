@@ -294,6 +294,36 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Display")
     @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "Map opacity")
+    @runtimeProperty("ModSettings.description", "Opacity of the whole map: background, roads, buildings, markers, sidebar and frame. 1.0 is fully opaque; Panel opacity only changes the background (applies on next open).")
+    @runtimeProperty("ModSettings.step", "0.05")
+    @runtimeProperty("ModSettings.min", "0.2")
+    @runtimeProperty("ModSettings.max", "1.0")
+    public let mapOpacity: Float = 1.0;
+
+    @runtimeProperty("ModSettings.mod", "Overlay Map")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "Map brightness")
+    @runtimeProperty("ModSettings.description", "Brightness of the roads and buildings, where 1.0 is the original. Markers, routes and text keep their colours (applies on next open).")
+    @runtimeProperty("ModSettings.step", "0.05")
+    @runtimeProperty("ModSettings.min", "0.5")
+    @runtimeProperty("ModSettings.max", "2.0")
+    public let mapBrightness: Float = 1.0;
+
+    @runtimeProperty("ModSettings.mod", "Overlay Map")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "3")
+    @runtimeProperty("ModSettings.displayName", "Map contrast")
+    @runtimeProperty("ModSettings.description", "How far the roads and buildings stand out from the map background, where 1.0 is the original. Higher brightens the map and darkens the background; the colour stays the same. Markers, routes and text keep their colours (applies on next open).")
+    @runtimeProperty("ModSettings.step", "0.05")
+    @runtimeProperty("ModSettings.min", "0.5")
+    @runtimeProperty("ModSettings.max", "2.0")
+    public let mapContrast: Float = 1.0;
+
+    @runtimeProperty("ModSettings.mod", "Overlay Map")
+    @runtimeProperty("ModSettings.category", "Display")
+    @runtimeProperty("ModSettings.category.order", "3")
     @runtimeProperty("ModSettings.displayName", "Map marker size")
     @runtimeProperty("ModSettings.description", "Size of the markers on the open map, where 1.0 is the original size (applies on next open). The corner map has its own Corner marker size.")
     @runtimeProperty("ModSettings.step", "0.05")

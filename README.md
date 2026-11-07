@@ -80,8 +80,9 @@ Every key can be rebound in Mod Settings → Overlay Map.
 - **NCART lines.** Map filters → NCART lines (off by default) draws the five metro lines in their colours.
 - **Photo pins.** Photos taken in photo mode are pinned where you took them (needs RedFileSystem).
 - **Look.** Five colour themes (Cyan, Green, Red, Purple, Amber), or follow your [HUD
-  Painter](https://www.nexusmods.com/cyberpunk2077/mods/14935) colours. Panel size and opacity, road glow, scanlines
-  and an optional VHS tracking band and glitch (off by default) are all under Display.
+  Painter](https://www.nexusmods.com/cyberpunk2077/mods/14935) colours. Panel size and opacity, the opacity of the
+  whole map, map brightness and contrast, road glow, scanlines and an optional VHS tracking band and glitch (off by
+  default) are all under Display.
 - **Hold to show.** Display → Hold key to show keeps the map up only while the open key is held.
 - **For mod authors.** Other mods can add their own items to the map through a layer API.
 

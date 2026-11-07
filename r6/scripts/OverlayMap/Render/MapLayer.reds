@@ -26,6 +26,7 @@ public class NMLayerStack {
     public let available: Bool;
     private let theme: Int32;
     private let fx: ref<NMHoloFx>;   // unset: the glow layer keeps NMTheme.TileOpacity("glow")
+    private let contrast: Float;     // Map contrast; 0 (unset) means 1.0
 
     // Does a set get a layer? The glow set only exists while the hologram effects are on, the metro set (NCART lines)
     // only while its map filter is on.
@@ -70,8 +71,14 @@ public class NMLayerStack {
                 let k = this.fx.GlowBoost();
                 tint = new HDRColor(tint.Red * k, tint.Green * k, tint.Blue * k, tint.Alpha);
             }
-            l.SetTint(tint, op);
+            l.SetTint(NMFx.ContrastTint(tint, this.contrast > 0.0 ? this.contrast : 1.0), op);
         }
+    }
+
+    // Map contrast: every tile set's tint scaled by k (NMFx.ContrastTint), kept across theme changes.
+    public func SetContrast(k: Float) {
+        this.contrast = k;
+        this.ApplyTheme(this.theme);
     }
 
     // The glow knobs: the glow layer's opacity and brightness follow the gain (Glow strength); 0 hides it. There is

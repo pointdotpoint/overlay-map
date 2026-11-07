@@ -51,6 +51,58 @@ public abstract class NMFx {
         return Equals(dim, inkEBlurDimension.Horizontal) ? n"nm_blur_h" : n"nm_blur_v";
     }
     public static func GlitchName() -> CName { return n"nm_glitch"; }
+    public static func LookName() -> CName { return n"nm_look"; }
+
+    // Brightness is the engine's colour-correction multiplier around 1.0 (vanilla widgets use 0.7-5). Contrast is ours
+    // (ContrastTint/ContrastBg): the engine's contrast is a per-channel curve that bent the cyan map to deep blue or
+    // white in game. Keep these equal to the OverlayMapSettings slider ranges.
+    public static func LookMin() -> Float { return 0.5; }
+    public static func LookMax() -> Float { return 2.0; }
+    public static func OpacityMin() -> Float { return 0.2; }
+
+    // Contrast k: the map colours scaled by k and the map background by 1/k. Every channel scales alike, so the hue
+    // and the theme colour stay; HDR tints above 1 still add light.
+    public static func ContrastTint(c: HDRColor, k: Float) -> HDRColor {
+        let f = ClampF(k, NMFx.LookMin(), NMFx.LookMax());
+        return new HDRColor(c.Red * f, c.Green * f, c.Blue * f, c.Alpha);
+    }
+
+    public static func ContrastBg(c: HDRColor, k: Float) -> HDRColor {
+        return NMFx.ContrastTint(c, 1.0 / ClampF(k, NMFx.LookMin(), NMFx.LookMax()));
+    }
+
+    public static func ApplyLook(tiles: ref<inkWidget>, root: ref<inkWidget>, brightness: Float, opacity: Float) {
+        let b = ClampF(brightness, NMFx.LookMin(), NMFx.LookMax());
+        if IsDefined(root) {
+            root.SetOpacity(ClampF(opacity, NMFx.OpacityMin(), 1.0));
+        }
+        if !IsDefined(tiles) {
+            return;
+        }
+        let neutral = AbsF(b - 1.0) < 0.001;
+        let i = 0;
+        while i < ArraySize(tiles.effects) {
+            let e = tiles.effects[i] as inkColorCorrectionEffect;
+            if IsDefined(e) && Equals(e.effectName, NMFx.LookName()) {
+                e.brightness = b;
+                e.isEnabled = !neutral;
+                tiles.SetEffectEnabled(inkEffectType.ColorCorrection, NMFx.LookName(), !neutral);
+                return;
+            }
+            i += 1;
+        }
+        if neutral {
+            return;
+        }
+        let cc = new inkColorCorrectionEffect();
+        cc.effectName = NMFx.LookName();
+        cc.isEnabled = true;
+        cc.brightness = b;
+        cc.contrast = 1.0;
+        cc.saturation = 1.0;
+        NMFx.Push(tiles, cc);
+        tiles.SetEffectEnabled(inkEffectType.ColorCorrection, NMFx.LookName(), true);
+    }
 
     // One box blur pass along one axis; a soft 2D blur is a horizontal and a vertical pass.
     public static func AddBlur(w: ref<inkWidget>, dim: inkEBlurDimension, intensity: Float, samples: Int32) -> ref<inkBoxBlurEffect> {

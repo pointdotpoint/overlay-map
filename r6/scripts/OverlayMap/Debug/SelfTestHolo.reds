@@ -27,6 +27,64 @@ public abstract class NMHoloTests {
         NMHoloTests.RendererCases(t);
         NMHoloTests.VhsCases(t);
         NMHoloTests.NcartCases(t);
+        NMHoloTests.LookCases(t);
+    }
+
+    // Map brightness (one colour-correction effect on the tile canvas), map opacity (the whole panel) and map contrast
+    // (our own: the tile tints scaled by k and the map background by 1/k, so the hue never shifts; the engine's
+    // colour-correction contrast bent cyan to deep blue or white in game).
+    private static func LookCases(t: ref<NMSelfTest>) {
+        let tiles = new inkCanvas();
+        let root = new inkCanvas();
+        NMFx.ApplyLook(tiles, root, 1.0, 1.0);
+        t.Check("look.neutral_adds_no_effect", NMFx.EffectCount(tiles) == 0 && t.Near(root.GetOpacity(), 1.0, 0.0001),
+            ToString(NMFx.EffectCount(tiles)) + " o=" + t.F(root.GetOpacity()));
+        NMFx.ApplyLook(tiles, root, 1.3, 0.6);
+        let cc = NMFx.EffectCount(tiles) > 0 ? tiles.effects[0] as inkColorCorrectionEffect : null;
+        t.Check("look.brightness_effect", NMFx.EffectCount(tiles) == 1 && IsDefined(cc) && cc.isEnabled
+            && t.Near(cc.brightness, 1.3, 0.0001) && t.Near(cc.contrast, 1.0, 0.0001) && t.Near(cc.saturation, 1.0, 0.0001),
+            IsDefined(cc) ? "b=" + t.F(cc.brightness) + " c=" + t.F(cc.contrast) : ToString(NMFx.EffectCount(tiles)));
+        t.Check("look.map_opacity", t.Near(root.GetOpacity(), 0.6, 0.0001), t.F(root.GetOpacity()));
+        // Reapplying replaces the value instead of stacking a second effect; back to neutral turns it off.
+        NMFx.ApplyLook(tiles, root, 0.7, 1.0);
+        let cc2 = NMFx.EffectCount(tiles) > 0 ? tiles.effects[0] as inkColorCorrectionEffect : null;
+        t.Check("look.reapply_replaces", NMFx.EffectCount(tiles) == 1 && IsDefined(cc2) && t.Near(cc2.brightness, 0.7, 0.0001), ToString(NMFx.EffectCount(tiles)));
+        NMFx.ApplyLook(tiles, root, 1.0, 1.0);
+        let cc3 = NMFx.EffectCount(tiles) > 0 ? tiles.effects[0] as inkColorCorrectionEffect : null;
+        t.Check("look.back_to_neutral", !IsDefined(cc3) || !cc3.isEnabled, "");
+        // Out-of-range values are clamped, so a hand-edited setting can never hide the map completely.
+        NMFx.ApplyLook(tiles, root, 9.0, 0.0);
+        let cc4 = NMFx.EffectCount(tiles) > 0 ? tiles.effects[0] as inkColorCorrectionEffect : null;
+        t.Check("look.clamped", IsDefined(cc4) && t.Near(cc4.brightness, NMFx.LookMax(), 0.0001) && t.Near(root.GetOpacity(), NMFx.OpacityMin(), 0.0001),
+            t.F(root.GetOpacity()));
+        // Contrast: tiles x k, background x 1/k, alpha kept, hue kept (channel ratios unchanged), 1.0 is identity.
+        let c = new HDRColor(0.2, 0.6, 0.8, 0.9);
+        let up = NMFx.ContrastTint(c, 1.5);
+        let bg = NMFx.ContrastBg(c, 1.5);
+        t.Check("look.contrast_tiles_up", t.Near(up.Red, 0.3, 0.0001) && t.Near(up.Green, 0.9, 0.0001) && t.Near(up.Blue, 1.2, 0.0001) && t.Near(up.Alpha, 0.9, 0.0001),
+            t.F(up.Red) + "," + t.F(up.Green) + "," + t.F(up.Blue));
+        t.Check("look.contrast_bg_down", t.Near(bg.Red, 0.2 / 1.5, 0.0001) && t.Near(bg.Blue, 0.8 / 1.5, 0.0001) && t.Near(bg.Alpha, 0.9, 0.0001), t.F(bg.Red));
+        let low = NMFx.ContrastTint(c, 0.5);
+        t.Check("look.contrast_keeps_hue", t.Near(low.Green / low.Red, 3.0, 0.0001) && t.Near(low.Blue / low.Red, 4.0, 0.0001), t.F(low.Red));
+        let same = NMFx.ContrastTint(c, 1.0);
+        t.Check("look.contrast_identity", t.Near(same.Red, 0.2, 0.0001) && t.Near(same.Blue, 0.8, 0.0001), "");
+        let wild = NMFx.ContrastTint(c, 9.0);
+        t.Check("look.contrast_clamped", t.Near(wild.Red, 0.2 * NMFx.LookMax(), 0.0001), t.F(wild.Red));
+        // The layer stack applies it to every tile set on top of the theme (and glow) tint.
+        let parent = new inkCanvas();
+        let st = NMLayerStack.Create(parent, 0, true);
+        let road0 = st.Layer("road") as NMTileLayer;
+        let before = IsDefined(road0) ? road0.Tint() : new HDRColor(0.0, 0.0, 0.0, 0.0);
+        st.SetContrast(1.5);
+        let road1 = st.Layer("road") as NMTileLayer;
+        let after = IsDefined(road1) ? road1.Tint() : new HDRColor(0.0, 0.0, 0.0, 0.0);
+        t.Check("look.contrast_stack", IsDefined(road1) && t.Near(after.Green, before.Green * 1.5, 0.0001) && t.Near(after.Blue, before.Blue * 1.5, 0.0001),
+            t.F(before.Green) + "->" + t.F(after.Green));
+        st.ApplyTheme(1);
+        let themed = NMTheme.TileTint("road", 1);
+        let road2 = st.Layer("road") as NMTileLayer;
+        let kept = IsDefined(road2) ? road2.Tint() : new HDRColor(0.0, 0.0, 0.0, 0.0);
+        t.Check("look.contrast_survives_theme", t.Near(kept.Green, themed.Green * 1.5, 0.0001), t.F(kept.Green));
     }
 
     // NCART lines: a full-colour tile set shown only with the "NCART lines" filter, never themed.

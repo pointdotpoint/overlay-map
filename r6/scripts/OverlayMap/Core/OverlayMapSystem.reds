@@ -597,6 +597,10 @@ public class OverlayMapSystem extends ScriptableSystem {
         this.holoEffects = IsDefined(s) ? s.hologramEffects : true;
         this.holoFx = NMHoloFx.From(s);
         this.panel = NMPanel.Build(window, layout, IsDefined(s) ? s.panelOpacity : NMTheme.DefaultPanelOpacity(), this.holoTheme, this.holoEffects, this.holoFx);
+        if IsDefined(s) {
+            NMFx.ApplyLook(this.panel.tiles, this.panel.root, s.mapBrightness, s.mapOpacity);
+            this.panel.mapBg.SetTintColor(NMFx.ContrastBg(NMTheme.HoloBackground(this.holoTheme), s.mapContrast));
+        }
         if !IsDefined(s) || s.hideHud {
             this.hud = NMHudHider.Hide(window, this.panel.root);
         }
@@ -1029,6 +1033,9 @@ public class OverlayMapSystem extends ScriptableSystem {
         // The glow layer follows Glow strength, not Hologram effects: a plain map can still glow.
         this.layers = NMLayerStack.Create(this.panel.tiles, this.holoTheme, IsDefined(this.holoFx) && this.holoFx.WantsGlow(), IsDefined(ms) && ms.filterNcart);
         this.layers.SetGlow(this.holoFx);
+        if IsDefined(ms) {
+            this.layers.SetContrast(ms.mapContrast);
+        }
         let markerSize = IsDefined(ms) ? ms.markerSize : 0.5;
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, NMTheme.MapMarkerScale(l.scale, markerSize));
         this.renderer.SetShotHandler(this.Photos().Handler());
