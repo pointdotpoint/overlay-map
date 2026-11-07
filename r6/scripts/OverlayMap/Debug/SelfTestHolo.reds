@@ -151,6 +151,15 @@ public abstract class NMHoloTests {
     }
 
     private static func ThemeCases(t: ref<NMSelfTest>) {
+        // Hint-bar labels and the scale bar follow the theme: cyan keeps the old text colour, the others are the same pale
+        // tint at their own hue (red reads red, not blue-white).
+        let c0 = NMTheme.HoloTextOwn(0);
+        let red = NMTheme.HoloTextOwn(2);
+        let green = NMTheme.HoloTextOwn(1);
+        let amber = NMTheme.HoloTextOwn(4);
+        t.Check("theme.text_cyan_unchanged", t.Near(c0.Red, 0.784, 0.001) && t.Near(c0.Green, 0.965, 0.001) && t.Near(c0.Blue, 1.0, 0.001), t.F(c0.Red));
+        t.Check("theme.text_follows_hue", red.Red > red.Green && red.Red > red.Blue && green.Green > green.Red && green.Green > green.Blue
+            && amber.Red > amber.Blue && amber.Green > amber.Blue, t.F(red.Red) + "," + t.F(red.Green) + "," + t.F(red.Blue));
         // Read through locals: field access on a call temporary reads 0 in redscript.
         let accC: HDRColor = NMTheme.HoloAccent(0);
         let accG: HDRColor = NMTheme.HoloAccent(1);

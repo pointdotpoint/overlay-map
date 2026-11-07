@@ -147,6 +147,9 @@ class FakeKbm:
     def wheel(self, notches):
         self.log.append(f"wheel {notches}")
 
+    def move(self, dx, dy, steps):
+        self.log.append(f"move {dx} {dy} {steps}")
+
     def release_all(self):
         self.log.append("release_all")
 
@@ -202,6 +205,41 @@ def test_a_plan_without_kbd_steps_makes_no_keyboard(paths):
 def test_no_uinput_keyboard_is_a_harness_error(paths):
     r = drive(paths, FakeGame(paths), [{"wheel": 1}], kbm_factory=lambda: FakeKbm([], fail=True))
     assert r.verdict == "infra_error" and "virtual keyboard" in r.detail
+
+
+def test_mouse_step_moves_the_virtual_mouse(paths):
+    log = []
+    r = drive(paths, FakeGame(paths), [{"mouse": [400, 0], "steps": 20}, {"mouse": [0, -50]}],
+              kbm_factory=lambda: FakeKbm(log))
+    assert r.verdict == "pass", r.detail
+    assert log == ["open", "move 400 0 20", "move 0 -50 10", "release_all", "close"]
+
+
+def test_mouse_move_splits_into_relative_reports():
+    from tools.soak.kbm import move_events, EV_REL, REL_X, REL_Y
+    assert move_events(100, -40, 4) == [[(EV_REL, REL_X, 25), (EV_REL, REL_Y, -10)]] * 4
+    # Remainders land on the last report so the total is exact.
+    ev = move_events(10, 0, 3)
+    assert sum(e[0][2] for e in ev) == 10 and len(ev) == 3
+
+
+def test_every_kbd_key_in_the_plans_is_known():
+    import glob
+    from tools.soak.kbm import KEYS
+    used = set()
+    for f in glob.glob("tools/soak/plans/*.json"):
+        def walk(o):
+            if isinstance(o, dict):
+                for k in ("kbd", "kbddown", "kbdup"):
+                    if k in o:
+                        used.add(o[k])
+                for v in o.values():
+                    walk(v)
+            elif isinstance(o, list):
+                for v in o:
+                    walk(v)
+        walk(json.load(open(f)))
+    assert used - set(KEYS) == set()
 
 
 def test_wheel_reports_one_event_per_notch():

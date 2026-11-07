@@ -65,6 +65,10 @@ public class OverlayMapSystem extends ScriptableSystem {
     private let padOwned: Bool;       // the map holds the pad: the game's actions are held off
     private let padCtx: Bool;         // UIGameContext.ModalPopup pushed by OverlayMap
     private let kbOwned: Bool;        // the map holds keyboard and mouse (Keyboard map: Takes keyboard and mouse)
+    private let kbRestricted: Bool;   // on foot with the keyboard taken: V held by NMRestrict (mouse-look stays)
+    private let psmUiCtx: Bool;       // the player state machine's UI context is on (SetPlayerUiContext)
+    public let soakNoModal: Bool;     // test harness: take the keyboard without the modal popup game context
+    private let modalPushed: Bool;    // UIGameContext.ModalPopup is on the stack because of us
     private let padCtxToken: Int32;   // invalidates a scheduled release when the map takes the pad again
     private let padReleaseWait: Bool; // closed by a pad button: release the context after that button's release
     private let padPolling: Bool;
@@ -256,6 +260,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     }
     public func Routes() -> ref<NMRouteLayer> { return this.routes; }
     public func IsOpen() -> Bool { return this.isOpen; }
+    public func HoldsV() -> Bool { return this.kbRestricted; }   // NMRestrict's restrictions are on V for the open map
     public func Camera() -> ref<NMCamera> { return this.camera; }
     public func Panel() -> ref<NMPanel> { return this.panel; }
 
@@ -347,6 +352,8 @@ public class OverlayMapSystem extends ScriptableSystem {
     private func OnPlayerAttach(request: ref<PlayerAttachRequest>) {
         let player = request.owner;
         if IsDefined(player) && player.IsPlayer() {
+            NMRestrict.Remove(player);   // a save made with the map open must not load with V held
+            this.kbRestricted = false;
             if IsDefined(this.padListener) {
                 this.padListener.UnregisterInputListener(this, n"OpenPauseMenu");
             }
@@ -478,6 +485,7 @@ public class OverlayMapSystem extends ScriptableSystem {
             if !this.padCtx {
                 this.padCtx = true;
                 GameInstance.GetUISystem(this.GetGameInstance()).PushGameContext(UIGameContext.ModalPopup);
+                this.modalPushed = true;
                 this.SetPlayerUiContext(true);
             }
         }
@@ -485,13 +493,33 @@ public class OverlayMapSystem extends ScriptableSystem {
 
     // Opened from the keyboard with Keyboard map on Takes keyboard and mouse: V stops as in pad mode, so WASD, the
     // arrows and the wheel are free for the map (the wheel no longer switches weapons).
+    // On foot V is held by gameplay restrictions (NMRestrict), not the player state machine's UI context: that context
+    // also froze mouse-look, and the camera should keep turning with the mouse. In a car the UI context stays.
     private func TakeKeyboard() {
         this.kbOwned = true;
         this.padCtxToken += 1;
+        let player = GetPlayer(this.GetGameInstance());
+        let onFoot = IsDefined(player) && !IsDefined(GetMountedVehicle(player));
+        if onFoot && !this.kbRestricted {
+            NMRestrict.Apply(player);
+            this.kbRestricted = true;
+        }
         if !this.padCtx {
             this.padCtx = true;
-            GameInstance.GetUISystem(this.GetGameInstance()).PushGameContext(UIGameContext.ModalPopup);
-            this.SetPlayerUiContext(true);
+            if !this.soakNoModal {
+                GameInstance.GetUISystem(this.GetGameInstance()).PushGameContext(UIGameContext.ModalPopup);
+                this.modalPushed = true;
+            }
+            if !onFoot {
+                this.SetPlayerUiContext(true);
+            }
+        }
+    }
+
+    private func ReleaseRestrictions() {
+        if this.kbRestricted {
+            this.kbRestricted = false;
+            NMRestrict.Remove(GetPlayer(this.GetGameInstance()));
         }
     }
 
@@ -509,8 +537,13 @@ public class OverlayMapSystem extends ScriptableSystem {
         this.padCtx = false;
         this.padReleaseWait = false;
         this.pad.ClearHeld();
-        GameInstance.GetUISystem(this.GetGameInstance()).PopGameContext(UIGameContext.ModalPopup);
-        this.SetPlayerUiContext(false);
+        if this.modalPushed {
+            this.modalPushed = false;
+            GameInstance.GetUISystem(this.GetGameInstance()).PopGameContext(UIGameContext.ModalPopup);
+        }
+        if this.psmUiCtx {
+            this.SetPlayerUiContext(false);
+        }
     }
 
     // The player state machine's UI input context, as the game's non-pausing tutorial popups use it: V doesn't walk,
@@ -520,6 +553,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         if !IsDefined(player) {
             return;
         }
+        this.psmUiCtx = on;
         let e = new PSMPostponedParameterBool();
         e.id = on ? n"OnUIContextActive" : n"OnUIContextInactive";
         e.value = true;
@@ -865,6 +899,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
         if this.kbOwned {
             this.kbOwned = false;
+            this.ReleaseRestrictions();
             if !padWasOwned {
                 this.SchedulePadRelease(0.1);
             }
