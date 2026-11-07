@@ -19,6 +19,7 @@ Steps, in order:
   {"kbd": "W", "seconds": 1.0}        a virtual keyboard and mouse (tools/soak/kbm.py): a held key, reaching the game
   {"kbddown": "D"}, {"kbdup": "D"}    on a Wayland desktop where xdotool can't; held across the steps between them
   {"wheel": 3}                        mouse wheel notches, + is up. The device exists only for plans that use it.
+  {"mouse": [400, 0], "steps": 20}    a relative mouse move in counts (+x right, +y down), split into `steps` reports
 
 pass: every step done and the game exited by itself. crash: a new crash report, or the process gone.
 hang: no heartbeat for Timeouts.beat, or the game not exiting. black_screen: the game runs but shows nothing.
@@ -106,7 +107,7 @@ def uses_pad(steps: list[dict]) -> bool:
     return any(k in step for step in steps for k in PAD_STEPS)
 
 
-KBM_STEPS = ("kbd", "kbddown", "kbdup", "wheel")
+KBM_STEPS = ("kbd", "kbddown", "kbdup", "wheel", "mouse")
 
 
 def _virtual_kbm():
@@ -253,6 +254,10 @@ class Runner:
         elif "wheel" in step:
             self.game.focus()
             self.kbm.wheel(int(step["wheel"]))
+        elif "mouse" in step:
+            self.game.focus()
+            dx, dy = step["mouse"]
+            self.kbm.move(int(dx), int(dy), int(step.get("steps", 10)))
         elif "wait" in step:
             self._pause(step["wait"])
         elif "shot" in step:

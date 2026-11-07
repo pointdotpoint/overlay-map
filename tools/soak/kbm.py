@@ -19,8 +19,8 @@ REL_X, REL_Y, REL_WHEEL = 0x00, 0x01, 0x08
 BTN_LEFT = 0x110
 BUS_VIRTUAL = 0x06
 
-KEYS = {"ESC": 1, "W": 17, "R": 19, "T": 20, "ENTER": 28, "A": 30, "S": 31, "D": 32, "F": 33, "APOSTROPHE": 40,
-        "SPACE": 57, "UP": 103, "LEFT": 105, "RIGHT": 106, "DOWN": 108}
+KEYS = {"ESC": 1, "Q": 16, "W": 17, "E": 18, "R": 19, "T": 20, "O": 24, "ENTER": 28, "A": 30, "S": 31, "D": 32,
+        "F": 33, "APOSTROPHE": 40, "SPACE": 57, "UP": 103, "LEFT": 105, "RIGHT": 106, "DOWN": 108}
 
 
 def key_events(name: str, down: bool) -> list[tuple[int, int, int]]:
@@ -31,6 +31,23 @@ def wheel_events(notches: int) -> list[list[tuple[int, int, int]]]:
     """One report per notch, as a real wheel sends them."""
     step = 1 if notches > 0 else -1
     return [[(EV_REL, REL_WHEEL, step)] for _ in range(abs(notches))]
+
+
+def move_events(dx: int, dy: int, steps: int) -> list[list[tuple[int, int, int]]]:
+    """A relative mouse move split into `steps` reports; the remainder goes on the last one so the total is exact."""
+    n = max(1, steps)
+    sx, sy = int(dx / n), int(dy / n)
+    out = []
+    for i in range(n):
+        x = sx + (dx - sx * n if i == n - 1 else 0)
+        y = sy + (dy - sy * n if i == n - 1 else 0)
+        report = []
+        if x:
+            report.append((EV_REL, REL_X, x))
+        if y:
+            report.append((EV_REL, REL_Y, y))
+        out.append(report)
+    return out
 
 
 def user_dev_record() -> bytes:
@@ -78,6 +95,12 @@ class VirtualKbm:
     def wheel(self, notches: int, gap: float = 0.08) -> None:
         for report in wheel_events(notches):
             self._emit(report)
+            self.sleep(gap)
+
+    def move(self, dx: int, dy: int, steps: int = 10, gap: float = 0.02) -> None:
+        for report in move_events(dx, dy, steps):
+            if report:
+                self._emit(report)
             self.sleep(gap)
 
     def release_all(self) -> None:
