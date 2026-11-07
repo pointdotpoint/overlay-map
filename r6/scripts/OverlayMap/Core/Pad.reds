@@ -226,7 +226,6 @@ public class NMPad {
         ArrayPush(h, NMHints.Of("LS", "PAN"));
         ArrayPush(h, NMHints.Of("LT/RT", "ZOOM"));
         ArrayPush(h, NMHints.Of("R3", "FOLLOW"));
-        ArrayPush(h, NMHints.Of("A", "ACT"));
         if teleportOn {
             ArrayPush(h, NMHints.Of("X", teleportLabel));
         }
