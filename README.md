@@ -35,7 +35,8 @@ To uninstall, delete those three.
 
 ## Controls
 
-`'` opens and closes the map.
+`O` opens and closes the map. It does nothing in menus or photo mode, where the game uses O itself.
+Change it under Mod Settings → Overlay Map → Keys → Open / close map.
 
 **Keyboard (default).** While the map is open it takes the keyboard and mouse, so V stops:
 
@@ -81,7 +82,7 @@ Every key can be rebound in Mod Settings → Overlay Map.
 - **Look.** Five colour themes (Cyan, Green, Red, Purple, Amber), or follow your [HUD
   Painter](https://www.nexusmods.com/cyberpunk2077/mods/14935) colours. Panel size and opacity, road glow, scanlines
   and an optional VHS tracking band and glitch (off by default) are all under Display.
-- **Hold to show.** Display → Hold key to show keeps the map up only while `'` is held.
+- **Hold to show.** Display → Hold key to show keeps the map up only while the open key is held.
 - **For mod authors.** Other mods can add their own items to the map through a layer API.
 
 ## Known issues

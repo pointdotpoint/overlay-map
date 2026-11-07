@@ -296,6 +296,17 @@ public class OverlayMapSystem extends ScriptableSystem {
         this.HandleKey(evt.GetKey(), evt.GetAction(), evt.IsShiftDown(), evt.IsControlDown(), evt.IsAltDown());
     }
 
+    // Free play: no menu (pause, hub, vendors, settings) and no photo mode.
+    private func GameplayActive() -> Bool {
+        let gi = this.GetGameInstance();
+        let photo = GameInstance.GetPhotoModeSystem(gi);
+        if IsDefined(photo) && photo.IsPhotoModeActive() {
+            return false;
+        }
+        let ui = GameInstance.GetBlackboardSystem(gi).Get(GetAllBlackboardDefs().UI_System);
+        return !IsDefined(ui) || !ui.GetBool(GetAllBlackboardDefs().UI_System.IsInMenu);
+    }
+
     // One key event, from the game's Input/Key callback (or the soak harness, which can't send real keys on a desktop).
     public func HandleKey(key: EInputKey, action: EInputAction, shift: Bool, ctrl: Bool, alt: Bool) -> Bool {
         let s = this.Settings();
@@ -305,6 +316,10 @@ public class OverlayMapSystem extends ScriptableSystem {
         if NMPad.IsPad(key) && (Equals(s.padOpen, OverlayMapPadOpen.HoldView) || this.padOwned || this.padCtx) {
             this.OnPadButton(s, key, action);
             return true;
+        }
+        // The open key is a letter by default: typed into menu search bars, and photo mode's zoom. Only gameplay opens.
+        if Equals(key, s.keyToggle) && !this.isOpen && !this.GameplayActive() {
+            return false;
         }
         this.input.takesKeys = this.isOpen && (this.kbOwned || this.padOwned);
         let used = this.input.Handle(s, key, action, shift, ctrl, alt, this.isOpen);

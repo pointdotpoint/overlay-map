@@ -30,7 +30,7 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category.order", "0")
     @runtimeProperty("ModSettings.displayName", "Open / close map")
     @runtimeProperty("ModSettings.description", "Opens and closes Overlay Map. With Debug on: Ctrl = self-test, Shift = perf suite, Alt = calibration dump, Ctrl+Shift = debug layer.")
-    public let keyToggle: EInputKey = EInputKey.IK_SingleQuote;
+    public let keyToggle: EInputKey = EInputKey.IK_O;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Keys")

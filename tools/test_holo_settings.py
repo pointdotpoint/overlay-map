@@ -68,3 +68,14 @@ def test_ncart_filter_is_a_map_filter_off_by_default():
     assert '"ModSettings.category", "Map filters"' in b and '"ModSettings.displayName", "NCART lines"' in b
     system = (SCRIPTS / "Core" / "OverlayMapSystem.reds").read_text()
     assert ".filterNcart)" in system      # handed to NMLayerStack.Create
+
+
+def test_open_key_defaults_to_o_and_only_opens_in_gameplay():
+    s = (SCRIPTS / "Core" / "Settings.reds").read_text()
+    assert "public let keyToggle: EInputKey = EInputKey.IK_O;" in s
+    system = (SCRIPTS / "Core" / "OverlayMapSystem.reds").read_text()
+    # A letter is typed in menus and is photo mode's zoom key: the open key only opens the map in gameplay.
+    assert "IsPhotoModeActive()" in system and "UI_System.IsInMenu" in system
+    assert re.search(r"Equals\(key, s\.keyToggle\) && !this\.isOpen && !this\.GameplayActive\(\)", system)
+    readme = (SCRIPTS.parents[2] / "README.md").read_text()
+    assert "`'`" not in readme and "`O` opens and closes the map" in readme

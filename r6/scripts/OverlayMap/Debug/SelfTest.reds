@@ -405,7 +405,7 @@ public class NMSelfTest {
         this.Check("input.zoom_held", inp.zoomIn && !inp.zoomOut, "");
         this.Check("input.key_names", Equals(NMInput.KeyName(EInputKey.IK_NumPad8), "NUM 8") && Equals(NMInput.KeyName(EInputKey.IK_Backslash), "\\")
             && Equals(NMInput.KeyName(EInputKey.IK_NumPlus), "NUM +")
-            && Equals(NMInput.KeyName(EInputKey.IK_SingleQuote), "'"), NMInput.KeyName(EInputKey.IK_NumPad8));
+            && Equals(NMInput.KeyName(EInputKey.IK_SingleQuote), "'") && Equals(NMInput.KeyName(EInputKey.IK_O), "O"), NMInput.KeyName(EInputKey.IK_NumPad8));
         this.TakeKeysCases();
         this.HintCases();
     }
