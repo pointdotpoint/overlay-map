@@ -113,7 +113,7 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category", "Keys")
     @runtimeProperty("ModSettings.category.order", "0")
     @runtimeProperty("ModSettings.displayName", "Keyboard map")
-    @runtimeProperty("ModSettings.description", "Takes keyboard and mouse: while the map is open V stops, and W A S D (or the arrows) pan, the mouse wheel zooms, Space follows V, F acts, E sets a waypoint, T teleports and R cycles the filter; the numpad keys work too. Works on any keyboard. V keeps moving: the map only uses the numpad keys above, so V can walk and drive meanwhile.")
+    @runtimeProperty("ModSettings.description", "Takes keyboard and mouse: while the map is open V stops, and W A S D (or the arrows) pan, the mouse wheel zooms, Space follows V, F acts, E sets a waypoint, Q teleports and R cycles the filter; the numpad keys work too. Works on any keyboard. V keeps moving: the map only uses the numpad keys above, so V can walk and drive meanwhile.")
     @runtimeProperty("ModSettings.displayValues.TakeKeys", "Takes keyboard and mouse")
     @runtimeProperty("ModSettings.displayValues.KeepMoving", "V keeps moving (numpad)")
     public let keyboardMode: OverlayMapKeyboardMode = OverlayMapKeyboardMode.TakeKeys;
@@ -179,7 +179,7 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category.order", "1")
     @runtimeProperty("ModSettings.displayName", "Teleport")
     @runtimeProperty("ModSettings.description", "Fast travels on a fast travel marker, and teleports to the selected marker or the map centre anywhere else.")
-    public let keyMapTeleport: EInputKey = EInputKey.IK_T;
+    public let keyMapTeleport: EInputKey = EInputKey.IK_Q;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Controller")

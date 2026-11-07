@@ -432,7 +432,7 @@ public class NMSelfTest {
         s.keyMapAct = EInputKey.IK_F;
         s.keyMapWaypoint = EInputKey.IK_E;
         s.keyMapFilter = EInputKey.IK_R;
-        s.keyMapTeleport = EInputKey.IK_T;
+        s.keyMapTeleport = EInputKey.IK_Q;
         s.teleportEnabled = true;
         s.holdToShow = holdToShow;
         return s;
@@ -478,7 +478,7 @@ public class NMSelfTest {
         k.Handle(s, EInputKey.IK_Space, press, false, false, false, true);
         k.Handle(s, EInputKey.IK_F, press, false, false, false, true);
         k.Handle(s, EInputKey.IK_R, press, false, false, false, true);
-        k.Handle(s, EInputKey.IK_T, press, false, false, false, true);
+        k.Handle(s, EInputKey.IK_Q, press, false, false, false, true);
         let usedE = k.Handle(s, EInputKey.IK_E, press, false, false, false, true);
         this.Check("keys.actions", k.recenter && k.act && k.filter && k.teleport && usedE && k.waypoint, "");
         let freeE = new NMInput();
@@ -492,7 +492,7 @@ public class NMSelfTest {
         closed.takesKeys = true;
         this.Check("keys.ignored_when_closed", !closed.Handle(s, EInputKey.IK_W, press, false, false, false, false), "");
         let h = NMHints.Join(NMInput.TakeHints(s, "ALL", "TELEPORT"));
-        let want = "W/A/S/D PAN   ·   WHEEL ZOOM   ·   SPACE FOLLOW   ·   T TELEPORT   ·   R FILTER: ALL   ·   \\ CLOSE";
+        let want = "W/A/S/D PAN   ·   WHEEL ZOOM   ·   SPACE FOLLOW   ·   Q TELEPORT   ·   R FILTER: ALL   ·   \\ CLOSE";
         this.Check("keys.hints", Equals(h, want), h);
         // Wheel notches ease the zoom; notches during an ease stack on its target.
         let cam = NMCamera.Create(1880.0, 1480.0, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
