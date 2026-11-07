@@ -77,7 +77,7 @@ public abstract class NMUi {
         k.SetTranslation(new Vector2(kw * 0.5, 8.0 * s));
         k.SetTracking(Cast<Int32>(NMUi.KeyTracking() * s));   // Rajdhani's space is narrow: "8 4 6 2" read as "8462"
         k.SetText(key);
-        NMUi.KeyLabel(parent, label, kw + NMUi.KeycapGap() * s, s);
+        NMUi.KeyLabel(parent, label, kw + NMUi.KeycapGap() * s, s, theme);
         return NMUi.KeycapWidth(key, label, s);
     }
 
@@ -105,8 +105,8 @@ public abstract class NMUi {
     }
 
     // A keycap's label (Medium 28, letter-spaced, uppercase) at x; also the hint bar's plain text.
-    public static func KeyLabel(parent: ref<inkCompoundWidget>, label: String, x: Float, s: Float) -> ref<inkText> {
-        let t = NMUi.Text(parent, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.Text());
+    public static func KeyLabel(parent: ref<inkCompoundWidget>, label: String, x: Float, s: Float, opt theme: Int32) -> ref<inkText> {
+        let t = NMUi.Text(parent, NMTheme.BodyFont(), n"Medium", Cast<Int32>(28.0 * s), NMTheme.HoloText(theme));
         t.SetTranslation(new Vector2(x, 7.0 * s));
         t.SetTracking(Cast<Int32>(3.0 * s));
         t.SetText(StrUpper(label));

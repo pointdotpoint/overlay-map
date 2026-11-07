@@ -136,6 +136,15 @@ public abstract class NMTheme {
         if theme == 4 { return new HDRColor(0.094, 0.064, 0.020, 1.0); }
         return new HDRColor(0.020, 0.051, 0.094, 1.0);                   // #050d18
     }
+    // Hint-bar labels and the scale bar: the old cyan text colour (#c8f6ff), and the same pale tint at each theme's hue.
+    public static func HoloText(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Text, NMTheme.HoloTextOwn(theme)); }
+    public static func HoloTextOwn(theme: Int32) -> HDRColor {
+        if theme == 1 { return new HDRColor(0.784, 1.0, 0.844, 1.0); }
+        if theme == 2 { return new HDRColor(1.0, 0.784, 0.813, 1.0); }
+        if theme == 3 { return new HDRColor(0.910, 0.784, 1.0, 1.0); }
+        if theme == 4 { return new HDRColor(1.0, 0.914, 0.784, 1.0); }
+        return new HDRColor(0.784, 0.965, 1.0, 1.0);
+    }
     // District title in the top-left header (#e6f7ff), mirrored in green.
     public static func HeaderTitle(theme: Int32) -> HDRColor { return NMTheme.Pick(NMColorRole.Highlight, NMTheme.HeaderTitleOwn(theme)); }
     public static func HeaderTitleOwn(theme: Int32) -> HDRColor {

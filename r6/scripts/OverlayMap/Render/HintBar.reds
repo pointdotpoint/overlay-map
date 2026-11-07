@@ -197,14 +197,14 @@ public class NMHintBar {
         let label = NMHintBar.Display(e.label);
         let kx = 0.0;
         if StrLen(e.pre) > 0 {
-            NMUi.KeyLabel(c, e.pre, 0.0, s);
+            NMUi.KeyLabel(c, e.pre, 0.0, s, this.theme);
             kx = NMUi.KeyLabelWidth(e.pre, s) + NMUi.KeycapGap() * s;
         }
         if StrLen(e.key) > 0 {
             let k = NMUi.Canvas(c, kx, 0.0, NMUi.KeycapWidth(e.key, label, s), NMUi.KeycapHeight() * s);
             NMUi.Keycap(k, e.key, label, s, this.theme);
         } else {
-            NMUi.KeyLabel(c, label, kx, s);
+            NMUi.KeyLabel(c, label, kx, s, this.theme);
         }
         return NMHintBar.EntryWidth(e, s);
     }

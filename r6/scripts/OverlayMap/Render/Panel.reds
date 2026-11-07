@@ -131,10 +131,10 @@ public class NMPanel {
         // Scale bar (top-right of the view): a thin bar with end ticks, the label centred under it (SetScaleBar).
         let bx = layout.viewW - 500.0 * s;
         let bt = NMPanel.ScaleBarThickness(s);
-        p.scaleBar = NMUi.Rect(p.root, bx, 96.0 * s, NMPanel.ScaleBarMax(s), bt, NMTheme.Text(), 1.0);
-        p.scaleTickL = NMUi.Rect(p.root, bx, 96.0 * s, bt, 20.0 * s, NMTheme.Text(), 1.0);
-        p.scaleTickR = NMUi.Rect(p.root, bx + NMPanel.ScaleBarMax(s) - bt, 96.0 * s, bt, 20.0 * s, NMTheme.Text(), 1.0);
-        p.scaleLabel = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.Text());
+        p.scaleBar = NMUi.Rect(p.root, bx, 96.0 * s, NMPanel.ScaleBarMax(s), bt, NMTheme.HoloText(theme), 1.0);
+        p.scaleTickL = NMUi.Rect(p.root, bx, 96.0 * s, bt, 20.0 * s, NMTheme.HoloText(theme), 1.0);
+        p.scaleTickR = NMUi.Rect(p.root, bx + NMPanel.ScaleBarMax(s) - bt, 96.0 * s, bt, 20.0 * s, NMTheme.HoloText(theme), 1.0);
+        p.scaleLabel = NMUi.Text(p.root, NMTheme.BodyFont(), n"Medium", Cast<Int32>(30.0 * s), NMTheme.HoloText(theme));
         p.scaleLabel.SetAnchorPoint(new Vector2(0.5, 0.0));
         p.scaleLabel.SetTracking(Cast<Int32>(4.0 * s));
         p.scaleBar.SetName(n"ScaleBar");
