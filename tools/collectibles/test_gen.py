@@ -2,8 +2,14 @@
 import sys
 from pathlib import Path
 
+import importlib.util
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import gen  # noqa: E402
+# Loaded by path under its own name: tools/areas has a gen.py too, and a plain "import gen" gets whichever ran first.
+_spec = importlib.util.spec_from_file_location("collectibles_gen", Path(__file__).with_name("gen.py"))
+gen = importlib.util.module_from_spec(_spec)
+sys.modules["collectibles_gen"] = gen   # dataclasses look their module up here
+_spec.loader.exec_module(gen)
 
 DUMP = """i|Items.shard_a|Item_Record|Gen_Readable|Common||J:onscreens/shards/a|Shard A
 i|Items.Preset_Gun_Iconic|WeaponItem_Record|Wea_Handgun|Legendary|IconicWeapon,Weapon,||Gun
