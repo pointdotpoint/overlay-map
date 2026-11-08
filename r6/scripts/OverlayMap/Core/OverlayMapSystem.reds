@@ -1350,7 +1350,7 @@ public class OverlayMapSystem extends ScriptableSystem {
             dist = NMMath.FormatMeters(SqrtF(dx * dx + dy * dy));
         }
         let s = this.Settings();
-        this.drawer.Show(spot, dist, spot.district, IsDefined(s) ? NMInput.KeyName(s.keyTeleport) : "TELEPORT", this.Photos().Handler());
+        this.drawer.Show(spot, dist, spot.district, IsDefined(s) ? NMInput.KeyName(this.kbOwned ? s.keyMapTeleport : s.keyTeleport) : "TELEPORT", this.Photos().Handler());
     }
 
     private func DefaultDetails(L: ref<OverlayMapLayer>, id: Int32) -> ref<OverlayMapDetails> {
