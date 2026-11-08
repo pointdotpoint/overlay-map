@@ -514,6 +514,10 @@ public class OverlayMapSystem extends ScriptableSystem {
                 this.SetPlayerUiContext(true);
             }
         }
+        // Open() already filled the sidebar, naming the numpad keys; the map now listens to the any-keyboard set instead.
+        if this.isOpen {
+            this.RefreshSidebar(false);
+        }
     }
 
     private func ReleaseRestrictions() {
