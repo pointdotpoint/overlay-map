@@ -200,6 +200,24 @@ public class OverlayMapSettings extends ScriptableSystem {
     public let keyMapTeleport: EInputKey = EInputKey.IK_Q;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
+    @runtimeProperty("ModSettings.category", "Keys (map takes keyboard)")
+    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Mouse pans the map")
+    @runtimeProperty("ModSettings.description", "Moving the mouse pans the map, and V's camera stays still while the map is open. Off: the mouse turns the camera.")
+    public let mousePan: Bool = false;
+
+    @runtimeProperty("ModSettings.mod", "Overlay Map")
+    @runtimeProperty("ModSettings.category", "Keys (map takes keyboard)")
+    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Mouse pan speed")
+    @runtimeProperty("ModSettings.description", "How far the map moves for a mouse movement.")
+    @runtimeProperty("ModSettings.step", "0.05")
+    @runtimeProperty("ModSettings.min", "0.25")
+    @runtimeProperty("ModSettings.max", "3.0")
+    @runtimeProperty("ModSettings.dependency", "mousePan")
+    public let mousePanSpeed: Float = 1.0;
+
+    @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Controller")
     @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Open map button")

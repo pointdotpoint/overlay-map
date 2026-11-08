@@ -18,6 +18,8 @@ public class NMInput {
     public let debugLayer: Bool;
     public let arrowSeen: Bool;
     public let takesKeys: Bool;
+    public let mouseDx: Float;  // mouse counts since the last frame (+x right, +y down), only with Mouse pans the map
+    public let mouseDy: Float;
     public let wheel: Int32;    // wheel notches since the last frame: + zooms in
     private let up: Bool;
     private let down: Bool;
@@ -141,6 +143,17 @@ public class NMInput {
 
     // The game reports the mouse wheel as the IK_MouseZ axis, one event per notch (+ is up). Only while the map
     // holds the keyboard: otherwise the wheel stays the game's (weapon switching). Returns true when used.
+    // Mouse motion while the map holds the keyboard and Mouse pans the map is on. In game IK_MouseY is down-positive
+    // (measured: a mouse move down panned the map north when it was negated).
+    public func MouseMove(key: EInputKey, value: Float, mapOpen: Bool, mousePan: Bool) -> Bool {
+        if !mapOpen || !this.takesKeys || !mousePan {
+            return false;
+        }
+        if Equals(key, EInputKey.IK_MouseX) { this.mouseDx += value; return true; }
+        if Equals(key, EInputKey.IK_MouseY) { this.mouseDy += value; return true; }
+        return false;
+    }
+
     public func Axis(key: EInputKey, value: Float, mapOpen: Bool) -> Bool {
         if !mapOpen || !this.takesKeys || !Equals(key, EInputKey.IK_MouseZ) {
             return false;
@@ -188,6 +201,9 @@ public class NMInput {
         this.filter = false;
         this.teleport = false;
     }
+
+    // Map-area pixels (3840-wide UI units) per mouse count at Mouse pan speed 1.
+    public static func MousePanPixels() -> Float { return 2.0; }
 
     public static func OpenModifierHeld(m: OverlayMapOpenModifier, shift: Bool, ctrl: Bool, alt: Bool) -> Bool {
         if alt {

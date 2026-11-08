@@ -1,0 +1,134 @@
+{
+ "name": "mouse-pan",
+ "runs": [
+  {
+   "name": "pan",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 120
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "set mousepan 1",
+     "expect": "^mousepan true"
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "cam",
+     "expect": "kb owned"
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "cmd": "cam"
+    },
+    {
+     "mouse": [
+      600,
+      0
+     ],
+     "steps": 30
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "cam"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "shot": "after_mouse_x"
+    },
+    {
+     "mouse": [
+      0,
+      400
+     ],
+     "steps": 20
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "cam"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "cmd": "restrict"
+    },
+    {
+     "cmd": "psm"
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "mouse": [
+      600,
+      0
+     ],
+     "steps": 30
+    },
+    {
+     "wait": 1
+    },
+    {
+     "cmd": "yaw"
+    },
+    {
+     "cmd": "set mousepan 0",
+     "expect": "^mousepan false"
+    }
+   ],
+   "expect": [
+    {
+     "log": "TEST\\|SUMMARY",
+     "min": 1
+    }
+   ],
+   "forbid": [
+    "TEST\\|FAIL\\|input\\."
+   ]
+  }
+ ]
+}

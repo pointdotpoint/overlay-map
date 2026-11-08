@@ -347,6 +347,7 @@ public class NMSelfTest {
         let s = new OverlayMapSettings();
         // Mod Settings applies the user's saved bindings to class defaults, so pin every key the test relies on.
         s.keyToggle = EInputKey.IK_Backslash;
+        s.keyToggleMod = OverlayMapOpenModifier.None;
         s.keyPanUp = EInputKey.IK_NumPad8;
         s.keyPanDown = EInputKey.IK_NumPad2;
         s.keyPanLeft = EInputKey.IK_NumPad4;
@@ -365,6 +366,7 @@ public class NMSelfTest {
         // Hold to show: press opens, release closes, and a toggle key's release still does nothing.
         let hs = new OverlayMapSettings();
         hs.keyToggle = EInputKey.IK_Backslash;
+        hs.keyToggleMod = OverlayMapOpenModifier.None;
         let rel = EInputAction.IACT_Release;
         let hi = new NMInput();
         hi.Handle(hs, EInputKey.IK_Backslash, press, false, false, false, true);
@@ -405,6 +407,15 @@ public class NMSelfTest {
         mi.debugSelfTest = false;
         this.Check("input.open_modifier", bareIgnored && wrongComboIgnored && comboOpens && bareCloses && noneKeepsDebugChord,
             ToString(bareIgnored) + ToString(wrongComboIgnored) + ToString(comboOpens) + ToString(bareCloses) + ToString(noneKeepsDebugChord));
+        let mp = new NMInput();
+        mp.takesKeys = true;
+        let mpOff = !mp.MouseMove(EInputKey.IK_MouseX, 5.0, true, false) && mp.mouseDx == 0.0;
+        let mpClosed = !mp.MouseMove(EInputKey.IK_MouseX, 5.0, false, true) && mp.mouseDx == 0.0;
+        mp.MouseMove(EInputKey.IK_MouseX, 5.0, true, true);
+        mp.MouseMove(EInputKey.IK_MouseX, -2.0, true, true);
+        mp.MouseMove(EInputKey.IK_MouseY, 4.0, true, true);
+        let mpSum = mp.mouseDx == 3.0 && mp.mouseDy == 4.0;
+        this.Check("input.mouse_pan", mpOff && mpClosed && mpSum, ToString(mpOff) + ToString(mpClosed) + ToString(mpSum));
         this.Check("input.ignored_when_closed", !inp.Handle(s, EInputKey.IK_NumPad8, press, false, false, false, false), "");
         let usedArrow = inp.Handle(s, EInputKey.IK_Up, press, false, false, false, true);
         let v0 = inp.PanVector();
@@ -435,6 +446,7 @@ public class NMSelfTest {
     public static func HintSettings(holdToShow: Bool) -> ref<OverlayMapSettings> {
         let s = new OverlayMapSettings();
         s.keyToggle = EInputKey.IK_Backslash;
+        s.keyToggleMod = OverlayMapOpenModifier.None;
         s.keyPanUp = EInputKey.IK_NumPad8;
         s.keyPanDown = EInputKey.IK_NumPad2;
         s.keyPanLeft = EInputKey.IK_NumPad4;

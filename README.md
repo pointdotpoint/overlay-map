@@ -39,6 +39,9 @@ To uninstall, delete those three.
 Change it under Mod Settings → Overlay Map → Keys → Open / close map. To open it with a combo such as Ctrl+M, also set
 Open map modifier there; the key alone then closes the map.
 
+**Mouse pans the map** (Keys (map takes keyboard)): moving the mouse pans the map instead of turning V's camera, with
+its own speed slider. Off by default.
+
 **Keyboard (default).** While the map is open it takes the keyboard and mouse, so V stops:
 
 | Action | Key |

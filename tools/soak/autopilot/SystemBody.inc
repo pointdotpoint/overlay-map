@@ -716,8 +716,13 @@
         if Equals(what, "teleport") { key = s.keyTeleport; }
         if Equals(what, "filter") { key = s.keyFilter; }
         if Equals(key, EInputKey.IK_None) { return "usage: press waypoint|act|toggle|teleport|filter"; }
-        let used = this.HandleKey(key, EInputAction.IACT_Press, false, false, false);
-        this.HandleKey(key, EInputAction.IACT_Release, false, false, false);
+        // The open key needs the player's Open map modifier (Ctrl, Shift or both) to open; held for every toggle press.
+        let m = s.keyToggleMod;
+        let isToggle = Equals(what, "toggle");
+        let shift = isToggle && (Equals(m, OverlayMapOpenModifier.Shift) || Equals(m, OverlayMapOpenModifier.ShiftCtrl));
+        let ctrl = isToggle && (Equals(m, OverlayMapOpenModifier.Ctrl) || Equals(m, OverlayMapOpenModifier.ShiftCtrl));
+        let used = this.HandleKey(key, EInputAction.IACT_Press, shift, ctrl, false);
+        this.HandleKey(key, EInputAction.IACT_Release, shift, ctrl, false);
         return "pressed " + NMInput.KeyName(key) + " used=" + ToString(used);
     }
 
@@ -974,6 +979,7 @@
         if Equals(name, "glitch") { s.vhsGlitch = Equals(value, "1"); return "glitch " + ToString(s.vhsGlitch); }
         if Equals(name, "ncart") { s.filterNcart = Equals(value, "1"); return "ncart " + ToString(s.filterNcart); }
         // Controller open: view|off. Pad steps set it explicitly, so they don't depend on the player's saved choice.
+        if Equals(name, "mousepan") { s.mousePan = Equals(value, "1"); return "mousepan " + ToString(s.mousePan); }
         if Equals(name, "padopen") {
             s.padOpen = Equals(value, "off") ? OverlayMapPadOpen.Off : OverlayMapPadOpen.HoldView;
             return "padopen " + ToString(s.padOpen);

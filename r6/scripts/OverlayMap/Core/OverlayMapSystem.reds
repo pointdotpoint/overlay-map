@@ -411,6 +411,10 @@ public class OverlayMapSystem extends ScriptableSystem {
         } else if Equals(key, EInputKey.IK_MouseZ) {
             this.input.takesKeys = this.isOpen && (this.kbOwned || this.padOwned);
             this.input.Axis(key, evt.GetValue(), this.isOpen);
+        } else if (Equals(key, EInputKey.IK_MouseX) || Equals(key, EInputKey.IK_MouseY)) && this.isOpen && this.kbOwned {
+            let s = this.Settings();
+            this.input.takesKeys = true;
+            this.input.MouseMove(key, evt.GetValue(), true, IsDefined(s) && s.mousePan);
         }
     }
 
@@ -494,7 +498,8 @@ public class OverlayMapSystem extends ScriptableSystem {
     // Opened from the keyboard with Keyboard map on Takes keyboard and mouse: V stops as in pad mode, so WASD, the
     // arrows and the wheel are free for the map (the wheel no longer switches weapons).
     // On foot V is held by gameplay restrictions (NMRestrict), not the player state machine's UI context: that context
-    // also froze mouse-look, and the camera should keep turning with the mouse. In a car the UI context stays.
+    // also froze mouse-look, and the camera should keep turning with the mouse. In a car the UI context stays. With
+    // Mouse pans the map the context is wanted on foot too: the mouse moves the map, so the camera must stay still.
     private func TakeKeyboard() {
         this.kbOwned = true;
         this.padCtxToken += 1;
@@ -510,7 +515,8 @@ public class OverlayMapSystem extends ScriptableSystem {
                 GameInstance.GetUISystem(this.GetGameInstance()).PushGameContext(UIGameContext.ModalPopup);
                 this.modalPushed = true;
             }
-            if !onFoot {
+            let s = this.Settings();
+            if !onFoot || (IsDefined(s) && s.mousePan) {
                 this.SetPlayerUiContext(true);
             }
         }
@@ -1020,6 +1026,14 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.camera.EaseTo(w.X, w.Y, this.camera.mpp, NMTheme.SnapMs());
         }
         this.wasPanning = panning;
+        if this.input.mouseDx != 0.0 || this.input.mouseDy != 0.0 {
+            // Not part of `panning`: the map would snap to a marker each time the mouse comes to rest.
+            let s = this.Settings();
+            let k = NMInput.MousePanPixels() * (IsDefined(s) ? s.mousePanSpeed : 1.0);
+            this.camera.PanPixels(this.input.mouseDx * k, this.input.mouseDy * k);
+            this.input.mouseDx = 0.0;
+            this.input.mouseDy = 0.0;
+        }
         if panning {
             this.holdMs += dt;
             let accel = this.holdMs > 500.0 ? MinF(1.0 + (this.holdMs - 500.0) / 1000.0, 3.0) : 1.0;
