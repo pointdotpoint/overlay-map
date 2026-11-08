@@ -1,0 +1,93 @@
+[center][size=6][b]OVERLAY MAP[/b][/size]
+[size=4]A hologram world map that opens over the game with one key.
+Built to be lightweight, so you can use it without pausing your gameplay.[/size][/center]
+
+[line]
+
+[size=5][b]What it is[/b][/size]
+The vanilla map pauses the game and takes over the screen. Overlay Map is a 2D map of the whole city that opens as a hologram panel right where you are, while the world keeps moving behind it. Check where you are, find the next gig, set a waypoint and close it again, without ever leaving the street.
+
+It draws the vanilla map's own roads and buildings, shows the game's markers with their vanilla icons, and mirrors your GPS routes.
+
+[line]
+
+[size=5][b]Features[/b][/size]
+[list]
+[*][b]The whole city.[/b] Roads and buildings come from the game's own map data, Dogtown and the Badlands included. Zoom from single buildings out to all of Night City.
+[*][b]Vanilla markers.[/b] Quests, gigs, NCPD, vendors, fast travel and more, with the game's own icons. Put a marker near the centre to see its details in the sidebar. Map filters turn each category on or off.
+[*][b]Waypoints.[/b] E works like right-clicking on the vanilla map: set a custom waypoint on an empty spot, make a job active, track a marker, or clear what you're tracking.
+[*][b]GPS routes.[/b] Your waypoint route and the tracked quest's route are drawn as flowing dots.
+[*][b]Area names.[/b] The sidebar names the area and district under the cursor, in your game language.
+[*][b]Collectibles.[/b] Shards, tarot graffiti, iconic weapons, legendary cyberware and clothing, and skill shards each get a pin. Collected ones stay on the map, scratched out.
+[*][b]Fast travel and teleport.[/b] Fast travel from any fast travel marker, or teleport V (and V's car) anywhere on the map. The teleport key can be switched off.
+[*][b]NCART lines.[/b] An optional filter draws the five metro lines in their colours.
+[*][b]Photo pins.[/b] Photos you take in photo mode are pinned where you took them, with a thumbnail in the sidebar (needs RedFileSystem and RedIMGRetriever).
+[*][b]Five colour themes.[/b] Cyan, Red, Green, Purple and Amber, or follow your HUD Painter colours.
+[*][b]Make it yours.[/b] Panel size and opacity, map brightness and contrast, road glow, scanlines, and an optional VHS tracking band and glitch.
+[*][b]Hold to show.[/b] Optionally keep the map up only while the key is held.
+[/list]
+
+[line]
+
+[size=5][b]Controls[/b][/size]
+[b]O[/b] opens and closes the map (it does nothing in menus or photo mode). You can rebind it, or use a combo such as [b]Ctrl + M[/b], in Mod Settings.
+
+[b]Keyboard and mouse (default).[/b] While the map is open it takes the keyboard and mouse, and V stands still:
+[list]
+[*]Pan: [b]move the mouse[/b], or W A S D / the arrow keys
+[*]Zoom: mouse wheel
+[*]Follow V again: Space
+[*]Act on the selected marker: F
+[*]Set waypoint / track: E or Enter
+[*]Teleport / fast travel: Q
+[*]Cycle marker filter: R
+[/list]
+Prefer to keep turning the camera with the mouse? Switch off [i]Mouse pans the map[/i] in Mod Settings.
+
+[b]Numpad.[/b] Choose [i]V keeps moving (numpad)[/i] in Mod Settings and the map uses only the numpad, so you can keep walking and driving while it's open.
+
+[b]Controller.[/b] Hold View for half a second to open the map (a tap still opens the pause menu). Left stick pans, LT/RT zoom, A acts, RB sets a waypoint, X teleports, Y cycles the filter, R3 follows V, B closes.
+
+Every key can be rebound in Mod Settings → Overlay Map.
+
+[line]
+
+[size=5][b]Requirements[/b][/size]
+[list]
+[*]Cyberpunk 2077 [b]2.5[/b]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/1511]redscript[/url]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/7780]Codeware[/url]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/2380]RED4ext[/url]
+[/list]
+[b]Optional[/b], each adds one feature:
+[list]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/4885]Mod Settings[/url]: the settings menu and key rebinding. Without it every option keeps its default.
+[*]RedFileSystem: keeps your photo pins between sessions.
+[*]RedIMGRetriever: photo thumbnails in the sidebar.
+[/list]
+
+[line]
+
+[size=5][b]Installation[/b][/size]
+Install with Vortex or Mod Organizer 2, or unzip into your Cyberpunk 2077 folder (the one with [i]bin[/i], [i]archive[/i] and [i]r6[/i]).
+
+[b]Uninstall:[/b] delete these three:
+[list]
+[*]archive/pc/mod/OverlayMap.archive
+[*]r6/scripts/OverlayMap/
+[*]red4ext/plugins/OverlayMapNative/
+[/list]
+
+[line]
+
+[size=5][b]Known issues[/b][/size]
+[list]
+[*]Waypoints use a small RED4ext plugin, tested on game 2.5. If it can't find the game function it needs, waypoints switch off and everything else keeps working.
+[*]The game's HUD fades out while the map is open. Display → [i]Hide HUD while open[/i] turns that off.
+[*]On a game version other than 2.5 the map shows a notice that some places may not match.
+[/list]
+
+[line]
+
+[size=5][b]For mod authors[/b][/size]
+Other mods can add their own items to the map through a layer API. Ask in the comments if you'd like to use it.
