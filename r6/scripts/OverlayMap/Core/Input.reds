@@ -143,8 +143,8 @@ public class NMInput {
 
     // The game reports the mouse wheel as the IK_MouseZ axis, one event per notch (+ is up). Only while the map
     // holds the keyboard: otherwise the wheel stays the game's (weapon switching). Returns true when used.
-    // Mouse motion while the map holds the keyboard and Mouse pans the map is on. In game IK_MouseY is down-positive
-    // (measured: a mouse move down panned the map north when it was negated).
+    // Mouse motion while the map holds the keyboard and Mouse pans the map is on. IK_MouseY is down-positive in game,
+    // for a real mouse and the soak harness's virtual one alike (mouse up pans north).
     public func MouseMove(key: EInputKey, value: Float, mapOpen: Bool, mousePan: Bool) -> Bool {
         if !mapOpen || !this.takesKeys || !mousePan {
             return false;
