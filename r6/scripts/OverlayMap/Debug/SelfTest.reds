@@ -385,6 +385,26 @@ public class NMSelfTest {
         this.Check("input.hold_to_show", holdOpens && heldStaysOpen && releaseCloses && releaseClosedIgnored,
             ToString(holdOpens) + ToString(heldStaysOpen) + ToString(releaseCloses) + ToString(releaseClosedIgnored));
         this.Check("input.hold_hint", StrContains(NMInput.HintText(hs, "ALL", "TELEPORT"), "RELEASE") && !StrContains(NMInput.HintText(s, "ALL", "TELEPORT"), "RELEASE"), "");
+        let ms = new OverlayMapSettings();
+        ms.keyToggle = EInputKey.IK_M;
+        ms.holdToShow = false;
+        ms.keyToggleMod = OverlayMapOpenModifier.Ctrl;
+        let mi = new NMInput();
+        let bareIgnored = !mi.Handle(ms, EInputKey.IK_M, press, false, false, false, false) && !mi.toggle;
+        mi.Handle(ms, EInputKey.IK_M, press, true, true, false, false);
+        let wrongComboIgnored = !mi.toggle;
+        mi.Handle(ms, EInputKey.IK_M, press, false, true, false, false);
+        let comboOpens = mi.toggle && !mi.debugSelfTest;
+        mi.toggle = false;
+        mi.Handle(ms, EInputKey.IK_M, press, false, false, false, true);
+        let bareCloses = mi.toggle;
+        mi.toggle = false;
+        ms.keyToggleMod = OverlayMapOpenModifier.None;
+        mi.Handle(ms, EInputKey.IK_M, press, false, true, false, false);
+        let noneKeepsDebugChord = !mi.toggle && mi.debugSelfTest;
+        mi.debugSelfTest = false;
+        this.Check("input.open_modifier", bareIgnored && wrongComboIgnored && comboOpens && bareCloses && noneKeepsDebugChord,
+            ToString(bareIgnored) + ToString(wrongComboIgnored) + ToString(comboOpens) + ToString(bareCloses) + ToString(noneKeepsDebugChord));
         this.Check("input.ignored_when_closed", !inp.Handle(s, EInputKey.IK_NumPad8, press, false, false, false, false), "");
         let usedArrow = inp.Handle(s, EInputKey.IK_Up, press, false, false, false, true);
         let v0 = inp.PanVector();

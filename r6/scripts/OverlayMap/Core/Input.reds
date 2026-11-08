@@ -37,7 +37,15 @@ public class NMInput {
         }
         if Equals(key, s.keyToggle) {
             if pressed {
-                if ctrl && shift {
+                if NotEquals(s.keyToggleMod, OverlayMapOpenModifier.None) {
+                    // Only the exact combo opens; any other press of this key still belongs to the game. Closing needs no modifier.
+                    if !mapOpen && !NMInput.OpenModifierHeld(s.keyToggleMod, shift, ctrl, alt) {
+                        return false;
+                    }
+                    if !s.holdToShow || !mapOpen {
+                        this.toggle = true;
+                    }
+                } else if ctrl && shift {
                     this.debugLayer = true;
                 } else if ctrl {
                     this.debugSelfTest = true;
@@ -179,6 +187,16 @@ public class NMInput {
         this.waypoint = false;
         this.filter = false;
         this.teleport = false;
+    }
+
+    public static func OpenModifierHeld(m: OverlayMapOpenModifier, shift: Bool, ctrl: Bool, alt: Bool) -> Bool {
+        if alt {
+            return false;
+        }
+        if Equals(m, OverlayMapOpenModifier.Shift) { return shift && !ctrl; }
+        if Equals(m, OverlayMapOpenModifier.Ctrl) { return ctrl && !shift; }
+        if Equals(m, OverlayMapOpenModifier.ShiftCtrl) { return shift && ctrl; }
+        return !shift && !ctrl;
     }
 
     public static func KeyName(key: EInputKey) -> String {

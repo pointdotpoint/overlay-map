@@ -36,7 +36,8 @@ To uninstall, delete those three.
 ## Controls
 
 `O` opens and closes the map. It does nothing in menus or photo mode, where the game uses O itself.
-Change it under Mod Settings → Overlay Map → Keys → Open / close map.
+Change it under Mod Settings → Overlay Map → Keys → Open / close map. To open it with a combo such as Ctrl+M, also set
+Open map modifier there; the key alone then closes the map.
 
 **Keyboard (default).** While the map is open it takes the keyboard and mouse, so V stops:
 

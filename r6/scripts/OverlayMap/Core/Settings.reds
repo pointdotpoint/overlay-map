@@ -19,6 +19,13 @@ public enum OverlayMapKeyboardMode {
     KeepMoving = 1
 }
 
+public enum OverlayMapOpenModifier {
+    None = 0,
+    Shift = 1,
+    Ctrl = 2,
+    ShiftCtrl = 3
+}
+
 public enum OverlayMapPadOpen {
     HoldView = 0,
     Off = 1
@@ -31,6 +38,17 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.displayName", "Open / close map")
     @runtimeProperty("ModSettings.description", "Opens and closes Overlay Map. With Debug on: Ctrl = self-test, Shift = perf suite, Alt = calibration dump, Ctrl+Shift = debug layer.")
     public let keyToggle: EInputKey = EInputKey.IK_O;
+
+    @runtimeProperty("ModSettings.mod", "Overlay Map")
+    @runtimeProperty("ModSettings.category", "Keys")
+    @runtimeProperty("ModSettings.category.order", "0")
+    @runtimeProperty("ModSettings.displayName", "Open map modifier")
+    @runtimeProperty("ModSettings.description", "Hold this with the open key to open the map. The open key alone closes it.")
+    @runtimeProperty("ModSettings.displayValues.None", "None")
+    @runtimeProperty("ModSettings.displayValues.Shift", "Shift")
+    @runtimeProperty("ModSettings.displayValues.Ctrl", "Ctrl")
+    @runtimeProperty("ModSettings.displayValues.ShiftCtrl", "Shift + Ctrl")
+    public let keyToggleMod: OverlayMapOpenModifier = OverlayMapOpenModifier.None;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Keys")
