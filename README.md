@@ -19,7 +19,6 @@ Optional, each adds one feature:
 
 - [Mod Settings](https://www.nexusmods.com/cyberpunk2077/mods/4885): the settings menu and key rebinding. Without it
   every option keeps its default.
-- RedFileSystem: keeps your photo pins between sessions.
 - RedIMGRetriever: photo thumbnails in the sidebar.
 
 ## Install
@@ -82,7 +81,7 @@ Every key can be rebound in Mod Settings → Overlay Map.
 - **Teleport and fast travel.** Q on a fast travel marker fast travels there the game's way. Anywhere else it teleports
   V (and V's car) to the spot. Turn the teleport key off under Display → Teleport key.
 - **NCART lines.** Map filters → NCART lines (off by default) draws the five metro lines in their colours.
-- **Photo pins.** Photos taken in photo mode are pinned where you took them (needs RedFileSystem).
+- **Photo pins.** Photos taken in photo mode are pinned where you took them and kept between sessions.
 - **Look.** Five colour themes (Cyan, Green, Red, Purple, Amber), or follow your [HUD
   Painter](https://www.nexusmods.com/cyberpunk2077/mods/14935) colours. Panel size and opacity, the opacity of the
   whole map, map brightness and contrast, road glow, scanlines and an optional VHS tracking band and glitch (off by

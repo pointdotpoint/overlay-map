@@ -2,6 +2,9 @@
 public static native func OverlayMapNative_Version() -> Int32
 // Wall clock in ms since the plugin loaded (precise; the engine time scripts see ticks every 31.25 ms).
 public static native func OverlayMapNative_NowMs() -> Float
+// Photo pins: the whole of <game>/r6/storages/OverlayMap/photos.txt ("" when there is none yet), and an append to it.
+public static native func OverlayMapNative_PhotoStoreRead() -> String
+public static native func OverlayMapNative_PhotoStoreAppend(text: String) -> Bool
 // Diagnostics: the four world-map natives' bodies as RVAs, and why the engine calls are (un)available.
 public static native func OverlayMapNative_Rvas() -> String
 public static native func OverlayMapNative_Why() -> String

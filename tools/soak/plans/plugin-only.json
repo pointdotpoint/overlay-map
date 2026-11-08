@@ -1,0 +1,41 @@
+{
+ "name": "plugin-only",
+ "runs": [
+  {
+   "name": "plugin",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 120
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "photostore",
+     "expect": "^photostore before [1-9][0-9]* appended true after"
+    }
+   ],
+   "expect": [
+    {
+     "log": "TEST\\|SUMMARY",
+     "min": 1
+    }
+   ],
+   "forbid": [
+    "TEST\\|FAIL\\|"
+   ]
+  }
+ ]
+}

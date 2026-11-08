@@ -1,6 +1,4 @@
 module OverlayMap
-@if(ModuleExists("RedFileSystem"))
-import RedFileSystem.*
 
 // One saved photo spot: where V stood when the shot was taken, and the game's hash for loading that shot.
 public class NMPhotoSpot {
@@ -167,86 +165,36 @@ public class NMPhotoStoreState extends ScriptableSystem {
     }
 }
 
-// RedFileSystem revokes a storage that is requested twice, so the storage is requested exactly once per game
-// process, when this service loads, and kept.
-public class NMPhotoStorage extends ScriptableService {
-    private let requests: Int32;
-    private let handle: ref<IScriptable>;
-
-    private cb func OnLoad() {
-        this.handle = NMPhotoStorageOpen();
-        this.requests += 1;
+// The file lives in <game>/r6/storages/OverlayMap/, where RedFileSystem's storage kept it before, and is read and
+// appended by the OverlayMapNative plugin.
+@if(ModuleExists("OverlayMapNative"))
+public func NMPhotoStoreLoad() -> array<ref<NMPhotoSpot>> {
+    let lines: array<String>;
+    for l in StrSplit(OverlayMapNative_PhotoStoreRead(), "\n", false) {
+        let t = StrReplaceAll(l, "\r", "");
+        if StrLen(t) > 0 { ArrayPush(lines, t); }
     }
-
-    public static func Get() -> ref<NMPhotoStorage> {
-        return GameInstance.GetScriptableServiceContainer().GetService(n"OverlayMap.NMPhotoStorage") as NMPhotoStorage;
-    }
-
-    public static func Requests() -> Int32 {
-        let st = NMPhotoStorage.Get();
-        return IsDefined(st) ? st.requests : 0;
-    }
-
-    public static func Handle() -> ref<IScriptable> {
-        let st = NMPhotoStorage.Get();
-        return IsDefined(st) ? st.handle : null;
-    }
+    return NMPhotoStore.Parse(lines);
 }
 
-@if(ModuleExists("RedFileSystem"))
-public func NMPhotoStorageOpen() -> ref<IScriptable> {
-    return FileSystem.GetStorage("OverlayMap");
-}
-
-@if(!ModuleExists("RedFileSystem"))
-public func NMPhotoStorageOpen() -> ref<IScriptable> {
-    return null;
-}
-
-@if(ModuleExists("RedFileSystem"))
+@if(!ModuleExists("OverlayMapNative"))
 public func NMPhotoStoreLoad() -> array<ref<NMPhotoSpot>> {
     let none: array<ref<NMPhotoSpot>>;
-    let st = NMPhotoStorage.Handle() as FileSystemStorage;
-    if !IsDefined(st) {
-        NMLog.Error("photo|store|no storage");
-        return none;
-    }
-    if NotEquals(st.Exists(NMPhotoStore.FileName()), FileSystemStatus.True) {
-        return none;
-    }
-    let f = st.GetFile(NMPhotoStore.FileName());
-    if !IsDefined(f) {
-        NMLog.Error("photo|store|unreadable");
-        return none;
-    }
-    return NMPhotoStore.Parse(f.ReadAsLines());
-}
-
-@if(!ModuleExists("RedFileSystem"))
-public func NMPhotoStoreLoad() -> array<ref<NMPhotoSpot>> {
-    let none: array<ref<NMPhotoSpot>>;
-    NMLog.Error("photo|store|no RedFileSystem");
+    NMLog.Error("photo|store|no OverlayMapNative plugin");
     return none;
 }
 
-@if(ModuleExists("RedFileSystem"))
+@if(ModuleExists("OverlayMapNative"))
 public func NMPhotoStoreAppend(line: String) -> Bool {
-    let st = NMPhotoStorage.Handle() as FileSystemStorage;
-    if !IsDefined(st) {
-        NMLog.Error("photo|store|no storage");
-        return false;
-    }
-    let f = st.GetFile(NMPhotoStore.FileName());
-    if !IsDefined(f) {
+    let ok = OverlayMapNative_PhotoStoreAppend(line + "\n");
+    if !ok {
         NMLog.Error("photo|store|unwritable");
-        return false;
     }
-    // WriteLines ends no line, so the next append would run on from this one.
-    return f.WriteText(line + "\n", FileSystemWriteMode.Append);
+    return ok;
 }
 
-@if(!ModuleExists("RedFileSystem"))
+@if(!ModuleExists("OverlayMapNative"))
 public func NMPhotoStoreAppend(line: String) -> Bool {
-    NMLog.Error("photo|store|no RedFileSystem");
+    NMLog.Error("photo|store|no OverlayMapNative plugin");
     return false;
 }

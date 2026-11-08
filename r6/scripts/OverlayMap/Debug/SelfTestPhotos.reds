@@ -32,10 +32,10 @@ public abstract class NMPhotoTests {
 
     // Final review fixes.
     private static func Review(t: ref<NMSelfTest>) {
-        // RedFileSystem revokes a storage requested twice: loads and appends must share one request.
-        NMPhotoStore.Load();
-        NMPhotoStore.Load();
-        t.Check("photo.storage_once", NMPhotoStorage.Requests() <= 1, ToString(NMPhotoStorage.Requests()));
+        // Loading twice gives the same pins (the plugin reads the file afresh each time).
+        let la = NMPhotoStore.Load();
+        let lb = NMPhotoStore.Load();
+        t.Check("photo.store_reload", ArraySize(la) == ArraySize(lb), ToString(ArraySize(la)) + "/" + ToString(ArraySize(lb)));
 
         // Thumbnails are cached by shot hash, one load in flight, off-screen wants dropped.
         let p = NMThumbPlan.Create(2);

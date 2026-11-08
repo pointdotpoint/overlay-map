@@ -953,6 +953,15 @@
 
     // Look checks: a setting changed in memory (the harness restores the settings file after the campaign). The panel
     // reads these on open, so close and open after a change. effects 0|1, theme cyan|green|red|purple|amber, opacity <float>.
+    // Photo pin storage through the plugin: pins read now, then one test pin appended and read back. The campaign
+    // restores r6/storages/OverlayMap afterwards, so the test pin doesn't stay.
+    public func Soak_PhotoStore() -> String {
+        let before = ArraySize(NMPhotoStore.Load());
+        let ok = NMPhotoStore.Append(NMPhotoSpot.Create(4242u, "photomode_soaktest.png", new Vector4(0.0, 0.0, 10.0, 1.0), 0.0, 1ul));
+        let after = ArraySize(NMPhotoStore.Load());
+        return "photostore before " + ToString(before) + " appended " + ToString(ok) + " after " + ToString(after);
+    }
+
     public func Soak_Set(name: String, value: String) -> String {
         let s = this.Settings();
         if !IsDefined(s) { return "no settings"; }

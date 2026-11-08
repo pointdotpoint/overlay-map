@@ -15,6 +15,9 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <windows.h>
 
@@ -351,6 +354,55 @@ void NowMs(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, float* aOut, int
         *aOut = static_cast<float>(static_cast<double>(now.QuadPart - start.QuadPart) * 1000.0 / static_cast<double>(freq.QuadPart));
 }
 
+// Photo pin storage: <game>/r6/storages/OverlayMap/photos.txt, the file RedFileSystem's "OverlayMap" storage used, so
+// existing pins carry over. The name is fixed here: scripts can't reach any other file.
+std::filesystem::path PhotoFile()
+{
+    wchar_t exe[MAX_PATH * 4];
+    auto n = GetModuleFileNameW(nullptr, exe, static_cast<DWORD>(std::size(exe)));
+    if (n == 0 || n >= std::size(exe))
+        return {};
+    // <game>/bin/x64/Cyberpunk2077.exe
+    return std::filesystem::path(exe).parent_path().parent_path().parent_path() / L"r6" / L"storages" / L"OverlayMap" /
+           L"photos.txt";
+}
+
+void PhotoStoreRead(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+{
+    aFrame->code++;
+    std::string text;
+    auto file = PhotoFile();
+    std::ifstream in(file, std::ios::binary);
+    if (in)
+        text.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    if (aOut)
+        new (aOut) RED4ext::CString(text.c_str());
+}
+
+// Appends the text as is (the script ends each record with a newline). False when the text can't be read from the
+// script call (unknown game build) or the file can't be written.
+void PhotoStoreAppend(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+{
+    RED4ext::CString text;
+    bool read = ReadParam(aFrame, &text);
+    aFrame->code++; // ParamEnd
+    bool ok = false;
+    auto file = PhotoFile();
+    if (read && !file.empty())
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(file.parent_path(), ec);
+        std::ofstream out(file, std::ios::binary | std::ios::app);
+        if (out)
+        {
+            out.write(text.c_str(), static_cast<std::streamsize>(text.Length()));
+            ok = static_cast<bool>(out.flush());
+        }
+    }
+    if (aOut)
+        *aOut = ok;
+}
+
 RED4ext::CGlobalFunction* Register(const char* aName, void* aFunc, const char* aReturn)
 {
     RED4ext::CBaseFunction::Flags flags = {.isNative = true, .isStatic = true};
@@ -376,6 +428,10 @@ void PostRegisterTypes()
     Commit(Register("OverlayMapNative_Available", reinterpret_cast<void*>(&Available), "Bool"));
     Commit(Register("OverlayMapNative_Why", reinterpret_cast<void*>(&Why), "String"));
     Commit(Register("OverlayMapNative_NowMs", reinterpret_cast<void*>(&NowMs), "Float"));
+    Commit(Register("OverlayMapNative_PhotoStoreRead", reinterpret_cast<void*>(&PhotoStoreRead), "String"));
+    auto append = Register("OverlayMapNative_PhotoStoreAppend", reinterpret_cast<void*>(&PhotoStoreAppend), "Bool");
+    append->AddParam("String", "text");
+    Commit(append);
     auto track = Register("OverlayMapNative_TrackMappin", reinterpret_cast<void*>(&TrackMappin), "Bool");
     track->AddParam("handle:gamemappinsMappinSystem", "system");
     track->AddParam("gameNewMappinID", "id");

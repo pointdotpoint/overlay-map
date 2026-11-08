@@ -51,6 +51,7 @@ public abstract class NMSoak {
         if Equals(command, "last_axis") { return sys.Soak_LastAxis(); }
         if Equals(command, "in_menu") { return sys.Soak_InMenu(); }
         if Equals(command, "cam") { return sys.Soak_Cam(); }
+        if Equals(command, "photostore") { return sys.Soak_PhotoStore(); }
         if Equals(command, "pauses") { return sys.Soak_Pauses(); }
         if Equals(command, "uictx on") { return sys.Soak_UiCtx(true); }
         if Equals(command, "uictx off") { return sys.Soak_UiCtx(false); }
