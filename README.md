@@ -40,7 +40,7 @@ Change it under Mod Settings → Overlay Map → Keys → Open / close map. To o
 Open map modifier there; the key alone then closes the map.
 
 **Mouse pans the map** (Keys (map takes keyboard)): moving the mouse pans the map instead of turning V's camera, with
-its own speed slider. Off by default.
+its own speed slider. On by default; turn it off to keep turning the camera with the mouse while the map is open.
 
 **Keyboard (default).** While the map is open it takes the keyboard and mouse, so V stops:
 

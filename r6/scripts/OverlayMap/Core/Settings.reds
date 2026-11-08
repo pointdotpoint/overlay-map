@@ -204,7 +204,7 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category.order", "1")
     @runtimeProperty("ModSettings.displayName", "Mouse pans the map")
     @runtimeProperty("ModSettings.description", "Moving the mouse pans the map, and V's camera stays still while the map is open. Off: the mouse turns the camera.")
-    public let mousePan: Bool = false;
+    public let mousePan: Bool = true;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Keys (map takes keyboard)")

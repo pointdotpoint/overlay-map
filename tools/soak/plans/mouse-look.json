@@ -44,6 +44,10 @@
      "cmd": "yaw"
     },
     {
+     "cmd": "set mousepan 0",
+     "expect": "^mousepan false"
+    },
+    {
      "cmd": "press toggle"
     },
     {
