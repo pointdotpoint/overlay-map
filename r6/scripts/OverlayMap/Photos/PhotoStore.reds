@@ -151,6 +151,22 @@ public abstract class NMPhotoStore {
         return out;
     }
 
+    // The file's lines, without line ends (RedFileSystem wrote CRLF) or empty lines.
+    public static func Lines(text: String) -> array<String> {
+        let out: array<String>;
+        let rest = text;
+        let at = StrFindFirst(rest, "\n");
+        while at >= 0 {
+            let l = StrReplaceAll(StrLeft(rest, at), "\r", "");
+            if StrLen(l) > 0 { ArrayPush(out, l); }
+            rest = StrMid(rest, at + 1);
+            at = StrFindFirst(rest, "\n");
+        }
+        let last = StrReplaceAll(rest, "\r", "");
+        if StrLen(last) > 0 { ArrayPush(out, last); }
+        return out;
+    }
+
     public static func Append(s: ref<NMPhotoSpot>) -> Bool {
         return NMPhotoStoreAppend(NMPhotoStore.ToLine(s));
     }
@@ -169,11 +185,8 @@ public class NMPhotoStoreState extends ScriptableSystem {
 // appended by the OverlayMapNative plugin.
 @if(ModuleExists("OverlayMapNative"))
 public func NMPhotoStoreLoad() -> array<ref<NMPhotoSpot>> {
-    let lines: array<String>;
-    for l in StrSplit(OverlayMapNative_PhotoStoreRead(), "\n", false) {
-        let t = StrReplaceAll(l, "\r", "");
-        if StrLen(t) > 0 { ArrayPush(lines, t); }
-    }
+    let text = OverlayMapNative_PhotoStoreRead();
+    let lines = NMPhotoStore.Lines(text);
     return NMPhotoStore.Parse(lines);
 }
 

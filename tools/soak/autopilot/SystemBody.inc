@@ -956,10 +956,14 @@
     // Photo pin storage through the plugin: pins read now, then one test pin appended and read back. The campaign
     // restores r6/storages/OverlayMap afterwards, so the test pin doesn't stay.
     public func Soak_PhotoStore() -> String {
-        let before = ArraySize(NMPhotoStore.Load());
+        // Results held in locals: ArraySize() straight on a call's returned array read 0 in game.
+        let a = NMPhotoStore.Load();
+        let before = ArraySize(a);
         let ok = NMPhotoStore.Append(NMPhotoSpot.Create(4242u, "photomode_soaktest.png", new Vector4(0.0, 0.0, 10.0, 1.0), 0.0, 1ul));
-        let after = ArraySize(NMPhotoStore.Load());
-        return "photostore before " + ToString(before) + " appended " + ToString(ok) + " after " + ToString(after);
+        let b = NMPhotoStore.Load();
+        let after = ArraySize(b);
+        return "photostore before " + ToString(before) + " appended " + ToString(ok) + " after " + ToString(after)
+            + " skipped " + ToString(NMPhotoStore.Skipped());
     }
 
     public func Soak_Set(name: String, value: String) -> String {

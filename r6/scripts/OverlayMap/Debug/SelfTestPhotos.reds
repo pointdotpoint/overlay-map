@@ -32,6 +32,15 @@ public abstract class NMPhotoTests {
 
     // Final review fixes.
     private static func Review(t: ref<NMSelfTest>) {
+        let big = "";
+        let n = 0;
+        while n < 200 {
+            big += "line " + ToString(n) + " 0123456789012345678901234567890123456789012345678901234567890\r\n";
+            n += 1;
+        }
+        let bl = NMPhotoStore.Lines(big + "\n\nlast");
+        t.Check("photo.store_lines", ArraySize(bl) == 201 && Equals(bl[0], "line 0 0123456789012345678901234567890123456789012345678901234567890")
+            && Equals(bl[200], "last"), ToString(ArraySize(bl)) + " lines from " + ToString(StrLen(big)) + " chars");
         // Loading twice gives the same pins (the plugin reads the file afresh each time).
         let la = NMPhotoStore.Load();
         let lb = NMPhotoStore.Load();
