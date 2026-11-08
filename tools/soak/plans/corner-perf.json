@@ -3,29 +3,79 @@
  "runs": [
   {
    "name": "perf",
-   "parts": ["scripts", "archive", "bootstrap", "autopilot"],
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
    "repeats": 1,
    "steps": [
-    {"wait": 8},
-    {"cmd": "god"},
-    {"cmd": "set debug 1"},
-    {"cmd": "set replace 1"},
-    {"wait": 3},
-    {"padaxis": "LY", "value": 1.0},
-    {"wait": 16},
-    {"padaxis": "LY", "value": 0.0},
-    {"cmd": "corner_perf"},
-    {"cmd": "set style circle"},
-    {"wait": 2},
-    {"padaxis": "LY", "value": -1.0},
-    {"wait": 16},
-    {"padaxis": "LY", "value": 0.0},
-    {"cmd": "corner_perf"},
-    {"cmd": "set hudpainter 1"},
-    {"wait": 9},
-    {"cmd": "corner_perf"},
-    {"cmd": "corner"},
-    {"shot": "end"}
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "god"
+    },
+    {
+     "cmd": "set debug 1"
+    },
+    {
+     "cmd": "set replace 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 16
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "cmd": "corner_perf"
+    },
+    {
+     "cmd": "set style circle"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "padaxis": "LY",
+     "value": -1.0
+    },
+    {
+     "wait": 16
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "cmd": "corner_perf"
+    },
+    {
+     "cmd": "set hudpainter 1"
+    },
+    {
+     "wait": 9
+    },
+    {
+     "cmd": "corner_perf"
+    },
+    {
+     "cmd": "corner"
+    },
+    {
+     "shot": "end"
+    }
    ]
   }
  ]

@@ -893,7 +893,8 @@
     "scripts",
     "archive",
     "bootstrap",
-    "autopilot"
+    "autopilot",
+    "native"
    ],
    "repeats": 1,
    "steps": [

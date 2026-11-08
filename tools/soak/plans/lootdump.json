@@ -3,12 +3,25 @@
  "runs": [
   {
    "name": "dump",
-   "parts": ["scripts", "archive", "bootstrap", "autopilot"],
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
    "repeats": 1,
    "steps": [
-    {"wait": 8},
-    {"cmd": "lootdump", "timeout": 170},
-    {"wait": 5}
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "lootdump",
+     "timeout": 170
+    },
+    {
+     "wait": 5
+    }
    ]
   }
  ]

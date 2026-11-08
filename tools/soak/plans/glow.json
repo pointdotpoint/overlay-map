@@ -1,37 +1,181 @@
 {
-  "name": "glow",
-  "runs": [
+ "name": "glow",
+ "runs": [
+  {
+   "name": "glow",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
     {
-      "name": "glow",
-      "parts": ["scripts", "archive", "bootstrap", "autopilot"],
-      "repeats": 1,
-      "steps": [
-        {"wait": 8},
-        {"cmd": "set effects 0", "expect": "^effects"},
-        {"cmd": "set scan 0", "expect": "^scan"},
-        {"cmd": "set tracking 0", "expect": "^tracking"},
-        {"cmd": "set glitch 0", "expect": "^glitch"},
-        {"cmd": "set glow 0", "expect": "^glow"},
-        {"cmd": "open"}, {"wait": 3},
-        {"cmd": "focus_at -1250 -150 4", "expect": "^focus"}, {"wait": 4}, {"shot": "plain_g0_city"},
-        {"cmd": "focus_at -1250 -150 1", "expect": "^focus"}, {"wait": 4}, {"shot": "plain_g0_street"},
-        {"cmd": "close"}, {"wait": 2},
-        {"cmd": "set glow 1.5", "expect": "^glow"},
-        {"cmd": "open"}, {"wait": 3},
-        {"cmd": "focus_at -1250 -150 4", "expect": "^focus"}, {"wait": 4}, {"shot": "plain_g15_city"},
-        {"cmd": "focus_at -1250 -150 1", "expect": "^focus"}, {"wait": 4}, {"shot": "plain_g15_street"},
-        {"cmd": "close"}, {"wait": 2},
-        {"cmd": "set glow 3", "expect": "^glow"},
-        {"cmd": "open"}, {"wait": 3},
-        {"cmd": "focus_at -1250 -150 4", "expect": "^focus"}, {"wait": 4}, {"shot": "plain_g3_city"},
-        {"cmd": "focus_at -1250 -150 1", "expect": "^focus"}, {"wait": 4}, {"shot": "plain_g3_street"},
-        {"cmd": "close"}, {"wait": 2},
-        {"cmd": "set effects 1", "expect": "^effects"},
-        {"cmd": "open"}, {"wait": 3},
-        {"cmd": "focus_at -1250 -150 4", "expect": "^focus"}, {"wait": 4}, {"shot": "fx_g3_city"},
-        {"cmd": "focus_at -1250 -150 1", "expect": "^focus"}, {"wait": 4}, {"shot": "fx_g3_street"},
-        {"cmd": "close"}, {"wait": 2}
-      ]
+     "wait": 8
+    },
+    {
+     "cmd": "set effects 0",
+     "expect": "^effects"
+    },
+    {
+     "cmd": "set scan 0",
+     "expect": "^scan"
+    },
+    {
+     "cmd": "set tracking 0",
+     "expect": "^tracking"
+    },
+    {
+     "cmd": "set glitch 0",
+     "expect": "^glitch"
+    },
+    {
+     "cmd": "set glow 0",
+     "expect": "^glow"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_at -1250 -150 4",
+     "expect": "^focus"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "plain_g0_city"
+    },
+    {
+     "cmd": "focus_at -1250 -150 1",
+     "expect": "^focus"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "plain_g0_street"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "set glow 1.5",
+     "expect": "^glow"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_at -1250 -150 4",
+     "expect": "^focus"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "plain_g15_city"
+    },
+    {
+     "cmd": "focus_at -1250 -150 1",
+     "expect": "^focus"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "plain_g15_street"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "set glow 3",
+     "expect": "^glow"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_at -1250 -150 4",
+     "expect": "^focus"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "plain_g3_city"
+    },
+    {
+     "cmd": "focus_at -1250 -150 1",
+     "expect": "^focus"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "plain_g3_street"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "set effects 1",
+     "expect": "^effects"
+    },
+    {
+     "cmd": "open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "focus_at -1250 -150 4",
+     "expect": "^focus"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "fx_g3_city"
+    },
+    {
+     "cmd": "focus_at -1250 -150 1",
+     "expect": "^focus"
+    },
+    {
+     "wait": 4
+    },
+    {
+     "shot": "fx_g3_street"
+    },
+    {
+     "cmd": "close"
+    },
+    {
+     "wait": 2
     }
-  ]
+   ]
+  }
+ ]
 }

@@ -3,33 +3,88 @@
  "runs": [
   {
    "name": "probe",
-   "parts": ["scripts", "archive", "bootstrap", "autopilot"],
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
    "repeats": 1,
    "steps": [
-    {"wait": 8},
-    {"cmd": "selftest", "timeout": 60},
-    {"cmd": "hud_find"},
-    {"cmd": "mm_reset"},
-    {"wait": 2.5},
-    {"cmd": "mm_ctrls"},
-    {"cmd": "set debug 1"},
-    {"cmd": "set replace 1"},
-    {"wait": 3},
-    {"cmd": "mm_reset"},
-    {"wait": 2.5},
-    {"cmd": "mm_ctrls"},
-    {"cmd": "corner"},
-    {"cmd": "set fadeop 0.001"},
-    {"wait": 2},
-    {"cmd": "mm_reset"},
-    {"wait": 2.5},
-    {"cmd": "mm_ctrls"},
-    {"cmd": "corner"},
-    {"shot": "fade_0001"},
-    {"cmd": "set replace 0"},
-    {"wait": 3},
-    {"cmd": "corner"},
-    {"shot": "off"}
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 60
+    },
+    {
+     "cmd": "hud_find"
+    },
+    {
+     "cmd": "mm_reset"
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "cmd": "mm_ctrls"
+    },
+    {
+     "cmd": "set debug 1"
+    },
+    {
+     "cmd": "set replace 1"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "mm_reset"
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "cmd": "mm_ctrls"
+    },
+    {
+     "cmd": "corner"
+    },
+    {
+     "cmd": "set fadeop 0.001"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "mm_reset"
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "cmd": "mm_ctrls"
+    },
+    {
+     "cmd": "corner"
+    },
+    {
+     "shot": "fade_0001"
+    },
+    {
+     "cmd": "set replace 0"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "corner"
+    },
+    {
+     "shot": "off"
+    }
    ]
   }
  ]

@@ -15,11 +15,10 @@ Developers and mod authors: see [docs/DEVELOPING.md](docs/DEVELOPING.md) and [do
 - [Codeware](https://www.nexusmods.com/cyberpunk2077/mods/7780)
 - [RED4ext](https://www.nexusmods.com/cyberpunk2077/mods/2380) (Codeware needs it too)
 
-Optional, each adds one feature:
+Optional:
 
 - [Mod Settings](https://www.nexusmods.com/cyberpunk2077/mods/4885): the settings menu and key rebinding. Without it
   every option keeps its default.
-- RedIMGRetriever: photo thumbnails in the sidebar.
 
 ## Install
 
