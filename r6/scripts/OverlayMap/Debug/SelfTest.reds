@@ -407,6 +407,16 @@ public class NMSelfTest {
         mi.debugSelfTest = false;
         this.Check("input.open_modifier", bareIgnored && wrongComboIgnored && comboOpens && bareCloses && noneKeepsDebugChord,
             ToString(bareIgnored) + ToString(wrongComboIgnored) + ToString(comboOpens) + ToString(bareCloses) + ToString(noneKeepsDebugChord));
+        // A precise clock moves within one frame; the engine-time fallback stays put until the next 31.25 ms tick.
+        let c0 = NMClock.NowMs();
+        let c1 = c0;
+        let spins = 0;
+        while c1 == c0 && spins < 200000 {
+            c1 = NMClock.NowMs();
+            spins += 1;
+        }
+        this.Check("clock.precise", NMClock.Precise() && c1 > c0 && c1 - c0 < 5.0,
+            ToString(NMClock.Precise()) + " step " + FloatToStringPrec(c1 - c0, 4) + " ms after " + ToString(spins));
         let mp = new NMInput();
         mp.takesKeys = true;
         let mpOff = !mp.MouseMove(EInputKey.IK_MouseX, 5.0, true, false) && mp.mouseDx == 0.0;

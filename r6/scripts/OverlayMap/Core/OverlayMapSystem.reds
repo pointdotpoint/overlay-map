@@ -595,7 +595,7 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.input.debugPerf = false;
             if s.debug {
                 if !NMClock.Precise() {
-                    NMLog.Error("perf suite needs RedIMGRetriever (precise clock)");
+                    NMLog.Error("perf suite needs a precise clock (the OverlayMapNative plugin or RedIMGRetriever)");
                 } else {
                     if !this.isOpen {
                         this.Open();

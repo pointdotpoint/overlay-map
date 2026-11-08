@@ -334,6 +334,23 @@ void Rvas(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString*
         new (aOut) RED4ext::CString(line.c_str());
 }
 
+// Wall clock in ms since the plugin loaded (QueryPerformanceCounter). The engine time scripts can read only ticks every
+// 31.25 ms, which makes per-frame motion uneven above 32 FPS.
+void NowMs(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, float* aOut, int64_t)
+{
+    aFrame->code++;
+    static LARGE_INTEGER freq{}, start{};
+    if (!freq.QuadPart)
+    {
+        QueryPerformanceFrequency(&freq);
+        QueryPerformanceCounter(&start);
+    }
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    if (aOut)
+        *aOut = static_cast<float>(static_cast<double>(now.QuadPart - start.QuadPart) * 1000.0 / static_cast<double>(freq.QuadPart));
+}
+
 RED4ext::CGlobalFunction* Register(const char* aName, void* aFunc, const char* aReturn)
 {
     RED4ext::CBaseFunction::Flags flags = {.isNative = true, .isStatic = true};
@@ -358,6 +375,7 @@ void PostRegisterTypes()
     Commit(Register("OverlayMapNative_Rvas", reinterpret_cast<void*>(&Rvas), "String"));
     Commit(Register("OverlayMapNative_Available", reinterpret_cast<void*>(&Available), "Bool"));
     Commit(Register("OverlayMapNative_Why", reinterpret_cast<void*>(&Why), "String"));
+    Commit(Register("OverlayMapNative_NowMs", reinterpret_cast<void*>(&NowMs), "Float"));
     auto track = Register("OverlayMapNative_TrackMappin", reinterpret_cast<void*>(&TrackMappin), "Bool");
     track->AddParam("handle:gamemappinsMappinSystem", "system");
     track->AddParam("gameNewMappinID", "id");

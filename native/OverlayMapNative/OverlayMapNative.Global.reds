@@ -1,5 +1,7 @@
 // OverlayMapNative natives (root module: see OverlayMapNative.reds).
 public static native func OverlayMapNative_Version() -> Int32
+// Wall clock in ms since the plugin loaded (precise; the engine time scripts see ticks every 31.25 ms).
+public static native func OverlayMapNative_NowMs() -> Float
 // Diagnostics: the four world-map natives' bodies as RVAs, and why the engine calls are (un)available.
 public static native func OverlayMapNative_Rvas() -> String
 public static native func OverlayMapNative_Why() -> String
