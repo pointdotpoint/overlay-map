@@ -41,8 +41,10 @@ public abstract class NMWelcome {
 
     public static func Message(s: ref<OverlayMapSettings>) -> String {
         return "A live map of Night City, drawn over your game.\nNo pause, no menu.\n\n"
-            + NMWelcome.Green("Open / close: " + NMWelcome.OpenKeyText(s)) + "\n\n"
+            + NMWelcome.Green("Open / close: " + NMWelcome.OpenKeyText(s)) + "\n"
+            + "You might want to change the default keybind to something more easily accessible.\n\n"
             + NMWelcome.Green("Controls") + " (Settings > Mods > Overlay Map):\n"
+            + "Make sure to choose your preferred method of usage:\n"
             + "WASD - V stops; the keyboard drives the map.\n"
             + "Numpad - V keeps moving; the map uses the numpad.\n"
             + "Mouse only - V keeps moving; the mouse drives the map.\n\n"
