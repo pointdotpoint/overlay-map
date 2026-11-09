@@ -71,6 +71,8 @@ public class OverlayMapSystem extends ScriptableSystem {
     private let modalPushed: Bool;    // UIGameContext.ModalPopup is on the stack because of us
     private let padCtxToken: Int32;   // invalidates a scheduled release when the map takes the pad again
     private let padReleaseWait: Bool; // closed by a pad button: release the context after that button's release
+    private let kbHeld: array<EInputKey>;   // keys pressed while the map held the keyboard and not yet released
+    private let kbReleaseWait: Bool;  // closed with keys still down: hand V and the context back after their release
     private let padPolling: Bool;
     private let padPauseSuppressed: Bool;   // the game's pause menu was held back for this View press
     private let padPauses: Int32;           // pause menus OverlayMap opened for a View tap (harness counter)
@@ -322,6 +324,7 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.OnPadButton(s, key, action);
             return true;
         }
+        this.TrackKbHeld(key, action);
         // The open key is a letter by default: typed into menu search bars, and photo mode's zoom. Only gameplay opens.
         if Equals(key, s.keyToggle) && !this.isOpen && !this.GameplayActive() {
             return false;
@@ -354,6 +357,8 @@ public class OverlayMapSystem extends ScriptableSystem {
         if IsDefined(player) && player.IsPlayer() {
             NMRestrict.Remove(player);   // a save made with the map open must not load with V held
             this.kbRestricted = false;
+            this.kbReleaseWait = false;
+            ArrayClear(this.kbHeld);
             if IsDefined(this.padListener) {
                 this.padListener.UnregisterInputListener(this, n"OpenPauseMenu");
             }
@@ -502,6 +507,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     // Mouse pans the map the context is wanted on foot too: the mouse moves the map, so the camera must stay still.
     private func TakeKeyboard() {
         this.kbOwned = true;
+        this.kbReleaseWait = false;
         this.padCtxToken += 1;
         let player = GetPlayer(this.GetGameInstance());
         let onFoot = IsDefined(player) && !IsDefined(GetMountedVehicle(player));
@@ -526,6 +532,28 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
     }
 
+    // A key that closes the map (teleport, the open key) is still down when the map lets go. If the game got V back
+    // then, it would see that key's release (T opens the phone on release) or think it is still held (Q kept the
+    // inventory preview turning). So the keys pressed while the map held the keyboard are tracked, and on close V and
+    // the context are handed back only once they are all up (Close, with a fallback in PadReleaseCtx).
+    private func TrackKbHeld(key: EInputKey, action: EInputAction) {
+        if Equals(action, EInputAction.IACT_Press) {
+            if this.isOpen && this.kbOwned && !ArrayContains(this.kbHeld, key) {
+                ArrayPush(this.kbHeld, key);
+            }
+            return;
+        }
+        if !Equals(action, EInputAction.IACT_Release) {
+            return;
+        }
+        ArrayRemove(this.kbHeld, key);
+        if !this.isOpen && this.kbReleaseWait && ArraySize(this.kbHeld) == 0 {
+            this.kbReleaseWait = false;
+            this.ReleaseRestrictions();
+            this.SchedulePadRelease(0.1);
+        }
+    }
+
     private func ReleaseRestrictions() {
         if this.kbRestricted {
             this.kbRestricted = false;
@@ -541,7 +569,16 @@ public class OverlayMapSystem extends ScriptableSystem {
     }
 
     public func PadReleaseCtx(token: Int32) {
-        if !this.padCtx || token != this.padCtxToken || this.padOwned || this.kbOwned {
+        if token != this.padCtxToken || this.padOwned || this.kbOwned {
+            return;
+        }
+        if this.kbReleaseWait {
+            // Fallback: a release never arrived (focus lost with the key down). Let go anyway.
+            this.kbReleaseWait = false;
+            ArrayClear(this.kbHeld);
+            this.ReleaseRestrictions();
+        }
+        if !this.padCtx {
             return;
         }
         this.padCtx = false;
@@ -909,9 +946,15 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
         if this.kbOwned {
             this.kbOwned = false;
-            this.ReleaseRestrictions();
-            if !padWasOwned {
-                this.SchedulePadRelease(0.1);
+            this.kbReleaseWait = ArraySize(this.kbHeld) > 0;
+            if this.kbReleaseWait {
+                // TrackKbHeld lets go once the keys are up; this is only the fallback.
+                this.SchedulePadRelease(3.0);
+            } else {
+                this.ReleaseRestrictions();
+                if !padWasOwned {
+                    this.SchedulePadRelease(0.1);
+                }
             }
         }
         this.OnClosing();

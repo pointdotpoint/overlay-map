@@ -314,7 +314,10 @@ public class NMVanilla extends NMVanillaSink {
         let s = e.snap;
         let m = this.Resolve(e);
         let filterSlot = s.filter >= 0 ? s.filter : this.catalog.Count();
-        let d = OverlayMapDetails.Create(this.catalog.DisplayName(filterSlot), NMVanillaText.Title(m, s.variant))
+        // Vehicles share the game's "Your Apartments" filter; under the title they name the vehicle instead.
+        let vehicleName = NMVanillaText.VehicleName(m);
+        let category = StrLen(vehicleName) > 0 ? vehicleName : this.catalog.DisplayName(filterSlot);
+        let d = OverlayMapDetails.Create(category, NMVanillaText.Title(m, s.variant))
             .WithColor(this.catalog.ColorFor(s.variant, s.phase));   // the marker's own colour, not the layer's
         if IsDefined(m) {
             let district = NMVanillaText.District(m);
