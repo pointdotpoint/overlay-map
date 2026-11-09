@@ -58,6 +58,20 @@ public abstract class NMCollectTests {
             && t.Near(s[0].pos.Y, -2.0, 0.001) && t.Near(s[0].pos.Z, 3.25, 0.001) && Equals(s[0].ref, "Items.a")
             && s[1].cat == NMCollectCats.Tarot() && Equals(s[1].ref, "mq033_x+mq033_y"), "");
         t.Check("collect.parse_empty", ArraySize(NMCollect.Parse("")) == 0, "");
+        let q = NMCollect.Parse("S,1,2,3,Items.Q304_x,M1:79421;S,1,2,3,Items.plain");
+        t.Check("collect.parse_quest", ArraySize(q) == 2 && Equals(q[0].quest, "M1:79421") && StrLen(q[1].quest) == 0,
+            ArraySize(q) == 2 ? q[0].quest + "|" + q[1].quest : ToString(ArraySize(q)));
+        // 79421 is q304_stadium's title in the game's journal: it must come back as a real name, not a key.
+        let one = NMCollect.QuestNote("M1:79421");
+        t.Check("collect.quest_note_named", StrBeginsWith(one, "Only appears during the quest \"") && StrFindFirst(one, "LocKey") < 0
+            && StrLen(one) > 34, one);
+        t.Check("collect.quest_note_kind", Equals(NMCollect.QuestNote("M1:"), "Only appears during a Phantom Liberty main quest.")
+            && Equals(NMCollect.QuestNote("Q0:"), "Only appears during a quest.")
+            && Equals(NMCollect.QuestNote("S0:"), "Only appears during a side quest."), NMCollect.QuestNote("M1:"));
+        let names: array<String> = ["The Beast in Me: Badlands", "The Beast in Me: City Center"];
+        let apart: array<String> = ["Dog Eat Dog", "Hole in the Sky"];
+        t.Check("collect.quest_shared_words", Equals(NMCollect.SharedWords(names), "The Beast in Me")
+            && StrLen(NMCollect.SharedWords(apart)) == 0, NMCollect.SharedWords(names));
         t.Check("collect.layer_ids", NMCollect.IsCollectLayer(NMCollectCats.LayerId(2)) && !NMCollect.IsCollectLayer(n"Vanilla.Quest"), "");
         t.Check("collect.teleport_exact", NMTeleport.ExactLayer(n"Collect.Shard") && NMTeleport.ExactLayer(n"Collect.Tarot"), "");
     }

@@ -1,0 +1,1957 @@
+{
+"01_climbing_the_ladder": [
+9859,
+"MainQuest",
+0
+],
+"02_sickness": [
+9860,
+"MainQuest",
+0
+],
+"03_haru_kasai": [
+9861,
+"MainQuest",
+0
+],
+"04_mysterious_stranger": [
+9862,
+"MainQuest",
+0
+],
+"05_arasaka_princess": [
+9863,
+"MainQuest",
+0
+],
+"06_samurai_reunited": [
+9864,
+"MainQuest",
+0
+],
+"07_nc_underground": [
+9865,
+"SideQuest",
+0
+],
+"08_headhunter": [
+9866,
+"MainQuest",
+0
+],
+"09_solo": [
+9867,
+"MainQuest",
+0
+],
+"10_survive": [
+9868,
+"MainQuest",
+0
+],
+"11_johnny_business": [
+9869,
+"MainQuest",
+0
+],
+"arch": [
+23288,
+"VehicleQuest",
+0
+],
+"archer_bandit": [
+78912,
+"MinorQuest",
+0
+],
+"archer_quartz": [
+22078,
+"VehicleQuest",
+0
+],
+"badlands_reward": [
+79483,
+"StreetStory",
+0
+],
+"brennan_apollo": [
+22095,
+"VehicleQuest",
+0
+],
+"chevalier_emperor": [
+1625,
+"VehicleQuest",
+0
+],
+"chevalier_thrax": [
+1624,
+"VehicleQuest",
+0
+],
+"city_center_reward": [
+79480,
+"StreetStory",
+0
+],
+"combat_zone_reward": [
+81399,
+"StreetStory",
+1
+],
+"courier_intro_journal": [
+91205,
+"CourierSideQuest",
+1
+],
+"courier_outro_dock": [
+88275,
+"CourierSideQuest",
+1
+],
+"courier_test": [
+88411,
+"CourierQuest",
+1
+],
+"generic_sts_quest": [
+35152,
+"StreetStory",
+0
+],
+"herrera_outlaw": [
+22086,
+"VehicleQuest",
+0
+],
+"heywood_reward": [
+79477,
+"StreetStory",
+0
+],
+"ma_bls_ina_se1_02": [
+18617,
+"Contract",
+0
+],
+"ma_bls_ina_se1_03": [
+18697,
+"Contract",
+0
+],
+"ma_bls_ina_se1_06": [
+18707,
+"Contract",
+0
+],
+"ma_bls_ina_se1_07": [
+18708,
+"CyberPsycho",
+0
+],
+"ma_bls_ina_se1_08": [
+19144,
+"CyberPsycho",
+0
+],
+"ma_bls_ina_se1_18": [
+18709,
+"Contract",
+0
+],
+"ma_bls_ina_se1_22": [
+18620,
+"CyberPsycho",
+0
+],
+"ma_bls_ina_se5_33": [
+78215,
+"Contract",
+0
+],
+"ma_cct_dtn_03": [
+14540,
+"CyberPsycho",
+0
+],
+"ma_cct_dtn_07": [
+50249,
+"CyberPsycho",
+0
+],
+"ma_cct_dtn_12": [
+15038,
+"Contract",
+0
+],
+"ma_hey_gle_02": [
+35284,
+"Contract",
+0
+],
+"ma_hey_gle_07": [
+35281,
+"Contract",
+0
+],
+"ma_hey_spr_04": [
+18637,
+"CyberPsycho",
+0
+],
+"ma_hey_spr_06": [
+17853,
+"CyberPsycho",
+0
+],
+"ma_hey_spr_11": [
+40659,
+"Contract",
+0
+],
+"ma_pac_cvi_08": [
+9991,
+"CyberPsycho",
+0
+],
+"ma_pac_cvi_10": [
+9992,
+"Contract",
+0
+],
+"ma_pac_cvi_12": [
+40416,
+"Contract",
+0
+],
+"ma_pac_cvi_13": [
+9993,
+"Contract",
+0
+],
+"ma_pac_cvi_15": [
+50253,
+"CyberPsycho",
+0
+],
+"ma_std_arr_03": [
+35273,
+"Contract",
+0
+],
+"ma_std_arr_06": [
+18639,
+"CyberPsycho",
+0
+],
+"ma_std_arr_07": [
+18640,
+"Contract",
+0
+],
+"ma_std_arr_10": [
+18641,
+"Contract",
+0
+],
+"ma_std_arr_14": [
+18643,
+"Contract",
+0
+],
+"ma_std_rcr_10": [
+18644,
+"Contract",
+0
+],
+"ma_std_rcr_11": [
+10005,
+"CyberPsycho",
+0
+],
+"ma_std_rcr_12": [
+18645,
+"Contract",
+0
+],
+"ma_std_rcr_13": [
+18646,
+"Contract",
+0
+],
+"ma_std_rcr_16": [
+18647,
+"Contract",
+0
+],
+"ma_wat_kab_02": [
+10008,
+"CyberPsycho",
+0
+],
+"ma_wat_kab_05": [
+10009,
+"Contract",
+0
+],
+"ma_wat_kab_08": [
+18648,
+"CyberPsycho",
+0
+],
+"ma_wat_lch_01": [
+34347,
+"Contract",
+0
+],
+"ma_wat_lch_03": [
+9969,
+"Contract",
+0
+],
+"ma_wat_lch_05": [
+9970,
+"Contract",
+0
+],
+"ma_wat_lch_06": [
+10016,
+"CyberPsycho",
+0
+],
+"ma_wat_lch_08": [
+34451,
+"Contract",
+0
+],
+"ma_wat_lch_15": [
+35298,
+"Contract",
+0
+],
+"ma_wat_nid_01": [
+34394,
+"Contract",
+0
+],
+"ma_wat_nid_02": [
+34396,
+"Contract",
+0
+],
+"ma_wat_nid_03": [
+18649,
+"CyberPsycho",
+0
+],
+"ma_wat_nid_06": [
+34422,
+"Contract",
+0
+],
+"ma_wat_nid_10": [
+18650,
+"Contract",
+0
+],
+"ma_wat_nid_12": [
+18651,
+"Contract",
+0
+],
+"ma_wat_nid_15": [
+18652,
+"CyberPsycho",
+0
+],
+"ma_wat_nid_22": [
+18653,
+"CyberPsycho",
+0
+],
+"ma_wat_nid_26": [
+18654,
+"Contract",
+0
+],
+"ma_wat_nid_27": [
+18655,
+"Contract",
+0
+],
+"ma_wbr_hil_05": [
+10019,
+"Contract",
+0
+],
+"ma_wbr_jpn_07": [
+14557,
+"Contract",
+0
+],
+"ma_wbr_jpn_09": [
+14558,
+"Contract",
+0
+],
+"ma_wbr_jpn_20": [
+39488,
+"Contract",
+0
+],
+"ma_wbr_nok_01": [
+9971,
+"Contract",
+0
+],
+"ma_wbr_nok_03": [
+40375,
+"Contract",
+0
+],
+"ma_wbr_nok_05": [
+40355,
+"Contract",
+0
+],
+"mahir_supron": [
+1609,
+"VehicleQuest",
+0
+],
+"makigai_maimai": [
+1611,
+"VehicleQuest",
+0
+],
+"mizutani_shion": [
+1616,
+"VehicleQuest",
+0
+],
+"mizutani_shion_nomad": [
+22089,
+"VehicleQuest",
+0
+],
+"mq001_scorpion": [
+10024,
+"MinorQuest",
+0
+],
+"mq002_veterans": [
+10025,
+"MinorQuest",
+0
+],
+"mq003_orbitals": [
+10040,
+"MinorQuest",
+0
+],
+"mq005_alley": [
+10054,
+"MinorQuest",
+0
+],
+"mq006_rollercoaster": [
+10058,
+"MinorQuest",
+0
+],
+"mq007_smartgun": [
+10066,
+"MinorQuest",
+0
+],
+"mq008_party": [
+10068,
+"MinorQuest",
+0
+],
+"mq009_loser": [
+10087,
+"MinorQuest",
+0
+],
+"mq010_barry": [
+10098,
+"MinorQuest",
+0
+],
+"mq011_wilson": [
+10108,
+"MinorQuest",
+0
+],
+"mq012_stud": [
+10188,
+"MinorQuest",
+0
+],
+"mq013_punks": [
+10197,
+"MinorQuest",
+0
+],
+"mq014_02_second": [
+10208,
+"MinorQuest",
+0
+],
+"mq014_03_third": [
+10213,
+"MinorQuest",
+0
+],
+"mq014_04_fourth": [
+10218,
+"MinorQuest",
+0
+],
+"mq014_zen": [
+10203,
+"MinorQuest",
+0
+],
+"mq015_wizardbook": [
+10224,
+"MinorQuest",
+0
+],
+"mq016_bartmoss": [
+10244,
+"MinorQuest",
+0
+],
+"mq017_streetkid": [
+10245,
+"MinorQuest",
+0
+],
+"mq018_writer": [
+10273,
+"MinorQuest",
+0
+],
+"mq019_paparazzi": [
+10299,
+"MinorQuest",
+0
+],
+"mq021_guide": [
+10319,
+"MinorQuest",
+0
+],
+"mq022_ezekiel": [
+10330,
+"MinorQuest",
+0
+],
+"mq023_bootleg": [
+10334,
+"MinorQuest",
+0
+],
+"mq024_sandra": [
+10342,
+"MinorQuest",
+0
+],
+"mq025_02_kabuki": [
+10358,
+"MinorQuest",
+0
+],
+"mq025_03_arroyo": [
+10362,
+"MinorQuest",
+0
+],
+"mq025_05_glen": [
+10366,
+"MinorQuest",
+0
+],
+"mq025_06_pacifica": [
+19331,
+"MinorQuest",
+0
+],
+"mq025_07_fight_club": [
+10374,
+"MinorQuest",
+0
+],
+"mq025_psycho_brawl": [
+19321,
+"MinorQuest",
+0
+],
+"mq026_conspiracy": [
+10378,
+"MinorQuest",
+0
+],
+"mq027_stunts": [
+10390,
+"MinorQuest",
+0
+],
+"mq028_stalker": [
+10436,
+"MinorQuest",
+0
+],
+"mq029_tourist": [
+26830,
+"MinorQuest",
+0
+],
+"mq030_melisa": [
+10451,
+"MinorQuest",
+0
+],
+"mq032_sacrum": [
+10456,
+"MinorQuest",
+0
+],
+"mq033_ep1": [
+91213,
+"MinorQuest",
+1
+],
+"mq033_tarot": [
+10461,
+"MinorQuest",
+0
+],
+"mq033_tarot_minor": [
+97629,
+"MinorQuest",
+0
+],
+"mq035_ozob": [
+10473,
+"MinorQuest",
+0
+],
+"mq036_overload": [
+10474,
+"MinorQuest",
+0
+],
+"mq037_brendan": [
+10475,
+"MinorQuest",
+0
+],
+"mq037_brendan_dumpster": [
+15806,
+"MinorQuest",
+0
+],
+"mq037_brendan_hooligan001": [
+27951,
+"MinorQuest",
+0
+],
+"mq038_neweridentity": [
+10476,
+"MinorQuest",
+0
+],
+"mq040_biosculpt": [
+10477,
+"MinorQuest",
+0
+],
+"mq041_corpo": [
+10478,
+"MinorQuest",
+0
+],
+"mq042_nomad": [
+10479,
+"MinorQuest",
+0
+],
+"mq043_cyberpsychos": [
+50645,
+"MinorQuest",
+0
+],
+"mq044_jakes_vehicle": [
+51750,
+"MinorQuest",
+0
+],
+"mq045_victor_debt": [
+77679,
+"MinorQuest",
+0
+],
+"mq046_cave_vehicle": [
+78507,
+"MinorQuest",
+0
+],
+"mq047_ad_vehicle": [
+78511,
+"MinorQuest",
+0
+],
+"mq048_cyberware": [
+86582,
+"MinorQuest",
+0
+],
+"mq049_edgerunners": [
+83940,
+"MinorQuest",
+0
+],
+"mq050_ken_block_tribute": [
+92154,
+"MinorQuest",
+0
+],
+"mq055_romance_apartment": [
+95766,
+"MinorQuest",
+0
+],
+"mq056_race_replay": [
+95194,
+"MinorQuest",
+0
+],
+"mq057_motorbreath": [
+96481,
+"MinorQuest",
+0
+],
+"mq058_semimaru_crystalcoat": [
+97220,
+"MinorQuest",
+0
+],
+"mq059_freedom": [
+96559,
+"MinorQuest",
+0
+],
+"mq060_nitro": [
+96765,
+"MinorQuest",
+0
+],
+"mq061": [
+97658,
+"MinorQuest",
+0
+],
+"mq062_clampdown": [
+98600,
+"MinorQuest",
+0
+],
+"mq300_safehouse": [
+87541,
+"MinorQuest",
+1
+],
+"mq301_bomb": [
+85277,
+"MinorQuest",
+1
+],
+"mq303_addict": [
+82620,
+"MinorQuest",
+1
+],
+"mq304_succession": [
+84926,
+"MainQuest",
+1
+],
+"mq305_combat_zone_report": [
+83761,
+"MinorQuest",
+1
+],
+"mq306_dumpster": [
+87240,
+"MinorQuest",
+1
+],
+"mws_se5_07": [
+95328,
+"MinorQuest",
+0
+],
+"mws_wat_08_trauma_drama": [
+93232,
+"MinorQuest",
+0
+],
+"q000_corpo": [
+9461,
+"MainQuest",
+0
+],
+"q000_nomad": [
+9462,
+"MainQuest",
+0
+],
+"q000_street_kid": [
+9463,
+"MainQuest",
+0
+],
+"q000_tutorial": [
+36141,
+"MainQuest",
+0
+],
+"q001_01_victor": [
+9464,
+"MainQuest",
+0
+],
+"q001_02_dex": [
+9465,
+"MainQuest",
+0
+],
+"q001_intro": [
+9466,
+"MainQuest",
+0
+],
+"q003_maelstrom": [
+9467,
+"MainQuest",
+0
+],
+"q003_stout": [
+9468,
+"MinorQuest",
+0
+],
+"q004_braindance": [
+9469,
+"MainQuest",
+0
+],
+"q005_heist": [
+9470,
+"MainQuest",
+0
+],
+"q101_01_firestorm": [
+8508,
+"MainQuest",
+0
+],
+"q101_resurrection": [
+8529,
+"MainQuest",
+0
+],
+"q103_warhead": [
+8554,
+"MainQuest",
+0
+],
+"q104_01_sabotage": [
+8625,
+"MainQuest",
+0
+],
+"q104_02_av_chase": [
+8626,
+"MainQuest",
+0
+],
+"q105_02_jigjig": [
+8628,
+"MainQuest",
+0
+],
+"q105_03_braindance_studio": [
+8629,
+"MainQuest",
+0
+],
+"q105_04_judys": [
+8630,
+"MainQuest",
+0
+],
+"q105_dollhouse": [
+8627,
+"MainQuest",
+0
+],
+"q108_johnny": [
+8631,
+"MainQuest",
+0
+],
+"q110_01_voodooboys": [
+8632,
+"MainQuest",
+0
+],
+"q110_03_cyberspace": [
+8634,
+"MainQuest",
+0
+],
+"q110_voodoo": [
+8633,
+"MainQuest",
+0
+],
+"q112_01_old_friend": [
+18011,
+"MainQuest",
+0
+],
+"q112_02_industrial_park": [
+18013,
+"MainQuest",
+0
+],
+"q112_03_dashi_parade": [
+18014,
+"MainQuest",
+0
+],
+"q112_04_hideout": [
+8641,
+"MainQuest",
+0
+],
+"q113_corpo": [
+8643,
+"MainQuest",
+0
+],
+"q113_rescuing_hanako": [
+8642,
+"MainQuest",
+0
+],
+"q114_01_nomad_initiation": [
+8644,
+"MainQuest",
+0
+],
+"q114_02_maglev_line_assault": [
+8645,
+"MainQuest",
+0
+],
+"q114_03_attack_on_arasaka_tower": [
+8646,
+"MainQuest",
+0
+],
+"q115_afterlife": [
+8647,
+"MainQuest",
+0
+],
+"q115_rogues_last_flight": [
+8648,
+"MainQuest",
+0
+],
+"q116_cyberspace": [
+34375,
+"MainQuest",
+0
+],
+"q201_heir": [
+9306,
+"MainQuest",
+0
+],
+"q202_nomads": [
+9307,
+"MainQuest",
+0
+],
+"q203_legend": [
+9308,
+"MainQuest",
+0
+],
+"q204_reborn": [
+9309,
+"MainQuest",
+0
+],
+"q300_phantom_liberty": [
+93496,
+"MainQuest",
+1
+],
+"q301_crash": [
+81863,
+"MainQuest",
+1
+],
+"q301_finding_myers": [
+85479,
+"MainQuest",
+1
+],
+"q301_q302_rescue_myers": [
+83352,
+"MainQuest",
+1
+],
+"q302_reed": [
+91247,
+"MainQuest",
+1
+],
+"q303_baron": [
+85174,
+"MainQuest",
+1
+],
+"q303_hands": [
+85175,
+"MainQuest",
+1
+],
+"q303_songbird": [
+84755,
+"MainQuest",
+1
+],
+"q304_car_retrieval": [
+86629,
+"MinorQuest",
+1
+],
+"q304_deal": [
+86832,
+"MainQuest",
+1
+],
+"q304_gear_pickup": [
+89024,
+"MinorQuest",
+1
+],
+"q304_netrunners": [
+86831,
+"MainQuest",
+1
+],
+"q304_splinter_stash": [
+89033,
+"MinorQuest",
+1
+],
+"q304_stadium": [
+79421,
+"MainQuest",
+1
+],
+"q305_border_crossing": [
+86784,
+"MainQuest",
+1
+],
+"q305_bunker": [
+86785,
+"MainQuest",
+1
+],
+"q305_postcontent": [
+87104,
+"MainQuest",
+1
+],
+"q305_prison_convoy": [
+86730,
+"MainQuest",
+1
+],
+"q305_reed_epilogue": [
+86786,
+"MainQuest",
+1
+],
+"q306_devils_bargain": [
+82239,
+"MainQuest",
+1
+],
+"q306_postcontent": [
+83937,
+"MainQuest",
+1
+],
+"q306_reed_epilogue": [
+83934,
+"MainQuest",
+1
+],
+"q306_somi_epilogue": [
+83935,
+"MainQuest",
+1
+],
+"q307_before_tomorrow": [
+86436,
+"MainQuest",
+1
+],
+"q307_tomorrow": [
+81593,
+"MainQuest",
+1
+],
+"quadra_turbo": [
+22087,
+"VehicleQuest",
+0
+],
+"quadra_type66": [
+1618,
+"VehicleQuest",
+0
+],
+"quadra_type66_avenger": [
+20282,
+"VehicleQuest",
+0
+],
+"quadra_type66_nomad": [
+20288,
+"VehicleQuest",
+0
+],
+"quadra_type66_nomad_ncu": [
+20285,
+"VehicleQuest",
+0
+],
+"rayfield_aerondight": [
+20291,
+"VehicleQuest",
+0
+],
+"rayfield_caliburn": [
+20294,
+"VehicleQuest",
+0
+],
+"santo_domingo_reward": [
+79474,
+"StreetStory",
+0
+],
+"sq004_riders_on_the_storm": [
+10122,
+"SideQuest",
+0
+],
+"sq006_dream_on": [
+11594,
+"SideQuest",
+0
+],
+"sq011_concert": [
+17855,
+"SideQuest",
+0
+],
+"sq011_johnny": [
+11632,
+"SideQuest",
+0
+],
+"sq011_kerry": [
+17856,
+"SideQuest",
+0
+],
+"sq012_lost_girl": [
+11686,
+"SideQuest",
+0
+],
+"sq017_01_riot_club": [
+11742,
+"SideQuest",
+0
+],
+"sq017_02_lounge": [
+11757,
+"SideQuest",
+0
+],
+"sq017_kerry": [
+19157,
+"SideQuest",
+0
+],
+"sq018_jackie": [
+19158,
+"SideQuest",
+0
+],
+"sq021_sick_dreams": [
+11821,
+"SideQuest",
+0
+],
+"sq022_head_hunter": [
+11883,
+"SideQuest",
+0
+],
+"sq023_bd_passion": [
+11931,
+"SideQuest",
+0
+],
+"sq023_hit_order": [
+11946,
+"SideQuest",
+0
+],
+"sq023_real_passion": [
+11960,
+"SideQuest",
+0
+],
+"sq024_badlands_race": [
+11976,
+"SideQuest",
+0
+],
+"sq024_city_race": [
+11990,
+"SideQuest",
+0
+],
+"sq024_santo_domingo_race": [
+12005,
+"SideQuest",
+0
+],
+"sq024_the_big_race": [
+12023,
+"SideQuest",
+0
+],
+"sq025_0_pickup": [
+37512,
+"SideQuest",
+0
+],
+"sq025_compensation": [
+12041,
+"SideQuest",
+0
+],
+"sq025_delamain": [
+12049,
+"SideQuest",
+0
+],
+"sq025b_delamain_insurgence": [
+12061,
+"SideQuest",
+0
+],
+"sq025c01_angry": [
+12088,
+"SideQuest",
+0
+],
+"sq025c02_sad": [
+12093,
+"SideQuest",
+0
+],
+"sq025c03_mean": [
+12100,
+"SideQuest",
+0
+],
+"sq025c04_manic": [
+12107,
+"SideQuest",
+0
+],
+"sq025c05_scared": [
+12113,
+"SideQuest",
+0
+],
+"sq025c06_mean": [
+12118,
+"SideQuest",
+0
+],
+"sq025c07_suicidal": [
+12125,
+"SideQuest",
+0
+],
+"sq026_01_suicide": [
+12130,
+"SideQuest",
+0
+],
+"sq026_02_maiko": [
+12145,
+"SideQuest",
+0
+],
+"sq026_03_pizza": [
+12164,
+"SideQuest",
+0
+],
+"sq026_04_hiromi": [
+12180,
+"SideQuest",
+0
+],
+"sq027_01_basilisk_convoy": [
+12204,
+"SideQuest",
+0
+],
+"sq027_02_raffen_shiv_attack": [
+12237,
+"SideQuest",
+0
+],
+"sq028_kerry_romance": [
+12258,
+"SideQuest",
+0
+],
+"sq029_sobchak_romance": [
+12274,
+"SideQuest",
+0
+],
+"sq030_judy_romance": [
+12315,
+"SideQuest",
+0
+],
+"sq031_cinema": [
+12359,
+"SideQuest",
+0
+],
+"sq031_rogue": [
+12380,
+"SideQuest",
+0
+],
+"sq031_smack_my_bitch_up": [
+12411,
+"SideQuest",
+0
+],
+"sq032_tapeworm": [
+12429,
+"MainQuest",
+0
+],
+"sq_cyberpsychos_regina": [
+49336,
+"MinorQuest",
+0
+],
+"sq_q001_tbug": [
+27794,
+"SideQuest",
+0
+],
+"sq_q001_wakako": [
+12437,
+"SideQuest",
+0
+],
+"sq_q001_wilson": [
+19199,
+"SideQuest",
+0
+],
+"sts_bls_ina_02": [
+12442,
+"StreetStory",
+0
+],
+"sts_bls_ina_03": [
+12448,
+"StreetStory",
+0
+],
+"sts_bls_ina_04": [
+12457,
+"StreetStory",
+0
+],
+"sts_bls_ina_05": [
+12465,
+"StreetStory",
+0
+],
+"sts_bls_ina_06": [
+12476,
+"StreetStory",
+0
+],
+"sts_bls_ina_07": [
+12488,
+"StreetStory",
+0
+],
+"sts_bls_ina_08": [
+12500,
+"StreetStory",
+0
+],
+"sts_bls_ina_09": [
+12509,
+"StreetStory",
+0
+],
+"sts_bls_ina_11": [
+12523,
+"StreetStory",
+0
+],
+"sts_cct_cpz_01": [
+11497,
+"StreetStory",
+0
+],
+"sts_cct_dtn_02": [
+12542,
+"StreetStory",
+0
+],
+"sts_cct_dtn_03": [
+12543,
+"StreetStory",
+0
+],
+"sts_cct_dtn_04": [
+12544,
+"StreetStory",
+0
+],
+"sts_cct_dtn_05": [
+12545,
+"StreetStory",
+0
+],
+"sts_ep1_01": [
+78627,
+"StreetStory",
+1
+],
+"sts_ep1_03": [
+78809,
+"StreetStory",
+1
+],
+"sts_ep1_04": [
+78862,
+"StreetStory",
+1
+],
+"sts_ep1_06": [
+84218,
+"StreetStory",
+1
+],
+"sts_ep1_07": [
+78669,
+"StreetStory",
+1
+],
+"sts_ep1_08": [
+79057,
+"StreetStory",
+1
+],
+"sts_ep1_08_katya_data_shard": [
+88598,
+"MainQuest",
+1
+],
+"sts_ep1_08_loot_pickup": [
+84287,
+"MinorQuest",
+1
+],
+"sts_ep1_08_steven_meeting_night_city": [
+88599,
+"MinorQuest",
+1
+],
+"sts_ep1_10": [
+78807,
+"StreetStory",
+1
+],
+"sts_ep1_12": [
+80905,
+"StreetStory",
+1
+],
+"sts_ep1_12_pickup": [
+87070,
+"MinorQuest",
+1
+],
+"sts_ep1_13": [
+84219,
+"StreetStory",
+1
+],
+"sts_hey_gle_01": [
+12589,
+"StreetStory",
+0
+],
+"sts_hey_gle_03": [
+12601,
+"StreetStory",
+0
+],
+"sts_hey_gle_04": [
+12615,
+"StreetStory",
+0
+],
+"sts_hey_gle_05": [
+12625,
+"StreetStory",
+0
+],
+"sts_hey_gle_06": [
+12640,
+"StreetStory",
+0
+],
+"sts_hey_rey_01": [
+12651,
+"StreetStory",
+0
+],
+"sts_hey_rey_02": [
+11496,
+"StreetStory",
+0
+],
+"sts_hey_rey_06": [
+12661,
+"StreetStory",
+0
+],
+"sts_hey_rey_08": [
+12672,
+"StreetStory",
+0
+],
+"sts_hey_rey_09": [
+12679,
+"StreetStory",
+0
+],
+"sts_hey_spr_01": [
+12691,
+"StreetStory",
+0
+],
+"sts_hey_spr_03": [
+12701,
+"StreetStory",
+0
+],
+"sts_hey_spr_06": [
+12709,
+"StreetStory",
+0
+],
+"sts_pac_cvi_02": [
+12720,
+"StreetStory",
+0
+],
+"sts_pac_wwd_05": [
+12730,
+"StreetStory",
+0
+],
+"sts_std_arr_01": [
+12739,
+"StreetStory",
+0
+],
+"sts_std_arr_03": [
+12752,
+"StreetStory",
+0
+],
+"sts_std_arr_05": [
+12760,
+"StreetStory",
+0
+],
+"sts_std_arr_06": [
+12770,
+"StreetStory",
+0
+],
+"sts_std_arr_10": [
+12781,
+"StreetStory",
+0
+],
+"sts_std_arr_11": [
+12793,
+"StreetStory",
+0
+],
+"sts_std_arr_12": [
+12799,
+"StreetStory",
+0
+],
+"sts_std_rcr_01": [
+12814,
+"StreetStory",
+0
+],
+"sts_std_rcr_02": [
+12824,
+"StreetStory",
+0
+],
+"sts_std_rcr_03": [
+12839,
+"StreetStory",
+0
+],
+"sts_std_rcr_04": [
+12851,
+"StreetStory",
+0
+],
+"sts_std_rcr_05": [
+12857,
+"StreetStory",
+0
+],
+"sts_wat_kab_01": [
+10170,
+"StreetStory",
+0
+],
+"sts_wat_kab_02": [
+12867,
+"StreetStory",
+0
+],
+"sts_wat_kab_03": [
+12881,
+"StreetStory",
+0
+],
+"sts_wat_kab_04": [
+12888,
+"StreetStory",
+0
+],
+"sts_wat_kab_05": [
+12900,
+"StreetStory",
+0
+],
+"sts_wat_kab_06": [
+12906,
+"StreetStory",
+0
+],
+"sts_wat_kab_07": [
+12913,
+"StreetStory",
+0
+],
+"sts_wat_kab_08": [
+12923,
+"StreetStory",
+0
+],
+"sts_wat_kab_101": [
+12933,
+"StreetStory",
+0
+],
+"sts_wat_kab_102": [
+12942,
+"StreetStory",
+0
+],
+"sts_wat_kab_107": [
+18622,
+"StreetStory",
+0
+],
+"sts_wat_lch_01": [
+12954,
+"StreetStory",
+0
+],
+"sts_wat_lch_03": [
+12959,
+"StreetStory",
+0
+],
+"sts_wat_lch_05": [
+12967,
+"StreetStory",
+0
+],
+"sts_wat_lch_06": [
+12976,
+"StreetStory",
+0
+],
+"sts_wat_nid_01": [
+12984,
+"StreetStory",
+0
+],
+"sts_wat_nid_02": [
+12993,
+"StreetStory",
+0
+],
+"sts_wat_nid_03": [
+13003,
+"StreetStory",
+0
+],
+"sts_wat_nid_04": [
+13012,
+"StreetStory",
+0
+],
+"sts_wat_nid_05": [
+13019,
+"StreetStory",
+0
+],
+"sts_wat_nid_06": [
+13026,
+"StreetStory",
+0
+],
+"sts_wat_nid_07": [
+13035,
+"StreetStory",
+0
+],
+"sts_wat_nid_12": [
+13042,
+"StreetStory",
+0
+],
+"sts_wbr_hil_01": [
+13051,
+"StreetStory",
+0
+],
+"sts_wbr_hil_06": [
+13059,
+"StreetStory",
+0
+],
+"sts_wbr_hil_07": [
+13070,
+"StreetStory",
+0
+],
+"sts_wbr_jpn_01": [
+13077,
+"StreetStory",
+0
+],
+"sts_wbr_jpn_02": [
+13092,
+"StreetStory",
+0
+],
+"sts_wbr_jpn_03": [
+13100,
+"StreetStory",
+0
+],
+"sts_wbr_jpn_05": [
+13106,
+"StreetStory",
+0
+],
+"sts_wbr_jpn_09": [
+13115,
+"StreetStory",
+0
+],
+"sts_wbr_jpn_12": [
+13114,
+"StreetStory",
+0
+],
+"thorton_colby": [
+1612,
+"VehicleQuest",
+0
+],
+"thorton_colby_nomad": [
+20300,
+"VehicleQuest",
+0
+],
+"thorton_colby_pickup": [
+20303,
+"VehicleQuest",
+0
+],
+"thorton_galena": [
+1608,
+"VehicleQuest",
+0
+],
+"thorton_galena_nomad": [
+20309,
+"VehicleQuest",
+0
+],
+"thorton_mackinaw": [
+1614,
+"VehicleQuest",
+0
+],
+"tier1": [
+80629,
+"VehicleQuest",
+0
+],
+"tier2": [
+80666,
+"VehicleQuest",
+0
+],
+"tier3": [
+80669,
+"VehicleQuest",
+0
+],
+"tier4": [
+80670,
+"VehicleQuest",
+0
+],
+"tier5": [
+80671,
+"VehicleQuest",
+0
+],
+"tier6": [
+80672,
+"VehicleQuest",
+0
+],
+"tier7": [
+80673,
+"VehicleQuest",
+0
+],
+"tier8": [
+80674,
+"VehicleQuest",
+0
+],
+"ue_metro_start": [
+95844,
+"MinorQuest",
+0
+],
+"villefort_alvarado": [
+1619,
+"VehicleQuest",
+0
+],
+"villefort_columbus": [
+1610,
+"VehicleQuest",
+0
+],
+"villefort_cortes": [
+1613,
+"VehicleQuest",
+0
+],
+"watson_reward": [
+79467,
+"StreetStory",
+0
+],
+"westbrook_reward": [
+79471,
+"StreetStory",
+0
+],
+"wst_ep1_04": [
+87068,
+"MinorQuest",
+1
+],
+"wst_ep1_05": [
+85197,
+"MinorQuest",
+1
+],
+"wst_ep1_09": [
+86604,
+"MinorQuest",
+1
+],
+"wst_ep1_11_bill_meeting": [
+86583,
+"SideQuest",
+1
+],
+"yaiba_kusanagi": [
+1620,
+"VehicleQuest",
+0
+]
+}

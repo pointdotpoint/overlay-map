@@ -8,6 +8,7 @@ public class NMCollectSpot {
     public let item: TweakDBID;
     public let journal: wref<JournalEntry>;   // a shard's journal entry, once resolved
     public let collected: Bool;
+    public let quest: String;   // quest items only: <type><pl>:<title LocKeys joined by '+'> (tools/collectibles/gen.py)
 }
 
 // Category tables (spec 2026-10-31-overlaymap-collectibles-design.md). Index = position in Codes().
@@ -136,14 +137,67 @@ public class NMCollect extends IScriptable {
         if StrLen(chunk) == 0 { return out; }
         for e in StrSplit(chunk, ";") {
             let f = StrSplit(e, ",");
-            if ArraySize(f) == 5 {
+            let n = ArraySize(f);
+            if n == 5 || n == 6 {
                 let s = new NMCollectSpot();
                 s.cat = NMCollectCats.Of(f[0]);
                 s.pos = new Vector4(StringToFloat(f[1]), StringToFloat(f[2]), StringToFloat(f[3]), 1.0);
                 s.ref = f[4];
+                if n == 6 { s.quest = f[5]; }
                 if s.cat != NMCollectCats.Tarot() { s.item = TDBID.Create(s.ref); }
                 if s.cat >= 0 { ArrayPush(out, s); }
             }
+        }
+        return out;
+    }
+
+    // The sidebar line for a quest item's note: the quest by name when one owns it, the shared start of the names
+    // when several might ("The Beast in Me"), else the kind of quest. Titles come from the game, in its language.
+    public static func QuestNote(note: String) -> String {
+        let colon = StrFindFirst(note, ":");
+        if colon < 2 { return ""; }
+        let names: array<String>;
+        let keys = StrSplit(StrMid(note, colon + 1), "+");
+        for k in keys {
+            if StrLen(k) > 0 {
+                let name = GetLocalizedText("LocKey#" + k);
+                if StrLen(name) > 0 && !StrBeginsWith(name, "LocKey#") { ArrayPush(names, name); }
+            }
+        }
+        if ArraySize(names) == 1 { return "Only appears during the quest \"" + names[0] + "\"."; }
+        let shared = NMCollect.SharedWords(names);
+        if StrLen(shared) >= 4 { return "Only appears during one of the \"" + shared + "\" quests."; }
+        let kind = StrLeft(note, 1);
+        let what = "quest";
+        if Equals(kind, "M") { what = "main quest"; }
+        if Equals(kind, "S") || Equals(kind, "m") { what = "side quest"; }
+        if Equals(kind, "G") { what = "gig"; }
+        let pl = Equals(StrMid(note, 1, 1), "1") ? "Phantom Liberty " : "";
+        return "Only appears during a " + pl + what + ".";
+    }
+
+    // The words every name starts with, without trailing punctuation: "The Beast in Me: Badlands" and "The Beast in
+    // Me: City Center" share "The Beast in Me". Empty for fewer than two names.
+    public static func SharedWords(names: array<String>) -> String {
+        if ArraySize(names) < 2 { return ""; }
+        let first = StrSplit(names[0], " ");
+        let n = ArraySize(first);
+        let i = 1;
+        while i < ArraySize(names) {
+            let w = StrSplit(names[i], " ");
+            let k = 0;
+            while k < n && k < ArraySize(w) && Equals(first[k], w[k]) { k += 1; }
+            n = k;
+            i += 1;
+        }
+        let out = "";
+        let j = 0;
+        while j < n {
+            out += (j > 0 ? " " : "") + first[j];
+            j += 1;
+        }
+        while StrLen(out) > 0 && (StrEndsWith(out, ":") || StrEndsWith(out, ",") || StrEndsWith(out, "-")) {
+            out = StrLeft(out, StrLen(out) - 1);
         }
         return out;
     }
@@ -356,6 +410,7 @@ public class NMCollect extends IScriptable {
         let sp = this.Spot(idx);
         if !IsDefined(sp) { return null; }
         let d = OverlayMapDetails.Create(NMCollectCats.Name(sp.cat), this.Title(sp)).WithColor(NMCollectCats.Color(sp.cat));
+        if StrLen(sp.quest) > 0 { d.WithDescription(NMCollect.QuestNote(sp.quest)); }
         d.AddRow("Status", sp.collected ? "Collected" : "Not collected");
         let player = GetPlayer(GetGameInstance());
         if IsDefined(player) {
