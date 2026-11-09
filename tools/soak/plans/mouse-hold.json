@@ -1,0 +1,78 @@
+{
+ "name": "mouse-hold",
+ "runs": [
+  {
+   "name": "hold",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "cmd": "welcome"
+    },
+    {
+     "cmd": "welcome mark",
+     "expect": "file=true"
+    },
+    {
+     "wait": 30
+    },
+    {
+     "cmd": "set controls mouse",
+     "expect": "^controls Mouse only"
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "open_before_click"
+    },
+    {
+     "cmd": "is_open"
+    },
+    {
+     "cmd": "lmb down",
+     "expect": "owned=true"
+    },
+    {
+     "shot": "hold_half"
+    },
+    {
+     "cmd": "lmb up"
+    },
+    {
+     "wait": 1
+    },
+    {
+     "shot": "after_tap"
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "cmd": "set controls wasd"
+    }
+   ],
+   "expect": [],
+   "forbid": []
+  }
+ ]
+}
