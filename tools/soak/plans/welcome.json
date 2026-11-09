@@ -1,0 +1,47 @@
+{
+ "name": "welcome",
+ "runs": [
+  {
+   "name": "first-run",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "cmd": "welcome"
+    },
+    {
+     "wait": 45
+    },
+    {
+     "cmd": "welcome",
+     "expect": "^welcome seen file=true"
+    },
+    {
+     "wait": 2
+    },
+    {
+     "shot": "welcome_popup"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "welcome_popup_2"
+    }
+   ],
+   "expect": [
+    {
+     "log": "welcome\\|shown",
+     "min": 1
+    }
+   ],
+   "forbid": []
+  }
+ ]
+}

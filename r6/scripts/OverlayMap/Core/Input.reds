@@ -18,6 +18,9 @@ public class NMInput {
     public let debugLayer: Bool;
     public let arrowSeen: Bool;
     public let takesKeys: Bool;
+    public let mouseOwned: Bool; // Controls: Mouse only, map open: the mouse drives the map, the keyboard stays V's
+    private let leftHeld: Bool;  // mouse only: left button down, not yet a tap or a teleport
+    private let leftDownMs: Float;
     public let mouseDx: Float;  // mouse counts since the last frame (+x right, +y down), only with Mouse pans the map
     public let mouseDy: Float;
     public let wheel: Int32;    // wheel notches since the last frame: + zooms in
@@ -66,6 +69,9 @@ public class NMInput {
         if !mapOpen {
             return false;
         }
+        if this.mouseOwned && this.HandleMouse(key, pressed) {
+            return true;
+        }
         if this.takesKeys && this.HandleTaken(s, key, pressed) {
             return true;
         }
@@ -103,6 +109,42 @@ public class NMInput {
         }
         if s.teleportEnabled && Equals(key, s.keyTeleport) {
             if pressed { this.teleport = true; }
+            return true;
+        }
+        return false;
+    }
+
+    // Mouse only: a left tap acts, a left hold teleports (HoldTeleport), a right click sets a waypoint.
+    private func HandleMouse(key: EInputKey, pressed: Bool) -> Bool {
+        if Equals(key, EInputKey.IK_LeftMouse) {
+            if pressed {
+                this.leftHeld = true;
+                this.leftDownMs = NMClock.NowMs();
+            } else if this.leftHeld {
+                this.leftHeld = false;
+                this.act = true;
+            }
+            return true;
+        }
+        if Equals(key, EInputKey.IK_RightMouse) {
+            if pressed { this.waypoint = true; }
+            return true;
+        }
+        return false;
+    }
+
+    public static func TeleportHoldMs() -> Float { return 2000.0; }
+
+    // How far the left-button hold is towards a teleport, 0..1 (0 when not holding).
+    public func HoldProgress(now: Float) -> Float {
+        if !this.leftHeld { return 0.0; }
+        return ClampF((now - this.leftDownMs) / NMInput.TeleportHoldMs(), 0.0, 1.0);
+    }
+
+    // True once, when the left button has been held long enough; its release then does nothing.
+    public func HoldTeleport(now: Float) -> Bool {
+        if this.leftHeld && now - this.leftDownMs >= NMInput.TeleportHoldMs() {
+            this.leftHeld = false;
             return true;
         }
         return false;
@@ -146,7 +188,7 @@ public class NMInput {
     // Mouse motion while the map holds the keyboard and Mouse pans the map is on. IK_MouseY is down-positive in game,
     // for a real mouse and the soak harness's virtual one alike (mouse up pans north).
     public func MouseMove(key: EInputKey, value: Float, mapOpen: Bool, mousePan: Bool) -> Bool {
-        if !mapOpen || !this.takesKeys || !mousePan {
+        if !mapOpen || !(this.takesKeys || this.mouseOwned) || !mousePan {
             return false;
         }
         if Equals(key, EInputKey.IK_MouseX) { this.mouseDx += value; return true; }
@@ -155,7 +197,7 @@ public class NMInput {
     }
 
     public func Axis(key: EInputKey, value: Float, mapOpen: Bool) -> Bool {
-        if !mapOpen || !this.takesKeys || !Equals(key, EInputKey.IK_MouseZ) {
+        if !mapOpen || !(this.takesKeys || this.mouseOwned) || !Equals(key, EInputKey.IK_MouseZ) {
             return false;
         }
         if value > 0.0 { this.wheel += 1; }
@@ -184,6 +226,7 @@ public class NMInput {
     }
 
     public func ResetHeld() {
+        this.leftHeld = false;
         this.up = false;
         this.down = false;
         this.left = false;
@@ -259,6 +302,21 @@ public class NMInput {
             ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapTeleport), teleportLabel));
         }
         ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyMapFilter), "FILTER: " + view));
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyToggle), "CLOSE", s.holdToShow ? "RELEASE" : ""));
+        return h;
+    }
+
+    // The hint bar with Controls on Mouse only. Follow and the filter keep their numpad keys. The tap is left out, as
+    // the act key is on every hint bar: the sidebar names it next to what it does on the selected marker.
+    public static func MouseHints(s: ref<OverlayMapSettings>, view: String, teleportLabel: String) -> array<NMHint> {
+        let h: array<NMHint>;
+        ArrayPush(h, NMHints.Of("MOUSE", "PAN"));
+        ArrayPush(h, NMHints.Of("WHEEL", "ZOOM"));
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyRecenter), "FOLLOW"));
+        if s.teleportEnabled {
+            ArrayPush(h, NMHints.Of("HOLD LMB", teleportLabel));
+        }
+        ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyFilter), "FILTER: " + view));
         ArrayPush(h, NMHints.Of(NMInput.KeyName(s.keyToggle), "CLOSE", s.holdToShow ? "RELEASE" : ""));
         return h;
     }

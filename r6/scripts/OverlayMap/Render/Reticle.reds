@@ -7,6 +7,12 @@ public class NMReticle {
     private let s: Float;
     private let legs: array<ref<inkRectangle>>;   // TL h, TL v, TR h, TR v, BL h, BL v, BR h, BR v
     private let plus: array<ref<inkRectangle>>;
+    // Mouse-only teleport hold: a "TELEPORTING" label over a bar under the focus point, filling left to right.
+    private let holdPlate: ref<inkRectangle>;    // dark backing so the label reads over bright roads
+    private let holdLabel: ref<inkText>;
+    private let holdTrack: ref<inkRectangle>;
+    private let holdFill: ref<inkRectangle>;
+    private let holdShown: Bool;
     private let idleColor: HDRColor;
     private let legColor: HDRColor;
     private let cx: Float;
@@ -20,6 +26,11 @@ public class NMReticle {
     public static func Thick() -> Float { return 5.0; }
     public static func PlusSize() -> Float { return 26.0; }
     public static func EaseMs() -> Float { return 120.0; }
+    public static func HoldBarW() -> Float { return 320.0; }
+    public static func HoldBarH() -> Float { return 10.0; }
+    public static func HoldBarGap() -> Float { return 150.0; }  // focus point to the top of the bar
+    public static func HoldLabelSize() -> Float { return 40.0; }
+    public static func HoldPad() -> Float { return 18.0; }
 
     public static func IdleOpacity() -> Float { return 0.6; }
     public static func LockOpacity() -> Float { return 1.0; }
@@ -75,6 +86,22 @@ public class NMReticle {
         ArrayPush(r.plus, NMUi.Rect(parent, 0.0, 0.0, k, t, r.idleColor, 0.9));
         ArrayPush(r.plus, NMUi.Rect(parent, 0.0, 0.0, t, k, r.idleColor, 0.9));
         for p in r.plus { p.SetAnchorPoint(new Vector2(0.5, 0.5)); }
+        let bw = NMReticle.HoldBarW() * scale;
+        let bh = NMReticle.HoldBarH() * scale;
+        let pad = NMReticle.HoldPad() * scale;
+        r.holdPlate = NMUi.Rect(parent, 0.0, 0.0, bw + 2.0 * pad, bh + NMReticle.HoldLabelSize() * scale + 3.0 * pad, new HDRColor(0.0, 0.0, 0.0, 1.0), 0.7);
+        r.holdPlate.SetVisible(false);
+        r.holdTrack = NMUi.Rect(parent, 0.0, 0.0, bw, bh, r.idleColor, 0.25);
+        r.holdFill = NMUi.Rect(parent, 0.0, 0.0, 0.0, bh, r.idleColor, 1.0);
+        r.holdLabel = NMUi.Text(parent, NMTheme.BodyFont(), n"Semi-Bold", Cast<Int32>(NMReticle.HoldLabelSize() * scale), r.idleColor);
+        r.holdLabel.SetText("TELEPORTING");
+        r.holdLabel.SetLetterCase(textLetterCase.UpperCase);
+        r.holdLabel.SetTracking(Cast<Int32>(3.0 * scale));
+        r.holdLabel.SetAnchorPoint(new Vector2(0.5, 1.0));
+        r.holdLabel.SetHorizontalAlignment(textHorizontalAlignment.Center);
+        r.holdTrack.SetVisible(false);
+        r.holdFill.SetVisible(false);
+        r.holdLabel.SetVisible(false);
         return r;
     }
 
@@ -107,5 +134,34 @@ public class NMReticle {
             i += 1;
         }
         for p in this.plus { p.SetTranslation(new Vector2(fx, fy)); }
+    }
+
+    // The teleport hold bar under the focus point (fx, fy): p = 0 hides it, 1 fills it.
+    public func SetHold(p: Float, fx: Float, fy: Float) {
+        let on = p > 0.0;
+        if !on && !this.holdShown {
+            return;
+        }
+        if NotEquals(on, this.holdShown) {
+            this.holdShown = on;
+            this.holdPlate.SetVisible(on);
+            this.holdTrack.SetVisible(on);
+            this.holdFill.SetVisible(on);
+            this.holdLabel.SetVisible(on);
+        }
+        if !on {
+            return;
+        }
+        let bw = NMReticle.HoldBarW() * this.s;
+        let bh = NMReticle.HoldBarH() * this.s;
+        let x0 = fx - bw * 0.5;
+        let y0 = fy + NMReticle.HoldBarGap() * this.s;
+        this.holdTrack.SetTranslation(new Vector2(x0, y0));
+        this.holdFill.SetTranslation(new Vector2(x0, y0));
+        this.holdFill.SetSize(new Vector2(bw * ClampF(p, 0.0, 1.0), bh));
+        this.holdLabel.SetTranslation(new Vector2(fx, y0 - 8.0 * this.s));
+        let pad = NMReticle.HoldPad() * this.s;
+        let lh = NMReticle.HoldLabelSize() * this.s;
+        this.holdPlate.SetTranslation(new Vector2(x0 - pad, y0 - lh - 2.0 * pad));
     }
 }

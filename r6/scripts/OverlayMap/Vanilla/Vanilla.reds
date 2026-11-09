@@ -281,13 +281,21 @@ public class NMVanilla extends NMVanillaSink {
         return IsDefined(sys) && sys.KeyboardTaken();
     }
 
+    // Controls on Mouse only: the sidebar names the mouse buttons.
+    private func MouseTaken() -> Bool {
+        let sys = OverlayMapSystem.Get(this.gi);
+        return IsDefined(sys) && sys.MouseTaken();
+    }
+
     private func WaypointKey() -> String {
         let s = OverlayMapSettings.Get(this.gi);
         if !IsDefined(s) { return "ENTER"; }
+        if this.MouseTaken() { return "RMB"; }
         return NMInput.KeyName(this.Taken() ? s.keyMapWaypoint : s.keyWaypoint);
     }
 
     private func TeleportKey(s: ref<OverlayMapSettings>) -> String {
+        if this.MouseTaken() { return "HOLD LMB"; }
         return NMInput.KeyName(this.Taken() ? s.keyMapTeleport : s.keyTeleport);
     }
 
@@ -306,6 +314,7 @@ public class NMVanilla extends NMVanillaSink {
     private func ActKey() -> String {
         let s = OverlayMapSettings.Get(this.gi);
         if !IsDefined(s) { return "NUM 0"; }
+        if this.MouseTaken() { return "LMB"; }
         return NMInput.KeyName(this.Taken() ? s.keyMapAct : s.keyAct);
     }
 

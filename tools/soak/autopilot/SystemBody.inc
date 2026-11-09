@@ -726,6 +726,12 @@
         return "pressed " + NMInput.KeyName(key) + " used=" + ToString(used);
     }
 
+    // Mouse only: the left button as the game's Input/Key callback would report it.
+    public func Soak_Lmb(down: Bool) -> String {
+        let used = this.HandleKey(EInputKey.IK_LeftMouse, down ? EInputAction.IACT_Press : EInputAction.IACT_Release, false, false, false);
+        return (down ? "lmb down" : "lmb up") + " used=" + ToString(used) + " owned=" + ToString(this.mouseOwned);
+    }
+
     public func Soak_LastKeys() -> String {
         let seen = this.soakKeys;
         this.soakKeys = "";
@@ -992,6 +998,12 @@
         if Equals(name, "glitch") { s.vhsGlitch = Equals(value, "1"); return "glitch " + ToString(s.vhsGlitch); }
         if Equals(name, "ncart") { s.filterNcart = Equals(value, "1"); return "ncart " + ToString(s.filterNcart); }
         // Controller open: view|off. Pad steps set it explicitly, so they don't depend on the player's saved choice.
+        if Equals(name, "controls") {
+            if Equals(value, "mouse") { s.keyboardMode = OverlayMapKeyboardMode.MouseOnly; }
+            if Equals(value, "wasd") { s.keyboardMode = OverlayMapKeyboardMode.TakeKeys; }
+            if Equals(value, "numpad") { s.keyboardMode = OverlayMapKeyboardMode.KeepMoving; }
+            return "controls " + NMWelcome.ModeName(s.keyboardMode);
+        }
         if Equals(name, "mousepan") { s.mousePan = Equals(value, "1"); return "mousepan " + ToString(s.mousePan); }
         if Equals(name, "padopen") {
             s.padOpen = Equals(value, "off") ? OverlayMapPadOpen.Off : OverlayMapPadOpen.HoldView;

@@ -403,6 +403,44 @@ void PhotoStoreAppend(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool*
         *aOut = ok;
 }
 
+// Welcome screen: <game>/r6/storages/OverlayMap/welcome_seen exists once the first-run popup was shown, so it shows
+// once per install across every save. Reinstalling or updating keeps it (install.sh leaves r6/storages alone).
+std::filesystem::path WelcomeFile()
+{
+    auto photos = PhotoFile();
+    return photos.empty() ? photos : photos.parent_path() / L"welcome_seen";
+}
+
+void WelcomeSeen(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+{
+    aFrame->code++;
+    auto file = WelcomeFile();
+    std::error_code ec;
+    bool seen = !file.empty() && std::filesystem::exists(file, ec);
+    if (aOut)
+        *aOut = seen;
+}
+
+void MarkWelcomeSeen(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+{
+    aFrame->code++;
+    bool ok = false;
+    auto file = WelcomeFile();
+    if (!file.empty())
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(file.parent_path(), ec);
+        std::ofstream out(file, std::ios::binary | std::ios::trunc);
+        if (out)
+        {
+            out << "1\n";
+            ok = static_cast<bool>(out.flush());
+        }
+    }
+    if (aOut)
+        *aOut = ok;
+}
+
 RED4ext::CGlobalFunction* Register(const char* aName, void* aFunc, const char* aReturn)
 {
     RED4ext::CBaseFunction::Flags flags = {.isNative = true, .isStatic = true};
@@ -432,6 +470,8 @@ void PostRegisterTypes()
     auto append = Register("OverlayMapNative_PhotoStoreAppend", reinterpret_cast<void*>(&PhotoStoreAppend), "Bool");
     append->AddParam("String", "text");
     Commit(append);
+    Commit(Register("OverlayMapNative_WelcomeSeen", reinterpret_cast<void*>(&WelcomeSeen), "Bool"));
+    Commit(Register("OverlayMapNative_MarkWelcomeSeen", reinterpret_cast<void*>(&MarkWelcomeSeen), "Bool"));
     auto track = Register("OverlayMapNative_TrackMappin", reinterpret_cast<void*>(&TrackMappin), "Bool");
     track->AddParam("handle:gamemappinsMappinSystem", "system");
     track->AddParam("gameNewMappinID", "id");

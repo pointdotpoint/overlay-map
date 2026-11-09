@@ -526,6 +526,28 @@ public class NMSelfTest {
         this.Check("keys.actions", k.recenter && k.act && k.filter && k.teleport && usedE && k.waypoint, "");
         let freeE = new NMInput();
         this.Check("keys.e_ignored_while_v_moves", !freeE.Handle(s, EInputKey.IK_E, press, false, false, false, true), "");
+        // Controls: Mouse only. W stays V's; a left tap acts, a 2 s left hold teleports once, right sets a waypoint.
+        let mo = new NMInput();
+        mo.mouseOwned = true;
+        let moW = mo.Handle(s, EInputKey.IK_W, press, false, false, false, true);
+        mo.Handle(s, EInputKey.IK_LeftMouse, press, false, false, false, true);
+        mo.Handle(s, EInputKey.IK_LeftMouse, release, false, false, false, true);
+        let tapActs = mo.act;
+        mo.act = false;
+        mo.Handle(s, EInputKey.IK_RightMouse, press, false, false, false, true);
+        let rightWp = mo.waypoint;
+        mo.Handle(s, EInputKey.IK_LeftMouse, press, false, false, false, true);
+        let t0 = NMClock.NowMs();
+        let early = mo.HoldTeleport(t0 + 1000.0);
+        let half = mo.HoldProgress(t0 + 1000.0);
+        let fires = mo.HoldTeleport(t0 + NMInput.TeleportHoldMs() + 50.0);
+        let again = mo.HoldTeleport(t0 + NMInput.TeleportHoldMs() + 100.0);
+        mo.Handle(s, EInputKey.IK_LeftMouse, release, false, false, false, true);
+        let wheelMo = mo.Axis(EInputKey.IK_MouseZ, 1.0, true);
+        let panMo = mo.MouseMove(EInputKey.IK_MouseX, 3.0, true, true);
+        this.Check("mouse_only.controls", !moW && tapActs && rightWp && !early && half > 0.4 && half < 0.6 && fires && !again
+            && !mo.act && wheelMo && panMo && mo.PanVector().Y == 0.0,
+            ToString(moW) + ToString(tapActs) + ToString(rightWp) + ToString(early) + this.F(half) + ToString(fires) + ToString(again) + ToString(mo.act));
         k.ResetHeld();
         k.Handle(s, EInputKey.IK_NumPad8, press, false, false, false, true);
         let np = k.PanVector();
