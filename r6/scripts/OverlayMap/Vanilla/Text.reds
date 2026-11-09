@@ -33,6 +33,14 @@ public abstract class NMVanillaText {
         return NMVanillaText.LabelOf(v);
     }
 
+    // A vehicle marker's car or bike, by its in-game name (as the vanilla world map tooltip shows it); else "".
+    public static func VehicleName(m: ref<IMappin>) -> String {
+        let vm = m as VehicleMappin;
+        if !IsDefined(vm) { return ""; }
+        let veh = vm.GetVehicle();
+        return IsDefined(veh) ? veh.GetDisplayName() : "";
+    }
+
     public static func District(m: ref<IMappin>) -> String {
         let ft = m as FastTravelMappin;
         if IsDefined(ft) {
