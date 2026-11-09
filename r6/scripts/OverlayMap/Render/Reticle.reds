@@ -7,6 +7,8 @@ public class NMReticle {
     private let s: Float;
     private let legs: array<ref<inkRectangle>>;   // TL h, TL v, TR h, TR v, BL h, BL v, BR h, BR v
     private let plus: array<ref<inkRectangle>>;
+    private let ring: array<ref<inkRectangle>>;    // mouse-only teleport hold: dots around the focus point, filled clockwise
+    private let ringShown: Int32;
     private let idleColor: HDRColor;
     private let legColor: HDRColor;
     private let cx: Float;
@@ -20,6 +22,14 @@ public class NMReticle {
     public static func Thick() -> Float { return 5.0; }
     public static func PlusSize() -> Float { return 26.0; }
     public static func EaseMs() -> Float { return 120.0; }
+    public static func RingDots() -> Int32 { return 32; }
+    public static func RingRadius() -> Float { return 46.0; }
+    public static func RingDot() -> Float { return 7.0; }
+
+    // Dots lit for a hold progress p (0..1).
+    public static func RingLit(p: Float) -> Int32 {
+        return Cast<Int32>(ClampF(p, 0.0, 1.0) * Cast<Float>(NMReticle.RingDots()) + 0.5);
+    }
 
     public static func IdleOpacity() -> Float { return 0.6; }
     public static func LockOpacity() -> Float { return 1.0; }
@@ -75,6 +85,15 @@ public class NMReticle {
         ArrayPush(r.plus, NMUi.Rect(parent, 0.0, 0.0, k, t, r.idleColor, 0.9));
         ArrayPush(r.plus, NMUi.Rect(parent, 0.0, 0.0, t, k, r.idleColor, 0.9));
         for p in r.plus { p.SetAnchorPoint(new Vector2(0.5, 0.5)); }
+        let d = NMReticle.RingDot() * scale;
+        let j = 0;
+        while j < NMReticle.RingDots() {
+            let dot = NMUi.Rect(parent, 0.0, 0.0, d, d, r.idleColor, 1.0);
+            dot.SetAnchorPoint(new Vector2(0.5, 0.5));
+            dot.SetVisible(false);
+            ArrayPush(r.ring, dot);
+            j += 1;
+        }
         return r;
     }
 
@@ -107,5 +126,26 @@ public class NMReticle {
             i += 1;
         }
         for p in this.plus { p.SetTranslation(new Vector2(fx, fy)); }
+    }
+
+    // The teleport hold ring around the focus point (fx, fy): p = 0 hides it, 1 closes it. Starts at 12 o'clock.
+    public func SetHold(p: Float, fx: Float, fy: Float) {
+        let lit = NMReticle.RingLit(p);
+        if lit == 0 && this.ringShown == 0 {
+            return;
+        }
+        let n = NMReticle.RingDots();
+        let rad = NMReticle.RingRadius() * this.s;
+        let i = 0;
+        while i < n {
+            let on = i < lit;
+            if on {
+                let a = 6.2831853 * Cast<Float>(i) / Cast<Float>(n);
+                this.ring[i].SetTranslation(new Vector2(fx + rad * SinF(a), fy - rad * CosF(a)));
+            }
+            this.ring[i].SetVisible(on);
+            i += 1;
+        }
+        this.ringShown = lit;
     }
 }

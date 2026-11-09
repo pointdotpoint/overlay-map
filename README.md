@@ -52,9 +52,13 @@ its own speed slider. On by default; turn it off to keep turning the camera with
 | Teleport / fast travel | Q |
 | Cycle marker filter | R |
 
-**Numpad.** Mod Settings → Overlay Map → Keys → Keyboard map → *V keeps moving (numpad)*: the map uses only the numpad,
-so V can walk and drive while it is open. Numpad 8 4 6 2 pan (7 9 1 3 diagonally), + and − zoom, 5 follows V, 0 acts,
-Enter sets a waypoint, / cycles the filter, . teleports. Keep NumLock on.
+**Numpad.** Mod Settings → Overlay Map → Keys → Controls → *Numpad*: the map uses only the numpad, so V keeps full
+control of movement and the mouse while it is open. Numpad 8 4 6 2 pan (7 9 1 3 diagonally), + and − zoom, 5 follows V,
+0 acts, Enter sets a waypoint, / cycles the filter, . teleports. Keep NumLock on.
+
+**Mouse only.** Controls → *Mouse only*: V keeps walking or driving with the keyboard while the mouse drives the map.
+Moving the mouse pans, the wheel zooms, left click acts, holding left click for 2 seconds teleports (a ring fills
+around the crosshair) and right click sets a waypoint. Follow and the filter keep their numpad keys.
 
 **Controller.** Hold View for half a second to open the map (a tap still opens the pause menu). Left stick pans, LT/RT
 zoom, A acts, RB sets a waypoint, X teleports, Y cycles the filter, R3 follows V, B closes.

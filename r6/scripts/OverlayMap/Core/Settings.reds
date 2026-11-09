@@ -16,7 +16,8 @@ public enum OverlayMapCornerStyle {
 
 public enum OverlayMapKeyboardMode {
     TakeKeys = 0,
-    KeepMoving = 1
+    KeepMoving = 1,
+    MouseOnly = 2
 }
 
 public enum OverlayMapOpenModifier {
@@ -32,6 +33,17 @@ public enum OverlayMapPadOpen {
 }
 
 public class OverlayMapSettings extends ScriptableSystem {
+    // Saved values carry over: TakeKeys (0) was "Takes keyboard and mouse", KeepMoving (1) "V keeps moving (numpad)".
+    @runtimeProperty("ModSettings.mod", "Overlay Map")
+    @runtimeProperty("ModSettings.category", "Keys")
+    @runtimeProperty("ModSettings.category.order", "0")
+    @runtimeProperty("ModSettings.displayName", "Controls")
+    @runtimeProperty("ModSettings.description", "How the open map is driven. WASD: V stops, and W A S D (or the arrows) pan, the mouse wheel zooms, Space follows V, F acts, E sets a waypoint, Q teleports and R cycles the filter (keys below). Numpad: V keeps full control of movement and the mouse; the map uses the numpad keys. Mouse only: V keeps walking or driving with the keyboard; moving the mouse pans, the wheel zooms, left click acts, holding left click for 2 seconds teleports and right click sets a waypoint.")
+    @runtimeProperty("ModSettings.displayValues.TakeKeys", "WASD")
+    @runtimeProperty("ModSettings.displayValues.KeepMoving", "Numpad")
+    @runtimeProperty("ModSettings.displayValues.MouseOnly", "Mouse only")
+    public let keyboardMode: OverlayMapKeyboardMode = OverlayMapKeyboardMode.TakeKeys;
+
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Keys")
     @runtimeProperty("ModSettings.category.order", "0")
@@ -126,15 +138,6 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.displayName", "Teleport")
     @runtimeProperty("ModSettings.description", "Fast travels on a fast travel marker, and teleports to the selected marker or the map centre anywhere else.")
     public let keyTeleport: EInputKey = EInputKey.IK_NumPeriod;
-
-    @runtimeProperty("ModSettings.mod", "Overlay Map")
-    @runtimeProperty("ModSettings.category", "Keys")
-    @runtimeProperty("ModSettings.category.order", "0")
-    @runtimeProperty("ModSettings.displayName", "Keyboard map")
-    @runtimeProperty("ModSettings.description", "Takes keyboard and mouse: while the map is open V stops, and W A S D (or the arrows) pan, the mouse wheel zooms, Space follows V, F acts, E sets a waypoint, Q teleports and R cycles the filter; the numpad keys work too. Works on any keyboard. V keeps moving: the map only uses the numpad keys above, so V can walk and drive meanwhile.")
-    @runtimeProperty("ModSettings.displayValues.TakeKeys", "Takes keyboard and mouse")
-    @runtimeProperty("ModSettings.displayValues.KeepMoving", "V keeps moving (numpad)")
-    public let keyboardMode: OverlayMapKeyboardMode = OverlayMapKeyboardMode.TakeKeys;
 
     @runtimeProperty("ModSettings.mod", "Overlay Map")
     @runtimeProperty("ModSettings.category", "Keys (map takes keyboard)")

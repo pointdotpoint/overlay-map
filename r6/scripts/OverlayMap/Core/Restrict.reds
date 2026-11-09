@@ -21,13 +21,26 @@ public abstract class NMRestrict {
         ];
     }
 
+    // Mouse only: V keeps walking and driving; the camera stays still (the mouse pans the map) and the mouse buttons and
+    // wheel don't shoot, aim or switch weapons.
+    public static func MouseIds() -> array<TweakDBID> {
+        return [
+            t"GameplayRestriction.NoCameraControl",
+            t"GameplayRestriction.NoWeapons"
+        ];
+    }
+
     // How many were applied (a missing record is skipped).
     public static func Apply(player: wref<GameObject>) -> Int32 {
+        return NMRestrict.ApplyIds(player, NMRestrict.Ids());
+    }
+
+    public static func ApplyIds(player: wref<GameObject>, ids: array<TweakDBID>) -> Int32 {
         if !IsDefined(player) {
             return 0;
         }
         let n = 0;
-        for id in NMRestrict.Ids() {
+        for id in ids {
             if IsDefined(TweakDBInterface.GetStatusEffectRecord(id)) && StatusEffectHelper.ApplyStatusEffect(player, id, NMRestrict.Instigator()) {
                 n += 1;
             }

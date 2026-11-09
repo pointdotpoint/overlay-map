@@ -64,7 +64,8 @@ public class OverlayMapSystem extends ScriptableSystem {
     private let padFromPad: Bool;     // the open map was opened with the pad
     private let padOwned: Bool;       // the map holds the pad: the game's actions are held off
     private let padCtx: Bool;         // UIGameContext.ModalPopup pushed by OverlayMap
-    private let kbOwned: Bool;        // the map holds keyboard and mouse (Keyboard map: Takes keyboard and mouse)
+    private let kbOwned: Bool;        // the map holds keyboard and mouse (Controls: WASD)
+    private let mouseOwned: Bool;     // Controls: Mouse only: the map holds the mouse, the keyboard stays V's
     private let kbRestricted: Bool;   // on foot with the keyboard taken: V held by NMRestrict (mouse-look stays)
     private let psmUiCtx: Bool;       // the player state machine's UI context is on (SetPlayerUiContext)
     public let soakNoModal: Bool;     // test harness: take the keyboard without the modal popup game context
@@ -190,6 +191,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     public func Api() -> ref<OverlayMap> { return this.api; }
     public func Vanilla() -> ref<NMVanilla> { return this.vanilla; }
     public func KeyboardTaken() -> Bool { return this.isOpen && this.kbOwned; }   // sidebar shows the any-keyboard keys
+    public func MouseTaken() -> Bool { return this.isOpen && this.mouseOwned; }   // sidebar shows the mouse buttons
 
     // Created on first use: the minimap may attach before this system's OnAttach.
     // Created on first use: photo mode and the minimap may call in before this system's OnAttach.
@@ -330,6 +332,7 @@ public class OverlayMapSystem extends ScriptableSystem {
             return false;
         }
         this.input.takesKeys = this.isOpen && (this.kbOwned || this.padOwned);
+        this.input.mouseOwned = this.isOpen && this.mouseOwned;
         let used = this.input.Handle(s, key, action, shift, ctrl, alt, this.isOpen);
         if used && this.isOpen {
             this.pad.lastWasPad = false;
@@ -342,6 +345,8 @@ public class OverlayMapSystem extends ScriptableSystem {
                 this.Open();
                 if this.isOpen && Equals(s.keyboardMode, OverlayMapKeyboardMode.TakeKeys) {
                     this.TakeKeyboard();
+                } else if this.isOpen && Equals(s.keyboardMode, OverlayMapKeyboardMode.MouseOnly) {
+                    this.TakeMouse();
                 }
             }
         }
@@ -415,11 +420,14 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.pad.Axis(key, evt.GetValue());
         } else if Equals(key, EInputKey.IK_MouseZ) {
             this.input.takesKeys = this.isOpen && (this.kbOwned || this.padOwned);
+            this.input.mouseOwned = this.isOpen && this.mouseOwned;
             this.input.Axis(key, evt.GetValue(), this.isOpen);
-        } else if (Equals(key, EInputKey.IK_MouseX) || Equals(key, EInputKey.IK_MouseY)) && this.isOpen && this.kbOwned {
+        } else if (Equals(key, EInputKey.IK_MouseX) || Equals(key, EInputKey.IK_MouseY)) && this.isOpen && (this.kbOwned || this.mouseOwned) {
             let s = this.Settings();
-            this.input.takesKeys = true;
-            this.input.MouseMove(key, evt.GetValue(), true, IsDefined(s) && s.mousePan);
+            this.input.takesKeys = this.kbOwned;
+            this.input.mouseOwned = this.mouseOwned;
+            // Mouse only always pans with the mouse; WASD only with Mouse pans the map on.
+            this.input.MouseMove(key, evt.GetValue(), true, this.mouseOwned || (IsDefined(s) && s.mousePan));
         }
     }
 
@@ -500,7 +508,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
     }
 
-    // Opened from the keyboard with Keyboard map on Takes keyboard and mouse: V stops as in pad mode, so WASD, the
+    // Opened from the keyboard with Controls on WASD: V stops as in pad mode, so WASD, the
     // arrows and the wheel are free for the map (the wheel no longer switches weapons).
     // On foot V is held by gameplay restrictions (NMRestrict), not the player state machine's UI context: that context
     // also froze mouse-look, and the camera should keep turning with the mouse. In a car the UI context stays. With
@@ -538,7 +546,9 @@ public class OverlayMapSystem extends ScriptableSystem {
     // the context are handed back only once they are all up (Close, with a fallback in PadReleaseCtx).
     private func TrackKbHeld(key: EInputKey, action: EInputAction) {
         if Equals(action, EInputAction.IACT_Press) {
-            if this.isOpen && this.kbOwned && !ArrayContains(this.kbHeld, key) {
+            // Mouse only tracks just the mouse buttons: W held to walk must not keep the camera locked after close.
+            let owned = this.kbOwned || (this.mouseOwned && OverlayMapSystem.IsMouseButton(key));
+            if this.isOpen && owned && !ArrayContains(this.kbHeld, key) {
                 ArrayPush(this.kbHeld, key);
             }
             return;
@@ -552,6 +562,26 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.ReleaseRestrictions();
             this.SchedulePadRelease(0.1);
         }
+    }
+
+    // Opened with Controls on Mouse only: the keyboard stays the game's (V walks and drives), and NMRestrict's mouse set
+    // keeps the camera still and the buttons and wheel off V's weapons, on foot and in a car. No game context is pushed.
+    private func TakeMouse() {
+        this.mouseOwned = true;
+        this.kbReleaseWait = false;
+        this.padCtxToken += 1;
+        if !this.kbRestricted {
+            NMRestrict.ApplyIds(GetPlayer(this.GetGameInstance()), NMRestrict.MouseIds());
+            this.kbRestricted = true;
+        }
+        this.input.mouseOwned = true;
+        if this.isOpen {
+            this.RefreshSidebar(false);
+        }
+    }
+
+    private static func IsMouseButton(key: EInputKey) -> Bool {
+        return Equals(key, EInputKey.IK_LeftMouse) || Equals(key, EInputKey.IK_RightMouse) || Equals(key, EInputKey.IK_MiddleMouse);
     }
 
     private func ReleaseRestrictions() {
@@ -569,7 +599,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     }
 
     public func PadReleaseCtx(token: Int32) {
-        if token != this.padCtxToken || this.padOwned || this.kbOwned {
+        if token != this.padCtxToken || this.padOwned || this.kbOwned || this.mouseOwned {
             return;
         }
         if this.kbReleaseWait {
@@ -957,6 +987,16 @@ public class OverlayMapSystem extends ScriptableSystem {
                 }
             }
         }
+        if this.mouseOwned {
+            this.mouseOwned = false;
+            this.input.mouseOwned = false;
+            this.kbReleaseWait = ArraySize(this.kbHeld) > 0;
+            if this.kbReleaseWait {
+                this.SchedulePadRelease(3.0);   // fallback; TrackKbHeld lets go on the button's release
+            } else {
+                this.ReleaseRestrictions();
+            }
+        }
         this.OnClosing();
         if IsDefined(this.hud) {
             this.hud.Restore();
@@ -1224,6 +1264,13 @@ public class OverlayMapSystem extends ScriptableSystem {
     }
 
     private func UpdateModules(dt: Float) {
+        // Mouse only: holding the left button for TeleportHoldMs teleports, as the teleport key does.
+        if this.mouseOwned {
+            let hs = this.Settings();
+            if IsDefined(hs) && hs.teleportEnabled && this.input.HoldTeleport(NMClock.NowMs()) {
+                this.input.teleport = true;
+            }
+        }
         // First: a started teleport or fast travel closes the map, and nothing below may run on the destroyed panel.
         if this.input.teleport {
             this.input.teleport = false;
@@ -1297,6 +1344,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         let pinK = isPhoto ? 1.0 : this.renderer.CandScale(c.sel);
         this.reticle.Update(l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5, c.selKind >= 0, c.selX, c.selY, isPhoto,
             NMItemRenderer.ThumbZoom(this.camera.mpp) * photoK, pinK, dt);
+        this.reticle.SetHold(this.mouseOwned ? this.input.HoldProgress(NMClock.NowMs()) : 0.0, l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5);
         if this.input.act {
             this.input.act = false;
             this.Activate();
@@ -1411,7 +1459,7 @@ public class OverlayMapSystem extends ScriptableSystem {
             dist = NMMath.FormatMeters(SqrtF(dx * dx + dy * dy));
         }
         let s = this.Settings();
-        this.drawer.Show(spot, dist, spot.district, IsDefined(s) ? NMInput.KeyName(this.kbOwned ? s.keyMapTeleport : s.keyTeleport) : "TELEPORT", this.Photos().Handler());
+        this.drawer.Show(spot, dist, spot.district, IsDefined(s) ? (this.mouseOwned ? "HOLD LMB" : NMInput.KeyName(this.kbOwned ? s.keyMapTeleport : s.keyTeleport)) : "TELEPORT", this.Photos().Handler());
     }
 
     private func DefaultDetails(L: ref<OverlayMapLayer>, id: Int32) -> ref<OverlayMapDetails> {
@@ -1566,14 +1614,16 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
         if IsDefined(s) {
             let view = NMVanillaFilters.ViewName(this.filterView);
-            let hints = this.kbOwned ? NMInput.TakeHints(s, view, this.TeleportLabel()) : NMInput.Hints(s, view, this.TeleportLabel());
+            let hints = this.kbOwned ? NMInput.TakeHints(s, view, this.TeleportLabel())
+                : (this.mouseOwned ? NMInput.MouseHints(s, view, this.TeleportLabel()) : NMInput.Hints(s, view, this.TeleportLabel()));
             if this.padOwned && this.pad.lastWasPad {
                 hints = NMPad.Hints(view, this.TeleportLabel(), s.teleportEnabled, s.holdToShow);
             } else if this.padFromPad && !this.padOwned {
                 hints = NMPad.PassThroughHints(hints);
             }
             let padHints = this.padOwned && this.pad.lastWasPad;
-            hints = NMWaypoint.WithHint(hints, padHints ? "RB" : NMInput.KeyName(this.kbOwned ? s.keyMapWaypoint : s.keyWaypoint), this.WaypointLabel());
+            let wpKey = padHints ? "RB" : (this.mouseOwned ? "RMB" : NMInput.KeyName(this.kbOwned ? s.keyMapWaypoint : s.keyWaypoint));
+            hints = NMWaypoint.WithHint(hints, wpKey, this.WaypointLabel());
             if this.input.arrowSeen {
                 hints = NMInput.NumLockHints(hints);
             }
