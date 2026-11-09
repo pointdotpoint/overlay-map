@@ -361,6 +361,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         let player = request.owner;
         if IsDefined(player) && player.IsPlayer() {
             NMRestrict.Remove(player);   // a save made with the map open must not load with V held
+            NMWelcome.Schedule(player);
             this.kbRestricted = false;
             this.kbReleaseWait = false;
             ArrayClear(this.kbHeld);

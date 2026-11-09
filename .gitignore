@@ -7,3 +7,6 @@ __pycache__/
 .soak/
 dist-native/
 dist/
+docs/banners/assets/
+docs/banners/out/
+docs/banners/.chrome/

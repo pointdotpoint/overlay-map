@@ -43,6 +43,7 @@ public abstract class NMSoak {
             return sys.Soak_Set(sv[1], sv[2]);
         }
         if Equals(command, "is_open") { return sys.Soak_IsOpen(); }
+        if Equals(command, "welcome") { return NMWelcome.Seen(sys.GetGameInstance()) ? "welcome seen" : "welcome unseen"; }
         if Equals(command, "watch_keys") { return sys.Soak_WatchKeys(); }
         if Equals(command, "last_keys") { return sys.Soak_LastKeys(); }
         if StrBeginsWith(command, "press ") { return sys.Soak_PressBound(StrAfterFirst(command, " ")); }

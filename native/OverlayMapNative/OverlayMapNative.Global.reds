@@ -5,6 +5,9 @@ public static native func OverlayMapNative_NowMs() -> Float
 // Photo pins: the whole of <game>/r6/storages/OverlayMap/photos.txt ("" when there is none yet), and an append to it.
 public static native func OverlayMapNative_PhotoStoreRead() -> String
 public static native func OverlayMapNative_PhotoStoreAppend(text: String) -> Bool
+// Welcome screen: shown once per install (<game>/r6/storages/OverlayMap/welcome_seen).
+public static native func OverlayMapNative_WelcomeSeen() -> Bool
+public static native func OverlayMapNative_MarkWelcomeSeen() -> Bool
 // Diagnostics: the four world-map natives' bodies as RVAs, and why the engine calls are (un)available.
 public static native func OverlayMapNative_Rvas() -> String
 public static native func OverlayMapNative_Why() -> String

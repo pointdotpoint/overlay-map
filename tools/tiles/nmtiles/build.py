@@ -24,6 +24,7 @@ from nmtiles.render import level_grid
 from nmtiles.render_minimap import SETS, make_sources, png_name, render_level_tiles
 from nmtiles.resources import make_inkatlas_json, make_xbm_json
 from nmtiles.ui_atlas import build_ui_atlas
+from nmtiles.welcome_atlas import build_welcome_atlas
 
 HERE = Path(__file__).resolve().parents[1]
 REPO = HERE.parents[1]
@@ -117,7 +118,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"preview {p}")
 
     all_pngs = [p for s in SETS for p in set_pngs[s].values()]
-    payloads = encode_bc7(all_pngs + [ui_png, holo_png], out / "dds", min(args.jobs, 2))
+    wel_img, wel_parts = build_welcome_atlas()
+    wel_png = png_dir / "welcome.png"
+    wel_img.save(wel_png)
+    payloads = encode_bc7(all_pngs + [ui_png, holo_png, wel_png], out / "dds", min(args.jobs, 2))
     xbm_t = json.loads((TPL / "tile.xbm.json").read_text())
     atl_t = json.loads((TPL / "atlas.inkatlas.json").read_text())
     ws = out / "workspace"
@@ -135,6 +139,9 @@ def main(argv: list[str] | None = None) -> int:
     write_resource(ws, "overlaymap\\ui\\holo.xbm", make_xbm_json(xbm_t, holo_img.width, holo_img.height, payloads[holo_png]))
     write_resource(ws, "overlaymap\\ui\\holo.inkatlas",
                    make_inkatlas_json(atl_t, "overlaymap\\ui\\holo.xbm", holo_parts, holo_img.width, holo_img.height))
+    write_resource(ws, "overlaymap\\ui\\welcome.xbm", make_xbm_json(xbm_t, wel_img.width, wel_img.height, payloads[wel_png]))
+    write_resource(ws, "overlaymap\\ui\\welcome.inkatlas",
+                   make_inkatlas_json(atl_t, "overlaymap\\ui\\welcome.xbm", wel_parts, wel_img.width, wel_img.height))
 
     deserialize_all(ws)
     archive = pack_archive(ws, REPO / "archive" / "pc" / "mod" / "OverlayMap.archive")
@@ -157,9 +164,15 @@ def write_ui(ws: Path, png_dir: Path, dds: Path, jobs: int) -> None:
     holo_img, holo_parts = build_holo_atlas()
     holo_png = png_dir / "holo.png"
     holo_img.save(holo_png)
-    payloads = encode_bc7([ui_png, holo_png], dds, min(jobs, 2))
+    wel_img, wel_parts = build_welcome_atlas()
+    wel_png = png_dir / "welcome.png"
+    wel_img.save(wel_png)
+    payloads = encode_bc7([ui_png, holo_png, wel_png], dds, min(jobs, 2))
     xbm_t = json.loads((TPL / "tile.xbm.json").read_text())
     atl_t = json.loads((TPL / "atlas.inkatlas.json").read_text())
+    write_resource(ws, "overlaymap\\ui\\welcome.xbm", make_xbm_json(xbm_t, wel_img.width, wel_img.height, payloads[wel_png]))
+    write_resource(ws, "overlaymap\\ui\\welcome.inkatlas",
+                   make_inkatlas_json(atl_t, "overlaymap\\ui\\welcome.xbm", wel_parts, wel_img.width, wel_img.height))
     write_resource(ws, "overlaymap\\ui\\ui.xbm", make_xbm_json(xbm_t, 1024, 1024, payloads[ui_png]))
     write_resource(ws, "overlaymap\\ui\\ui.inkatlas", make_inkatlas_json(atl_t, "overlaymap\\ui\\ui.xbm", ui_parts, 1024, 1024))
     write_resource(ws, "overlaymap\\ui\\holo.xbm", make_xbm_json(xbm_t, holo_img.width, holo_img.height, payloads[holo_png]))
