@@ -380,7 +380,45 @@ public abstract class NMDeclutterTests {
         NMDeclutterTests.At(over, 100.0, 50.0);
         r13p.Update(cam13, w, h);
         t.Check("declutter.persist_yields_to_higher", !NMDeclutterTests.Placed(r13p, pan, lone), NMDeclutterTests.Info(r13p));
+        NMDeclutterTests.SlideStaysInView(t);
         NMDeclutterTests.Cost();
+    }
+
+    // A long pan in one direction, with rests (the idle relayout) and pan relayouts along the way: the item canvas's
+    // offset must stay well inside the view. Ink culls a widget whose own box leaves the clip (the map viewport), and
+    // with it every marker, though the markers themselves are drawn back over the view (the 2026-11-10 vanishing pins).
+    private static func SlideStaysInView(t: ref<NMSelfTest>) {
+        let l = NMPanelLayout.Compute(1920.0, 1080.0);
+        let api = NMDeclutterTests.Api();
+        let L = NMDeclutterTests.Layer(api, n"test.dc.slide", 5, OverlayMapTier.Minor);
+        NMDeclutterTests.At(L, 0.0, 0.0);
+        let canvas = new inkCanvas();
+        let r = NMItemRenderer.Create(api, canvas, 1.0);
+        r.slidePad = NMTheme.SlidePad(l.viewW);
+        let cam = NMCamera.Create(l.viewW, l.mapH, NMRect.Create(-6000.0, -4600.0, 4600.0, 7400.0), 0.5, 16.0);
+        cam.SetCenter(0.0, 0.0);
+        cam.SetMpp(1.0);
+        r.Slide(cam, l);
+        let worstX = 0.0;
+        let worstY = 0.0;
+        let f = 0;
+        while f < 400 {
+            if f % 25 == 24 {
+                r.Slide(cam, l);   // two still frames: the rest relayout
+                r.Slide(cam, l);
+                r.Slide(cam, l);
+            } else {
+                cam.PanPixels(3.0, -6.0);   // up and a little right
+                r.Slide(cam, l);
+            }
+            let tr = canvas.GetTranslation();
+            worstX = MaxF(worstX, AbsF(tr.X));
+            worstY = MaxF(worstY, AbsF(tr.Y));
+            f += 1;
+        }
+        t.Check("declutter.slide_canvas_in_view", worstX < 0.5 * l.viewW && worstY < 0.5 * l.mapH,
+            "worst offset " + t.F(worstX) + ", " + t.F(worstY) + " view " + t.F(l.viewW) + " x " + t.F(l.mapH)
+            + " slides " + ToString(r.slides) + " relayouts " + ToString(r.relayouts));
     }
 
     // Relayout cost with and without the declutter over the perf suite's biggest item layer (logged, not checked:
