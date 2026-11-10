@@ -95,6 +95,21 @@ public class NMItemRenderer {
     public let chipsUsed: Int32;
     public let pendingImages: Int32;
     public let relayouts: Int32;
+    // Pan without relayout (Slide): at an unchanged zoom every marker moves by the same amount, so the parent canvas is
+    // translated instead of placing every pin again. The candidates stay in layout coordinates; offX/offY is how far
+    // the canvas has slid since the last relayout (add it for screen positions).
+    public let offX: Float;
+    public let offY: Float;
+    public let slides: Int32;
+    private let baseT: Vector2;          // the parent canvas's own translation
+    private let layAnchorX: Float;       // the world point at the view centre at the last relayout, and where it drew
+    private let layAnchorY: Float;
+    private let layMapX: Float;
+    private let layMapY: Float;
+    private let layMpp: Float;
+    private let layViewW: Float;
+    private let layViewH: Float;
+    private let laidOut: Bool;
     // Declutter: a marker that collides on screen with one already placed this relayout is skipped (no slot, no
     // candidate). Placed markers go into a spatial hash over the view, rebuilt per relayout in reused arrays.
     public let culled: Int32;       // items skipped by the declutter in the last relayout
@@ -142,6 +157,7 @@ public class NMItemRenderer {
         r.lastCamRev = -1;
         r.lastApiRev = -1;
         r.parent = parent;
+        r.baseT = parent.GetTranslation();
         r.photoSel = -1;
         r.curFade = 1.0;
         r.curScale = 1.0;
@@ -350,10 +366,132 @@ public class NMItemRenderer {
 
     public func Invalidate() {
         this.lastCamRev = -1;
+        this.laidOut = false;
+    }
+
+    // Per frame for the panel: 0 nothing changed, 1 the markers slid with a pan (no relayout), 2 relaid out. A pan
+    // slides until it has moved the markers a cull margin (pins placed beyond the view edge have then reached it);
+    // a zoom, a resize or new data relays out at once.
+    public func Slide(cam: ref<NMCamera>, l: ref<NMPanelLayout>) -> Int32 {
+        // A zoom frame: move the placed markers to the new scale (Reflow) and run the full placement and declutter only
+        // every ReflowRun-th frame, past a zoom ratio, and once the zoom has stopped.
+        if this.laidOut && cam.mpp != this.layMpp && this.api.revision == this.lastApiRev && l.viewW == this.layViewW
+            && l.mapH == this.layViewH && this.reflows < NMItemRenderer.ReflowRun() {
+            let ratio = cam.mpp / this.fullMpp;
+            if ratio > 0.85 && ratio < 1.18 && this.Reflow(cam) {
+                this.reflows += 1;
+                this.lastCamRev = cam.revision;
+                this.declutterStale = true;
+                this.Anchor(cam, this.layViewW, this.layViewH);
+                return 2;
+            }
+        }
+        if this.declutterStale && cam.mpp == this.layMpp {
+            this.padOn = true;
+            this.lastCamRev = -1;   // the zoom stopped: place and declutter properly once
+            return this.UpdateFor(cam, l) ? 2 : 0;
+        }
+        if !this.laidOut || this.api.revision != this.lastApiRev || cam.mpp != this.layMpp || l.viewW != this.layViewW
+            || l.mapH != this.layViewH {
+            // A zoom relays out every frame and slides none: the wider band would only add work.
+            this.padOn = !this.laidOut || cam.mpp == this.layMpp;
+            this.lastCamRev = -1;   // relay out even when only the layout changed (no camera revision)
+            return this.UpdateFor(cam, l) ? 2 : 0;
+        }
+        if cam.revision == this.lastCamRev {
+            return 0;
+        }
+        let p = cam.WorldToMap(this.layAnchorX, this.layAnchorY);
+        let dx = p.X - this.layMapX;
+        let dy = p.Y - this.layMapY;
+        let lim = this.layMargin;
+        if AbsF(dx) > lim || AbsF(dy) > lim {
+            this.padOn = true;
+            this.lastCamRev = -1;   // relay out even when only the layout changed (no camera revision)
+            return this.UpdateFor(cam, l) ? 2 : 0;
+        }
+        this.lastCamRev = cam.revision;
+        this.offX = dx;
+        this.offY = dy;
+        this.slides += 1;
+        this.parent.SetTranslation(new Vector2(this.baseT.X + dx, this.baseT.Y + dy));
+        return 1;
+    }
+
+    // Zoom frames between full relayouts (Slide). Each moves only the markers already placed, so a pile may overlap or
+    // a new marker wait a few frames at the edge until the next full relayout.
+    public static func ReflowRun() -> Int32 { return 3; }
+
+    // The placed markers at the camera's new zoom: positions (and a photo pin's whole shape, which grows with the zoom)
+    // without the walk, the declutter or the candidates' order. False when an item is gone: relay out instead.
+    private func Reflow(cam: ref<NMCamera>) -> Bool {
+        let n = ArraySize(this.candX);
+        let nl = ArraySize(this.api.layers);
+        this.thumbZoom = NMItemRenderer.ThumbZoom(cam.mpp);
+        let last = -1;
+        let L: ref<OverlayMapLayer>;
+        let c = 0;
+        while c < n {
+            let li = this.candLayer[c];
+            let id = this.candItem[c];
+            if li < 0 || li >= nl { return false; }
+            if li != last {
+                last = li;
+                L = this.api.layers[li];
+                this.curScale = NMTiers.Scale(L.EffectiveTier(), cam.mpp);
+                this.curFade = NMTiers.LayerFade(L, cam.mpp);
+            }
+            if !L.IsAlive(id) { return false; }
+            let slot = this.candSlot[c];
+            let p = cam.WorldToMap(L.px[id], L.py[id]);
+            if this.chipStyle[slot] == 3 {
+                let q = this.PlacePhoto(L, id, slot, p, this.photoColor[slot]);
+                this.candX[c] = q.X;
+                this.candY[c] = q.Y;
+                this.candReach[c] = p.Y - q.Y;
+            } else {
+                this.chipBg[slot].SetTranslation(p);
+                this.chipIcon[slot].SetTranslation(p);
+                if this.strikeOn[slot] { this.chipStrike[slot].SetTranslation(p); }
+                this.candX[c] = p.X;
+                this.candY[c] = p.Y;
+            }
+            c += 1;
+        }
+        return true;
+    }
+
+    // After a relayout: the canvas back in place and the anchor for the next slide.
+    private func Anchor(cam: ref<NMCamera>, viewW: Float, viewH: Float) {
+        let c = cam.MapToWorld(viewW * 0.5, viewH * 0.5);
+        this.layAnchorX = c.X;
+        this.layAnchorY = c.Y;
+        let p = cam.WorldToMap(c.X, c.Y);
+        this.layMapX = p.X;
+        this.layMapY = p.Y;
+        this.layMpp = cam.mpp;
+        this.layViewW = viewW;
+        this.layViewH = viewH;
+        this.layMargin = this.curMargin;
+        this.laidOut = true;
+        this.offX = 0.0;
+        this.offY = 0.0;
+        this.parent.SetTranslation(this.baseT);
     }
 
     // Markers are placed out to this far past the view's edges (the clip cuts a marker straddling an edge).
     public static func CullMargin(scale: Float) -> Float { return 60.0 * scale; }
+
+    // The panel places markers this much further out (map units), so a pan can slide them that far before relaying
+    // out (Slide). 0 for the corner and the tests.
+    public let slidePad: Float;
+    private let padOn: Bool;        // the next relayout adds slidePad: off while zooming (every zoom frame relays out)
+    private let curMargin: Float;   // this relayout's cull margin, read once
+    private let layMargin: Float;
+    private let reflows: Int32;          // zoom frames reflowed since the last full relayout
+    private let fullMpp: Float;          // the zoom of the last full relayout
+    private let declutterStale: Bool;    // reflowed: the placement and declutter are from an earlier zoom   // the last relayout's, which bounds how far it may slide
+    private func Margin() -> Float { return NMItemRenderer.CullMargin(this.scale) + (this.padOn ? this.slidePad : 0.0); }
 
     // Relayout for the panel: culled to the map visible left of the sidebar (layout.viewW), not the whole map area, so
     // nothing is placed under the sidebar (the viewport clips there too, NMPanel).
@@ -367,6 +505,10 @@ public class NMItemRenderer {
         this.lastCamRev = cam.revision;
         this.lastApiRev = api.revision;
         this.relayouts += 1;
+        this.curMargin = this.Margin();
+        this.reflows = 0;
+        this.fullMpp = cam.mpp;
+        this.declutterStale = false;
         this.thumbZoom = NMItemRenderer.ThumbZoom(cam.mpp);
         this.thumbPlan.BeginLayout();
         this.TakeHistory();
@@ -385,7 +527,7 @@ public class NMItemRenderer {
         let order: array<Int32> = this.LayerOrder();
         // Same level-0 range and ring centre for every layer. The ring order itself is built on first use: sparse
         // layers never need it, and over the whole city it is ~9,000 cells.
-        this.indRg = this.CellRange(0, cam, NMItemRenderer.CullMargin(this.scale));
+        this.indRg = this.CellRange(0, cam, this.curMargin);
         this.ringCx = Clamp(this.CenterCell(0, cam, false), this.indRg[0], this.indRg[2]);
         this.ringCy = Clamp(this.CenterCell(0, cam, true), this.indRg[1], this.indRg[3]);
         this.ringBuilt = false;
@@ -416,6 +558,7 @@ public class NMItemRenderer {
         }
         this.HideUnused();
         this.FinishThumbs();
+        this.Anchor(cam, viewW, viewH);
         return true;
     }
 
@@ -502,7 +645,7 @@ public class NMItemRenderer {
         this.hN = 0;
         this.hRmax = 0.0;
         this.hK = NMTheme.DeclutterOverlap();
-        let m = NMItemRenderer.CullMargin(this.scale);
+        let m = this.curMargin;
         let plate = NMTheme.PlateSize() * 0.25 * NMTheme.VanillaEmphScale();
         let biggest = MaxF(MaxF(plate, NMTheme.ChipSize() * 0.5), MaxF(NMTheme.DotSize() * 0.5, NMItemRenderer.ThumbW() * 0.5 * this.thumbZoom));
         this.hCell = MaxF(2.0 * biggest * this.scale, 1.0);
@@ -1064,7 +1207,7 @@ public class NMItemRenderer {
             return false;   // already tested this relayout (replayed from the last one): placed, or culled for good
         }
         let p = cam.WorldToMap(L.px[id], L.py[id]);
-        let m = NMItemRenderer.CullMargin(this.scale);
+        let m = this.curMargin;
         if p.X < -m || p.X > viewW + m || p.Y < -m || p.Y > viewH + m {
             return false;
         }
