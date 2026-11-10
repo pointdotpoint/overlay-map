@@ -726,6 +726,37 @@
         return "pressed " + NMInput.KeyName(key) + " used=" + ToString(used);
     }
 
+    // Experiment: the trip with its loading screen event sent `delay` seconds after the request, through the UI system
+    // ("ui") or broadcast from the minimap's game controller ("bc"). Black 4 of 4 at 0.1 and 1 s, either way
+    // (ft-late-event, 2026-11-09): the cause of the occasional black screen NMFastTravel.Travel now avoids.
+    public func Soak_FtLate(how: String, delay: Float) -> String {
+        let gi = this.GetGameInstance();
+        let m = this.SelectedMappin();
+        if !IsDefined(NMFastTravel.PointOf(m)) { return "no point"; }
+        let bb = GameInstance.GetBlackboardSystem(gi).Get(GetAllBlackboardDefs().FastTRavelSystem);
+        bb.SetVariant(GetAllBlackboardDefs().FastTRavelSystem.StartingPoint, ToVariant(TDBID.None()));
+        this.Close();
+        let request = new PerformFastTravelRequest();
+        request.pointData = NMFastTravel.PointOf(m);
+        request.player = GetPlayer(gi);
+        NMFastTravel.System(gi).QueueRequest(request);
+        let cb = new SoakFtLateEvent();
+        cb.gi = gi;
+        cb.ctrl = this.Gps().Minimap();
+        cb.broadcast = Equals(how, "bc");
+        GameInstance.GetDelaySystem(gi).DelayCallback(cb, delay, false);
+        return "sent, event " + how + " in " + FloatToStringPrec(delay, 2) + " s, minimap " + ToString(IsDefined(cb.ctrl));
+    }
+
+    public func Soak_FtFlags() -> String {
+        let defs = GetAllBlackboardDefs().FastTRavelSystem;
+        let bb = GameInstance.GetBlackboardSystem(this.GetGameInstance()).Get(defs);
+        let ui = GameInstance.GetBlackboardSystem(this.GetGameInstance()).Get(GetAllBlackboardDefs().UI_System);
+        return "started=" + ToString(bb.GetBool(defs.FastTravelStarted)) + " load_started=" + ToString(bb.GetBool(defs.FastTravelLoadingScreenStarted))
+            + " load_finished=" + ToString(bb.GetBool(defs.FastTravelLoadingScreenFinished))
+            + " in_menu=" + ToString(ui.GetBool(GetAllBlackboardDefs().UI_System.IsInMenu));
+    }
+
     // Mouse only: the left button as the game's Input/Key callback would report it.
     public func Soak_Lmb(down: Bool) -> String {
         let used = this.HandleKey(EInputKey.IK_LeftMouse, down ? EInputAction.IACT_Press : EInputAction.IACT_Release, false, false, false);
