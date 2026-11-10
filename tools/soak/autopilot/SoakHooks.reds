@@ -38,6 +38,7 @@ public abstract class NMSoak {
         if Equals(command, "perf") { return sys.Soak_Perf(""); }
         if Equals(command, "perf_route") { return sys.Soak_Perf("route"); }
         if Equals(command, "perf_dense") { return sys.Soak_Perf("dense"); }
+        if StrBeginsWith(command, "perf_only ") { return sys.Soak_Perf(StrAfterFirst(command, " ")); }
         if StrBeginsWith(command, "set ") {
             let sv = StrSplit(command, " ");
             if ArraySize(sv) < 3 { return "usage: set <name> <value>"; }

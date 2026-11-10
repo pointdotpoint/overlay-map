@@ -1,0 +1,100 @@
+{
+ "name": "pan-visual",
+ "runs": [
+  {
+   "name": "pan",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "welcome mark"
+    },
+    {
+     "cmd": "set controls wasd"
+    },
+    {
+     "cmd": "set mousepan 1"
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "shot": "start"
+    },
+    {
+     "mouse": [
+      300,
+      0
+     ],
+     "steps": 30
+    },
+    {
+     "shot": "mid_pan"
+    },
+    {
+     "mouse": [
+      300,
+      150
+     ],
+     "steps": 30
+    },
+    {
+     "shot": "pan2"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "shot": "rest"
+    },
+    {
+     "mouse": [
+      -500,
+      -200
+     ],
+     "steps": 40
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "shot": "back_rest"
+    },
+    {
+     "wheel": -2
+    },
+    {
+     "wait": 0.15
+    },
+    {
+     "shot": "zooming"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "shot": "zoom_rest"
+    },
+    {
+     "cmd": "press toggle"
+    }
+   ]
+  }
+ ]
+}

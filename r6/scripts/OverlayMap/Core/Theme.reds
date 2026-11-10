@@ -97,7 +97,7 @@ public abstract class NMTheme {
     public static func ChipBudget() -> Int32 { return 300; }
     // Markers are placed this far past the panel's view edges, so a pan slides them (NMItemRenderer.Slide) about this
     // far between relayouts. Wider costs more placements per relayout, narrower more relayouts.
-    public static func SlidePad(viewW: Float) -> Float { return 0.06 * viewW; }
+    public static func SlidePad(viewW: Float) -> Float { return 0.10 * viewW; }
     public static func SnapMs() -> Float { return 150.0; }   // ease onto the focused marker when panning stops
     public static func MaxGlobalCategories() -> Int32 { return 64; }
 

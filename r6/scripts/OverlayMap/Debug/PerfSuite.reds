@@ -170,6 +170,12 @@ public class NMPerfSuite {
                 let r0 = sys.Renderer();
                 if IsDefined(r0) {
                     r0.placements = 0;
+                    r0.prof = true;
+                    r0.profBegin = 0.0;
+                    r0.profPrev = 0.0;
+                    r0.profWalk = 0.0;
+                    r0.profEnd = 0.0;
+                    r0.profCulled = 0;
                     this.relayouts0 = r0.relayouts;
                     this.slides0 = r0.slides;
                 }
@@ -284,7 +290,9 @@ public class NMPerfSuite {
         let r = sys.Renderer();
         if !IsDefined(r) || !this.shows[this.idx] { return ""; }
         return "|relayouts=" + ToString(r.relayouts - this.relayouts0) + "|slides=" + ToString(r.slides - this.slides0)
-            + "|placements=" + ToString(r.placements);
+            + "|placements=" + ToString(r.placements) + "|culls=" + ToString(r.profCulled)
+            + "|rl_begin_ms=" + FloatToStringPrec(r.profBegin, 1) + "|rl_prev_ms=" + FloatToStringPrec(r.profPrev, 1)
+            + "|rl_walk_ms=" + FloatToStringPrec(r.profWalk, 1) + "|rl_end_ms=" + FloatToStringPrec(r.profEnd, 1);
     }
 
     private static func MaxOf(values: array<Float>) -> Float {
