@@ -65,6 +65,7 @@ public class NMTileLayer extends NMMapLayer {
     private let preIy: Int32;
     private let preActive: Bool;
     public let holdFade: Bool;       // the stack holds every set until all of them have their tiles
+    public let budget: ref<NMTileBudget>;   // tile requests left this frame, shared by every set (NMLayerStack)
     public let skipLoadWait: Bool;   // test hook: fades run on time alone, as if every tile were in
     public let holdLoads: Bool;      // test hook: no load finishes
     private let cur: Int32;
@@ -87,6 +88,8 @@ public class NMTileLayer extends NMMapLayer {
     // New tiles requested per set per frame: a level change asks for up to ~50 per set, and five sets at once made the
     // frame's script spike; the rest follow on the next frames, and the level's fade waits for them (Task 11).
     public static func TilesPerFrame() -> Int32 { return 24; }
+    // All sets together (NMTileBudget): a level change asked up to 24 per set at once, a 4 ms frame (tiles_p95, 2026-11-09).
+    public static func TilesPerFrameAll() -> Int32 { return 24; }
     public static func PreloadPerFrame() -> Int32 { return 6; }   // next-level tiles warmed per set per frame
 
     public static func TilePath(setName: String, lv: Int32, ix: Int32, iy: Int32) -> String {
@@ -392,10 +395,11 @@ public class NMTileLayer extends NMMapLayer {
                 let gk = this.levelBase[lv] + iy * nx + ix;
                 if this.slotOf[gk] == 0 && this.Has(lv, ix, iy) {
                     let slot = -1;
-                    if added >= NMTileLayer.TilesPerFrame() {
+                    if added >= NMTileLayer.TilesPerFrame() || (IsDefined(this.budget) && this.budget.left <= 0) {
                         more = true;   // the rest on the next frames
                     } else {
                         added += 1;
+                        if IsDefined(this.budget) { this.budget.left -= 1; }
                         slot = this.AllocSlot();
                         if slot < 0 { full = true; }
                     }
@@ -469,8 +473,9 @@ public class NMTileLayer extends NMMapLayer {
     private func PreloadStep() {
         let depot = GameInstance.GetResourceDepot();
         let asked = 0;
-        while this.preActive && asked < NMTileLayer.PreloadPerFrame() {
+        while this.preActive && asked < NMTileLayer.PreloadPerFrame() && (!IsDefined(this.budget) || this.budget.left > 0) {
             if this.Has(this.preLv, this.preIx, this.preIy) {
+                if IsDefined(this.budget) { this.budget.left -= 1; }
                 let path = NMTileLayer.TilePath(this.setName, this.preLv, this.preIx, this.preIy);
                 ArrayPush(this.preTokens, depot.LoadResource(ResRef.FromString(path)));
                 ArrayPush(this.preTokens, depot.LoadResource(ResRef.FromString(StrReplace(path, ".inkatlas", ".xbm"))));

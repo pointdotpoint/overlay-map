@@ -329,3 +329,13 @@ request 0.1 s later: 6 of 6 trips arrived. Game scripts: ~/cyberpunk_blackwall_r
 
 **Soak crashes at load** from 21:11 were Ragdoll Physics Overhaul (installed then; removed with the user's OK).
 Regression on the combined branch: pass, self-tests 615/1 (wp.cancel_pending: the custom waypoint set at once, never pending).
+
+### Zoom reflow over the whole ease, one tile budget per frame (2026-11-09, perf/zoom-tiles)
+
+A zoom now reflows (moves the placed markers, tier scale included) until it stops or drifts 1.4x in / 1.12x out from the
+last full relayout, then places and declutters once; the tile sets share one request budget per frame (24) instead of 24
+each. One suite each against the merge above (QuickSave-7): frame p99 vanilla_open 22.1 -> 18.1 ms, items_5000 21.6 -> 16.7,
+items_20000 21.3 -> 15.2, photos_500 29.5 -> 21.7; tiles_p95 ~3.9 -> ~2.1 ms; script avg on the zoom sweeps -10 to -20 %.
+Pans and idle unchanged. The suite now reports relayouts / slides / placements; slot restyles were measured negligible
+(0-20 per suite on the item scenarios), so the remaining relayout cost is the placement walk itself (~100 markers a relayout).
+Regression: pass, self-tests 615/1 (wp.cancel_pending, also on main with this save).

@@ -167,6 +167,12 @@ public class NMPerfSuite {
                 ArrayClear(this.sel);
                 ArrayClear(this.side);
                 sys.perfSelChanges = 0;
+                let r0 = sys.Renderer();
+                if IsDefined(r0) {
+                    r0.placements = 0;
+                    this.relayouts0 = r0.relayouts;
+                    this.slides0 = r0.slides;
+                }
                 ArrayClear(this.route);
                 ArrayClear(this.routeProj);
                 ArrayClear(this.routeLay);
@@ -258,7 +264,7 @@ public class NMPerfSuite {
             + "|" + NMPerfSuite.Stats("tiles", this.tiles, false) + "|" + NMPerfSuite.Stats("items", this.items, false)
             + "|" + NMPerfSuite.Stats("sel", this.sel, false) + "|sel_max=" + FloatToStringPrec(NMPerfSuite.MaxOf(this.sel), 3)
             + "|" + NMPerfSuite.Stats("side", this.side, false) + "|side_max=" + FloatToStringPrec(NMPerfSuite.MaxOf(this.side), 3)
-            + "|sel_changes=" + ToString(this.selChanges)
+            + "|sel_changes=" + ToString(this.selChanges) + this.RendererCounts(sys)
             + "|poll_ms_max=" + FloatToStringPrec(this.vanillas[this.idx] ? sys.Vanilla().pollMsMax : 0.0, 3)
             + "|route_drawn=" + (this.routeDrawn ? "1" : "0")
             + "|route_read_ms_max=" + FloatToStringPrec(this.routeRows[this.idx] ? sys.Gps().readMsMax : 0.0, 3)
@@ -268,6 +274,17 @@ public class NMPerfSuite {
             + "|" + NMPerfSuite.Stats("rsimp", this.rSimp, false) + "|" + NMPerfSuite.Stats("rsmooth", this.rSmooth, false)
             + "|route_iters_max=" + ToString(this.routeIters) + "|route_world_pts=" + ToString(this.routeWorld)
             + "|route_screen_pts=" + ToString(this.routeScreen));
+    }
+
+    private let relayouts0: Int32;
+    private let slides0: Int32;
+
+    // Full relayouts, slides and markers placed over the measured frames.
+    private func RendererCounts(sys: ref<OverlayMapSystem>) -> String {
+        let r = sys.Renderer();
+        if !IsDefined(r) || !this.shows[this.idx] { return ""; }
+        return "|relayouts=" + ToString(r.relayouts - this.relayouts0) + "|slides=" + ToString(r.slides - this.slides0)
+            + "|placements=" + ToString(r.placements);
     }
 
     private static func MaxOf(values: array<Float>) -> Float {

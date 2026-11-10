@@ -21,8 +21,14 @@ public class NMMapLayer {
 //   2b. GPS routes (NMPanel.routes, drawn by NMRouteLayer): the minimap's waypoint and quest routes, under the markers.
 //   3. Items and markers (NMPanel.items, drawn by NMItemRenderer). Never assumes live game pins only.
 //   4. Overlay and widgets (NMPanel.overlay: player marker, tooltip).
+// Tile requests left this frame, shared by every set (NMLayerStack.Update resets it).
+public class NMTileBudget {
+    public let left: Int32;
+}
+
 public class NMLayerStack {
     private let layers: array<ref<NMMapLayer>>;
+    private let budget: ref<NMTileBudget>;
     public let available: Bool;
     private let theme: Int32;
     private let fx: ref<NMHoloFx>;   // unset: the glow layer keeps NMTheme.TileOpacity("glow")
@@ -99,6 +105,9 @@ public class NMLayerStack {
     }
 
     public func Update(cam: ref<NMCamera>, dtMs: Float) {
+        // One tile request budget per frame for all sets: at a level change every set asks for its new range at once.
+        if !IsDefined(this.budget) { this.budget = new NMTileBudget(); }
+        this.budget.left = NMTileLayer.TilesPerFrameAll();
         // The tile sets cross a level together: one that fades in early shows as a seam against the others.
         let held = false;
         for l in this.layers {
@@ -107,7 +116,7 @@ public class NMLayerStack {
         }
         for l in this.layers {
             let t = l as NMTileLayer;
-            if IsDefined(t) { t.holdFade = held; }
+            if IsDefined(t) { t.holdFade = held; t.budget = this.budget; }
             l.Update(cam, dtMs);
         }
     }
