@@ -426,6 +426,7 @@ public class NMItemRenderer {
                 this.padOn = true;
                 this.cOffX = this.offX;
                 this.cOffY = this.offY;
+                this.KeepOffsetNear(l);
                 this.lastCamRev = -1;
                 return this.UpdateFor(cam, l) ? 2 : 0;
             }
@@ -440,6 +441,7 @@ public class NMItemRenderer {
             this.padOn = true;
             this.cOffX += dx;   // lay out against the canvas where this frame's slide puts it
             this.cOffY += dy;
+            this.KeepOffsetNear(l);
             this.lastCamRev = -1;
             return this.UpdateFor(cam, l) ? 2 : 0;
         }
@@ -449,6 +451,19 @@ public class NMItemRenderer {
         this.slides += 1;
         this.parent.SetTranslation(new Vector2(this.baseT.X + this.offX, this.baseT.Y + this.offY));
         return 1;
+    }
+
+    // The canvas offset a relayout keeps grows with every pan relayout and rest. Ink culls a widget whose own box has
+    // left the clip (the map viewport) with all its children, though the markers are drawn back over the view: past a
+    // long pan every pin vanished. Past this share of the view, the relayout writes every marker against the canvas's
+    // own place instead.
+    public static func SlideKeep() -> Float { return 0.15; }
+
+    private func KeepOffsetNear(l: ref<NMPanelLayout>) {
+        if AbsF(this.cOffX) > NMItemRenderer.SlideKeep() * l.viewW || AbsF(this.cOffY) > NMItemRenderer.SlideKeep() * l.mapH {
+            this.cOffX = 0.0;
+            this.cOffY = 0.0;
+        }
     }
 
     // Zoom frames between full relayouts (Slide). Each moves only the markers already placed, so a pile may overlap or
