@@ -67,7 +67,8 @@ public class NMVanilla extends NMVanillaSink {
             let L = this.api.CreateLayer(this.catalog.LayerId(i), this.catalog.DisplayName(i), this.catalog.Priority(i));
             L.SetPinStyle(OverlayMapPinStyle.Icon);
             let ty = this.catalog.TypeOf(i);
-            L.SetTier(!this.catalog.IsOther(i) && (Equals(ty, gamedataWorldMapFilter.Quest) || Equals(ty, gamedataWorldMapFilter.FastTravel)) ? OverlayMapTier.Major : OverlayMapTier.Minor);
+            L.SetTier(NMVanillaFilters.AlwaysShown(ty, this.catalog.IsOther(i)) ? OverlayMapTier.Always
+                : (!this.catalog.IsOther(i) && (Equals(ty, gamedataWorldMapFilter.Quest) || Equals(ty, gamedataWorldMapFilter.FastTravel)) ? OverlayMapTier.Major : OverlayMapTier.Minor));
             L.SetAmbient(!this.catalog.IsOther(i) && Equals(ty, gamedataWorldMapFilter.Story));   // NCPD Scanner: gone by mid zoom
             let cat = this.catalog.CategoryName(i);
             let isOther = this.catalog.IsOther(i);
@@ -326,7 +327,9 @@ public class NMVanilla extends NMVanillaSink {
         // Vehicles share the game's "Your Apartments" filter; under the title they name the vehicle instead.
         let vehicleName = NMVanillaText.VehicleName(m);
         let category = StrLen(vehicleName) > 0 ? vehicleName : this.catalog.DisplayName(filterSlot);
-        let d = OverlayMapDetails.Create(category, NMVanillaText.Title(m, s.variant))
+        let title = NMVanillaStyle.IsResidence(s.variant) ? NMVanillaText.HomeName(s.x, s.y) : "";
+        if StrLen(title) == 0 { title = NMVanillaText.Title(m, s.variant); }
+        let d = OverlayMapDetails.Create(category, title)
             .WithColor(this.catalog.ColorFor(s.variant, s.phase));   // the marker's own colour, not the layer's
         if IsDefined(m) {
             let district = NMVanillaText.District(m);

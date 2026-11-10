@@ -2,7 +2,7 @@ module OverlayMap
 
 // Quick views (NUM /) x per-category Mod Settings toggles. View 0 = all; Other and TAROT appear only in view 0.
 // Deviation from spec 8 (controller ruling): the views follow the vanilla quick lists in filters.txt, so JOBS has no
-// Story/NCPD Scanner and SERVICES has no ApartmentToPurchase; those stay reachable in ALL.
+// Story/NCPD Scanner; those stay reachable in ALL. Residences show in every view (AlwaysShown).
 public abstract class NMVanillaFilters {
     public static func ViewCount() -> Int32 { return 3; }
 
@@ -12,9 +12,16 @@ public abstract class NMVanillaFilters {
         return "ALL";
     }
 
+    // Residences (V's homes, and those for rent): in every view, never faded by zoom nor hidden by the declutter.
+    // Their Mod Settings toggles still apply. Your Apartments also carries V's vehicles: few, so they come along.
+    public static func AlwaysShown(t: gamedataWorldMapFilter, isOther: Bool) -> Bool {
+        return !isOther && (Equals(t, gamedataWorldMapFilter.ApartmentToPurchaseFilter) || Equals(t, gamedataWorldMapFilter.CommonFilter));
+    }
+
     public static func InView(view: Int32, t: gamedataWorldMapFilter, isOther: Bool) -> Bool {
         if view == 0 { return true; }
         if isOther { return false; }
+        if NMVanillaFilters.AlwaysShown(t, isOther) { return true; }
         if view == 1 {
             return Equals(t, gamedataWorldMapFilter.Quest) || Equals(t, gamedataWorldMapFilter.Gigs)
                 || Equals(t, gamedataWorldMapFilter.PsychoFilter);

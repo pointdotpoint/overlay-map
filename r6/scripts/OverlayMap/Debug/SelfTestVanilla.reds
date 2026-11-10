@@ -401,10 +401,14 @@ public abstract class NMVanillaTests {
         t.Check("filter.jobs", NMVanillaFilters.InView(1, gamedataWorldMapFilter.Quest, false) && NMVanillaFilters.InView(1, gamedataWorldMapFilter.Gigs, false)
             && NMVanillaFilters.InView(1, gamedataWorldMapFilter.PsychoFilter, false) && !NMVanillaFilters.InView(1, gamedataWorldMapFilter.Story, false)
             && !NMVanillaFilters.InView(1, gamedataWorldMapFilter.VendorFilter, false) && !NMVanillaFilters.InView(1, gamedataWorldMapFilter.NoFilter, true), "");
+        t.Check("filter.residences_every_view", NMVanillaFilters.InView(1, gamedataWorldMapFilter.ApartmentToPurchaseFilter, false)
+            && NMVanillaFilters.InView(1, gamedataWorldMapFilter.CommonFilter, false) && !NMVanillaFilters.AlwaysShown(gamedataWorldMapFilter.ApartmentToPurchaseFilter, true), "");
+        t.Check("filter.home_names", Equals(NMVanillaText.HomeId(-1503.0, 2230.0), "Districts.NID_apart") && Equals(NMVanillaText.HomeId(-1383.7, 1267.4), "Districts.VApartment")
+            && StrLen(NMVanillaText.HomeId(0.0, 0.0)) == 0 && StrLen(NMVanillaText.HomeName(-1503.0, 2230.0)) > 0, NMVanillaText.HomeName(-1503.0, 2230.0));
         t.Check("filter.services", NMVanillaFilters.InView(2, gamedataWorldMapFilter.FastTravel, false) && NMVanillaFilters.InView(2, gamedataWorldMapFilter.DropPoint, false)
             && NMVanillaFilters.InView(2, gamedataWorldMapFilter.RipperdocFilter, false) && NMVanillaFilters.InView(2, gamedataWorldMapFilter.VendorFilter, false)
             && NMVanillaFilters.InView(2, gamedataWorldMapFilter.AutofixerFilter, false) && NMVanillaFilters.InView(2, gamedataWorldMapFilter.CommonFilter, false)
-            && !NMVanillaFilters.InView(2, gamedataWorldMapFilter.ApartmentToPurchaseFilter, false)
+            && NMVanillaFilters.InView(2, gamedataWorldMapFilter.ApartmentToPurchaseFilter, false)
             && !NMVanillaFilters.InView(2, gamedataWorldMapFilter.Quest, false) && !NMVanillaFilters.InView(2, gamedataWorldMapFilter.TarotFilter, false), "");
         let s = new OverlayMapSettings();
         s.filterVendor = false;

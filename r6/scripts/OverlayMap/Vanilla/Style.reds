@@ -41,5 +41,10 @@ public abstract class NMVanillaStyle {
         return Equals(v, gamedataMappinVariant.ApartmentVariant);
     }
 
+    // A residence: V's own, or one for rent.
+    public static func IsResidence(v: gamedataMappinVariant) -> Bool {
+        return NMVanillaStyle.IsHome(v) || Equals(v, gamedataMappinVariant.Zzz05_ApartmentToPurchaseVariant);
+    }
+
     public static func CompletedOpacity() -> Float { return 0.7; }   // MappinUIGlobalProfile.CompletedPOIOpacity
 }
