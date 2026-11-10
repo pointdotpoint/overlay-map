@@ -14,7 +14,9 @@ ROOT = Path(__file__).parent
 # Work files (crops, HTML, renders, Chrome profile) go to BANNER_OUT, default ./out; finished banners are copied here.
 OUT = Path(os.environ.get("BANNER_OUT", ROOT / "out"))
 ASSETS = OUT / "assets"
-SHOTS = Path.home() / ".local/share/Steam/userdata/82605613/760/remote/1091500/screenshots"
+# Steam's screenshot folder for Cyberpunk 2077: BANNER_SHOTS, else the first Steam account found that has one.
+SHOTS = Path(os.environ["BANNER_SHOTS"]) if "BANNER_SHOTS" in os.environ else next(
+    iter(sorted(Path.home().glob(".local/share/Steam/userdata/*/760/remote/1091500/screenshots"))), None)
 K = 1.28  # the screenshots are 2560 wide; coordinates below are in 2000-wide space, as in the user's messages
 
 BIG = (225, 170, 900)    # (unused x, top, bottom) of the map area: 90%-wide panel
