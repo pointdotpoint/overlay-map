@@ -88,7 +88,7 @@
     },
     {
      "cmd": "cam",
-     "expect": "pad owned ctx held"
+     "expect": "pad owned .*ctx held"
     },
     {
      "shot": "pad_open"
@@ -231,7 +231,7 @@
     },
     {
      "cmd": "cam",
-     "expect": "pad free ctx free"
+     "expect": "pad free .*ctx free"
     },
     {
      "cmd": "vdist",
@@ -325,7 +325,7 @@
     },
     {
      "cmd": "cam",
-     "expect": "pad free ctx free"
+     "expect": "pad free .*ctx free"
     },
     {
      "cmd": "vmark"
@@ -479,7 +479,7 @@
     },
     {
      "cmd": "cam",
-     "expect": "pad owned ctx held"
+     "expect": "pad owned .*ctx held"
     },
     {
      "cmd": "vmark"

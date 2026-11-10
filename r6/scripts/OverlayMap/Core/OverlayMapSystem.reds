@@ -326,7 +326,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         if !IsDefined(s) {
             return false;
         }
-        if NMPad.IsPad(key) && (Equals(s.padOpen, OverlayMapPadOpen.HoldView) || this.padOwned || this.padCtx) {
+        if NMPad.IsPad(key) && (Equals(s.padOpen, OverlayMapPadOpen.HoldView) || this.padOwned || this.padCtx || this.isOpen) {
             this.OnPadButton(s, key, action);
             return true;
         }
@@ -437,6 +437,14 @@ public class OverlayMapSystem extends ScriptableSystem {
     }
 
     private func OnPadButton(s: ref<OverlayMapSettings>, key: EInputKey, action: EInputAction) {
+        // Opened from the keyboard, the map ignored the pad: its buttons did nothing and a View tap was swallowed (no
+        // pause menu). A map button now hands the map to the pad, as holding View would have, and then acts as usual.
+        // The sticks alone don't: driving with a keyboard-opened map keeps steering the car.
+        if this.isOpen && !this.padOwned && Equals(action, EInputAction.IACT_Press) && NMPad.IsMapButton(key) && this.PadMayTake() {
+            this.TakePad();
+            this.UpdateHeader();   // controller hints now
+            this.RefreshSidebar(false);
+        }
         this.pad.Button(key, action, NMClock.NowMs(), this.isOpen, this.padFromPad, this.padOwned, s.holdToShow, true);
         if Equals(key, EInputKey.IK_Pad_Back_Select) && Equals(action, EInputAction.IACT_Release) {
             if this.pad.tap && this.padPauseSuppressed {
@@ -499,17 +507,32 @@ public class OverlayMapSystem extends ScriptableSystem {
         this.padFromPad = true;
         this.pad.lastWasPad = true;
         this.pad.ClearAxes();
+        if this.PadMayTake() {
+            this.TakePad();
+        }
+    }
+
+    // In a car with pass-through on, the pad keeps driving: the map never takes it.
+    private func PadMayTake() -> Bool {
         let player = GetPlayer(this.GetGameInstance());
         let inCar = IsDefined(player) && IsDefined(GetMountedVehicle(player));
-        if !(inCar && NMPad.CarPassThrough()) {
-            this.padOwned = true;
-            this.padCtxToken += 1;
-            if !this.padCtx {
-                this.padCtx = true;
-                GameInstance.GetUISystem(this.GetGameInstance()).PushGameContext(UIGameContext.ModalPopup);
-                this.modalPushed = true;
-                this.SetPlayerUiContext(true);
-            }
+        return !(inCar && NMPad.CarPassThrough());
+    }
+
+    // The map holds the pad: V stops (the player state machine's UI context) and the game's actions are held off. Also
+    // on top of a keyboard or mouse opening, whose context may already be pushed; Close lets go of each owner.
+    private func TakePad() {
+        this.padOwned = true;
+        this.pad.lastWasPad = true;
+        this.pad.ClearAxes();
+        this.padCtxToken += 1;
+        if !this.padCtx {
+            this.padCtx = true;
+            GameInstance.GetUISystem(this.GetGameInstance()).PushGameContext(UIGameContext.ModalPopup);
+            this.modalPushed = true;
+            this.SetPlayerUiContext(true);
+        } else if !this.psmUiCtx {
+            this.SetPlayerUiContext(true);
         }
     }
 
