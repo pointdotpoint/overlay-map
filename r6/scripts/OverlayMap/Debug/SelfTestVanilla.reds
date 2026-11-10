@@ -196,7 +196,9 @@ public abstract class NMVanillaTests {
             && Equals(cat.TypeOf(dp), gamedataWorldMapFilter.DropPoint) && Equals(cat.TypeOf(wp), gamedataWorldMapFilter.CommonFilter), "");
         let other = cat.FilterIndexOf(gamedataMappinVariant.Zzz16_RelicDeviceBasicVariant);
         t.Check("vanilla.catalog_unknown_is_other", other == n && cat.IsOther(other) && Equals(cat.LayerId(other), n"Vanilla.Other"), ToString(other));
-        t.Check("vanilla.catalog_names", StrLen(cat.DisplayName(ft)) > 0 && Equals(cat.LayerId(ft), n"Vanilla.FastTravel") && cat.Priority(gw) < cat.Priority(dp) && cat.Priority(gw) > NMCollectCats.Priority(NMCollectCats.Shard()), cat.DisplayName(ft));
+        t.Check("vanilla.home_pins", NMVanillaStyle.IsHome(gamedataMappinVariant.ApartmentVariant)
+            && !NMVanillaStyle.IsHome(gamedataMappinVariant.Zzz05_ApartmentToPurchaseVariant) && cat.Priority(wp) > cat.Priority(ft), "");
+        t.Check("vanilla.catalog_names",StrLen(cat.DisplayName(ft)) > 0 && Equals(cat.LayerId(ft), n"Vanilla.FastTravel") && cat.Priority(gw) < cat.Priority(dp) && cat.Priority(gw) > NMCollectCats.Priority(NMCollectCats.Shard()), cat.DisplayName(ft));
     }
 
     private static func Snap(key: Uint64, x: Float, phase: gamedataMappinPhase, visible: Bool, tracked: Bool, filter: Int32) -> ref<NMVanillaSnap> {

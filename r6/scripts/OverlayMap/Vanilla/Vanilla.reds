@@ -234,7 +234,7 @@ public class NMVanilla extends NMVanillaSink {
         let completed = Equals(s.phase, gamedataMappinPhase.CompletedPhase);
         return OverlayMapItem.Create(new Vector4(s.x, s.y, s.z, 1.0), catName, NMTheme.MappinAtlas(), this.catalog.PartFor(s.variant))
             .WithTint(this.catalog.ColorFor(s.variant, s.phase))
-            .WithEmphasis(s.tracked)
+            .WithEmphasis(s.tracked || NMVanillaStyle.IsHome(s.variant))   // homes stand out like a tracked pin
             .WithOpacity(completed ? NMVanillaStyle.CompletedOpacity() : 1.0);
     }
 

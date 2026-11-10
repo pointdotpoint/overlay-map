@@ -1,7 +1,8 @@
 module OverlayMap
 
 // Where a teleport goes. `exact`: land at (x, y, z) in one move (a fixed vanilla marker, on foot). Otherwise V goes to
-// each height in `hops` in turn and a ray from `rayTop` finds the surface.
+// each height in `hops` in turn and a ray from `rayTop` finds the surface. `dismount`: V leaves the vehicle first and
+// lands alone (V's home: its door is indoors, often high up in a megabuilding, where no car fits).
 public class NMTeleportTarget {
     public let x: Float;
     public let y: Float;
@@ -9,6 +10,7 @@ public class NMTeleportTarget {
     public let exact: Bool;
     public let hops: array<Float>;
     public let rayTop: Float;
+    public let dismount: Bool;
 }
 
 // Teleport target choice and landing maths (spec 2026-10-30-overlaymap-teleport-anywhere-design.md). No game calls.
@@ -30,6 +32,9 @@ public abstract class NMTeleport {
     public static func RefuseWindowMs() -> Float { return 500.0; }   // how long a vehicle may lag before it counts as refused
     public static func StableProbes() -> Int32 { return 3; }         // agreeing hits in a row before landing
     public static func StableTolerance() -> Float { return 0.2; }
+    public static func DismountWindowMs() -> Float { return 1500.0; } // how long V may take to leave the vehicle
+    public static func SettleMs() -> Float { return 300.0; }          // a dismounted V is held at the door this long
+    public static func SettleFrames() -> Int32 { return 4; }          // and this many frames: the exit may place V by the car
 
     // Layers whose marker Z is a floor V can stand on: vanilla ones, and collectibles. Pinned (waypoint, tracked quest pin) and Other (markers
     // riding NPCs or vehicles) are not.
@@ -66,6 +71,13 @@ public abstract class NMTeleport {
         let high = NMHeight.High(t.x, t.y);
         t.hops = NMTeleport.Hops(NMHeight.Low(t.x, t.y), high);
         t.rayTop = high + NMTeleport.RayAboveHigh();
+        return t;
+    }
+
+    // V's home: always the pin itself (its Z is the door; a ray from above finds the roof), and out of the vehicle.
+    public static func Home(t: ref<NMTeleportTarget>, inVehicle: Bool) -> ref<NMTeleportTarget> {
+        t.exact = true;
+        t.dismount = inVehicle;
         return t;
     }
 

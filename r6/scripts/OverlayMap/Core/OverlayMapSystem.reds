@@ -906,14 +906,22 @@ public class OverlayMapSystem extends ScriptableSystem {
             marker = L.Position(c.selItem);
         }
         let t = NMTeleport.Choose(kind, layerId, marker, this.camera.cx, this.camera.cy, inVehicle);
+        let home = kind == 0 && this.SelectedIsHome();
+        if home {
+            NMTeleport.Home(t, inVehicle);
+        }
         if !NMTeleport.InBounds(t.x, t.y) {
             NMLog.Info("teleport|refused|outside map");
             return false;
         }
         NMLog.Info("teleport|start|" + FloatToStringPrec(t.x, 1) + "," + FloatToStringPrec(t.y, 1) + "|exact=" + ToString(t.exact)
-            + "|vehicle=" + ToString(inVehicle));
-        let obj: ref<GameObject> = inVehicle ? vehicle : player;
-        this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), inVehicle);
+            + "|vehicle=" + ToString(inVehicle) + (home ? "|home|z=" + FloatToStringPrec(t.z, 1) : ""));
+        if t.dismount {
+            NMTeleportGame.Dismount(player);
+        }
+        let carried = inVehicle && !t.dismount;   // V's vehicle comes along, except to V's home
+        let obj: ref<GameObject> = carried ? vehicle : player;
+        this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), carried);
         this.Close();
         this.teleportLastMs = NMClock.NowMs();
         this.ScheduleTeleport();
@@ -958,6 +966,21 @@ public class OverlayMapSystem extends ScriptableSystem {
     }
 
     // The game mappin behind the crosshair's selected item, when it is a mirrored vanilla marker; else null.
+    // The selection is one of V's apartments (vanilla ApartmentVariant).
+    private func SelectedIsHome() -> Bool {
+        let c = this.crosshair;
+        if c.selKind != 0 || c.selLayer < 0 || c.selLayer >= ArraySize(this.api.layers) {
+            return false;
+        }
+        let L = this.api.layers[c.selLayer];
+        let vl = L.listener as NMVanillaListener;
+        if !IsDefined(vl) || !L.IsAlive(c.selItem) {
+            return false;
+        }
+        let e = vl.Get(c.selItem);
+        return IsDefined(e) && IsDefined(e.snap) && NMVanillaStyle.IsHome(e.snap.variant);
+    }
+
     private func SelectedMappin() -> ref<IMappin> {
         let c = this.crosshair;
         if c.selKind != 0 || c.selLayer < 0 || c.selLayer >= ArraySize(this.api.layers) {

@@ -15,6 +15,11 @@ public class NMGameMover extends NMMover {
 
     public func Valid() -> Bool { return IsDefined(this.obj); }
 
+    public func Ready() -> Bool {
+        let o: ref<GameObject> = this.obj;
+        return !GameInstance.GetMountingFacility(o.GetGame()).IsMountedToAnything(o.GetEntityID());
+    }
+
     public func Position() -> Vector4 { return this.obj.GetWorldPosition(); }
 
     public func Move(p: Vector4) {
@@ -22,6 +27,18 @@ public class NMGameMover extends NMMover {
         let rot = new EulerAngles();
         rot.Yaw = this.yaw;
         GameInstance.GetTeleportationFacility(o.GetGame()).Teleport(o, p, rot);
+    }
+}
+
+public abstract class NMTeleportGame {
+    // Takes V out of the mounted vehicle at once, the way the game's own instant exits do (vehicleTransition.script).
+    public static func Dismount(player: ref<GameObject>) {
+        let mf = GameInstance.GetMountingFacility(player.GetGame());
+        let req = new UnmountingRequest();
+        req.lowLevelMountingInfo = mf.GetMountingInfoSingleWithObjects(player);
+        req.mountData = new MountEventData();
+        req.mountData.isInstant = true;
+        mf.Unmount(req);
     }
 }
 
