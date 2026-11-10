@@ -65,18 +65,40 @@ public abstract class NMWaypointTests {
             && NMWaypoint.TimedOut(1000.0, 1000.0 + lim + 1.0) && lim >= 2000.0, FloatToStringPrec(lim, 0));
 
         // Any other action cancels a pending custom waypoint, so it can't be tracked over the player's next choice.
+        // A save that already tracks a custom waypoint takes the other path: SetCustom moves it (nothing pending). The
+        // test used to assume no waypoint, failed on such a save, and left the player's waypoint 40 m off.
         if NMWaypoint.Available() {
             let gi = GetGameInstance();
-            let p = GetPlayer(gi).GetWorldPosition();
+            let ms = GameInstance.GetMappinSystem(gi);
+            let cur = ms.GetManuallyTrackedMappinID();
+            let m = cur.value != 0ul ? ms.GetMappin(cur) : null;
             let w = NMWaypoint.Create(gi);
-            w.SetCustom(p.X + 40.0, p.Y, p.Z);
-            let wasPending = w.Pending();
-            w.Clear();
-            let afterClear = w.Pending();
-            w.SetCustom(p.X + 40.0, p.Y, p.Z);
-            w.CancelPending();
-            t.Check("wp.cancel_pending", wasPending && !afterClear && !w.Pending(),
-                ToString(wasPending) + "/" + ToString(afterClear) + "/" + ToString(w.Pending()));
+            if IsDefined(m) && Equals(m.GetVariant(), gamedataMappinVariant.CustomPositionVariant) {
+                let old = m.GetWorldPosition();
+                let ok = w.SetCustom(old.X + 40.0, old.Y, old.Z);
+                let action = w.lastAction;
+                let pending = w.Pending();
+                w.SetCustom(old.X, old.Y, old.Z);   // put the player's waypoint back
+                // Moving gives the mappin a new id: check the tracked pin is still a custom waypoint, back in its place.
+                let now = ms.GetMappin(ms.GetManuallyTrackedMappinID());
+                let back = IsDefined(now) && Equals(now.GetVariant(), gamedataMappinVariant.CustomPositionVariant);
+                let off = back ? Vector4.Distance(now.GetWorldPosition(), old) : -1.0;
+                t.Check("wp.moves_tracked_custom", ok && Equals(action, "moved") && !pending && Equals(w.lastAction, "moved")
+                    && back && off >= 0.0 && off < 1.0, action + "/" + ToString(pending) + "/" + w.lastAction + " off " + FloatToStringPrec(off, 2));
+                NMLog.Info("TEST|INFO|wp.cancel_pending|skipped: the save tracks a custom waypoint");
+            } else {
+                let p = GetPlayer(gi).GetWorldPosition();
+                w.SetCustom(p.X + 40.0, p.Y, p.Z);
+                let wasPending = w.Pending();
+                let action = w.lastAction;
+                w.Clear();
+                let afterClear = w.Pending();
+                w.SetCustom(p.X + 40.0, p.Y, p.Z);
+                w.CancelPending();
+                t.Check("wp.cancel_pending", wasPending && !afterClear && !w.Pending(),
+                    ToString(wasPending) + "/" + ToString(afterClear) + "/" + ToString(w.Pending()) + " " + action
+                    + " tracked " + ToString(cur.value != 0ul));
+            }
         }
     }
 }

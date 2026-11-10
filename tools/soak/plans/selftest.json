@@ -1,0 +1,16 @@
+{
+ "name": "selftest",
+ "runs": [
+  {
+   "name": "selftest",
+   "parts": ["scripts", "archive", "bootstrap", "autopilot", "native"],
+   "repeats": 1,
+   "steps": [
+    {"wait": 8},
+    {"cmd": "welcome mark"},
+    {"cmd": "selftest", "timeout": 60},
+    {"wait": 30}
+   ]
+  }
+ ]
+}
