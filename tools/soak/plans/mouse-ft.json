@@ -1,0 +1,84 @@
+{
+ "name": "mouse-ft",
+ "runs": [
+  {
+   "name": "mouse-hold-ft",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 6,
+   "steps": [
+    {
+     "cmd": "welcome mark"
+    },
+    {
+     "wait": 8
+    },
+    {
+     "shot": "world",
+     "min_luma": 0.02
+    },
+    {
+     "cmd": "set controls mouse",
+     "expect": "^controls Mouse only"
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "cmd": "focus_ft far",
+     "expect": "^ok"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "selected",
+     "expect": "^ft"
+    },
+    {
+     "cmd": "lmb down",
+     "expect": "owned=true"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "shot": "after_hold"
+    },
+    {
+     "cmd": "lmb up"
+    },
+    {
+     "await_state": "ft_load_finished",
+     "timeout": 90
+    },
+    {
+     "await_visible": 60,
+     "min_luma": 0.02
+    },
+    {
+     "wait": 10
+    },
+    {
+     "shot": "arrived",
+     "min_luma": 0.02
+    },
+    {
+     "cmd": "set controls wasd"
+    }
+   ]
+  }
+ ]
+}

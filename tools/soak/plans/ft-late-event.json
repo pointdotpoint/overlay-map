@@ -1,0 +1,237 @@
+{
+ "name": "ft-late-event",
+ "runs": [
+  {
+   "name": "late-ui-0p1",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "cmd": "welcome mark"
+    },
+    {
+     "wait": 8
+    },
+    {
+     "shot": "world",
+     "min_luma": 0.02
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "cmd": "focus_ft far",
+     "expect": "^ok"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "selected",
+     "expect": "^ft"
+    },
+    {
+     "cmd": "ft_late ui 0.1",
+     "expect": "^sent"
+    },
+    {
+     "wait": 25
+    },
+    {
+     "cmd": "ft_flags"
+    },
+    {
+     "shot": "after",
+     "min_luma": 0.02
+    }
+   ]
+  },
+  {
+   "name": "late-ui-1p0",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "cmd": "welcome mark"
+    },
+    {
+     "wait": 8
+    },
+    {
+     "shot": "world",
+     "min_luma": 0.02
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "cmd": "focus_ft far",
+     "expect": "^ok"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "selected",
+     "expect": "^ft"
+    },
+    {
+     "cmd": "ft_late ui 1.0",
+     "expect": "^sent"
+    },
+    {
+     "wait": 25
+    },
+    {
+     "cmd": "ft_flags"
+    },
+    {
+     "shot": "after",
+     "min_luma": 0.02
+    }
+   ]
+  },
+  {
+   "name": "late-bc-0p1",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "cmd": "welcome mark"
+    },
+    {
+     "wait": 8
+    },
+    {
+     "shot": "world",
+     "min_luma": 0.02
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "cmd": "focus_ft far",
+     "expect": "^ok"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "selected",
+     "expect": "^ft"
+    },
+    {
+     "cmd": "ft_late bc 0.1",
+     "expect": "^sent"
+    },
+    {
+     "wait": 25
+    },
+    {
+     "cmd": "ft_flags"
+    },
+    {
+     "shot": "after",
+     "min_luma": 0.02
+    }
+   ]
+  },
+  {
+   "name": "late-bc-1p0",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "cmd": "welcome mark"
+    },
+    {
+     "wait": 8
+    },
+    {
+     "shot": "world",
+     "min_luma": 0.02
+    },
+    {
+     "cmd": "press toggle"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "cmd": "focus_ft far",
+     "expect": "^ok"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "selected",
+     "expect": "^ft"
+    },
+    {
+     "cmd": "ft_late bc 1.0",
+     "expect": "^sent"
+    },
+    {
+     "wait": 25
+    },
+    {
+     "cmd": "ft_flags"
+    },
+    {
+     "shot": "after",
+     "min_luma": 0.02
+    }
+   ]
+  }
+ ]
+}
