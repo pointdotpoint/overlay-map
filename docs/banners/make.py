@@ -223,12 +223,9 @@ def callouts():
 
 
 def thumb():
-    """The hero for the Nexus thumbnail: the card shows it ~430 px wide (x0.22), so the text is 1.5-2.5x the hero's."""
+    """The hero for the Nexus thumbnail: the card shows it ~430 px wide (x0.22), so the text is ~2x the hero's."""
     w, h = 1920, 1080
     c = THEMES[0][1]
-    chips = ["OPENS OVER GAMEPLAY", "VANILLA MARKERS"]
-    chip_html = "".join(f'<div class="chip" style="font-size:44px;border-width:3px;margin:0 0 22px 0;--c:{c}">{t}</div><br>'
-                        for t in chips)
     s = .84
     body = (f'<div class="dots"></div>'
             f'<div class="abs" style="left:720px;top:-120px;width:1500px;height:1320px;'
@@ -239,12 +236,11 @@ def thumb():
             f'{cut_panel(THEMES[0][2])}</div></div>'
             f'<div class="abs" style="inset:0;background:linear-gradient(90deg,#050a11 0,#050a11 40%,rgba(5,10,17,.75) 47%,transparent 54%)"></div>'
             f'<div class="scan" style="opacity:.45"></div>'
-            f'<div class="abs title" style="left:84px;top:150px;font-size:196px;line-height:.9;letter-spacing:.07em;'
+            f'<div class="abs title" style="left:84px;top:200px;font-size:196px;line-height:.9;letter-spacing:.07em;'
             f'text-shadow:0 0 40px rgba(120,225,255,.65)">OVERLAY<br>MAP</div>'
-            f'<div class="abs" style="left:90px;top:528px;font:600 64px/1.12 R;letter-spacing:.03em;color:#e4f3f9">'
-            f'Hologram map.<br>Game keeps running.</div>'
-            + spectrum(92, 708, 700, 9, 12) +
-            f'<div class="abs" style="left:92px;top:762px;width:820px">{chip_html}</div>'
+            f'<div class="abs" style="left:90px;top:590px;font:600 60px/1.16 R;letter-spacing:.02em;color:#e4f3f9">'
+            f'Built to be lightweight,<br>so you can use it without<br>pausing your gameplay.</div>'
+            + spectrum(92, 830, 700, 9, 12) +
             f'<svg class="abs" style="inset:0" width="{w}" height="{h}">{brackets(24, 24, w - 48, h - 48, c, 70, 5)}</svg>')
     page("5_thumb_1920x1080", w, h, body)
 
