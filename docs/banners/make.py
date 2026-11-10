@@ -3,13 +3,17 @@
 Crops the map out of each theme's screenshot, writes one HTML page per banner in the map's own UI language
 (corner brackets, key-cap chips, tracked caps, scanlines), and renders each with headless Chrome.
 """
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 from PIL import Image
 
 ROOT = Path(__file__).parent
-ASSETS, OUT = ROOT / "assets", ROOT / "out"
+# Work files (crops, HTML, renders, Chrome profile) go to BANNER_OUT, default ./out; finished banners are copied here.
+OUT = Path(os.environ.get("BANNER_OUT", ROOT / "out"))
+ASSETS = OUT / "assets"
 SHOTS = Path.home() / ".local/share/Steam/userdata/82605613/760/remote/1091500/screenshots"
 K = 1.28  # the screenshots are 2560 wide; coordinates below are in 2000-wide space, as in the user's messages
 
@@ -78,11 +82,11 @@ def spectrum(x, y, w, h=4, gap=6):
 
 
 def page(name, w, h, body):
-    f = ROOT / f"{name}.html"
+    f = OUT / f"{name}.html"
     f.write_text(f'<!doctype html><meta charset=utf-8><style>{CSS}</style>'
                  f'<div class="stage" style="width:{w}px;height:{h}px">{body}</div>')
     subprocess.run(["google-chrome-stable", "--headless=new", "--no-sandbox", "--disable-gpu", "--hide-scrollbars",
-                    f"--user-data-dir={ROOT}/.chrome", "--allow-file-access-from-files", "--force-device-scale-factor=1",
+                    f"--user-data-dir={OUT}/.chrome", "--allow-file-access-from-files", "--force-device-scale-factor=1",
                     f"--window-size={w},{h}", "--virtual-time-budget=4000", f"--screenshot={OUT / (name + '.png')}",
                     f"file://{f}"], check=True, capture_output=True)
 
@@ -98,7 +102,7 @@ def columns(w, h, slant, tag, aspect, extra):
         bl, br = (l - slant if i else -200), (r - slant if i < 4 else w + 200)
         iw = h * aspect
         out += (f'<div class="abs" style="inset:0;clip-path:polygon({tl}px 0,{tr}px 0,{br}px {h}px,{bl}px {h}px)">'
-                f'<img src="assets/{img}" class="abs" style="left:{(l + r) / 2 - iw / 2}px;top:0;width:{iw}px;height:{h}px;'
+                f'<img src="{ASSETS / img}" class="abs" style="left:{(l + r) / 2 - iw / 2}px;top:0;width:{iw}px;height:{h}px;'
                 f'object-fit:cover"></div>')
         if i:
             lines += (f'<line x1="{l + slant}" y1="0" x2="{l - slant}" y2="{h}" stroke="#05090f" stroke-width="9"/>'
@@ -216,9 +220,37 @@ def callouts():
     page("4_features_1920x1080", w, h, body)
 
 
-themes_1080()
-themes_strip()
-hero()
-callouts()
-for p in sorted(OUT.glob("*.png")):
-    print(p.name, Image.open(p).size)
+def thumb():
+    """The hero for the Nexus thumbnail: the card shows it ~430 px wide (x0.22), so the text is 1.5-2.5x the hero's."""
+    w, h = 1920, 1080
+    c = THEMES[0][1]
+    chips = ["OPENS OVER GAMEPLAY", "VANILLA MARKERS"]
+    chip_html = "".join(f'<div class="chip" style="font-size:44px;border-width:3px;margin:0 0 22px 0;--c:{c}">{t}</div><br>'
+                        for t in chips)
+    s = .84
+    body = (f'<div class="dots"></div>'
+            f'<div class="abs" style="left:720px;top:-120px;width:1500px;height:1320px;'
+            f'background:radial-gradient(closest-side,rgba(40,140,200,.34),transparent)"></div>'
+            f'<div class="abs" style="left:930px;top:-22px;width:0;height:0;perspective:1700px;perspective-origin:600px 562px">'
+            f'<div style="width:2000px;height:1125px;transform-origin:0 50%;'
+            f'transform:rotateY(-21deg) rotateX(3deg) scale({s});filter:drop-shadow(0 0 26px rgba(90,210,255,.75))">'
+            f'{cut_panel(THEMES[0][2])}</div></div>'
+            f'<div class="abs" style="inset:0;background:linear-gradient(90deg,#050a11 0,#050a11 40%,rgba(5,10,17,.75) 47%,transparent 54%)"></div>'
+            f'<div class="scan" style="opacity:.45"></div>'
+            f'<div class="abs title" style="left:84px;top:150px;font-size:196px;line-height:.9;letter-spacing:.07em;'
+            f'text-shadow:0 0 40px rgba(120,225,255,.65)">OVERLAY<br>MAP</div>'
+            f'<div class="abs" style="left:90px;top:528px;font:600 64px/1.12 R;letter-spacing:.03em;color:#e4f3f9">'
+            f'Hologram map.<br>Game keeps running.</div>'
+            + spectrum(92, 708, 700, 9, 12) +
+            f'<div class="abs" style="left:92px;top:762px;width:820px">{chip_html}</div>'
+            f'<svg class="abs" style="inset:0" width="{w}" height="{h}">{brackets(24, 24, w - 48, h - 48, c, 70, 5)}</svg>')
+    page("5_thumb_1920x1080", w, h, body)
+
+
+BANNERS = {"themes": themes_1080, "strip": themes_strip, "hero": hero, "features": callouts, "thumb": thumb}
+if __name__ == "__main__":
+    ASSETS.mkdir(parents=True, exist_ok=True)
+    for key in sys.argv[1:] or BANNERS:   # e.g. `python3 make.py thumb`; none = all
+        BANNERS[key]()
+    for p in sorted(OUT.glob("*.png")):
+        print(p.name, Image.open(p).size)

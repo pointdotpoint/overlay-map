@@ -57,11 +57,13 @@ control of movement and the mouse while it is open. Numpad 8 4 6 2 pan (7 9 1 3 
 0 acts, Enter sets a waypoint, / cycles the filter, . teleports. Keep NumLock on.
 
 **Mouse only.** Controls → *Mouse only*: V keeps walking or driving with the keyboard while the mouse drives the map.
-Moving the mouse pans, the wheel zooms, left click acts, holding left click for 2 seconds teleports (a ring fills
-around the crosshair) and right click sets a waypoint. Follow and the filter keep their numpad keys.
+Moving the mouse pans, the wheel zooms, left click acts, holding left click for 2 seconds teleports (a TELEPORTING
+bar fills under the crosshair) and right click sets a waypoint. Follow and the filter keep their numpad keys.
 
 **Controller.** Hold View for half a second to open the map (a tap still opens the pause menu). Left stick pans, LT/RT
-zoom, A acts, RB sets a waypoint, X teleports, Y cycles the filter, R3 follows V, B closes.
+zoom, A acts, RB sets a waypoint, X teleports, Y cycles the filter, R3 follows V, B or View closes. If the map was
+opened from the keyboard, pressing any of those buttons hands it to the controller (the sticks alone don't, so driving
+keeps steering).
 
 Every key can be rebound in Mod Settings → Overlay Map.
 
