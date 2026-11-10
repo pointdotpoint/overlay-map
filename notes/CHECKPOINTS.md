@@ -301,3 +301,31 @@ Perf, 2 runs each side, interleaved, QuickSave-7 (main from a detached worktree,
 -0.7 % .. +2.1 % everywhere. Script avg: vanilla_open 3.16 -> 3.26 ms (p95 7.36 -> 7.69), panzoom 1.91 -> 2.01
 (p95 5.99 -> 6.04), open_empty 1.72 -> 1.78; the synthetic items_5000/20000/50000 +0.3 to +0.4 ms avg, p95 up to
 +1.1 ms (more pins stay placed after a pan, so more chips are drawn).
+
+## Dense-area pan, zoom reflow, fast travel black screen (2026-11-09, perf/dense-pan + fix/ft-watchdog)
+
+**Perf.** Panning over dense downtown dropped the frame rate. New NMPerfSuite scenarios dense_pan_1 / dense_pan_3 (slow pan
+across the downtown view with the vanilla markers and the player's own photo pins; `perf-dense.json`, command `perf_dense`)
+and per-frame timing of the selection step (`sel_*`) and the sidebar refresh alone (`side_*`). The sidebar was never the
+cost (0.03 ms); every camera move placed every marker again (~7 ms script at 3 m/unit). NMItemRenderer.Slide now slides the
+items canvas on a pan and reflows the placed markers on 3 of 4 zoom frames. Main (with the same measuring code) vs branch,
+one suite each, QuickSave-7, script avg per frame:
+
+| scenario | main | branch | frame p99 main -> branch |
+|---|---|---|---|
+| dense_pan_3 | 7.20 | 0.55 | 30.7 -> 13.9 |
+| dense_pan_1 | 3.88 | 0.45 | 16.2 -> 14.5 |
+| pan_1 / pan_vanilla_1 | 3.11 / 3.95 | 0.63 / 0.68 | 16.4 / 15.1 -> 13.7 / 13.0 |
+| vanilla_open / items_5000 | 3.57 / 4.02 | 1.86 / 2.02 | 23.6 / 21.6 -> 22.1 / 21.6 |
+| panzoom_0p5_16 | 2.59 | 1.70 | 20.1 -> 17.0 |
+
+Open: zoom frames still peak at 5-7 ms script (the full relayout every 4th frame) and tile texture loads at a level change
+(tiles_p95 ~3.9 ms).
+
+**Fast travel black screen** (user, Mouse only trip to Chapel). Cause proven with `ft-late-event.json`: the loading screen
+event arriving after the trip request is black 4 of 4 (0.1 s or 1 s late, UI system or broadcast); recovering afterwards
+(event again, LoadingScreenFinished, the trip again) does not work. NMFastTravel.Travel sends the event first and the
+request 0.1 s later: 6 of 6 trips arrived. Game scripts: ~/cyberpunk_blackwall_rampage/.scratch/decompiled.
+
+**Soak crashes at load** from 21:11 were Ragdoll Physics Overhaul (installed then; removed with the user's OK).
+Regression on the combined branch: pass, self-tests 615/1 (wp.cancel_pending: the custom waypoint set at once, never pending).
