@@ -10,7 +10,8 @@ Developers and mod authors: see [docs/DEVELOPING.md](docs/DEVELOPING.md) and [do
 ## Requirements
 
 - Cyberpunk 2077 **2.5**. The map is built from 2.5's game data; on another version the map shows a notice that some
-  places may not match.
+  places may not match. It should also work on 2.31 with that version's redscript, Codeware and Mod Settings: it
+  compiles cleanly against them, but hasn't been play-tested there.
 - [redscript](https://www.nexusmods.com/cyberpunk2077/mods/1511)
 - [Codeware](https://www.nexusmods.com/cyberpunk2077/mods/7780)
 - [RED4ext](https://www.nexusmods.com/cyberpunk2077/mods/2380) (Codeware needs it too)

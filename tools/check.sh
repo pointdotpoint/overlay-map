@@ -10,7 +10,10 @@ SANDBOX="${SANDBOX:-$HERE/.scratch/nightmap-scc}"
 rm -rf "$SANDBOX"
 mkdir -p "$SANDBOX/engine/tools" "$SANDBOX/r6/cache" "$SANDBOX/r6/scripts"/{Codeware,RedIMGRetriever,ModSettings}
 cp "$GAME/engine/tools/scc.exe" "$GAME/engine/tools/scc_lib.dll" "$SANDBOX/engine/tools/"
-cp "$GAME/r6/cache/final.redscripts" "$SANDBOX/r6/cache/"
+# FINAL_REDSCRIPTS: compile against another game version's vanilla scripts (tools/compat/fetch-final-redscripts.sh).
+FINAL="${FINAL_REDSCRIPTS:-$GAME/r6/cache/final.redscripts}"
+[ -s "$FINAL" ] || { echo "no vanilla scripts at $FINAL"; exit 1; }
+cp "$FINAL" "$SANDBOX/r6/cache/final.redscripts"
 cp "$GAME"/red4ext/plugins/Codeware/Scripts/*.reds "$SANDBOX/r6/scripts/Codeware/"
 # RedIMGRetriever is optional; OverlayMap compiles either way through @if(ModuleExists).
 if [ -d "$GAME/r6/scripts/RedIMGRetriever" ]; then
