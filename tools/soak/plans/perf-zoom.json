@@ -1,0 +1,42 @@
+{
+ "name": "perf-zoom",
+ "runs": [
+  {
+   "name": "suite",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "expect": [
+    {
+     "log": "PERF\\|SUITE\\|done",
+     "min": 1
+    },
+    {
+     "log": "RESULT\\|closed_end\\|",
+     "min": 1
+    }
+   ],
+   "steps": [
+    {
+     "wait": 20
+    },
+    {
+     "cmd": "perf_only _open",
+     "expect": "^started"
+    },
+    {
+     "await_state": "perf_done",
+     "timeout": 600
+    },
+    {
+     "wait": 3
+    }
+   ]
+  }
+ ]
+}

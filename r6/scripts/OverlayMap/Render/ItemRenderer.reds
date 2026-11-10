@@ -94,6 +94,12 @@ public class NMItemRenderer {
     private let lastApiRev: Int32;
     public let chipsUsed: Int32;
     public let placements: Int32; // markers placed by full relayouts, likewise
+    public let prof: Bool;        // perf suite: time the relayout's phases (ms, summed) and count its culls
+    public let profBegin: Float;
+    public let profPrev: Float;
+    public let profWalk: Float;
+    public let profEnd: Float;
+    public let profCulled: Int32;
     public let pendingImages: Int32;
     public let relayouts: Int32;
     // Pan without relayout (Slide): at an unchanged zoom every marker moves by the same amount, so the parent canvas is
@@ -127,7 +133,9 @@ public class NMItemRenderer {
     private let prevEpoch: Int32;
     private let stamp: Int32;       // this relayout's OverlayMap.placeStamp: an item with placedAt == stamp was tested
     private let reserved: array<ref<NMRect>>;   // screen areas markers keep clear of (the panel header), padded
-    private let hHead: array<Int32>;   // per hash cell: last placed marker in it, -1 none
+    private let hHead: array<Int32>;   // per hash cell: last placed marker in it, valid while hGen[cell] == hGenCur
+    private let hGen: array<Int32>;    // per hash cell: the relayout that last wrote hHead (else the cell is empty)
+    private let hGenCur: Int32;        // bumped per relayout: emptying the grid costs nothing (it had ~3,000 cells)
     private let hNext: array<Int32>;   // per placed marker: the previous one in its cell
     private let hX: array<Float>;
     private let hY: array<Float>;
@@ -182,6 +190,13 @@ public class NMItemRenderer {
             ArrayPush(r.chipAlpha, 1.0);
             ArrayPush(r.chipStyle, -1);
             ArrayPush(r.chipK, 1.0);
+            ArrayPush(r.slotPX, -1000000.0);
+            ArrayPush(r.slotLayer, -1);
+            ArrayPush(r.slotItem, -1);
+            ArrayPush(r.slotRev, -1);
+            ArrayPush(r.slotFade, -1.0);
+            ArrayPush(r.slotPending, true);
+            ArrayPush(r.slotPY, -1000000.0);
             ArrayPush(r.photoFill, null);
             ArrayPush(r.photoPtr, null);
             ArrayPush(r.photoOn, false);
@@ -367,6 +382,7 @@ public class NMItemRenderer {
 
     public func Invalidate() {
         this.lastCamRev = -1;
+        this.styleEpoch += 1;
         this.laidOut = false;
     }
 
@@ -389,6 +405,8 @@ public class NMItemRenderer {
         }
         if this.declutterStale && cam.mpp == this.layMpp {
             this.padOn = true;
+            this.cOffX = 0.0;
+            this.cOffY = 0.0;
             this.lastCamRev = -1;   // the zoom stopped: place and declutter properly once
             return this.UpdateFor(cam, l) ? 2 : 0;
         }
@@ -396,37 +414,51 @@ public class NMItemRenderer {
             || l.mapH != this.layViewH {
             // A zoom relays out every frame and slides none: the wider band would only add work.
             this.padOn = !this.laidOut || cam.mpp == this.layMpp;
+            this.cOffX = 0.0;   // every marker is written again: back to the canvas's own place
+            this.cOffY = 0.0;
             this.lastCamRev = -1;   // relay out even when only the layout changed (no camera revision)
             return this.UpdateFor(cam, l) ? 2 : 0;
         }
         if cam.revision == this.lastCamRev {
+            // The pan stopped. A relayout now, while nothing moves, hides its frame and gives the next pan the whole band.
+            if this.idleFrames < 2 { this.idleFrames += 1; }
+            if this.idleFrames == 2 && (AbsF(this.offX - this.cOffX) > 0.3 * this.layMargin || AbsF(this.offY - this.cOffY) > 0.3 * this.layMargin) {
+                this.padOn = true;
+                this.cOffX = this.offX;
+                this.cOffY = this.offY;
+                this.lastCamRev = -1;
+                return this.UpdateFor(cam, l) ? 2 : 0;
+            }
             return 0;
         }
+        this.idleFrames = 0;
         let p = cam.WorldToMap(this.layAnchorX, this.layAnchorY);
         let dx = p.X - this.layMapX;
         let dy = p.Y - this.layMapY;
         let lim = this.layMargin;
         if AbsF(dx) > lim || AbsF(dy) > lim {
             this.padOn = true;
-            this.lastCamRev = -1;   // relay out even when only the layout changed (no camera revision)
+            this.cOffX += dx;   // lay out against the canvas where this frame's slide puts it
+            this.cOffY += dy;
+            this.lastCamRev = -1;
             return this.UpdateFor(cam, l) ? 2 : 0;
         }
         this.lastCamRev = cam.revision;
-        this.offX = dx;
-        this.offY = dy;
+        this.offX = this.cOffX + dx;
+        this.offY = this.cOffY + dy;
         this.slides += 1;
-        this.parent.SetTranslation(new Vector2(this.baseT.X + dx, this.baseT.Y + dy));
+        this.parent.SetTranslation(new Vector2(this.baseT.X + this.offX, this.baseT.Y + this.offY));
         return 1;
     }
 
     // Zoom frames between full relayouts (Slide). Each moves only the markers already placed, so a pile may overlap or
     // a new marker wait a few frames at the edge until the next full relayout.
     // A wheel notch eases over ~20 frames: a full relayout in the middle of it only costs a spike, so the whole ease
-    // reflows (within 1.4x in or 1.12x out of the last full relayout) and the stop places and declutters once.
+    // reflows (within 1.4x in or 1.3x out of the last full relayout) and the stop places and declutters once.
     public static func ReflowRun() -> Int32 { return 60; }
     public static func ReflowMin() -> Float { return 0.71; }
     // Zooming out uncovers new ground at the edges, unplaced until the next relayout: a tighter bound that way.
-    public static func ReflowMax() -> Float { return 1.12; }
+    public static func ReflowMax() -> Float { return 1.3; }   // one wheel notch out (1.25x) stays a single relayout
 
     // The placed markers at the camera's new zoom: positions (and a photo pin's whole shape, which grows with the zoom)
     // without the walk, the declutter or the candidates' order. False when an item is gone: relay out instead.
@@ -434,6 +466,8 @@ public class NMItemRenderer {
         let n = ArraySize(this.candX);
         let nl = ArraySize(this.api.layers);
         this.thumbZoom = NMItemRenderer.ThumbZoom(cam.mpp);
+        this.cOffX = 0.0;   // every placed marker is written: canvas back to its own place (Anchor)
+        this.cOffY = 0.0;
         let last = -1;
         let L: ref<OverlayMapLayer>;
         let c = 0;
@@ -458,6 +492,8 @@ public class NMItemRenderer {
             } else {
                 this.chipBg[slot].SetTranslation(p);
                 this.chipIcon[slot].SetTranslation(p);
+                this.slotPX[slot] = p.X;
+                this.slotPY[slot] = p.Y;
                 if this.strikeOn[slot] { this.chipStrike[slot].SetTranslation(p); }
                 // The tier scale follows the zoom, as PlaceChip applies it (the selection's grow multiplies it).
                 let k = this.curScale;
@@ -492,9 +528,9 @@ public class NMItemRenderer {
         this.layViewH = viewH;
         this.layMargin = this.curMargin;
         this.laidOut = true;
-        this.offX = 0.0;
-        this.offY = 0.0;
-        this.parent.SetTranslation(this.baseT);
+        this.offX = this.cOffX;
+        this.offY = this.cOffY;
+        this.parent.SetTranslation(new Vector2(this.baseT.X + this.cOffX, this.baseT.Y + this.cOffY));
     }
 
     // Markers are placed out to this far past the view's edges (the clip cuts a marker straddling an edge).
@@ -506,6 +542,24 @@ public class NMItemRenderer {
     private let padOn: Bool;        // the next relayout adds slidePad: off while zooming (every zoom frame relays out)
     private let curMargin: Float;   // this relayout's cull margin, read once
     private let layMargin: Float;
+    private let idleFrames: Int32;   // frames the camera has been still (Slide relays out a slid layout once at rest)
+    private let pjK: Float;   // this relayout's world-to-map projection: x * pjK + pjX, pjY - y * pjK
+    private let pjX: Float;
+    private let pjY: Float;
+    private let nReserved: Int32;
+    // The canvas offset the layout writes against: a pan relayout keeps the canvas where the slide left it, so the
+    // markers it replays land on their old widget positions and those writes are skipped (slotPX/slotPY).
+    private let cOffX: Float;
+    private let cOffY: Float;
+    private let slotPX: array<Float>;   // the bg and icon widgets' last translation per slot
+    // What each slot was last fully styled for: the same item again with the same data and look only moves (PlaceChip).
+    private let slotLayer: array<Int32>;
+    private let slotItem: array<Int32>;
+    private let slotRev: array<Int32>;   // api.revision + styleEpoch when styled
+    private let slotFade: array<Float>;
+    private let slotPending: array<Bool>;
+    private let styleEpoch: Int32;       // Invalidate bumps it: any restyle request forces the full path
+    private let slotPY: array<Float>;
     private let reflows: Int32;          // zoom frames reflowed since the last full relayout
     private let fullMpp: Float;          // the zoom of the last full relayout
     private let declutterStale: Bool;    // reflowed: the placement and declutter are from an earlier zoom   // the last relayout's, which bounds how far it may slide
@@ -523,6 +577,11 @@ public class NMItemRenderer {
         this.lastCamRev = cam.revision;
         this.lastApiRev = api.revision;
         this.relayouts += 1;
+        let t0 = this.prof ? NMClock.NowMs() : 0.0;
+        // NMCamera.WorldToMap, unrolled for PlaceChip (hot: every marker tested per relayout).
+        this.pjK = 1.0 / cam.mpp;
+        this.pjX = cam.viewW * 0.5 - cam.shiftX - cam.cx * this.pjK;
+        this.pjY = cam.viewH * 0.5 + cam.cy * this.pjK;
         this.curMargin = this.Margin();
         this.reflows = 0;
         this.fullMpp = cam.mpp;
@@ -550,6 +609,8 @@ public class NMItemRenderer {
         this.ringCy = Clamp(this.CenterCell(0, cam, true), this.indRg[1], this.indRg[3]);
         this.ringBuilt = false;
         this.PlaceKept(cam, viewW, viewH);
+        let t1 = this.prof ? NMClock.NowMs() : 0.0;
+        let tPrev = 0.0;
         for li in order {
             let L = api.layers[li];
             let tier = L.EffectiveTier();
@@ -564,7 +625,9 @@ public class NMItemRenderer {
                     this.curScale = NMTiers.Scale(tier, cam.mpp);
                     this.cellMiss = this.noDeclutter ? 2147483647 : this.CellMissCap(cam.mpp);
                     this.LayerRadii();
+                    let tp = this.prof ? NMClock.NowMs() : 0.0;
                     this.PlacePrev(L, cam, viewW, viewH);
+                    if this.prof { tPrev += NMClock.NowMs() - tp; }
                     if L.count <= NMItemRenderer.ScanAllMax() {
                         this.PlaceAllOf(L, cam, viewW, viewH);
                     } else {
@@ -574,9 +637,18 @@ public class NMItemRenderer {
                 }
             }
         }
+        let t2 = this.prof ? NMClock.NowMs() : 0.0;
         this.HideUnused();
         this.FinishThumbs();
         this.Anchor(cam, viewW, viewH);
+        if this.prof {
+            let t3 = NMClock.NowMs();
+            this.profBegin += t1 - t0;
+            this.profPrev += tPrev;
+            this.profWalk += t2 - t1 - tPrev;
+            this.profEnd += t3 - t2;
+            this.profCulled += this.culled;
+        }
         return true;
     }
 
@@ -655,8 +727,8 @@ public class NMItemRenderer {
 
     // ---- declutter: a spatial hash of this relayout's placed markers over the view plus the cull margin ----
 
-    // Empties the hash for a relayout. A cell is twice the largest possible radius, so any collision distance
-    // (DeclutterOverlap x (rA + rB) <= 2 x the largest radius) reaches at most the neighbouring cells.
+    // Empties the hash for a relayout (a new generation). A cell is twice the largest common marker radius; Collides
+    // walks every cell within its reach (its radius plus the largest placed), so bigger photo pictures are still found.
     private func BeginDeclutter(viewW: Float, viewH: Float) {
         this.culled = 0;
         this.capStops = 0;
@@ -665,7 +737,9 @@ public class NMItemRenderer {
         this.hK = NMTheme.DeclutterOverlap();
         let m = this.curMargin;
         let plate = NMTheme.PlateSize() * 0.25 * NMTheme.VanillaEmphScale();
-        let biggest = MaxF(MaxF(plate, NMTheme.ChipSize() * 0.5), MaxF(NMTheme.DotSize() * 0.5, NMItemRenderer.ThumbW() * 0.5 * this.thumbZoom));
+        // Cells fit the common markers, not a photo pin's picture: a query reaches past its cell by the largest radius
+        // placed (Collides), so a big picture is still found, and the small markers scan short chains.
+        let biggest = MaxF(MaxF(plate, NMTheme.ChipSize() * 0.5), NMTheme.DotSize() * 0.5);
         this.hCell = MaxF(2.0 * biggest * this.scale, 1.0);
         this.hOrg = -m;
         this.hCols = Max(1, CeilF((viewW + 2.0 * m) / this.hCell));
@@ -673,12 +747,11 @@ public class NMItemRenderer {
         let n = this.hCols * this.hRows;
         if ArraySize(this.hHead) != n {
             ArrayResize(this.hHead, n);
+            ArrayResize(this.hGen, n);
+            let i = 0;
+            while i < n { this.hGen[i] = 0; i += 1; }
         }
-        let i = 0;
-        while i < n {
-            this.hHead[i] = -1;
-            i += 1;
-        }
+        this.hGenCur += 1;
     }
 
     // Screen rectangles (map coordinates) that culled markers keep clear of, like a marker placed before every layer:
@@ -688,6 +761,7 @@ public class NMItemRenderer {
             return;
         }
         this.reserved = rects;
+        this.nReserved = ArraySize(rects);
         this.Invalidate();
     }
 
@@ -779,7 +853,8 @@ public class NMItemRenderer {
         while cy <= y1 {
             let cx = x0;
             while cx <= x1 {
-                let j = this.hHead[cy * this.hCols + cx];
+                let cell = cy * this.hCols + cx;
+                let j = this.hGen[cell] == this.hGenCur ? this.hHead[cell] : -1;
                 while j >= 0 {
                     let dx = this.hX[j] - x;
                     let dy = this.hY[j] - y;
@@ -797,22 +872,25 @@ public class NMItemRenderer {
     }
 
     private func Occupy(x: Float, y: Float, r: Float) {
-        let cell = this.HashCol(y, this.hRows) * this.hCols + this.HashCol(x, this.hCols);
+        let cell = Clamp(FloorF((y - this.hOrg) / this.hCell), 0, this.hRows - 1) * this.hCols
+            + Clamp(FloorF((x - this.hOrg) / this.hCell), 0, this.hCols - 1);
         r = this.hK * r;
         if r > this.hRmax { this.hRmax = r; }
+        let head = this.hGen[cell] == this.hGenCur ? this.hHead[cell] : -1;
         let j = this.hN;
         if j < ArraySize(this.hX) {
             this.hX[j] = x;
             this.hY[j] = y;
             this.hR[j] = r;
-            this.hNext[j] = this.hHead[cell];
+            this.hNext[j] = head;
         } else {
             ArrayPush(this.hX, x);
             ArrayPush(this.hY, y);
             ArrayPush(this.hR, r);
-            ArrayPush(this.hNext, this.hHead[cell]);
+            ArrayPush(this.hNext, head);
         }
         this.hHead[cell] = j;
+        this.hGen[cell] = this.hGenCur;
         this.hN = j + 1;
     }
 
@@ -1206,7 +1284,7 @@ public class NMItemRenderer {
             r = style == 2 || kept ? this.rPlateEmph : this.rPlate;
         }
         let x = p.X;
-        if !this.curAlways && !kept && (this.Collides(x, y, r) || this.InReserved(x, y, r)) {   // most culls collide
+        if !this.curAlways && !kept && (this.Collides(x, y, r) || (this.nReserved > 0 && this.InReserved(x, y, r))) {   // most culls collide
             this.culled += 1;
             return false;
         }
@@ -1224,12 +1302,15 @@ public class NMItemRenderer {
         if L.placedAt[id] == this.stamp {
             return false;   // already tested this relayout (replayed from the last one): placed, or culled for good
         }
-        let p = cam.WorldToMap(L.px[id], L.py[id]);
+        let px = L.px[id] * this.pjK + this.pjX;
+        let py = this.pjY - L.py[id] * this.pjK;
         let m = this.curMargin;
-        if p.X < -m || p.X > viewW + m || p.Y < -m || p.Y > viewH + m {
+        if px < -m || px > viewW + m || py < -m || py > viewH + m {
             return false;
         }
+        let p = new Vector2(px, py);
         L.placedAt[id] = this.stamp;
+        let w = new Vector2(p.X - this.cOffX, p.Y - this.cOffY);   // in the canvas (p stays on screen for the declutter)
         let style = L.shot[id] != 0u ? 3 : (L.dot[id] ? 4 : (L.pinStyle == 1 ? (L.emph[id] ? 2 : 1) : 0));
         if !this.noDeclutter && !this.Declutter(L, id, style, p) {
             return false;   // collides with a more important marker: no slot, no candidate
@@ -1242,6 +1323,28 @@ public class NMItemRenderer {
         if slot == this.growSlot && (L.index != this.growLayer || id != this.growItem) {
             this.SetGrow(slot, 0.0);
             this.growSlot = -1;
+        }
+        // Fast path: this slot already shows this item, styled from the same data at the same fade and tier scale (a
+        // pan relayout replays most markers into their own slots): only its position can differ.
+        let rev = this.api.revision + this.styleEpoch * 1000003;
+        if style != 3 && this.chipOn[slot] && this.chipStyle[slot] == style && this.slotItem[slot] == id
+            && this.slotLayer[slot] == L.index && this.slotRev[slot] == rev && this.slotFade[slot] == this.curFade
+            && this.chipK[slot] == this.curScale && !this.slotPending[slot] {
+            if AbsF(w.X - this.slotPX[slot]) > 0.01 || AbsF(w.Y - this.slotPY[slot]) > 0.01 {
+                bg.SetTranslation(w);
+                ic.SetTranslation(w);
+                this.slotPX[slot] = w.X;
+                this.slotPY[slot] = w.Y;
+                if this.strikeOn[slot] { this.chipStrike[slot].SetTranslation(w); }
+            }
+            ArrayPush(this.candX, w.X);
+            ArrayPush(this.candY, w.Y);
+            ArrayPush(this.candReach, 0.0);
+            ArrayPush(this.candKind, 0);
+            ArrayPush(this.candLayer, L.index);
+            ArrayPush(this.candItem, id);
+            ArrayPush(this.candSlot, slot);
+            return true;
         }
         let g = L.catGlobal[L.cat[id]];
         let color = this.api.catColor[g];
@@ -1260,12 +1363,12 @@ public class NMItemRenderer {
             }
         }
         if style == 3 {
-            this.SetStrike(slot, false, 3, p, color);
-            let c = this.PlacePhoto(L, id, slot, p, color);
+            this.SetStrike(slot, false, 3, w, color);
+            let c = this.PlacePhoto(L, id, slot, w, color);
             this.chipOn[slot] = true;
             ArrayPush(this.candX, c.X);
             ArrayPush(this.candY, c.Y);
-            ArrayPush(this.candReach, p.Y - c.Y);   // to the pin's tip
+            ArrayPush(this.candReach, w.Y - c.Y);   // to the pin's tip
             ArrayPush(this.candKind, 0);
             ArrayPush(this.candLayer, L.index);
             ArrayPush(this.candItem, id);
@@ -1318,16 +1421,25 @@ public class NMItemRenderer {
                 this.SetGrow(slot, this.growT);   // keep the grown (full) opacity for the new base alpha
             }
         }
-        bg.SetTranslation(p);
-        ic.SetTranslation(p);
+        if AbsF(w.X - this.slotPX[slot]) > 0.01 || AbsF(w.Y - this.slotPY[slot]) > 0.01 {
+            bg.SetTranslation(w);
+            ic.SetTranslation(w);
+            this.slotPX[slot] = w.X;
+            this.slotPY[slot] = w.Y;
+        }
         if !this.chipOn[slot] {
             bg.SetVisible(style != 4);
             ic.SetVisible(true);
             this.chipOn[slot] = true;
         }
-        this.SetStrike(slot, L.struck[id], style, p, icTint);
-        ArrayPush(this.candX, p.X);
-        ArrayPush(this.candY, p.Y);
+        this.SetStrike(slot, L.struck[id], style, w, icTint);
+        this.slotLayer[slot] = L.index;
+        this.slotItem[slot] = id;
+        this.slotRev[slot] = rev;
+        this.slotFade[slot] = this.curFade;
+        this.slotPending[slot] = this.icon.pending;
+        ArrayPush(this.candX, w.X);
+        ArrayPush(this.candY, w.Y);
         ArrayPush(this.candReach, 0.0);
         ArrayPush(this.candKind, 0);
         ArrayPush(this.candLayer, L.index);

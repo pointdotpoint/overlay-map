@@ -339,3 +339,15 @@ items_20000 21.3 -> 15.2, photos_500 29.5 -> 21.7; tiles_p95 ~3.9 -> ~2.1 ms; sc
 Pans and idle unchanged. The suite now reports relayouts / slides / placements; slot restyles were measured negligible
 (0-20 per suite on the item scenarios), so the remaining relayout cost is the placement walk itself (~100 markers a relayout).
 Regression: pass, self-tests 615/1 (wp.cancel_pending, also on main with this save).
+
+### Relayout cost (2026-11-10, perf/relayout-cost)
+
+NMPerfSuite now times a full relayout's phases (rl_begin/prev/walk/end_ms, summed) and counts culls; soak `perf_only <name>`
+runs a subset (plans perf-zoom, perf-pan). Per relayout on vanilla_open: begin 0.45 -> 0.24 ms (the declutter grid, ~3,000
+cells, is emptied by a generation stamp instead of a loop), replay ~0.9, walk ~1.8. Measured as no gain and left in only where
+harmless: skipping unchanged widget writes on replay, a same-item fast path, smaller declutter cells, inlined projection. The
+rest is redscript itself (~20 us a marker); the next real step would be the walk and declutter in the native plugin.
+Changes that cut relayouts: a wheel notch out (1.25x) stays one relayout (ReflowMax 1.3); the pan band is 10 % of the view
+(pan relayouts 13-14 -> 8-9 per suite pan); a pan that comes to rest relays out at once while nothing moves (not in the suite).
+Suite vs the previous merge: script p95 vanilla_open 5.6 -> 3.8 ms, open_empty 3.8 -> 3.0, pan_1 2.25 -> 1.9.
+Regression pass (615/1, wp.cancel_pending as on main); pan-visual.json screenshots: markers aligned mid-pan, at rest, zooming.
