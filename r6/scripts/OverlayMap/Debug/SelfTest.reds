@@ -630,6 +630,10 @@ public class NMSelfTest {
         let release = EInputAction.IACT_Release;
         this.Check("pad.is_pad", NMPad.IsPad(A) && NMPad.IsPad(EInputKey.IK_Pad_RightAxisY) && NMPad.IsPad(VIEW)
             && !NMPad.IsPad(EInputKey.IK_NumPad8) && !NMPad.IsPad(EInputKey.IK_Escape), "");
+        // A keyboard-opened map goes to the pad on a map button, never on a stick (steering) or the d-pad.
+        this.Check("pad.map_buttons", NMPad.IsMapButton(A) && NMPad.IsMapButton(VIEW) && NMPad.IsMapButton(EInputKey.IK_Pad_B_CIRCLE)
+            && NMPad.IsMapButton(EInputKey.IK_Pad_RightTrigger) && !NMPad.IsMapButton(EInputKey.IK_Pad_LeftAxisX)
+            && !NMPad.IsMapButton(EInputKey.IK_Pad_DigitLeft) && !NMPad.IsMapButton(EInputKey.IK_NumPad8), "");
         // Open: a tap does nothing; a hold opens once, at 500 ms.
         let p = new NMPad();
         p.Button(VIEW, press, 1000.0, false, false, false, false, true);

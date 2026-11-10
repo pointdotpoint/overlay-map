@@ -37,6 +37,14 @@ public class NMPad {
         return k >= EnumInt(EInputKey.IK_Pad_A_CROSS) && k <= EnumInt(EInputKey.IK_Pad_RightAxisY);
     }
 
+    // The buttons the open map uses (Button): pressing one hands a keyboard-opened map to the pad. Sticks and the d-pad
+    // are not among them.
+    public static func IsMapButton(key: EInputKey) -> Bool {
+        return Equals(key, EInputKey.IK_Pad_A_CROSS) || Equals(key, EInputKey.IK_Pad_B_CIRCLE) || Equals(key, EInputKey.IK_Pad_X_SQUARE)
+            || Equals(key, EInputKey.IK_Pad_Y_TRIANGLE) || Equals(key, EInputKey.IK_Pad_RightShoulder) || Equals(key, EInputKey.IK_Pad_RightThumb)
+            || Equals(key, EInputKey.IK_Pad_LeftTrigger) || Equals(key, EInputKey.IK_Pad_RightTrigger) || Equals(key, EInputKey.IK_Pad_Back_Select);
+    }
+
     // mapOpen: the map is up. fromPad: it was opened with the pad. owned: the map holds the pad (game actions held off).
     // Returns true when the map used the button.
     public func Button(key: EInputKey, action: EInputAction, nowMs: Float, mapOpen: Bool, fromPad: Bool, owned: Bool, holdToShow: Bool, enabled: Bool) -> Bool {
