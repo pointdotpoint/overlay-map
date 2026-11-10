@@ -93,6 +93,7 @@ public class NMItemRenderer {
     private let lastCamRev: Int32;
     private let lastApiRev: Int32;
     public let chipsUsed: Int32;
+    public let placements: Int32; // markers placed by full relayouts, likewise
     public let pendingImages: Int32;
     public let relayouts: Int32;
     // Pan without relayout (Slide): at an unchanged zoom every marker moves by the same amount, so the parent canvas is
@@ -378,7 +379,7 @@ public class NMItemRenderer {
         if this.laidOut && cam.mpp != this.layMpp && this.api.revision == this.lastApiRev && l.viewW == this.layViewW
             && l.mapH == this.layViewH && this.reflows < NMItemRenderer.ReflowRun() {
             let ratio = cam.mpp / this.fullMpp;
-            if ratio > 0.85 && ratio < 1.18 && this.Reflow(cam) {
+            if ratio > NMItemRenderer.ReflowMin() && ratio < NMItemRenderer.ReflowMax() && this.Reflow(cam) {
                 this.reflows += 1;
                 this.lastCamRev = cam.revision;
                 this.declutterStale = true;
@@ -420,7 +421,12 @@ public class NMItemRenderer {
 
     // Zoom frames between full relayouts (Slide). Each moves only the markers already placed, so a pile may overlap or
     // a new marker wait a few frames at the edge until the next full relayout.
-    public static func ReflowRun() -> Int32 { return 3; }
+    // A wheel notch eases over ~20 frames: a full relayout in the middle of it only costs a spike, so the whole ease
+    // reflows (within 1.4x in or 1.12x out of the last full relayout) and the stop places and declutters once.
+    public static func ReflowRun() -> Int32 { return 60; }
+    public static func ReflowMin() -> Float { return 0.71; }
+    // Zooming out uncovers new ground at the edges, unplaced until the next relayout: a tighter bound that way.
+    public static func ReflowMax() -> Float { return 1.12; }
 
     // The placed markers at the camera's new zoom: positions (and a photo pin's whole shape, which grows with the zoom)
     // without the walk, the declutter or the candidates' order. False when an item is gone: relay out instead.
@@ -453,6 +459,18 @@ public class NMItemRenderer {
                 this.chipBg[slot].SetTranslation(p);
                 this.chipIcon[slot].SetTranslation(p);
                 if this.strikeOn[slot] { this.chipStrike[slot].SetTranslation(p); }
+                // The tier scale follows the zoom, as PlaceChip applies it (the selection's grow multiplies it).
+                let k = this.curScale;
+                if this.chipK[slot] != k {
+                    this.chipK[slot] = k;
+                    if slot == this.growSlot {
+                        this.SetGrow(slot, this.growT);
+                    } else {
+                        this.chipBg[slot].SetScale(new Vector2(k, k));
+                        this.chipIcon[slot].SetScale(new Vector2(k, k));
+                        if this.strikeOn[slot] { this.chipStrike[slot].SetScale(new Vector2(k, k)); }
+                    }
+                }
                 this.candX[c] = p.X;
                 this.candY[c] = p.Y;
             }
@@ -1218,6 +1236,7 @@ public class NMItemRenderer {
         }
         let slot = NMTheme.ChipBudget() - 1 - this.chipsUsed;
         this.chipsUsed += 1;
+        this.placements += 1;
         let bg = this.chipBg[slot];
         let ic = this.chipIcon[slot];
         if slot == this.growSlot && (L.index != this.growLayer || id != this.growItem) {

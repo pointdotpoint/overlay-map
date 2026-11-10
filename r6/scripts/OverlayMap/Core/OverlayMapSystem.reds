@@ -266,6 +266,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         this.Photos().EndPerfSeed();   // never leave seeded spots (teleport targets) behind
     }
     public func Routes() -> ref<NMRouteLayer> { return this.routes; }
+    public func Renderer() -> ref<NMItemRenderer> { return this.renderer; }
     public func IsOpen() -> Bool { return this.isOpen; }
     public func HoldsV() -> Bool { return this.kbRestricted; }   // NMRestrict's restrictions are on V for the open map
     public func Camera() -> ref<NMCamera> { return this.camera; }
