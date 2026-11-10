@@ -17,21 +17,19 @@ public abstract class NMVanillaText {
     }
 
     // The building of a home or for-rent pin, by the game's own area name ("Northside Apartment"); "" when the pin is
-    // not near a known one. Points are the doors (AMM's locations; H10 at its pin). The pins carry no name of their own.
+    // not near a residence (NMResidences). The pins carry no name of their own.
     public static func HomeId(x: Float, y: Float) -> String {
-        let ids = ["Districts.VApartment", "Districts.NID_apart", "Districts.JPN_apart", "Districts.Glen_apart", "Districts.Corpo_apart", "Districts.Hideout"];
-        let xs = [-1385.0, -1503.8, -785.3, -1524.0, -1599.9, -2240.0];
-        let ys = [1270.0, 2224.9, 992.6, -992.6, 345.7, -2553.3];
         let best = "";
         let bestD = NMVanillaText.HomeReach() * NMVanillaText.HomeReach();
         let i = 0;
-        while i < ArraySize(ids) {
-            let dx = x - xs[i];
-            let dy = y - ys[i];
+        while i < NMResidences.Count() {
+            let p = NMResidences.Door(i);
+            let dx = x - p.X;
+            let dy = y - p.Y;
             let d = dx * dx + dy * dy;
             if d < bestD {
                 bestD = d;
-                best = ids[i];
+                best = NMResidences.AreaId(i);
             }
             i += 1;
         }

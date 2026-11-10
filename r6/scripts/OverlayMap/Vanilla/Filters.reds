@@ -4,11 +4,12 @@ module OverlayMap
 // Deviation from spec 8 (controller ruling): the views follow the vanilla quick lists in filters.txt, so JOBS has no
 // Story/NCPD Scanner; those stay reachable in ALL. Residences show in every view (AlwaysShown).
 public abstract class NMVanillaFilters {
-    public static func ViewCount() -> Int32 { return 3; }
+    public static func ViewCount() -> Int32 { return 4; }
 
     public static func ViewName(view: Int32) -> String {
         if view == 1 { return "JOBS"; }
         if view == 2 { return "SERVICES"; }
+        if view == NMResidences.View() { return "RESIDENCES"; }
         return "ALL";
     }
 
@@ -20,7 +21,7 @@ public abstract class NMVanillaFilters {
 
     public static func InView(view: Int32, t: gamedataWorldMapFilter, isOther: Bool) -> Bool {
         if view == 0 { return true; }
-        if isOther { return false; }
+        if isOther || view == NMResidences.View() { return false; }   // RESIDENCES: only the NMResidences layer
         if NMVanillaFilters.AlwaysShown(t, isOther) { return true; }
         if view == 1 {
             return Equals(t, gamedataWorldMapFilter.Quest) || Equals(t, gamedataWorldMapFilter.Gigs)

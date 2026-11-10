@@ -396,7 +396,17 @@ public abstract class NMVanillaTests {
 
 
     private static func FilterCases(t: ref<NMSelfTest>) {
-        t.Check("filter.views", NMVanillaFilters.ViewCount() == 3 && Equals(NMVanillaFilters.ViewName(1), "JOBS"), "");
+        t.Check("filter.views", NMVanillaFilters.ViewCount() == 4 && Equals(NMVanillaFilters.ViewName(1), "JOBS") && Equals(NMVanillaFilters.ViewName(3), "RESIDENCES"), "");
+        t.Check("filter.residences_view_only_residences", !NMVanillaFilters.InView(3, gamedataWorldMapFilter.ApartmentToPurchaseFilter, false)
+            && !NMVanillaFilters.InView(3, gamedataWorldMapFilter.CommonFilter, false) && !NMVanillaFilters.InView(3, gamedataWorldMapFilter.Quest, false), "");
+        let rs = new OverlayMapSettings();
+        rs.filterApartmentRent = false;
+        t.Check("residences.shown", NMResidences.Shown(1, 2, 3, rs) && NMResidences.Shown(5, 0, 0, rs) && !NMResidences.Shown(1, 2, 0, null)
+            && !NMResidences.Shown(1, 0, 0, rs) && NMResidences.Shown(1, 0, 1, null), "");
+        t.Check("residences.icons", Equals(NMResidences.VariantOf(5, 0), gamedataMappinVariant.ApartmentVariant)
+            && Equals(NMResidences.VariantOf(2, 0), gamedataMappinVariant.Zzz05_ApartmentToPurchaseVariant)
+            && Equals(NMResidences.VariantOf(2, 1), gamedataMappinVariant.ApartmentVariant), "");
+        t.Check("residences.hideout_named", Equals(NMVanillaText.HomeId(-2238.0, -2550.0), "Districts.Hideout") && StrLen(NMAreaIndex.DistrictName(NMResidences.AreaId(5))) > 0, "");
         t.Check("filter.all_has_everything", NMVanillaFilters.InView(0, gamedataWorldMapFilter.TarotFilter, false) && NMVanillaFilters.InView(0, gamedataWorldMapFilter.NoFilter, true), "");
         t.Check("filter.jobs", NMVanillaFilters.InView(1, gamedataWorldMapFilter.Quest, false) && NMVanillaFilters.InView(1, gamedataWorldMapFilter.Gigs, false)
             && NMVanillaFilters.InView(1, gamedataWorldMapFilter.PsychoFilter, false) && !NMVanillaFilters.InView(1, gamedataWorldMapFilter.Story, false)

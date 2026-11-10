@@ -46,6 +46,7 @@ public class NMVanilla extends NMVanillaSink {
     public let enabled: Bool = true;
     private let filterView: Int32;
     private let filterSettings: ref<OverlayMapSettings>;
+    public let residenceRev: Int32;   // bumped when a home or for-rent pin comes, goes or changes
 
     public static func PollMs() -> Float { return 1500.0; }
 
@@ -241,6 +242,7 @@ public class NMVanilla extends NMVanillaSink {
 
     // ---- NMVanillaSink ----
     public func OnAdd(e: ref<NMVanillaEntry>) {
+        this.NoteResidence(e.snap);
         let L = this.LayerForSlot(e.slot);
         if !IsDefined(L) { return; }
         e.item = L.Add(this.ItemFor(e.snap, e.slot));
@@ -248,6 +250,8 @@ public class NMVanilla extends NMVanillaSink {
     }
 
     public func OnChange(e: ref<NMVanillaEntry>, s: ref<NMVanillaSnap>) {
+        this.NoteResidence(e.snap);
+        this.NoteResidence(s);
         let newSlot = NMVanillaRules.Slot(s);
         if newSlot == e.slot && e.item >= 0 {
             this.LayerForSlot(e.slot).Update(e.item, this.ItemFor(s, newSlot));
@@ -261,12 +265,44 @@ public class NMVanilla extends NMVanillaSink {
     }
 
     public func OnRemove(e: ref<NMVanillaEntry>) {
+        this.NoteResidence(e.snap);
         let L = this.LayerForSlot(e.slot);
         if IsDefined(L) && e.item >= 0 {
             L.Remove(e.item);
             this.ListenerForSlot(e.slot).Set(e.item, null);
         }
         e.item = -1;
+    }
+
+    private func NoteResidence(s: ref<NMVanillaSnap>) {
+        if IsDefined(s) && NMVanillaStyle.IsResidence(s.variant) { this.residenceRev += 1; }
+    }
+
+    // 0 no residence pin within reach of (x, y), 1 V's home, 2 for rent. Looks only where those pins live: the Your
+    // Apartments and for-rent layers, and Tracked.
+    public func ResidenceAt(x: Float, y: Float, reach: Float) -> Int32 {
+        if !IsDefined(this.catalog) { return 0; }
+        let found = 0;
+        let i = -2;
+        while i < ArraySize(this.listeners) {
+            let ty = i >= 0 ? this.catalog.TypeOf(i) : gamedataWorldMapFilter.NoFilter;
+            let look = i == -2 || (i >= 0 && !this.catalog.IsOther(i) && (Equals(ty, gamedataWorldMapFilter.CommonFilter) || Equals(ty, gamedataWorldMapFilter.ApartmentToPurchaseFilter)));
+            let li = look ? this.ListenerForSlot(i) : null;
+            if IsDefined(li) {
+                for e in li.book {
+                    if IsDefined(e) && IsDefined(e.snap) && e.item >= 0 && NMVanillaStyle.IsResidence(e.snap.variant) {
+                        let dx = e.snap.x - x;
+                        let dy = e.snap.y - y;
+                        if dx * dx + dy * dy < reach * reach {
+                            if NMVanillaStyle.IsHome(e.snap.variant) { return 1; }
+                            found = 2;
+                        }
+                    }
+                }
+            }
+            i = i == -2 ? 0 : i + 1;
+        }
+        return found;
     }
 
     public func Resolve(e: ref<NMVanillaEntry>) -> ref<IMappin> {
