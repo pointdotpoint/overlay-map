@@ -37,13 +37,32 @@ public abstract class NMFastTravel {
     public static func Travel(gi: GameInstance, m: ref<IMappin>, player: ref<GameObject>) {
         let bb = GameInstance.GetBlackboardSystem(gi).Get(GetAllBlackboardDefs().FastTRavelSystem);
         bb.SetVariant(GetAllBlackboardDefs().FastTRavelSystem.StartingPoint, ToVariant(TDBID.None()));
-        let request = new PerformFastTravelRequest();
-        request.pointData = NMFastTravel.PointOf(m);
-        request.player = player;
-        NMFastTravel.System(gi).QueueRequest(request);
-        // Without this the game teleports V but never starts its loading sequence, and the screen stays black for good.
+        // The loading screen type must reach the UI before the trip starts: the game teleports V and starts its
+        // transition, and without that type the screen stays black for good. Sent after the request, even 0.1 s late,
+        // it went black 4 of 4 times (soak ft-late-event, 2026-11-09); in the same frame it depended on timing. So the
+        // event goes first and the request a moment later.
         let loading = new inkSetNextLoadingScreenEvent();
         loading.SetNextLoadingScreenType(inkLoadingScreenType.FastTravel);
         GameInstance.GetUISystem(gi).QueueEvent(loading);
+        let send = new NMFastTravelSend();
+        send.gi = gi;
+        send.point = NMFastTravel.PointOf(m);
+        send.player = player;
+        GameInstance.GetDelaySystem(gi).DelayCallback(send, NMFastTravel.RequestDelay(), false);
+    }
+
+    public static func RequestDelay() -> Float { return 0.1; }
+}
+
+// The trip request, a moment after its loading screen event (NMFastTravel.Travel).
+public class NMFastTravelSend extends DelayCallback {
+    public let gi: GameInstance;
+    public let point: ref<FastTravelPointData>;
+    public let player: wref<GameObject>;
+    public func Call() {
+        let request = new PerformFastTravelRequest();
+        request.pointData = this.point;
+        request.player = this.player;
+        NMFastTravel.System(this.gi).QueueRequest(request);
     }
 }

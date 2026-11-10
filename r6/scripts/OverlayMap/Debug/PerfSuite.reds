@@ -9,12 +9,14 @@ public class NMPerfSuite {
     private let counts: array<Int32>;
     private let shows: array<Bool>;
     private let modes: array<Int32>;      // 0 = circle + 1..16 sweep, 1 = fixed downtown view, 2 = circle + 0.5..16 sweep,
-                                          // 3 = circle at a fixed m/unit (pan only)
+                                          // 3 = circle at a fixed m/unit (pan only), 4 = slow back-and-forth pan across
+                                          // the dense downtown view at a fixed m/unit (the crosshair crosses many markers)
     private let mpps: array<Float>;
     private let vanillas: array<Bool>;   // vanilla map markers enabled during the scenario
     private let routeRows: array<Bool>;  // GPS routes enabled during the scenario (route_open only)
     private let routeDrawn: Bool;        // a route was on screen at the first measured frame
-    private let photoCounts: array<Int32>;  // seeded photo spots during the scenario (photos_500 only; others none)
+    private let photoCounts: array<Int32>;  // seeded photo spots during the scenario (photos_500 only; others none;
+                                            // -1 = the player's own photo pins)
     private let idx: Int32;
     private let phase: Int32;
     private let frames: Int32;
@@ -23,6 +25,9 @@ public class NMPerfSuite {
     private let script: array<Float>;
     private let tiles: array<Float>;   // the tile layers' share of script (sys.perfTileMs)
     private let items: array<Float>;   // the item relayout's share (sys.perfItemMs)
+    private let sel: array<Float>;     // crosshair pick + sidebar refresh + reticle (sys.perfSelMs)
+    private let side: array<Float>;    // the sidebar refresh alone (sys.perfSideMs)
+    private let selChanges: Int32;     // selection changes over the measured frames
     private let route: array<Float>;   // UpdateRoutes (sys.perfRouteMs) and its stages
     private let routeProj: array<Float>;
     private let routeLay: array<Float>;
@@ -101,6 +106,10 @@ public class NMPerfSuite {
         this.Add("idle_2", 0, true, 1, 2.0, false, false);
         this.Add("idle_8", 0, true, 1, 8.0, false, false);
         this.Add("panzoom_0p5_16", 0, true, 2, 0.0, false, false);
+        this.Add("dense_pan_1", 0, true, 4, 1.0, true, false);   // downtown, vanilla markers and the player's photo pins
+        this.photoCounts[ArraySize(this.photoCounts) - 1] = -1;
+        this.Add("dense_pan_3", 0, true, 4, 3.0, true, false);
+        this.photoCounts[ArraySize(this.photoCounts) - 1] = -1;
         this.Add("closed_end", 0, false, 0, 0.0, false, false);
         this.Filter();
         this.idx = 0;
@@ -130,7 +139,11 @@ public class NMPerfSuite {
             sys.SetPerfHidden(!this.shows[this.idx]);
             sys.SetVanillaEnabled(this.vanillas[this.idx]);
             sys.SetRoutesEnabled(this.routeRows[this.idx]);
-            sys.Photos().SeedForPerf(this.photoCounts[this.idx]);   // 0: no photo pins, like suites before photo pins
+            if this.photoCounts[this.idx] < 0 {
+                sys.Photos().EndPerfSeed();   // the player's own photo pins
+            } else {
+                sys.Photos().SeedForPerf(this.photoCounts[this.idx]);   // 0: no photo pins, like suites before photo pins
+            }
             this.phase = 1;
             this.frames = 0;
             return;
@@ -138,7 +151,7 @@ public class NMPerfSuite {
         this.frames += 1;
         if this.phase == 1 {
             // Idle scenarios move to their fixed view during warm-up, so load and fade stay out of the measurement.
-            if this.modes[this.idx] == 1 {
+            if this.modes[this.idx] == 1 || this.modes[this.idx] == 4 {
                 let wc = sys.Camera();
                 wc.follow = false;
                 wc.SetCenter(-1800.0, 150.0);
@@ -151,6 +164,9 @@ public class NMPerfSuite {
                 ArrayClear(this.script);
                 ArrayClear(this.tiles);
                 ArrayClear(this.items);
+                ArrayClear(this.sel);
+                ArrayClear(this.side);
+                sys.perfSelChanges = 0;
                 ArrayClear(this.route);
                 ArrayClear(this.routeProj);
                 ArrayClear(this.routeLay);
@@ -176,7 +192,12 @@ public class NMPerfSuite {
             cam.SetCenter(-1800.0, 150.0);
             cam.SetMpp(this.mpps[this.idx]);
         } else {
-            if mode == 3 {
+            if mode == 4 {
+                // 150 m each side of the downtown view and back, about 2 m a frame: a slow pan across dense markers.
+                let t = SinF(a);
+                cam.SetCenter(-1800.0 + 150.0 * t, 150.0 + 60.0 * t);
+                cam.SetMpp(this.mpps[this.idx]);
+            } else if mode == 3 {
                 // Around where the map opened (V), so the tracked route stays on screen.
                 cam.SetCenter(this.savedX + 300.0 * CosF(a), this.savedY + 300.0 * SinF(a));
                 cam.SetMpp(this.mpps[this.idx]);
@@ -193,6 +214,8 @@ public class NMPerfSuite {
         ArrayPush(this.script, scriptMs);
         ArrayPush(this.tiles, this.shows[this.idx] ? sys.perfTileMs : 0.0);
         ArrayPush(this.items, this.shows[this.idx] ? sys.perfItemMs : 0.0);
+        ArrayPush(this.sel, this.shows[this.idx] ? sys.perfSelMs : 0.0);
+        ArrayPush(this.side, this.shows[this.idx] ? sys.perfSideMs : 0.0);
         let rl = sys.Routes();
         let on = this.shows[this.idx] && IsDefined(rl);
         ArrayPush(this.route, on ? sys.perfRouteMs : 0.0);
@@ -209,6 +232,7 @@ public class NMPerfSuite {
             this.routeScreen = Max(this.routeScreen, rl.screenPts);
         }
         if this.frames >= 300 {
+            this.selChanges = sys.perfSelChanges;
             this.Report(sys);
             this.idx += 1;
             this.phase = 0;
@@ -232,6 +256,9 @@ public class NMPerfSuite {
             + "|setup_ms=" + FloatToStringPrec(this.setupMs, 1) + "|" + NMPerfSuite.Stats("frame", this.samples, true) + "|" + NMPerfSuite.Stats("script", this.script, false)
             + "|script_max=" + FloatToStringPrec(NMPerfSuite.MaxOf(this.script), 3)
             + "|" + NMPerfSuite.Stats("tiles", this.tiles, false) + "|" + NMPerfSuite.Stats("items", this.items, false)
+            + "|" + NMPerfSuite.Stats("sel", this.sel, false) + "|sel_max=" + FloatToStringPrec(NMPerfSuite.MaxOf(this.sel), 3)
+            + "|" + NMPerfSuite.Stats("side", this.side, false) + "|side_max=" + FloatToStringPrec(NMPerfSuite.MaxOf(this.side), 3)
+            + "|sel_changes=" + ToString(this.selChanges)
             + "|poll_ms_max=" + FloatToStringPrec(this.vanillas[this.idx] ? sys.Vanilla().pollMsMax : 0.0, 3)
             + "|route_drawn=" + (this.routeDrawn ? "1" : "0")
             + "|route_read_ms_max=" + FloatToStringPrec(this.routeRows[this.idx] ? sys.Gps().readMsMax : 0.0, 3)

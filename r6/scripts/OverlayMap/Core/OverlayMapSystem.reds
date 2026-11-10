@@ -109,6 +109,9 @@ public class OverlayMapSystem extends ScriptableSystem {
     public let perfTileMs: Float;   // this frame's tile layers and item relayout, timed only while the perf suite runs
     public let perfItemMs: Float;
     public let perfRouteMs: Float;   // UpdateRoutes, likewise
+    public let perfSelMs: Float;     // crosshair pick, sidebar refresh and reticle, likewise
+    public let perfSideMs: Float;    // the sidebar refresh alone (part of perfSelMs)
+    public let perfSelChanges: Int32;   // selection changes since the perf suite last read it
     private let versionLogged: Bool;
     private let layerEpoch: Int32;
     private let imageRetries: Int32;
@@ -1175,6 +1178,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
         let markerSize = IsDefined(ms) ? ms.markerSize : 0.5;
         this.renderer = NMItemRenderer.Create(this.api, this.panel.items, NMTheme.MapMarkerScale(l.scale, markerSize));
+        this.renderer.slidePad = NMTheme.SlidePad(l.viewW);
         this.renderer.SetShotHandler(this.Photos().Handler());
         this.Photos().SyncLayer(this.api, this.PhotosVisible());
         let t0 = NMClock.NowMs();
@@ -1319,8 +1323,11 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
         }
         let ip = prof ? NMClock.NowMs() : 0.0;
-        let relaid = this.renderer.UpdateFor(this.camera, l);
+        // A pan at the same zoom slides the markers (1) instead of placing them all again (2); either moves them.
+        let relaid = this.renderer.Slide(this.camera, l) > 0;
         if prof { this.perfItemMs = NMClock.NowMs() - ip; }
+        let sp = prof ? NMClock.NowMs() : 0.0;
+        if prof { this.perfSideMs = 0.0; }
         if relaid {
             // mapW, not viewW: the focus is the map-area centre less the sidebar shift, i.e. the middle of the culled view
             // (NMCrosshair.FocusX, pick.focus_mid_view).
@@ -1328,10 +1335,13 @@ public class OverlayMapSystem extends ScriptableSystem {
             let a = this.AreaAtFocus();
             // Re-query tooltip content only when the selection, the area under the focus or the data changed,
             // not on every pan frame.
+            if changed && prof { this.perfSelChanges += 1; }
             if changed || a != this.areaAt || this.api.revision != this.tipApiRev {
                 this.tipApiRev = this.api.revision;
                 this.areaAt = a;
+                let rs = prof ? NMClock.NowMs() : 0.0;
                 this.RefreshSidebar(changed);
+                if prof { this.perfSideMs += NMClock.NowMs() - rs; }
             }
             // The camera moved (relayout): selX/selY changed, so follow the marker. No-op while hidden.
             this.tooltip.Reposition(this.crosshair.selX, this.crosshair.selY);
@@ -1346,6 +1356,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         this.reticle.Update(l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5, c.selKind >= 0, c.selX, c.selY, isPhoto,
             NMItemRenderer.ThumbZoom(this.camera.mpp) * photoK, pinK, dt);
         this.reticle.SetHold(this.mouseOwned ? this.input.HoldProgress(NMClock.NowMs()) : 0.0, l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5);
+        if prof { this.perfSelMs = NMClock.NowMs() - sp; }
         if this.input.act {
             this.input.act = false;
             this.Activate();

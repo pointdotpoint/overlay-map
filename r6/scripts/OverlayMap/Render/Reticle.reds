@@ -21,6 +21,13 @@ public class NMReticle {
     private let h: Float;
     private let locked: Bool;
     private let started: Bool;
+    private let drawn: Bool;   // the legs were placed for dCx..dFy (Update skips when nothing moved)
+    private let dCx: Float;
+    private let dCy: Float;
+    private let dW: Float;
+    private let dH: Float;
+    private let dFx: Float;
+    private let dFy: Float;
 
     public static func Leg() -> Float { return 26.0; }
     public static func Thick() -> Float { return 5.0; }
@@ -126,6 +133,13 @@ public class NMReticle {
             let o = hasSel ? NMReticle.LockOpacity() : NMReticle.IdleOpacity();
             for q in this.legs { q.SetOpacity(o); }
         }
+        // Every frame of an open map: skip the 16 widget writes while the box and the focus stay put (idle, or eased in).
+        if this.drawn && AbsF(this.cx - this.dCx) < 0.05 && AbsF(this.cy - this.dCy) < 0.05 && AbsF(this.w - this.dW) < 0.05
+            && AbsF(this.h - this.dH) < 0.05 && fx == this.dFx && fy == this.dFy {
+            return;
+        }
+        this.drawn = true;
+        this.dCx = this.cx; this.dCy = this.cy; this.dW = this.w; this.dH = this.h; this.dFx = fx; this.dFy = fy;
         let rs = NMReticle.Corners(this.cx, this.cy, this.w, this.h, NMReticle.Leg() * this.s, NMReticle.Thick() * this.s);
         let i = 0;
         while i < 8 {

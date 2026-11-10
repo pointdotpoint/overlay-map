@@ -8,6 +8,9 @@ public class NMCrosshair {
     public let selItem: Int32;
     public let selX: Float;
     public let selY: Float;
+    private let chipX: Float;   // the selection rim's last translation and scale (set only on change)
+    private let chipY: Float;
+    private let chipK: Float;
 
     public static func Create() -> ref<NMCrosshair> {
         let c = new NMCrosshair();
@@ -29,11 +32,20 @@ public class NMCrosshair {
         let prev = -1;
         let prevD = 0.0;
         let i = 0;
-        while i < ArraySize(xs) {
+        let n = ArraySize(xs);
+        let nr = ArraySize(reach);
+        while i < n {
+            // Runs every frame of a pan over up to ChipBudget candidates: reject on one axis before the full distance.
+            let far = i < nr ? radius + reach[i] : radius;
             let dx = xs[i] - cx;
-            let dy = ys[i] - cy;
-            let d = dx * dx + dy * dy;
-            let far = i < ArraySize(reach) ? radius + reach[i] : radius;
+            let dy = 0.0;
+            let d = far * far + 1.0;   // outside unless both axes are within reach
+            if dx <= far && dx >= -far {
+                dy = ys[i] - cy;
+                if dy <= far && dy >= -far {
+                    d = dx * dx + dy * dy;
+                }
+            }
             if d <= far * far {
                 if best < 0 || d < bestD {
                     best = i;
@@ -73,13 +85,16 @@ public class NMCrosshair {
     // mapW / mapH: the map area (not the view left of the sidebar). shiftX: the focus point sits this far left of the
     // map-area centre (the sidebar, spec 6.5).
     public func Update(r: ref<NMItemRenderer>, mapW: Float, mapH: Float, scale: Float, shiftX: Float) -> Bool {
-        let idx = NMCrosshair.Pick(r.candX, r.candY, r.candReach, r.candKind, r.candLayer, r.candItem, NMCrosshair.FocusX(mapW, shiftX), mapH * 0.5,
+        // The candidates are in layout coordinates; the markers have slid r.offX/offY since (NMItemRenderer.Slide).
+        let idx = NMCrosshair.Pick(r.candX, r.candY, r.candReach, r.candKind, r.candLayer, r.candItem, NMCrosshair.FocusX(mapW, shiftX) - r.offX, mapH * 0.5 - r.offY,
             NMTheme.SelectRadius() * scale, this.selKind, this.selLayer, this.selItem);
         let kind = idx >= 0 ? r.candKind[idx] : -1;
         let layer = idx >= 0 ? r.candLayer[idx] : -1;
         let item = idx >= 0 ? r.candItem[idx] : -1;
-        let x = idx >= 0 ? r.candX[idx] : 0.0;
-        let y = idx >= 0 ? r.candY[idx] : 0.0;
+        let lx = idx >= 0 ? r.candX[idx] : 0.0;
+        let ly = idx >= 0 ? r.candY[idx] : 0.0;
+        let x = idx >= 0 ? lx + r.offX : 0.0;   // screen (map area) position, for the reticle and the card
+        let y = idx >= 0 ? ly + r.offY : 0.0;
         let changed = kind != this.selKind || layer != this.selLayer || item != this.selItem;
         this.sel = idx;
         this.selKind = kind;
@@ -87,12 +102,18 @@ public class NMCrosshair {
         this.selItem = item;
         this.selX = x;
         this.selY = y;
-        r.selChip.SetVisible(kind == 0);
+        // The rim lives in the sliding canvas: it only moves when the selection or a relayout moves it.
         if kind == 0 {
             let k = r.CandScale(idx);   // the rim shrinks with the pin's tier scale
-            r.selChip.SetTranslation(new Vector2(x, y));
-            r.selChip.SetScale(new Vector2(k, k));
+            if lx != this.chipX || ly != this.chipY || k != this.chipK {
+                r.selChip.SetTranslation(new Vector2(lx, ly));
+                r.selChip.SetScale(new Vector2(k, k));
+                this.chipX = lx;
+                this.chipY = ly;
+                this.chipK = k;
+            }
         }
+        r.selChip.SetVisible(kind == 0);   // every time: ApplySelection hides it again for icon markers
         return changed;
     }
 }

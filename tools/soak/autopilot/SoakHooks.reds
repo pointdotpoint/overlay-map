@@ -37,12 +37,18 @@ public abstract class NMSoak {
         if StrBeginsWith(command, "focus_quest ") { return sys.Soak_FocusQuest(StringToFloat(StrAfterFirst(command, " "))); }
         if Equals(command, "perf") { return sys.Soak_Perf(""); }
         if Equals(command, "perf_route") { return sys.Soak_Perf("route"); }
+        if Equals(command, "perf_dense") { return sys.Soak_Perf("dense"); }
         if StrBeginsWith(command, "set ") {
             let sv = StrSplit(command, " ");
             if ArraySize(sv) < 3 { return "usage: set <name> <value>"; }
             return sys.Soak_Set(sv[1], sv[2]);
         }
         if Equals(command, "is_open") { return sys.Soak_IsOpen(); }
+        if Equals(command, "ft_flags") { return sys.Soak_FtFlags(); }
+        if StrBeginsWith(command, "ft_late ") {
+            let rest = StrAfterFirst(command, " ");
+            return sys.Soak_FtLate(StrBeforeFirst(rest, " "), StringToFloat(StrAfterFirst(rest, " ")));
+        }
         if Equals(command, "lmb down") { return sys.Soak_Lmb(true); }
         if Equals(command, "lmb up") { return sys.Soak_Lmb(false); }
         if Equals(command, "welcome") {
@@ -598,5 +604,20 @@ public abstract class NMSoakWp {
         return "tracked=" + ToString(id.value) + " variant=" + EnumValueToString("gamedataMappinVariant", Cast<Int64>(EnumInt(m.GetVariant())))
             + " playerTracked=" + ToString(m.IsPlayerTracked()) + " pos=" + FloatToStringPrec(w.X, 1) + "," + FloatToStringPrec(w.Y, 1)
             + " dist=" + FloatToStringPrec(m.GetDistanceToPlayer(), 1);
+    }
+}
+
+public class SoakFtLateEvent extends DelayCallback {
+    public let gi: GameInstance;
+    public let ctrl: wref<inkGameController>;
+    public let broadcast: Bool;
+    public func Call() {
+        let ev = new inkSetNextLoadingScreenEvent();
+        ev.SetNextLoadingScreenType(inkLoadingScreenType.FastTravel);
+        if this.broadcast && IsDefined(this.ctrl) {
+            this.ctrl.QueueBroadcastEvent(ev);
+        } else {
+            GameInstance.GetUISystem(this.gi).QueueEvent(ev);
+        }
     }
 }
