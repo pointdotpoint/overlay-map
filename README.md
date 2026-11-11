@@ -61,7 +61,7 @@ control of movement and the mouse while it is open. Numpad 8 4 6 2 pan (7 9 1 3 
 Moving the mouse pans, the wheel zooms, left click acts, holding left click for 2 seconds teleports (a TELEPORTING
 bar fills under the crosshair) and right click sets a waypoint. Follow and the filter keep their numpad keys.
 
-**Controller.** Hold View for half a second to open the map (a tap still opens the pause menu). Left stick pans, LT/RT
+**Controller.** Hold View for half a second to open the map (a tap still opens the pause menu); Mod Settings can switch this to holding Menu (in place of the game's world map) or LB + View. On a DualSense, View is Options and Menu is the touchpad. Left stick pans, LT/RT
 zoom, A acts, RB sets a waypoint, X teleports, Y cycles the filter, R3 follows V, B or View closes. If the map was
 opened from the keyboard, pressing any of those buttons hands it to the controller (the sticks alone don't, so driving
 keeps steering).
