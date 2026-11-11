@@ -370,6 +370,43 @@ public abstract class NMVanillaTests {
         t.Check("tracking.live_quest_pin_trackable", questWithHash == 0 || accepted > 0, questWithHash == 0 ? "none in save; " + summary : summary);
     }
 
+    // Shop names: every live service pin with a journal id is looked up in Vendors.<id>.localizedName. Logs the ids
+    // that have no name (the sidebar keeps the type label for those) so the gaps can be listed from the game log.
+    private static func VendorNameCases(t: ref<NMSelfTest>) {
+        t.Check("vendor.service_variant", NMVanillaStyle.IsService(gamedataMappinVariant.ServicePointFoodVariant)
+            && !NMVanillaStyle.IsService(gamedataMappinVariant.ApartmentVariant), "");
+        t.Check("vendor.empty_id", Equals(NMVanillaText.VendorName(""), "") && Equals(NMVanillaText.VendorName("no_such_vendor_x"), ""), "");
+        let gi = GetGameInstance();
+        let arr: array<ref<IMappin>>;
+        GameInstance.GetMappinSystem(gi).GetMappins(gamemappinsMappinTargetType.Map, arr);
+        let services = 0;
+        let named = 0;
+        let unresolved = 0;
+        let keyed = 0;
+        let missing = "";
+        for m in arr {
+            if IsDefined(m) && NMVanillaStyle.IsService(m.GetVariant()) {
+                services += 1;
+                let id = NMVanillaText.EntryId(gi, m);
+                if StrLen(id) == 0 {
+                    unresolved += 1;
+                } else {
+                    let n = NMVanillaText.VendorName(id);
+                    if StrLen(n) > 0 {
+                        named += 1;
+                        if StrBeginsWith(n, "LocKey#") { keyed += 1; }
+                    } else {
+                        missing += id + ":" + ToString(m.GetVariant()) + " ";
+                    }
+                }
+            }
+        }
+        NMLog.Info("vendor|coverage|services=" + ToString(services) + "|named=" + ToString(named) + "|noid=" + ToString(unresolved)
+            + "|missing=" + missing);
+        t.Check("vendor.names_resolve_text", keyed == 0, "unresolved LocKeys=" + ToString(keyed));
+        t.Check("vendor.some_named", services == 0 || named > 0, "services=" + ToString(services) + " named=" + ToString(named));
+    }
+
     private static func CardCases(t: ref<NMSelfTest>) {
         t.Check("text.loc_passthrough", Equals(NMVanillaText.Loc("Plain"), "Plain") && Equals(NMVanillaText.Loc(""), ""), "");
         t.Check("text.loc_key_resolves", NotEquals(NMVanillaText.Loc("LocKey#44637"), "LocKey#44637"), NMVanillaText.Loc("LocKey#44637"));
@@ -390,6 +427,7 @@ public abstract class NMVanillaTests {
         t.Check("vanilla.card_defined", IsDefined(d) && StrLen(d.title) > 0 && Equals(d.category, v.catalog.DisplayName(e.slot)), IsDefined(d) ? d.title : "null");
         t.Check("vanilla.no_track_action_for_vendor", IsDefined(d) && ArraySize(d.actionKeys) == 0, "");
         NMVanillaTests.LiveTrackRules(t);
+        NMVanillaTests.VendorNameCases(t);
         v.Activate(e);
         t.Check("vanilla.activate_vendor_noop", Equals(v.lastAction, "none"), v.lastAction);
     }

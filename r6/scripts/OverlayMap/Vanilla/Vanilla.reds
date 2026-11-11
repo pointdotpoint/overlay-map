@@ -34,6 +34,7 @@ public class NMVanilla extends NMVanillaSink {
     public let diff: ref<NMVanillaDiff>;
     private let api: wref<OverlayMap>;
     private let gi: GameInstance;
+    private let lastVendorMiss: String;   // journal id of the last vendor pin logged as having no name
     private let layers: array<ref<OverlayMapLayer>>;          // index = filter slot (0..Count(), Count() = Other)
     private let listeners: array<ref<NMVanillaListener>>;   // same index; pinned listener separate
     private let pinnedListener: ref<NMVanillaListener>;
@@ -364,6 +365,14 @@ public class NMVanilla extends NMVanillaSink {
         let vehicleName = NMVanillaText.VehicleName(m);
         let category = StrLen(vehicleName) > 0 ? vehicleName : this.catalog.DisplayName(filterSlot);
         let title = NMVanillaStyle.IsResidence(s.variant) ? NMVanillaText.HomeName(s.x, s.y) : "";
+        if StrLen(title) == 0 && NMVanillaStyle.IsService(s.variant) {
+            let id = NMVanillaText.EntryId(this.gi, m);
+            title = NMVanillaText.VendorName(id);
+            if StrLen(title) == 0 && NotEquals(id, this.lastVendorMiss) {
+                this.lastVendorMiss = id;   // once per pin, not on every refresh of the same hover
+                NMLog.Info("vendor|noname|" + id + "|" + ToString(s.variant));
+            }
+        }
         if StrLen(title) == 0 { title = NMVanillaText.Title(m, s.variant); }
         let d = OverlayMapDetails.Create(category, title)
             .WithColor(this.catalog.ColorFor(s.variant, s.phase));   // the marker's own colour, not the layer's

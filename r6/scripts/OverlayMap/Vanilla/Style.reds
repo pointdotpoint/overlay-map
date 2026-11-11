@@ -46,5 +46,10 @@ public abstract class NMVanillaStyle {
         return NMVanillaStyle.IsHome(v) || Equals(v, gamedataMappinVariant.Zzz05_ApartmentToPurchaseVariant);
     }
 
+    // A shop or service pin (ServicePoint*Variant: food, guns, clothes, ripperdoc, drop point, ...).
+    public static func IsService(v: gamedataMappinVariant) -> Bool {
+        return StrContains(ToString(v), "ServicePoint");
+    }
+
     public static func CompletedOpacity() -> Float { return 0.7; }   // MappinUIGlobalProfile.CompletedPOIOpacity
 }

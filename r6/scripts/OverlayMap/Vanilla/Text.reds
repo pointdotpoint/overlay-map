@@ -42,6 +42,25 @@ public abstract class NMVanillaText {
         return NMAreaIndex.DistrictName(NMVanillaText.HomeId(x, y));
     }
 
+    // The journal id of a quest or point-of-interest mappin (a vendor's is e.g. "wbr_jpn_food_04"); "" when it has none.
+    public static func EntryId(gi: GameInstance, m: ref<IMappin>) -> String {
+        if !IsDefined(m) { return ""; }
+        let hash = NMVanillaTracking.JournalHash(m);
+        if hash == 0u { return ""; }
+        let jm = GameInstance.GetJournalManager(gi);
+        if !IsDefined(jm) { return ""; }
+        let e = jm.GetEntry(hash);
+        return IsDefined(e) ? e.GetId() : "";
+    }
+
+    // A shop's own name ("Ginger Panda"), from the game's vendor record that shares the pin's journal id
+    // (Vendors.<id>.localizedName); "" when there is no such record or it has no name.
+    public static func VendorName(id: String) -> String {
+        if StrLen(id) == 0 { return ""; }
+        let raw = TweakDBInterface.GetString(TDBID.Create("Vendors." + id + ".localizedName"), "");
+        return StrLen(raw) > 0 ? NMVanillaText.Loc(raw) : "";
+    }
+
     // Fast-travel point name, else the mappin's display name, else the type label.
     public static func Title(m: ref<IMappin>, v: gamedataMappinVariant) -> String {
         if IsDefined(m) {
