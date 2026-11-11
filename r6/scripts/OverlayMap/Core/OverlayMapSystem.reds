@@ -411,6 +411,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         if ListenerAction.IsAction(action, menuAction) && Equals(ListenerAction.GetType(action), gameinputActionType.BUTTON_PRESSED)
             && (this.pad.IsHeld(NMPad.OpenKeyOf(EnumInt(s.padOpen))) || (IsDefined(this.padListener) && this.padListener.PlayerLastUsedPad())) {
             this.pad.mode = EnumInt(s.padOpen);
+            NMLog.Info("pad|menu held back|" + NameToString(menuAction) + "|held=" + ToString(this.pad.IsHeld(this.pad.OpenKey())));
             ListenerActionConsumer.DontSendReleaseEvent(consumer);
             this.padPauseSuppressed = true;
             let cb = new OverlayMapPadPauseCheck();
@@ -423,6 +424,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     // The menu was held back but the open button is not down: it wasn't that press after all, so open it now.
     public func PadPauseCheck() {
         if this.padPauseSuppressed && !this.pad.IsHeld(this.pad.OpenKey()) {
+            NMLog.Info("pad|menu reopened|check");
             this.padPauseSuppressed = false;
             this.OpenHeldMenu();
         }
@@ -485,6 +487,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
         this.pad.Button(key, action, NMClock.NowMs(), this.isOpen, this.padFromPad, this.padOwned, s.holdToShow, true);
         if Equals(key, this.pad.OpenKey()) && Equals(action, EInputAction.IACT_Release) {
+            NMLog.Info("pad|open key up|tap=" + ToString(this.pad.tap) + "|held back=" + ToString(this.padPauseSuppressed) + "|mode=" + ToString(this.pad.mode));
             if this.pad.tap && this.padPauseSuppressed {
                 this.OpenHeldMenu();
             }
