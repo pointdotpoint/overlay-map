@@ -630,6 +630,9 @@ public class NMSelfTest {
         let release = EInputAction.IACT_Release;
         this.Check("pad.is_pad", NMPad.IsPad(A) && NMPad.IsPad(EInputKey.IK_Pad_RightAxisY) && NMPad.IsPad(VIEW)
             && !NMPad.IsPad(EInputKey.IK_NumPad8) && !NMPad.IsPad(EInputKey.IK_Escape), "");
+        // A DualSense's Options is View; nothing else changes.
+        this.Check("pad.dualsense_options_is_view", Equals(NMPad.Normalize(EInputKey.IK_PS4_OPTIONS), VIEW) && Equals(NMPad.Normalize(A), A)
+            && Equals(NMPad.Normalize(EInputKey.IK_PS4_TOUCH_PRESS), EInputKey.IK_PS4_TOUCH_PRESS), "");
         // A keyboard-opened map goes to the pad on a map button, never on a stick (steering) or the d-pad.
         this.Check("pad.map_buttons", NMPad.IsMapButton(A) && NMPad.IsMapButton(VIEW) && NMPad.IsMapButton(EInputKey.IK_Pad_B_CIRCLE)
             && NMPad.IsMapButton(EInputKey.IK_Pad_RightTrigger) && !NMPad.IsMapButton(EInputKey.IK_Pad_LeftAxisX)

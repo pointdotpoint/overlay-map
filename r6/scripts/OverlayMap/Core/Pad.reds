@@ -32,6 +32,12 @@ public class NMPad {
     // In a car the map owns the pad and the car coasts (the user's choice). True: the pass-through fallback.
     public static func CarPassThrough() -> Bool = false
 
+    // A DualSense (the game's native support) reports View's button, Options, as IK_PS4_OPTIONS: the game binds both
+    // to the same actions (inputUserMappings.xml). The map treats it as View.
+    public static func Normalize(key: EInputKey) -> EInputKey {
+        return Equals(key, EInputKey.IK_PS4_OPTIONS) ? EInputKey.IK_Pad_Back_Select : key;
+    }
+
     public static func IsPad(key: EInputKey) -> Bool {
         let k = EnumInt(key);
         return k >= EnumInt(EInputKey.IK_Pad_A_CROSS) && k <= EnumInt(EInputKey.IK_Pad_RightAxisY);

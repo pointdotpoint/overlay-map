@@ -329,6 +329,7 @@ public class OverlayMapSystem extends ScriptableSystem {
 
     // One key event, from the game's Input/Key callback (or the soak harness, which can't send real keys on a desktop).
     public func HandleKey(key: EInputKey, action: EInputAction, shift: Bool, ctrl: Bool, alt: Bool) -> Bool {
+        key = NMPad.Normalize(key);
         let s = this.Settings();
         if !IsDefined(s) {
             return false;
