@@ -6,6 +6,8 @@ public class NMFakeMover extends NMMover {
     public let start: Vector4;
     public let moving: Bool;
     public let invalidAfter: Int32;   // Valid() turns false once this many moves were made; 0 = never
+    public let mountedFor: Int32;     // Ready() is false for this many calls (a dismount under way)
+    public let readyCalls: Int32;
 
     public static func Create(start: Vector4) -> ref<NMFakeMover> {
         let m = new NMFakeMover();
@@ -22,6 +24,11 @@ public class NMFakeMover extends NMMover {
     }
 
     public func Move(p: Vector4) { ArrayPush(this.moves, p); }
+
+    public func Ready() -> Bool {
+        this.readyCalls += 1;
+        return this.readyCalls > this.mountedFor;
+    }
 
     public func Last() -> Vector4 { return this.moves[ArraySize(this.moves) - 1]; }
 
@@ -110,6 +117,10 @@ public abstract class NMTeleportTests {
         let fixedFoot = NMTeleport.Choose(0, n"Vanilla.Vendors", marker, 90.0, 91.0, false);
         t.Check("teleport.choose_marker_exact", fixedFoot.exact && fixedFoot.x == 5.0 && fixedFoot.z == 7.0, "");
         t.Check("teleport.choose_marker_in_car", !NMTeleport.Choose(0, n"Vanilla.Vendors", marker, 90.0, 91.0, true).exact, "");
+        let homeCar = NMTeleport.Home(NMTeleport.Choose(0, n"Vanilla.CommonFilter", marker, 90.0, 91.0, true), true);
+        t.Check("teleport.home_in_car", homeCar.exact && homeCar.dismount && homeCar.z == 7.0, "");
+        let homeTracked = NMTeleport.Home(NMTeleport.Choose(0, n"Vanilla.Pinned", marker, 90.0, 91.0, false), false);
+        t.Check("teleport.home_tracked_on_foot", homeTracked.exact && !homeTracked.dismount, "");
         t.Check("teleport.choose_pinned_not_exact", !NMTeleport.Choose(0, n"Vanilla.Pinned", marker, 90.0, 91.0, false).exact, "");
         let empty = NMTeleport.Choose(-1, n"", marker, 90.0, 91.0, false);
         t.Check("teleport.choose_center", !empty.exact && empty.x == 90.0 && empty.y == 91.0, "");
@@ -193,6 +204,25 @@ public abstract class NMTeleportTests {
         let g10 = NMFakeGround.Create(m10, 50.0, 100.0);
         let d10 = NMTeleportDriver.Create(exact, m10, g10, false);
         t.Check("teleport.driver_exact", NMTeleportTests.Run(d10, 2) == 1 && m10.LastZ() == 7.5 && ArraySize(g10.tops) == 0, d10.result);
+
+        // Home from a car: nothing moves until V is out, then V is held at the door, never ray-cast to the roof.
+        let m11 = NMFakeMover.Create(start);
+        m11.mountedFor = 3;
+        let home = NMTeleportTests.Target([355.0]);
+        home.exact = true;
+        home.dismount = true;
+        home.z = 123.0;
+        let g11 = NMFakeGround.Create(m11, 312.0, 400.0);
+        let d11 = NMTeleportDriver.Create(home, m11, g11, false);
+        let f11 = NMTeleportTests.Run(d11, 40);
+        t.Check("teleport.driver_dismount_home", f11 > 3 && StrBeginsWith(d11.result, "ok|home") && m11.LastZ() == 123.5
+            && ArraySize(m11.moves) >= NMTeleport.SettleFrames() && ArraySize(g11.tops) == 0, d11.result + " f=" + ToString(f11));
+
+        // V never leaves the car: give up without moving V.
+        let m12 = NMFakeMover.Create(start);
+        m12.mountedFor = 1000;
+        let d12 = NMTeleportDriver.Create(home, m12, NMFakeGround.Create(m12, 312.0, 400.0), false);
+        t.Check("teleport.driver_dismount_stuck", NMTeleportTests.Run(d12, 100) > 0 && Equals(d12.result, "failed|still mounted") && ArraySize(m12.moves) == 0, d12.result);
 
     }
 }

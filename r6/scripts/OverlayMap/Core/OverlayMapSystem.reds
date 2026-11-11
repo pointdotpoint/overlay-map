@@ -119,6 +119,7 @@ public class OverlayMapSystem extends ScriptableSystem {
     private let vanilla: ref<NMVanilla>;
     private let gps: ref<NMGps>;
     private let waypoint: ref<NMWaypoint>;
+    private let residences: ref<NMResidences>;
     private let routes: ref<NMRouteLayer>;
     private let routesOff: Bool;          // perf suite override (SetRoutesEnabled)
     private let photos: ref<NMPhotos>;
@@ -240,6 +241,12 @@ public class OverlayMapSystem extends ScriptableSystem {
         for d in list {
             if IsDefined(d) { this.NoteItem(ItemID.GetTDBID(d.GetID())); }
         }
+    }
+
+    // After every vanilla tick and view change: residences fill in what the game does not pin (NMResidences).
+    private func SyncResidences() {
+        if !IsDefined(this.residences) { this.residences = NMResidences.Create(this.GetGameInstance()); }
+        this.residences.Sync(this.api, this.vanilla, this.filterView, this.Settings());
     }
 
     private func SyncCollect() {
@@ -906,14 +913,22 @@ public class OverlayMapSystem extends ScriptableSystem {
             marker = L.Position(c.selItem);
         }
         let t = NMTeleport.Choose(kind, layerId, marker, this.camera.cx, this.camera.cy, inVehicle);
+        let home = kind == 0 && this.SelectedIsHome();
+        if home {
+            NMTeleport.Home(t, inVehicle);
+        }
         if !NMTeleport.InBounds(t.x, t.y) {
             NMLog.Info("teleport|refused|outside map");
             return false;
         }
         NMLog.Info("teleport|start|" + FloatToStringPrec(t.x, 1) + "," + FloatToStringPrec(t.y, 1) + "|exact=" + ToString(t.exact)
-            + "|vehicle=" + ToString(inVehicle));
-        let obj: ref<GameObject> = inVehicle ? vehicle : player;
-        this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), inVehicle);
+            + "|vehicle=" + ToString(inVehicle) + (home ? "|home|z=" + FloatToStringPrec(t.z, 1) : ""));
+        if t.dismount {
+            NMTeleportGame.Dismount(player);
+        }
+        let carried = inVehicle && !t.dismount;   // V's vehicle comes along, except to V's home
+        let obj: ref<GameObject> = carried ? vehicle : player;
+        this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), carried);
         this.Close();
         this.teleportLastMs = NMClock.NowMs();
         this.ScheduleTeleport();
@@ -958,6 +973,24 @@ public class OverlayMapSystem extends ScriptableSystem {
     }
 
     // The game mappin behind the crosshair's selected item, when it is a mirrored vanilla marker; else null.
+    // The selection is one of V's apartments (vanilla ApartmentVariant), or any NMResidences pin (its point is the door).
+    private func SelectedIsHome() -> Bool {
+        let c = this.crosshair;
+        if c.selKind != 0 || c.selLayer < 0 || c.selLayer >= ArraySize(this.api.layers) {
+            return false;
+        }
+        let L = this.api.layers[c.selLayer];
+        if Equals(L.id, NMResidences.LayerId()) {
+            return L.IsAlive(c.selItem);
+        }
+        let vl = L.listener as NMVanillaListener;
+        if !IsDefined(vl) || !L.IsAlive(c.selItem) {
+            return false;
+        }
+        let e = vl.Get(c.selItem);
+        return IsDefined(e) && IsDefined(e.snap) && NMVanillaStyle.IsHome(e.snap.variant);
+    }
+
     private func SelectedMappin() -> ref<IMappin> {
         let c = this.crosshair;
         if c.selKind != 0 || c.selLayer < 0 || c.selLayer >= ArraySize(this.api.layers) {
@@ -1226,6 +1259,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         this.UpdateHeader();
         this.vanilla.ApplyFilters(this.filterView, this.Settings());
         this.vanilla.Tick(NMClock.NowMs(), true);
+        this.SyncResidences();
         this.Gps().BeginOpen();
         this.routes = NMRouteLayer.Create(this.panel.routes, l.scale, this.holoEffects);
         let ps = this.Settings();
@@ -1317,6 +1351,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
         let l = this.panel.layout;
         this.vanilla.Tick(NMClock.NowMs(), false);
+        this.SyncResidences();
         let prof = IsDefined(this.perf) && this.perf.running;
         let tp = prof ? NMClock.NowMs() : 0.0;
         if IsDefined(this.layers) {
@@ -1400,6 +1435,7 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.input.filter = false;
             this.filterView = (this.filterView + 1) % NMVanillaFilters.ViewCount();
             this.vanilla.ApplyFilters(this.filterView, this.Settings());
+            this.SyncResidences();
             this.Photos().SyncLayer(this.api, this.PhotosVisible());
             this.SyncCollect();
             this.UpdateHeader();
@@ -1748,6 +1784,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         this.Photos().SyncLayer(this.api, this.PhotosVisible());
         this.vanilla.ApplyFilters(this.filterView, this.Settings());
         this.vanilla.Tick(NMClock.NowMs(), true);
+        this.SyncResidences();
         this.Gps().BeginOpen();
         this.cornerRouteMs = 0.0;
         this.cornerDistrict = "";
@@ -1763,6 +1800,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         if !shown || !IsDefined(player) { return; }
         let now = NMClock.NowMs();
         this.vanilla.Tick(now, false);
+        this.SyncResidences();
         this.cornerMsVanilla = NMClock.NowMs() - now;
         if this.Photos().Revision() != this.Photos().SyncedRevision() {
             this.Photos().SyncLayer(this.api, this.PhotosVisible());

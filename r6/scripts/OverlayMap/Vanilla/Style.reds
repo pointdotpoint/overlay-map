@@ -36,5 +36,15 @@ public abstract class NMVanillaStyle {
         return Equals(name, n"Quest") || Equals(name, n"SecondaryQuest");
     }
 
+    // V's own apartments (H10 and every bought one). Drawn emphasised, and a teleport lands at the pin, out of the car.
+    public static func IsHome(v: gamedataMappinVariant) -> Bool {
+        return Equals(v, gamedataMappinVariant.ApartmentVariant);
+    }
+
+    // A residence: V's own, or one for rent.
+    public static func IsResidence(v: gamedataMappinVariant) -> Bool {
+        return NMVanillaStyle.IsHome(v) || Equals(v, gamedataMappinVariant.Zzz05_ApartmentToPurchaseVariant);
+    }
+
     public static func CompletedOpacity() -> Float { return 0.7; }   // MappinUIGlobalProfile.CompletedPOIOpacity
 }

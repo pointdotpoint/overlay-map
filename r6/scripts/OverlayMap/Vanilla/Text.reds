@@ -16,6 +16,32 @@ public abstract class NMVanillaText {
         return StrLen(s) > 0 ? s : ToString(v);
     }
 
+    // The building of a home or for-rent pin, by the game's own area name ("Northside Apartment"); "" when the pin is
+    // not near a residence (NMResidences). The pins carry no name of their own.
+    public static func HomeId(x: Float, y: Float) -> String {
+        let best = "";
+        let bestD = NMVanillaText.HomeReach() * NMVanillaText.HomeReach();
+        let i = 0;
+        while i < NMResidences.Count() {
+            let p = NMResidences.Door(i);
+            let dx = x - p.X;
+            let dy = y - p.Y;
+            let d = dx * dx + dy * dy;
+            if d < bestD {
+                bestD = d;
+                best = NMResidences.AreaId(i);
+            }
+            i += 1;
+        }
+        return best;
+    }
+
+    public static func HomeReach() -> Float { return 100.0; }
+
+    public static func HomeName(x: Float, y: Float) -> String {
+        return NMAreaIndex.DistrictName(NMVanillaText.HomeId(x, y));
+    }
+
     // Fast-travel point name, else the mappin's display name, else the type label.
     public static func Title(m: ref<IMappin>, v: gamedataMappinVariant) -> String {
         if IsDefined(m) {

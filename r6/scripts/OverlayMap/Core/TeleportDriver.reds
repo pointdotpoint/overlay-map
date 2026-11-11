@@ -19,6 +19,7 @@ public class NMGround {
 // and keeps its yaw, tests use a fake.
 public class NMMover {
     public func Valid() -> Bool { return false; }
+    public func Ready() -> Bool { return true; }   // false while still mounted (a dismount is under way)
     public func Position() -> Vector4 { return new Vector4(0.0, 0.0, 0.0, 1.0); }
     public func Move(p: Vector4) {}
 }
@@ -42,6 +43,8 @@ public class NMTeleportDriver {
     private let hopMs: Float;
     private let hopFrames: Int32;
     private let done: Bool;
+    private let held: Int32;               // dismount: frames V has been placed at the target
+    private let heldMs: Float;
     public let result: String;
 
     public static func Create(t: ref<NMTeleportTarget>, mover: ref<NMMover>, ground: ref<NMGround>, inVehicle: Bool) -> ref<NMTeleportDriver> {
@@ -60,6 +63,9 @@ public class NMTeleportDriver {
         let t = this.target;
         if !this.mover.Valid() {
             return this.Finish("failed|lost");
+        }
+        if t.dismount {
+            return this.StepDismount(dtMs);
         }
         if this.steps == 1 {
             this.start = this.mover.Position();
@@ -110,6 +116,31 @@ public class NMTeleportDriver {
             this.hopMs = 0.0;
             this.hopFrames = 0;
             this.mover.Move(new Vector4(t.x, t.y, t.hops[this.hop], 1.0));
+        }
+        return 0;
+    }
+
+    // V is leaving the vehicle (the caller asked for it): wait until V is free, then place V at the target and hold it
+    // there for SettleMs and SettleFrames, since the game's exit can still move V beside the car.
+    private func StepDismount(dtMs: Float) -> Int32 {
+        let t = this.target;
+        if this.steps > 1 {
+            this.elapsedMs += dtMs;
+        }
+        if !this.mover.Ready() {
+            if this.elapsedMs >= NMTeleport.DismountWindowMs() {
+                return this.Finish("failed|still mounted");
+            }
+            return 0;
+        }
+        if this.held > 0 {
+            this.heldMs += dtMs;
+        }
+        let z = t.z + NMTeleport.FootOffset();
+        this.mover.Move(new Vector4(t.x, t.y, z, 1.0));
+        this.held += 1;
+        if this.held >= NMTeleport.SettleFrames() && this.heldMs >= NMTeleport.SettleMs() {
+            return this.Finish("ok|home|" + NMTeleportDriver.Xyz(t.x, t.y, z) + "|frames=" + IntToString(this.steps));
         }
         return 0;
     }

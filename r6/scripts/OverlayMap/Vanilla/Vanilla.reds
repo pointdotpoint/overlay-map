@@ -46,6 +46,7 @@ public class NMVanilla extends NMVanillaSink {
     public let enabled: Bool = true;
     private let filterView: Int32;
     private let filterSettings: ref<OverlayMapSettings>;
+    public let residenceRev: Int32;   // bumped when a home or for-rent pin comes, goes or changes
 
     public static func PollMs() -> Float { return 1500.0; }
 
@@ -67,7 +68,8 @@ public class NMVanilla extends NMVanillaSink {
             let L = this.api.CreateLayer(this.catalog.LayerId(i), this.catalog.DisplayName(i), this.catalog.Priority(i));
             L.SetPinStyle(OverlayMapPinStyle.Icon);
             let ty = this.catalog.TypeOf(i);
-            L.SetTier(!this.catalog.IsOther(i) && (Equals(ty, gamedataWorldMapFilter.Quest) || Equals(ty, gamedataWorldMapFilter.FastTravel)) ? OverlayMapTier.Major : OverlayMapTier.Minor);
+            L.SetTier(NMVanillaFilters.AlwaysShown(ty, this.catalog.IsOther(i)) ? OverlayMapTier.Always
+                : (!this.catalog.IsOther(i) && (Equals(ty, gamedataWorldMapFilter.Quest) || Equals(ty, gamedataWorldMapFilter.FastTravel)) ? OverlayMapTier.Major : OverlayMapTier.Minor));
             L.SetAmbient(!this.catalog.IsOther(i) && Equals(ty, gamedataWorldMapFilter.Story));   // NCPD Scanner: gone by mid zoom
             let cat = this.catalog.CategoryName(i);
             let isOther = this.catalog.IsOther(i);
@@ -234,12 +236,13 @@ public class NMVanilla extends NMVanillaSink {
         let completed = Equals(s.phase, gamedataMappinPhase.CompletedPhase);
         return OverlayMapItem.Create(new Vector4(s.x, s.y, s.z, 1.0), catName, NMTheme.MappinAtlas(), this.catalog.PartFor(s.variant))
             .WithTint(this.catalog.ColorFor(s.variant, s.phase))
-            .WithEmphasis(s.tracked)
+            .WithEmphasis(s.tracked || NMVanillaStyle.IsHome(s.variant))   // homes stand out like a tracked pin
             .WithOpacity(completed ? NMVanillaStyle.CompletedOpacity() : 1.0);
     }
 
     // ---- NMVanillaSink ----
     public func OnAdd(e: ref<NMVanillaEntry>) {
+        this.NoteResidence(e.snap);
         let L = this.LayerForSlot(e.slot);
         if !IsDefined(L) { return; }
         e.item = L.Add(this.ItemFor(e.snap, e.slot));
@@ -247,6 +250,8 @@ public class NMVanilla extends NMVanillaSink {
     }
 
     public func OnChange(e: ref<NMVanillaEntry>, s: ref<NMVanillaSnap>) {
+        this.NoteResidence(e.snap);
+        this.NoteResidence(s);
         let newSlot = NMVanillaRules.Slot(s);
         if newSlot == e.slot && e.item >= 0 {
             this.LayerForSlot(e.slot).Update(e.item, this.ItemFor(s, newSlot));
@@ -260,12 +265,44 @@ public class NMVanilla extends NMVanillaSink {
     }
 
     public func OnRemove(e: ref<NMVanillaEntry>) {
+        this.NoteResidence(e.snap);
         let L = this.LayerForSlot(e.slot);
         if IsDefined(L) && e.item >= 0 {
             L.Remove(e.item);
             this.ListenerForSlot(e.slot).Set(e.item, null);
         }
         e.item = -1;
+    }
+
+    private func NoteResidence(s: ref<NMVanillaSnap>) {
+        if IsDefined(s) && NMVanillaStyle.IsResidence(s.variant) { this.residenceRev += 1; }
+    }
+
+    // 0 no residence pin within reach of (x, y), 1 V's home, 2 for rent. Looks only where those pins live: the Your
+    // Apartments and for-rent layers, and Tracked.
+    public func ResidenceAt(x: Float, y: Float, reach: Float) -> Int32 {
+        if !IsDefined(this.catalog) { return 0; }
+        let found = 0;
+        let i = -2;
+        while i < ArraySize(this.listeners) {
+            let ty = i >= 0 ? this.catalog.TypeOf(i) : gamedataWorldMapFilter.NoFilter;
+            let look = i == -2 || (i >= 0 && !this.catalog.IsOther(i) && (Equals(ty, gamedataWorldMapFilter.CommonFilter) || Equals(ty, gamedataWorldMapFilter.ApartmentToPurchaseFilter)));
+            let li = look ? this.ListenerForSlot(i) : null;
+            if IsDefined(li) {
+                for e in li.book {
+                    if IsDefined(e) && IsDefined(e.snap) && e.item >= 0 && NMVanillaStyle.IsResidence(e.snap.variant) {
+                        let dx = e.snap.x - x;
+                        let dy = e.snap.y - y;
+                        if dx * dx + dy * dy < reach * reach {
+                            if NMVanillaStyle.IsHome(e.snap.variant) { return 1; }
+                            found = 2;
+                        }
+                    }
+                }
+            }
+            i = i == -2 ? 0 : i + 1;
+        }
+        return found;
     }
 
     public func Resolve(e: ref<NMVanillaEntry>) -> ref<IMappin> {
@@ -326,7 +363,9 @@ public class NMVanilla extends NMVanillaSink {
         // Vehicles share the game's "Your Apartments" filter; under the title they name the vehicle instead.
         let vehicleName = NMVanillaText.VehicleName(m);
         let category = StrLen(vehicleName) > 0 ? vehicleName : this.catalog.DisplayName(filterSlot);
-        let d = OverlayMapDetails.Create(category, NMVanillaText.Title(m, s.variant))
+        let title = NMVanillaStyle.IsResidence(s.variant) ? NMVanillaText.HomeName(s.x, s.y) : "";
+        if StrLen(title) == 0 { title = NMVanillaText.Title(m, s.variant); }
+        let d = OverlayMapDetails.Create(category, title)
             .WithColor(this.catalog.ColorFor(s.variant, s.phase));   // the marker's own colour, not the layer's
         if IsDefined(m) {
             let district = NMVanillaText.District(m);

@@ -155,6 +155,7 @@ public class NMVanillaCatalog {
         if Equals(t, gamedataWorldMapFilter.Story) { return 45; }
         if Equals(t, gamedataWorldMapFilter.FastTravel) { return 70; }
         if Equals(t, gamedataWorldMapFilter.TarotFilter) { return 55; }
+        if Equals(t, gamedataWorldMapFilter.CommonFilter) { return 80; }   // V's homes, vehicles: few, and they win a spot
         if this.IsOther(i) { return 50; }
         return 60;
     }
