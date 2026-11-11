@@ -1,0 +1,439 @@
+{
+ "name": "pad-open-modes",
+ "runs": [
+  {
+   "name": "menu",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 60,
+     "expect": "failed=0"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "watch_keys"
+    },
+    {
+     "cmd": "set padopen menu",
+     "expect": "^padopen"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "pad": "START"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "shot": "menu_tap_hub"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^menu"
+    },
+    {
+     "cmd": "pauses",
+     "expect": "^pauses 1$"
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "padhold": "START",
+     "seconds": 0.8
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "shot": "menu_hold_map"
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "cmd": "cam",
+     "expect": "pad owned .*ctx held"
+    },
+    {
+     "pad": "START"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "cmd": "cam",
+     "expect": "ctx free"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist",
+     "expect": "^moved"
+    },
+    {
+     "pad": "VIEW"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "shot": "menu_mode_view_pause"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "cmd": "pauses",
+     "expect": "^pauses 1$"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": -1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist",
+     "expect": "^moved"
+    },
+    {
+     "cmd": "set padopen view",
+     "expect": "^padopen"
+    }
+   ]
+  },
+  {
+   "name": "lb",
+   "parts": [
+    "scripts",
+    "archive",
+    "bootstrap",
+    "autopilot",
+    "native"
+   ],
+   "repeats": 1,
+   "steps": [
+    {
+     "wait": 8
+    },
+    {
+     "cmd": "selftest",
+     "timeout": 60,
+     "expect": "failed=0"
+    },
+    {
+     "wait": 3
+    },
+    {
+     "cmd": "watch_keys"
+    },
+    {
+     "cmd": "set padopen lb",
+     "expect": "^padopen"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "pad": "VIEW"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "shot": "view_tap_pause"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "cmd": "pauses",
+     "expect": "^pauses 1$"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "paddown": "VIEW"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "padup": "VIEW"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "shot": "view_hold_pause"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2.5
+    },
+    {
+     "cmd": "pauses",
+     "expect": "^pauses 2$"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "paddown": "VIEW"
+    },
+    {
+     "wait": 0.2
+    },
+    {
+     "paddown": "LB"
+    },
+    {
+     "wait": 0.6
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "shot": "view_then_lb"
+    },
+    {
+     "padup": "LB"
+    },
+    {
+     "padup": "VIEW"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "cmd": "cam",
+     "expect": "pad owned .*ctx held"
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "cmd": "psm",
+     "expect": "vision 0 "
+    },
+    {
+     "cmd": "cam",
+     "expect": "ctx free"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": 1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist",
+     "expect": "^moved"
+    },
+    {
+     "paddown": "LB"
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "psm",
+     "expect": "vision 1 "
+    },
+    {
+     "paddown": "VIEW"
+    },
+    {
+     "wait": 0.6
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^open"
+    },
+    {
+     "shot": "lb_then_view"
+    },
+    {
+     "padup": "VIEW"
+    },
+    {
+     "padup": "LB"
+    },
+    {
+     "wait": 1.0
+    },
+    {
+     "pad": "B"
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "cmd": "is_open",
+     "expect": "^closed"
+    },
+    {
+     "wait": 1.5
+    },
+    {
+     "cmd": "psm",
+     "expect": "vision 0 "
+    },
+    {
+     "cmd": "cam",
+     "expect": "ctx free"
+    },
+    {
+     "cmd": "vmark"
+    },
+    {
+     "padaxis": "LY",
+     "value": -1.0
+    },
+    {
+     "wait": 2.0
+    },
+    {
+     "padaxis": "LY",
+     "value": 0.0
+    },
+    {
+     "wait": 0.5
+    },
+    {
+     "cmd": "vdist",
+     "expect": "^moved"
+    },
+    {
+     "cmd": "in_menu",
+     "expect": "^game"
+    },
+    {
+     "cmd": "set padopen view",
+     "expect": "^padopen"
+    }
+   ]
+  }
+ ]
+}

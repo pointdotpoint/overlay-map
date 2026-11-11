@@ -329,11 +329,13 @@ public class OverlayMapSystem extends ScriptableSystem {
 
     // One key event, from the game's Input/Key callback (or the soak harness, which can't send real keys on a desktop).
     public func HandleKey(key: EInputKey, action: EInputAction, shift: Bool, ctrl: Bool, alt: Bool) -> Bool {
+        key = NMPad.Normalize(key);
         let s = this.Settings();
         if !IsDefined(s) {
             return false;
         }
-        if NMPad.IsPad(key) && (Equals(s.padOpen, OverlayMapPadOpen.HoldView) || this.padOwned || this.padCtx || this.isOpen) {
+        if IsDefined(this.pad) { this.pad.mode = EnumInt(s.padOpen); }
+        if NMPad.IsPad(key) && (!Equals(s.padOpen, OverlayMapPadOpen.Off) || this.padOwned || this.padCtx || this.isOpen) {
             this.OnPadButton(s, key, action);
             return true;
         }
@@ -378,8 +380,10 @@ public class OverlayMapSystem extends ScriptableSystem {
             ArrayClear(this.kbHeld);
             if IsDefined(this.padListener) {
                 this.padListener.UnregisterInputListener(this, n"OpenPauseMenu");
+                this.padListener.UnregisterInputListener(this, n"OpenHubMenu");
             }
             player.RegisterInputListener(this, n"OpenPauseMenu");
+            player.RegisterInputListener(this, n"OpenHubMenu");
             this.padListener = player;
             this.cornerPollGen += 1;
             this.ScheduleCornerPoll(1.0);
@@ -389,33 +393,62 @@ public class OverlayMapSystem extends ScriptableSystem {
     private func OnPlayerDetach(request: ref<PlayerDetachRequest>) {
         if IsDefined(this.padListener) {
             this.padListener.UnregisterInputListener(this, n"OpenPauseMenu");
+            this.padListener.UnregisterInputListener(this, n"OpenHubMenu");
             this.padListener = null;
         }
     }
 
-    // The action can arrive before or after the raw View press, so the pad is also recognised by the game's own
-    // last-used-device flag. If no View press shows up after all, the pause menu opens anyway (PadPauseCheck).
+    // The open button's own game menu (View: pause; Menu: the hub) opens on release; its release is held back so a hold
+    // can open the map instead, and a tap opens that menu here. The action can arrive before or after the raw press, so
+    // the pad is also recognised by the game's own last-used-device flag. If no press shows up after all, the menu
+    // opens anyway (PadPauseCheck).
     protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsumer) -> Bool {
-        if ListenerAction.IsAction(action, n"OpenPauseMenu") && Equals(ListenerAction.GetType(action), gameinputActionType.BUTTON_PRESSED)
-            && IsDefined(this.pad) && (this.pad.IsHeld(EInputKey.IK_Pad_Back_Select) || (IsDefined(this.padListener) && this.padListener.PlayerLastUsedPad())) {
-            let s = this.Settings();
-            if IsDefined(s) && Equals(s.padOpen, OverlayMapPadOpen.HoldView) {
-                ListenerActionConsumer.DontSendReleaseEvent(consumer);
-                this.padPauseSuppressed = true;
-                let cb = new OverlayMapPadPauseCheck();
-                cb.system = this;
-                GameInstance.GetDelaySystem(this.GetGameInstance()).DelayCallback(cb, 0.3, false);
-            }
+        let s = this.Settings();
+        if !IsDefined(s) || !IsDefined(this.pad) || Equals(s.padOpen, OverlayMapPadOpen.Off) {
+            return false;
+        }
+        let menuAction = Equals(s.padOpen, OverlayMapPadOpen.HoldMenu) ? n"OpenHubMenu" : n"OpenPauseMenu";
+        if ListenerAction.IsAction(action, menuAction) && Equals(ListenerAction.GetType(action), gameinputActionType.BUTTON_PRESSED)
+            && (this.pad.IsHeld(NMPad.OpenKeyOf(EnumInt(s.padOpen))) || (IsDefined(this.padListener) && this.padListener.PlayerLastUsedPad())) {
+            this.pad.mode = EnumInt(s.padOpen);
+            NMLog.Info("pad|menu held back|" + NameToString(menuAction) + "|held=" + ToString(this.pad.IsHeld(this.pad.OpenKey())));
+            ListenerActionConsumer.DontSendReleaseEvent(consumer);
+            this.padPauseSuppressed = true;
+            let cb = new OverlayMapPadPauseCheck();
+            cb.system = this;
+            GameInstance.GetDelaySystem(this.GetGameInstance()).DelayCallback(cb, 0.3, false);
         }
         return false;
     }
 
-    // The pause menu was held back but View is not down: it wasn't a View press after all, so open it now.
+    // The menu was held back but the open button is not down: it wasn't that press after all, so open it now.
     public func PadPauseCheck() {
-        if this.padPauseSuppressed && !this.pad.IsHeld(EInputKey.IK_Pad_Back_Select) {
+        if this.padPauseSuppressed && !this.pad.IsHeld(this.pad.OpenKey()) {
+            NMLog.Info("pad|menu reopened|check");
             this.padPauseSuppressed = false;
-            this.OpenPauseMenu();
+            this.OpenHeldMenu();
         }
+    }
+
+    // The game menu the open button's tap stands for: the hub for Menu, else the pause menu.
+    private func OpenHeldMenu() {
+        if this.pad.mode != 2 {
+            this.OpenPauseMenu();
+            return;
+        }
+        let gi = this.GetGameInstance();
+        let radial = GameInstance.GetQuestsSystem(gi).GetFact(n"radial_hub_menu_enabled") > 0;
+        let e = new inkMenuInstance_SpawnEvent();
+        e.Init(radial ? n"OnOpenRadialHubMenu" : n"OnOpenHubMenu");
+        GameInstance.GetUISystem(gi).QueueEvent(e);
+        this.padPauses += 1;
+    }
+
+    // Hold Menu replaces the game's hold-Menu world map on the pad (inGameMenuGameController.OpenShortcutMenu).
+    public func TakesGameMapHold() -> Bool {
+        let s = this.Settings();
+        let player = GetPlayer(this.GetGameInstance());
+        return IsDefined(s) && Equals(s.padOpen, OverlayMapPadOpen.HoldMenu) && IsDefined(player) && !player.PlayerLastUsedKBM();
     }
 
     private func OpenPauseMenu() {
@@ -453,9 +486,10 @@ public class OverlayMapSystem extends ScriptableSystem {
             this.RefreshSidebar(false);
         }
         this.pad.Button(key, action, NMClock.NowMs(), this.isOpen, this.padFromPad, this.padOwned, s.holdToShow, true);
-        if Equals(key, EInputKey.IK_Pad_Back_Select) && Equals(action, EInputAction.IACT_Release) {
+        if Equals(key, this.pad.OpenKey()) && Equals(action, EInputAction.IACT_Release) {
+            NMLog.Info("pad|open key up|tap=" + ToString(this.pad.tap) + "|held back=" + ToString(this.padPauseSuppressed) + "|mode=" + ToString(this.pad.mode));
             if this.pad.tap && this.padPauseSuppressed {
-                this.OpenPauseMenu();
+                this.OpenHeldMenu();
             }
             this.pad.tap = false;
             this.padPauseSuppressed = false;
@@ -1689,9 +1723,9 @@ public class OverlayMapSystem extends ScriptableSystem {
             let hints = this.kbOwned ? NMInput.TakeHints(s, view, this.TeleportLabel())
                 : (this.mouseOwned ? NMInput.MouseHints(s, view, this.TeleportLabel()) : NMInput.Hints(s, view, this.TeleportLabel()));
             if this.padOwned && this.pad.lastWasPad {
-                hints = NMPad.Hints(view, this.TeleportLabel(), s.teleportEnabled, s.holdToShow);
+                hints = NMPad.Hints(view, this.TeleportLabel(), s.teleportEnabled, s.holdToShow, NMPad.OpenLabel(EnumInt(s.padOpen)));
             } else if this.padFromPad && !this.padOwned {
-                hints = NMPad.PassThroughHints(hints);
+                hints = NMPad.PassThroughHints(hints, NMPad.OpenLabel(EnumInt(s.padOpen)));
             }
             let padHints = this.padOwned && this.pad.lastWasPad;
             let wpKey = padHints ? "RB" : (this.mouseOwned ? "RMB" : NMInput.KeyName(this.kbOwned ? s.keyMapWaypoint : s.keyWaypoint));

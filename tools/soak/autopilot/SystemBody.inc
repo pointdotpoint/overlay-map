@@ -1037,7 +1037,8 @@
         }
         if Equals(name, "mousepan") { s.mousePan = Equals(value, "1"); return "mousepan " + ToString(s.mousePan); }
         if Equals(name, "padopen") {
-            s.padOpen = Equals(value, "off") ? OverlayMapPadOpen.Off : OverlayMapPadOpen.HoldView;
+            s.padOpen = Equals(value, "off") ? OverlayMapPadOpen.Off : (Equals(value, "menu") ? OverlayMapPadOpen.HoldMenu
+                : (Equals(value, "lb") ? OverlayMapPadOpen.LbView : OverlayMapPadOpen.HoldView));
             return "padopen " + ToString(s.padOpen);
         }
         // Corner minimap: replace 0|1, style circle|square|strip, hudpainter 0|1, debug 0|1, enemies 0|1. The corner poll

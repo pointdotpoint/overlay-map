@@ -630,6 +630,39 @@ public class NMSelfTest {
         let release = EInputAction.IACT_Release;
         this.Check("pad.is_pad", NMPad.IsPad(A) && NMPad.IsPad(EInputKey.IK_Pad_RightAxisY) && NMPad.IsPad(VIEW)
             && !NMPad.IsPad(EInputKey.IK_NumPad8) && !NMPad.IsPad(EInputKey.IK_Escape), "");
+        // A DualSense's Options is View; nothing else changes.
+        this.Check("pad.dualsense_options_is_view", Equals(NMPad.Normalize(EInputKey.IK_PS4_OPTIONS), VIEW) && Equals(NMPad.Normalize(A), A)
+            && Equals(NMPad.Normalize(EInputKey.IK_PS4_TOUCH_PRESS), EInputKey.IK_Pad_Start), "");
+        // Hold Menu: Menu opens at the game's 400 ms; View does nothing.
+        let LB = EInputKey.IK_Pad_LeftShoulder;
+        let MENU = EInputKey.IK_Pad_Start;
+        let pm = new NMPad();
+        pm.mode = 2;
+        pm.Button(VIEW, EInputAction.IACT_Press, 1000.0, false, false, false, false, true);
+        let viewIgnored = !pm.HoldPending() && !pm.PollHold(2000.0, false, false, false);
+        pm.Button(VIEW, EInputAction.IACT_Release, 2000.0, false, false, false, false, true);
+        pm.Button(MENU, EInputAction.IACT_Press, 3000.0, false, false, false, false, true);
+        let early = pm.PollHold(3399.0, false, false, false);
+        let onTime = pm.PollHold(3400.0, false, false, false);
+        this.Check("pad.hold_menu", viewIgnored && !early && onTime && Equals(NMPad.OpenLabel(2), "MENU"), "");
+        // LB + View: View alone never opens and its release is a tap (pause); with LB down, in either order, at once.
+        let pl = new NMPad();
+        pl.mode = 3;
+        pl.Button(VIEW, EInputAction.IACT_Press, 1000.0, false, false, false, false, true);
+        let alone = pl.PollHold(5000.0, false, false, false);
+        pl.Button(VIEW, EInputAction.IACT_Release, 5000.0, false, false, false, false, true);
+        let tapped = pl.tap;
+        pl.tap = false;
+        pl.Button(LB, EInputAction.IACT_Press, 6000.0, false, false, false, false, true);
+        pl.Button(VIEW, EInputAction.IACT_Press, 6100.0, false, false, false, false, true);
+        let lbFirst = pl.PollHold(6100.0, false, false, false);
+        pl.Button(VIEW, EInputAction.IACT_Release, 6200.0, false, false, false, false, true);
+        pl.Button(LB, EInputAction.IACT_Release, 6200.0, false, false, false, false, true);
+        pl.Button(VIEW, EInputAction.IACT_Press, 7000.0, false, false, false, false, true);
+        let notYet = pl.HoldPending();
+        pl.Button(LB, EInputAction.IACT_Press, 7050.0, false, false, false, false, true);
+        let viewFirst = pl.HoldPending() && pl.PollHold(7050.0, false, false, false);
+        this.Check("pad.lb_view", !alone && tapped && lbFirst && !notYet && viewFirst, ToString(alone) + ToString(tapped) + ToString(lbFirst) + ToString(notYet) + ToString(viewFirst));
         // A keyboard-opened map goes to the pad on a map button, never on a stick (steering) or the d-pad.
         this.Check("pad.map_buttons", NMPad.IsMapButton(A) && NMPad.IsMapButton(VIEW) && NMPad.IsMapButton(EInputKey.IK_Pad_B_CIRCLE)
             && NMPad.IsMapButton(EInputKey.IK_Pad_RightTrigger) && !NMPad.IsMapButton(EInputKey.IK_Pad_LeftAxisX)

@@ -29,7 +29,9 @@ public enum OverlayMapOpenModifier {
 
 public enum OverlayMapPadOpen {
     HoldView = 0,
-    Off = 1
+    Off = 1,
+    HoldMenu = 2,
+    LbView = 3
 }
 
 public class OverlayMapSettings extends ScriptableSystem {
@@ -224,8 +226,10 @@ public class OverlayMapSettings extends ScriptableSystem {
     @runtimeProperty("ModSettings.category", "Controller")
     @runtimeProperty("ModSettings.category.order", "2")
     @runtimeProperty("ModSettings.displayName", "Open map button")
-    @runtimeProperty("ModSettings.description", "Hold View for half a second to open the map; a tap still does what it does in the game. While the map is open it takes the controller: left stick pans, LT/RT zoom, A acts, X teleports, Y cycles the filter, R3 follows V, B closes. Off: OverlayMap ignores the controller.")
+    @runtimeProperty("ModSettings.description", "Hold View: hold View (DualSense: Options) for half a second; a tap still opens the pause menu. Hold Menu: hold Menu (DualSense: touchpad) for half a second instead of the game's world map; a tap still opens the hub. LB + View: hold LB and View together; View alone pauses as usual. While the map is open it takes the controller: left stick pans, LT/RT zoom, A acts, X teleports, Y cycles the filter, R3 follows V, B closes. Off: OverlayMap ignores the controller.")
     @runtimeProperty("ModSettings.displayValues.HoldView", "Hold View")
+    @runtimeProperty("ModSettings.displayValues.HoldMenu", "Hold Menu")
+    @runtimeProperty("ModSettings.displayValues.LbView", "LB + View")
     @runtimeProperty("ModSettings.displayValues.Off", "Off")
     public let padOpen: OverlayMapPadOpen = OverlayMapPadOpen.HoldView;
 
