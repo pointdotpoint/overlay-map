@@ -378,6 +378,7 @@ public class NMVanilla extends NMVanillaSink {
                 let venue = this.Areas().VenueAt(s.x, s.y);   // a shop with its own named area ("Red Dirt")
                 title = this.Areas().Title(venue);
             }
+            if StrLen(title) == 0 { title = NMVanillaText.KeeperName(id); }   // "Darius Clarke"
             if StrLen(title) == 0 && NotEquals(id, this.lastVendorMiss) {
                 this.lastVendorMiss = id;   // once per pin, not on every refresh of the same hover
                 NMLog.Info("vendor|noname|" + id + "|" + ToString(s.variant));

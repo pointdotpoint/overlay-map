@@ -66,6 +66,13 @@ public abstract class NMVanillaText {
         return NMVanillaText.Loc(raw);
     }
 
+    // The shopkeeper's own name ("Darius Clarke") for a shop without a name of its own; "" when the game has none.
+    public static func KeeperName(id: String) -> String {
+        if StrLen(id) == 0 { return ""; }
+        let key = NMVendorData.Keeper(id);
+        return StrLen(key) > 0 ? NMVanillaText.Loc(key) : "";
+    }
+
     // Fast-travel point name, else the mappin's display name, else the type label.
     public static func Title(m: ref<IMappin>, v: gamedataMappinVariant) -> String {
         if IsDefined(m) {

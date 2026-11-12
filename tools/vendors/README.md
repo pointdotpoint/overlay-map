@@ -11,7 +11,9 @@ patch. `G` is the game folder, `WK` is WolvenKit 10 (`~/.local/share/nightmap-to
    `{"Vendors.<id>.localizedName": value}`.
 3. English text: extract `onscreens*.json` from both `lang_en_text.archive` files, `WK convert s` them, and write
    `{"<primaryKey>": "<femaleVariant>"}`.
-4. `python3 -I tools/vendors/gen.py --journal base.json --journal ep1.json --flats vendors.json --loc loc.json`
+4. Shopkeepers: every `Character.<id>.displayName` flat (same name list), read the same way into
+   `{"Character.<id>.displayName": "LocKey#N"}` (the reader must print a `gamedataLocKeyWrapper` as `LocKey#<key>`).
+5. `python3 -I tools/vendors/gen.py --journal base.json --journal ep1.json --flats vendors.json --loc loc.json --chars chars.json`
 
 The localization's `secondaryKey` shows where each string belongs, which is how shop names that live in
 `Districts.*` area records (for example `fastTravel-districts-GunORama_localizedName`) were found. The runtime names those

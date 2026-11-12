@@ -149,4 +149,30 @@ public abstract class NMVendorData {
             default: return false;
         }
     }
+
+    // The shopkeeper's own name (a LocKey) for a shop pin without a shop name; "" when the game has none.
+    public static func Keeper(pin: String) -> String {
+        switch pin {
+            case "bls_ina_se1_ripperdoc_01": return "LocKey#95715";
+            case "cct_dtn_ripdoc_01": return "LocKey#95720";
+            case "cz_con_clothingshop_01": return "LocKey#89377";
+            case "cz_con_gunsmith_01": return "LocKey#89379";
+            case "cz_con_junkshop_01": return "LocKey#89381";
+            case "cz_con_medicstore_01": return "LocKey#89382";
+            case "cz_con_ripdoc_01": return "LocKey#89403";
+            case "cz_stadium_black_market_01": return "LocKey#89385";
+            case "cz_stadium_clothing_01": return "LocKey#89387";
+            case "cz_stadium_gunsmith_01": return "LocKey#89389";
+            case "cz_stadium_medic_01": return "LocKey#89395";
+            case "cz_stadium_netrunner_01": return "LocKey#89397";
+            case "cz_stadium_ripperdoc_01": return "LocKey#89399";
+            case "hey_spr_ripperdoc_01": return "LocKey#95719";
+            case "nw4_spaceport_medicstore_01": return "LocKey#89401";
+            case "pac_wwd_medic_01": return "LocKey#95717";
+            case "std_arr_food_03": return "LocKey#48993";
+            case "std_arr_rippdoc_01": return "LocKey#95718";
+            case "wbr_jpn_ripdoc_01": return "LocKey#95721";
+            default: return "";
+        }
+    }
 }

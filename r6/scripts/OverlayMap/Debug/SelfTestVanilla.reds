@@ -382,6 +382,9 @@ public abstract class NMVanillaTests {
         let generic = TweakDBInterface.GetString(TDBID.Create("Vendors.std_arr_foodshop_01.localizedName"), "");
         t.Check("vendor.generic_dropped", NMVendorData.IsGeneric(generic) && Equals(NMVanillaText.VendorName("std_arr_food_01"), ""),
             generic + " -> " + NMVanillaText.Loc(generic));
+        let keeper = NMVanillaText.KeeperName("cct_dtn_ripdoc_01");
+        t.Check("vendor.keeper_named", StrLen(keeper) > 0 && !StrBeginsWith(keeper, "LocKey#")
+            && Equals(NMVanillaText.KeeperName("std_arr_food_01"), ""), keeper);
         let areas = NMAreaIndex.Load();
         let gi = GetGameInstance();
         let arr: array<ref<IMappin>>;
@@ -389,6 +392,7 @@ public abstract class NMVanillaTests {
         let services = 0;
         let named = 0;
         let venues = 0;
+        let keepers = 0;
         let unresolved = 0;
         let keyed = 0;
         let missing = "";
@@ -406,9 +410,12 @@ public abstract class NMVanillaTests {
                     } else {
                         let pos = m.GetWorldPosition();
                         let venue = areas.Title(areas.VenueAt(pos.X, pos.Y));
+                        let who = NMVanillaText.KeeperName(id);
                         if StrLen(venue) > 0 {
                             venues += 1;
                             missing += id + "=area:" + venue + " ";
+                        } else if StrLen(who) > 0 {
+                            keepers += 1;
                         } else {
                             missing += id + ":" + ToString(m.GetVariant()) + " ";
                         }
@@ -416,7 +423,7 @@ public abstract class NMVanillaTests {
                 }
             }
         }
-        NMLog.Info("vendor|coverage|services=" + ToString(services) + "|named=" + ToString(named) + "|venues=" + ToString(venues) + "|noid=" + ToString(unresolved)
+        NMLog.Info("vendor|coverage|services=" + ToString(services) + "|named=" + ToString(named) + "|venues=" + ToString(venues) + "|keepers=" + ToString(keepers) + "|noid=" + ToString(unresolved)
             + "|missing=" + missing);
         t.Check("vendor.names_resolve_text", keyed == 0, "unresolved LocKeys=" + ToString(keyed));
         t.Check("vendor.some_named", services == 0 || named > 0, "services=" + ToString(services) + " named=" + ToString(named));
