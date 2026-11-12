@@ -26,6 +26,9 @@
 - Apartments for rent and your apartments always show, in every filter view and at every zoom.
 - Teleporting to a residence lands V at its door, out of the car (before, H10 put V on the roof).
 - Smoother panning and zooming on dense parts of the map.
+- Teleporting on foot lands V on an open walkable spot beside the pin, or at street level for the map centre,
+  instead of inside a drop point's terminal, behind a shop's bars or on a roof. A tracked quest pin gets the same.
+- Quest pins are titled by their quest's name, with the type ("Side Quest") under it, as on the game's map.
 
 ### Fixed
 - DualSense with the game's native support: the Options button now works as View (hold to open, tap to pause).
@@ -34,6 +37,8 @@
 - Fast travel no longer ends on a black screen.
 - V is handed back only after the closing key is released.
 - Hint labels and the scale bar follow the colour theme.
+- With Teleport off in Mod Settings, holding the left button no longer shows the teleport bar, and photo pins
+  no longer offer a teleport.
 - Photo pins are kept without RedFileSystem, and the sidebar names the teleport key the map actually uses.
 
 ## 1.0.0 — 2026-11-07
