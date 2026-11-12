@@ -31,6 +31,7 @@
 - Quest pins are titled by their quest's name, with the type ("Side Quest") under it, as on the game's map.
 
 ### Fixed
+- Game versions before 2.5 no longer crash on startup with the native plugin installed.
 - DualSense with the game's native support: the Options button now works as View (hold to open, tap to pause).
 - A controller can take over a map opened with the keyboard.
 - Markers no longer vanish after a long pan.
