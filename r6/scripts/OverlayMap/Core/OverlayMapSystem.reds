@@ -962,7 +962,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
         let carried = inVehicle && !t.dismount;   // V's vehicle comes along, except to V's home
         let obj: ref<GameObject> = carried ? vehicle : player;
-        this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), carried);
+        this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), carried, NMWorldWalk.Create(gi));
         this.Close();
         this.teleportLastMs = NMClock.NowMs();
         this.ScheduleTeleport();

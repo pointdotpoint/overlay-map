@@ -11,6 +11,11 @@ public class NMTeleportTarget {
     public let hops: array<Float>;
     public let rayTop: Float;
     public let dismount: Bool;
+    // On foot, after landing V moves to an open walkable spot near `anchor` (NMWalkSpot): beside a pin (`walkPin`),
+    // or at street level for the map centre.
+    public let walk: Bool;
+    public let walkPin: Bool;
+    public let anchor: Vector4;
 }
 
 // Teleport target choice and landing maths (spec 2026-10-30-overlaymap-teleport-anywhere-design.md). No game calls.
@@ -69,8 +74,12 @@ public abstract class NMTeleport {
             t.y = cy;
         }
         let high = NMHeight.High(t.x, t.y);
-        t.hops = NMTeleport.Hops(NMHeight.Low(t.x, t.y), high);
+        let low = NMHeight.Low(t.x, t.y);
+        t.hops = NMTeleport.Hops(low, high);
         t.rayTop = high + NMTeleport.RayAboveHigh();
+        t.walk = !inVehicle;
+        t.walkPin = selKind == 0;
+        t.anchor = new Vector4(t.x, t.y, selKind == 0 ? marker.Z : low, 1.0);
         return t;
     }
 
@@ -78,6 +87,7 @@ public abstract class NMTeleport {
     public static func Home(t: ref<NMTeleportTarget>, inVehicle: Bool) -> ref<NMTeleportTarget> {
         t.exact = true;
         t.dismount = inVehicle;
+        t.walk = false;   // the pin is the door, and the door works (in-game, 2026-11-10)
         return t;
     }
 

@@ -103,6 +103,37 @@ public class NMWorldGround extends NMGround {
     }
 }
 
+// The game's human navmesh (NavigationSystem), for NMWalkSpot.
+public class NMWorldWalk extends NMWalk {
+    private let gi: GameInstance;
+
+    public static func Create(gi: GameInstance) -> ref<NMWorldWalk> {
+        let w = new NMWorldWalk();
+        w.gi = gi;
+        return w;
+    }
+
+    public func Streamed(p: Vector4) -> Bool {
+        return GameInstance.GetNavigationSystem(this.gi).IsNavmeshStreamedInLocation(p, 2.0);
+    }
+
+    public func Near(p: Vector4, r: Float, out q: Vector4) -> Bool {
+        let res = GameInstance.GetNavigationSystem(this.gi).FindPointInSphereOnlyHumanNavmesh(p, r, NavGenAgentSize.Human, true);
+        if NotEquals(res.status, worldNavigationRequestStatus.OK) { return false; }
+        q = res.point;
+        return true;
+    }
+
+    public func PathLen(a: Vector4, b: Vector4) -> Float {
+        let path = GameInstance.GetNavigationSystem(this.gi).CalculatePathOnlyHumanNavmesh(a, b, NavGenAgentSize.Human, 0.5);
+        if !IsDefined(path) { return -1.0; }
+        let n = ArraySize(path.path);
+        if n == 0 { return -1.0; }
+        if Vector4.Distance(path.path[n - 1], b) > 1.5 { return -1.0; }   // a partial path stops short of b
+        return path.CalculateLength();
+    }
+}
+
 // Ticks a running teleport after the map has closed (the map's own loop stops with it).
 public class OverlayMapTeleportFrame extends DelayCallback {
     public let system: wref<OverlayMapSystem>;

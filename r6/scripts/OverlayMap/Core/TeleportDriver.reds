@@ -45,10 +45,20 @@ public class NMTeleportDriver {
     private let done: Bool;
     private let held: Int32;               // dismount: frames V has been placed at the target
     private let heldMs: Float;
+    private let walk: ref<NMWalk>;
+    private let walking: Bool;             // landed; now waiting for the navmesh to move V to an open spot
+    private let landed: String;            // the landing's log tail, kept if no spot is found
+    private let walkMs: Float;
+    private let walkFrames: Int32;
     public let result: String;
 
-    public static func Create(t: ref<NMTeleportTarget>, mover: ref<NMMover>, ground: ref<NMGround>, inVehicle: Bool) -> ref<NMTeleportDriver> {
+    // How long V may wait at the landing for the navmesh to stream in before the landing stands as it is.
+    public static func WalkWaitMs() -> Float { return 2000.0; }
+    public static func WalkWaitFrames() -> Int32 { return 20; }
+
+    public static func Create(t: ref<NMTeleportTarget>, mover: ref<NMMover>, ground: ref<NMGround>, inVehicle: Bool, opt walk: ref<NMWalk>) -> ref<NMTeleportDriver> {
         let d = new NMTeleportDriver();
+        d.walk = walk;
         d.target = t;
         d.mover = mover;
         d.ground = ground;
@@ -67,12 +77,15 @@ public class NMTeleportDriver {
         if t.dismount {
             return this.StepDismount(dtMs);
         }
+        if this.walking {
+            return this.StepWalk(dtMs);
+        }
         if this.steps == 1 {
             this.start = this.mover.Position();
             if t.exact {
                 let z = t.z + (this.inVehicle ? NMTeleport.VehicleOffset() : NMTeleport.FootOffset());
                 this.mover.Move(new Vector4(t.x, t.y, z, 1.0));
-                return this.Finish("ok|marker|" + NMTeleportDriver.Xyz(t.x, t.y, z));
+                return this.Landed("ok|marker|" + NMTeleportDriver.Xyz(t.x, t.y, z));
             }
             this.mover.Move(new Vector4(t.x, t.y, t.hops[0], 1.0));
             return 0;
@@ -101,7 +114,7 @@ public class NMTeleportDriver {
             if this.stable >= NMTeleport.StableProbes() {
                 let z = NMTeleport.LandZ(hit.z, hit.hasWater, hit.waterZ, this.inVehicle);
                 this.mover.Move(new Vector4(hit.x, hit.y, z, 1.0));
-                return this.Finish("ok|" + NMTeleport.LandKind(hit.z, hit.hasWater, hit.waterZ, this.inVehicle) + "|" + NMTeleportDriver.Xyz(hit.x, hit.y, z)
+                return this.Landed("ok|" + NMTeleport.LandKind(hit.z, hit.hasWater, hit.waterZ, this.inVehicle) + "|" + NMTeleportDriver.Xyz(hit.x, hit.y, z)
                     + "|hop=" + IntToString(this.hop) + "|frames=" + IntToString(this.steps));
             }
             return 0;
@@ -143,6 +156,38 @@ public class NMTeleportDriver {
             return this.Finish("ok|home|" + NMTeleportDriver.Xyz(t.x, t.y, z) + "|frames=" + IntToString(this.steps));
         }
         return 0;
+    }
+
+    // V has landed. On foot with a navmesh seam, the walk phase follows; otherwise this is the end.
+    private func Landed(r: String) -> Int32 {
+        if !this.target.walk || this.inVehicle || !IsDefined(this.walk) {
+            return this.Finish(r);
+        }
+        this.walking = true;
+        this.landed = r;
+        return 0;
+    }
+
+    // Waits for the navmesh at the anchor, then moves V to the open walkable spot NMWalkSpot picks. No spot (or no
+    // navmesh in time) keeps the landing.
+    private func StepWalk(dtMs: Float) -> Int32 {
+        let t = this.target;
+        this.walkMs += dtMs;
+        this.walkFrames += 1;
+        if !this.walk.Streamed(t.anchor) {
+            if this.walkMs >= NMTeleportDriver.WalkWaitMs() && this.walkFrames >= NMTeleportDriver.WalkWaitFrames() {
+                return this.Finish(this.landed + "|walk=unstreamed");
+            }
+            return 0;
+        }
+        let spot: Vector4;
+        if NMWalkSpot.Pick(this.walk, t.anchor, t.walkPin, spot) {
+            let z = spot.Z + NMTeleport.FootOffset();
+            this.mover.Move(new Vector4(spot.X, spot.Y, z, 1.0));
+            return this.Finish("ok|walk|" + NMTeleportDriver.Xyz(spot.X, spot.Y, z) + "|" + (t.walkPin ? "pin" : "centre")
+                + "|frames=" + IntToString(this.steps));
+        }
+        return this.Finish(this.landed + "|walk=none");
     }
 
     private func Finish(r: String) -> Int32 {
