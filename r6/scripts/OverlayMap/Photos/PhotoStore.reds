@@ -199,6 +199,10 @@ public func NMPhotoStoreLoad() -> array<ref<NMPhotoSpot>> {
 
 @if(ModuleExists("OverlayMapNative"))
 public func NMPhotoStoreAppend(line: String) -> Bool {
+    if !OverlayMapNative_ParamsReadable() {
+        NMLog.Error("photo|store|plugin can't read parameters on this game build");
+        return false;
+    }
     let ok = OverlayMapNative_PhotoStoreAppend(line + "\n");
     if !ok {
         NMLog.Error("photo|store|unwritable");

@@ -74,6 +74,7 @@ uintptr_t ResolveHash(uint32_t aHash)
 }
 
 void Version(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t);
+bool SafeCopy(uintptr_t aAddress, uint8_t* aOut, std::size_t aSize);
 
 // The engine's native handler tables (game 2.5, inline arrays in .data, entry = body, index = regIndex from one shared
 // counter): static and global natives go into table A, member natives into table B. Table A is read from the
@@ -86,26 +87,27 @@ uintptr_t StaticTable()
     if (cached != 1)
         return cached;
     cached = 0;
-    auto ctorAddr = ResolveHash(RED4ext::Detail::AddressHashes::CGlobalFunction_ctor);
-    if (!ctorAddr)
-        return 0;
-    uint8_t code[0x80];
-    for (std::size_t i = 0; i < sizeof(code); i += 8)
-    {
-        uint64_t v = 0;
-        if (!SafeRead(ctorAddr + i, v))
-            return 0;
-        std::memcpy(code + i, &v, 8);
-    }
-    auto table = nmn::HandlerTableFromCtor(code, sizeof(code), ctorAddr);
     auto self = RED4ext::CRTTISystem::Get()->GetFunction("OverlayMapNative_Version");
-    uint64_t entry = 0;
-    // regIndex through IFunction::GetRegIndex (MSVC slot 3): the field moved from +0xB0 to +0xF0 in game 2.5.
-    if (!table || !self || !SafeRead(table + 8ull * VSlot<uint32_t>(self, 3), entry) ||
-        entry != reinterpret_cast<uint64_t>(&Version))
+    if (!self)
         return 0;
-    cached = table;
-    return cached;
+    // regIndex through IFunction::GetRegIndex (MSVC slot 3): the field moved from +0xB0 to +0xF0 in game 2.5.
+    auto index = VSlot<uint32_t>(self, 3);
+    auto holdsUs = [index](uintptr_t aTable) {
+        uint64_t entry = 0;
+        return aTable && SafeRead(aTable + 8ull * index, entry) && entry == reinterpret_cast<uint64_t>(&Version);
+    };
+
+    uintptr_t fromCtor = 0;
+    auto ctorAddr = ResolveHash(RED4ext::Detail::AddressHashes::CGlobalFunction_ctor);
+    uint8_t code[0x80];
+    if (ctorAddr && SafeCopy(ctorAddr, code, sizeof(code)))
+        fromCtor = nmn::HandlerTableFromCtor(code, sizeof(code), ctorAddr);
+    // The OpcodeHandlers hash names the same table on 2.31 and 2.5 (checked against both exes); the ctor's code
+    // differs between them (2.31: lea r8, not rcx). Either is used only if our own native sits at its index.
+    for (auto table : {fromCtor, ResolveHash(RED4ext::Detail::AddressHashes::OpcodeHandlers)})
+        if (holdsUs(table))
+            return cached = table;
+    return 0;
 }
 
 uintptr_t MemberTable()
@@ -305,6 +307,15 @@ void Available(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, 
         *aOut = ResolveEngine().ok;
 }
 
+// True when natives with parameters can read them. A native that can't must not be called: the unread argument
+// bytecode would be run as the caller's next instructions and crash the game.
+void ParamsReadable(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+{
+    aFrame->code++;
+    if (aOut)
+        *aOut = StaticTable() != 0;
+}
+
 void Why(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
 {
     aFrame->code++;
@@ -467,6 +478,7 @@ void PostRegisterTypes()
     Commit(Register("OverlayMapNative_Available", reinterpret_cast<void*>(&Available), "Bool"));
     Commit(Register("OverlayMapNative_Why", reinterpret_cast<void*>(&Why), "String"));
     Commit(Register("OverlayMapNative_NowMs", reinterpret_cast<void*>(&NowMs), "Float"));
+    Commit(Register("OverlayMapNative_ParamsReadable", reinterpret_cast<void*>(&ParamsReadable), "Bool"));
     Commit(Register("OverlayMapNative_PhotoStoreRead", reinterpret_cast<void*>(&PhotoStoreRead), "String"));
     auto append = Register("OverlayMapNative_PhotoStoreAppend", reinterpret_cast<void*>(&PhotoStoreAppend), "Bool");
     append->AddParam("String", "text");
