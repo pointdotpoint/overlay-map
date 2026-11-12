@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.1
 
 ### Added
 - Shop pins show the shop's real name in the sidebar (Ginger Panda, El Coyote Cojo, Kraviz's Clinic). A shop
