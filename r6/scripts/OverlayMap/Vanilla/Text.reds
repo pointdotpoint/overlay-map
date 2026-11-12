@@ -53,12 +53,17 @@ public abstract class NMVanillaText {
         return IsDefined(e) ? e.GetId() : "";
     }
 
-    // A shop's own name ("Ginger Panda"), from the game's vendor record that shares the pin's journal id
-    // (Vendors.<id>.localizedName); "" when there is no such record or it has no name.
+    // A shop's own name ("Ginger Panda") from the game's vendor record for the pin's journal id
+    // (Vendors.<id>.localizedName, or the record NMVendorData matches to a differently spelled id); "" when the
+    // record is missing, has no name, or only a shared label like "Food Vendor".
     public static func VendorName(id: String) -> String {
         if StrLen(id) == 0 { return ""; }
-        let raw = TweakDBInterface.GetString(TDBID.Create("Vendors." + id + ".localizedName"), "");
-        return StrLen(raw) > 0 ? NMVanillaText.Loc(raw) : "";
+        let alias = NMVendorData.Alias(id);
+        if Equals(alias, "-") { return ""; }
+        let rec = StrLen(alias) > 0 ? alias : id;
+        let raw = TweakDBInterface.GetString(TDBID.Create("Vendors." + rec + ".localizedName"), "");
+        if StrLen(raw) == 0 || NMVendorData.IsGeneric(raw) { return ""; }
+        return NMVanillaText.Loc(raw);
     }
 
     // Fast-travel point name, else the mappin's display name, else the type label.

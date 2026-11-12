@@ -35,6 +35,7 @@ public class NMVanilla extends NMVanillaSink {
     private let api: wref<OverlayMap>;
     private let gi: GameInstance;
     private let lastVendorMiss: String;   // journal id of the last vendor pin logged as having no name
+    private let areas: ref<NMAreaIndex>;  // loaded on first use; the system shares it (Areas())
     private let layers: array<ref<OverlayMapLayer>>;          // index = filter slot (0..Count(), Count() = Other)
     private let listeners: array<ref<NMVanillaListener>>;   // same index; pinned listener separate
     private let pinnedListener: ref<NMVanillaListener>;
@@ -356,6 +357,11 @@ public class NMVanilla extends NMVanillaSink {
         return NMInput.KeyName(this.Taken() ? s.keyMapAct : s.keyAct);
     }
 
+    public func Areas() -> ref<NMAreaIndex> {
+        if !IsDefined(this.areas) { this.areas = NMAreaIndex.Load(); }
+        return this.areas;
+    }
+
     public func Details(e: ref<NMVanillaEntry>) -> ref<OverlayMapDetails> {
         if !IsDefined(e) || !IsDefined(e.snap) { return null; }
         let s = e.snap;
@@ -368,6 +374,10 @@ public class NMVanilla extends NMVanillaSink {
         if StrLen(title) == 0 && NMVanillaStyle.IsService(s.variant) {
             let id = NMVanillaText.EntryId(this.gi, m);
             title = NMVanillaText.VendorName(id);
+            if StrLen(title) == 0 {
+                let venue = this.Areas().VenueAt(s.x, s.y);   // a shop with its own named area ("Red Dirt")
+                title = this.Areas().Title(venue);
+            }
             if StrLen(title) == 0 && NotEquals(id, this.lastVendorMiss) {
                 this.lastVendorMiss = id;   // once per pin, not on every refresh of the same hover
                 NMLog.Info("vendor|noname|" + id + "|" + ToString(s.variant));

@@ -376,11 +376,19 @@ public abstract class NMVanillaTests {
         t.Check("vendor.service_variant", NMVanillaStyle.IsService(gamedataMappinVariant.ServicePointFoodVariant)
             && !NMVanillaStyle.IsService(gamedataMappinVariant.ApartmentVariant), "");
         t.Check("vendor.empty_id", Equals(NMVanillaText.VendorName(""), "") && Equals(NMVanillaText.VendorName("no_such_vendor_x"), ""), "");
+        t.Check("vendor.alias_table", NotEquals(NMVendorData.Alias("wbr_jpn_food_04"), "") && Equals(NMVendorData.Alias("not_a_pin"), "")
+            && Equals(NMVendorData.Alias("wbr_jpn_netrunner_02"), "wbr_jpn_ripperdoc_02"), NMVendorData.Alias("wbr_jpn_food_04"));
+        t.Check("vendor.alias_named", StrLen(NMVanillaText.VendorName("wbr_jpn_food_04")) > 0, NMVanillaText.VendorName("wbr_jpn_food_04"));
+        let generic = TweakDBInterface.GetString(TDBID.Create("Vendors.std_arr_foodshop_01.localizedName"), "");
+        t.Check("vendor.generic_dropped", NMVendorData.IsGeneric(generic) && Equals(NMVanillaText.VendorName("std_arr_food_01"), ""),
+            generic + " -> " + NMVanillaText.Loc(generic));
+        let areas = NMAreaIndex.Load();
         let gi = GetGameInstance();
         let arr: array<ref<IMappin>>;
         GameInstance.GetMappinSystem(gi).GetMappins(gamemappinsMappinTargetType.Map, arr);
         let services = 0;
         let named = 0;
+        let venues = 0;
         let unresolved = 0;
         let keyed = 0;
         let missing = "";
@@ -396,12 +404,19 @@ public abstract class NMVanillaTests {
                         named += 1;
                         if StrBeginsWith(n, "LocKey#") { keyed += 1; }
                     } else {
-                        missing += id + ":" + ToString(m.GetVariant()) + " ";
+                        let pos = m.GetWorldPosition();
+                        let venue = areas.Title(areas.VenueAt(pos.X, pos.Y));
+                        if StrLen(venue) > 0 {
+                            venues += 1;
+                            missing += id + "=area:" + venue + " ";
+                        } else {
+                            missing += id + ":" + ToString(m.GetVariant()) + " ";
+                        }
                     }
                 }
             }
         }
-        NMLog.Info("vendor|coverage|services=" + ToString(services) + "|named=" + ToString(named) + "|noid=" + ToString(unresolved)
+        NMLog.Info("vendor|coverage|services=" + ToString(services) + "|named=" + ToString(named) + "|venues=" + ToString(venues) + "|noid=" + ToString(unresolved)
             + "|missing=" + missing);
         t.Check("vendor.names_resolve_text", keyed == 0, "unresolved LocKeys=" + ToString(keyed));
         t.Check("vendor.some_named", services == 0 || named > 0, "services=" + ToString(services) + " named=" + ToString(named));

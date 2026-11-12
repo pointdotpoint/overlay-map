@@ -1549,7 +1549,7 @@ public class OverlayMapSystem extends ScriptableSystem {
 
     private func AreaAtFocus() -> Int32 {
         if !IsDefined(this.areas) {
-            this.areas = NMAreaIndex.Load();
+            this.areas = IsDefined(this.vanilla) ? this.vanilla.Areas() : NMAreaIndex.Load();
         }
         return this.areas.At(this.camera.cx, this.camera.cy);
     }
