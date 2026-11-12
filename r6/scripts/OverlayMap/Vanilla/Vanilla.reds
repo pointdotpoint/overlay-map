@@ -177,12 +177,19 @@ public class NMVanilla extends NMVanillaSink {
         this.EnsureLayers();
         let cat = this.catalog;
         this.diff.Begin();
+        let qAll = 0;    // quest-filter pins the game lists, and of those the ones it marks hidden (log only)
+        let qHidden = 0;
         for m in arr {
             if IsDefined(m) {
                 // A marker that is neither visible nor tracked is never shown: skip the rest of its reads.
                 let visible = m.IsVisible();
                 let id = m.GetNewMappinID();
                 let tracked = m.IsPlayerTracked() || (manualKey != 0ul && id.value == manualKey);
+                let qt = cat.TypeOf(cat.FilterIndexOf(m.GetVariant()));   // cached arrays, no TweakDB read
+                if Equals(qt, gamedataWorldMapFilter.Quest) || Equals(qt, gamedataWorldMapFilter.Gigs) {
+                    qAll += 1;
+                    if !visible && !tracked { qHidden += 1; }
+                }
                 if visible || tracked {
                     let pos = m.GetWorldPosition();
                     let v = m.GetVariant();
@@ -198,7 +205,8 @@ public class NMVanilla extends NMVanillaSink {
         if this.diff.added + this.diff.removed > 0 {
             let drawn = this.diff.DrawnCount();   // only when logging: the steady state pays nothing
             NMLog.Info("vanilla|poll|n=" + ToString(ArraySize(arr)) + "|live=" + ToString(drawn) + "|rejected=" + ToString(this.diff.live - drawn) + "|added=" + ToString(this.diff.added)
-                + "|changed=" + ToString(this.diff.changed) + "|removed=" + ToString(this.diff.removed));
+                + "|changed=" + ToString(this.diff.changed) + "|removed=" + ToString(this.diff.removed)
+                + "|quests=" + ToString(qAll) + "|quests_hidden=" + ToString(qHidden));
         }
     }
 
@@ -384,6 +392,15 @@ public class NMVanilla extends NMVanillaSink {
                 NMLog.Info("vendor|noname|" + id + "|" + ToString(s.variant));
             }
         }
+        // A quest pin is titled by its quest ("The Hunt") over its type ("Side Quest"), as the vanilla map tooltip
+        // does; an undiscovered one keeps the type, as vanilla.
+        let info = NMVanillaTracking.QuestInfo(this.gi, m);
+        let questTitled = false;
+        if StrLen(title) == 0 && info.ok && StrLen(info.title) > 0 && NotEquals(s.phase, gamedataMappinPhase.UndiscoveredPhase) {
+            title = info.title;
+            category = NMVanillaText.LabelOf(s.variant);
+            questTitled = true;
+        }
         if StrLen(title) == 0 { title = NMVanillaText.Title(m, s.variant); }
         let d = OverlayMapDetails.Create(category, title)
             .WithColor(this.catalog.ColorFor(s.variant, s.phase));   // the marker's own colour, not the layer's
@@ -395,9 +412,8 @@ public class NMVanilla extends NMVanillaSink {
         if Equals(s.phase, gamedataMappinPhase.UndiscoveredPhase) { d.AddRow("Status", "Undiscovered"); }
         if Equals(s.phase, gamedataMappinPhase.CompletedPhase) { d.AddRow("Status", "Completed"); }
         let manual = e.key != 0ul && NMVanillaTracking.ManualKey(this.gi) == e.key;
-        let info = NMVanillaTracking.QuestInfo(this.gi, m);
         if info.ok {
-            if StrLen(info.title) > 0 { d.AddRow("Quest", info.title); }
+            if StrLen(info.title) > 0 && !questTitled { d.AddRow("Quest", info.title); }
             if StrLen(info.objective) > 0 { d.AddRow("Objective", info.objective); }
         }
         if NMVanillaTracking.CanTrackQuest(this.gi, m) {
