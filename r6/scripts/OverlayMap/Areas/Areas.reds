@@ -101,6 +101,24 @@ public class NMAreaIndex {
         return -1;
     }
 
+    // A game venue at the point (a bar, shop or clinic with its own area, like "Red Dirt"): the smallest game area
+    // that contains it and spans at most VenueSpan() metres; -1 if none. Custom areas and districts never count.
+    public func VenueAt(x: Float, y: Float) -> Int32 {
+        let i = 0;
+        let n = ArraySize(this.areas);
+        while i < n {
+            let a = this.areas[i];
+            if StrLen(a.name) == 0 && MaxF(a.maxX - a.minX, a.maxY - a.minY) <= NMAreaIndex.VenueSpan()
+                && NMAreaIndex.Contains(a, x, y) && StrLen(this.Title(i)) > 0 {
+                return i;
+            }
+            i += 1;
+        }
+        return -1;
+    }
+
+    public static func VenueSpan() -> Float { return 120.0; }
+
     public func Title(i: Int32) -> String {
         if i < 0 || i >= ArraySize(this.areas) {
             return "";

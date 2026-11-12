@@ -42,6 +42,37 @@ public abstract class NMVanillaText {
         return NMAreaIndex.DistrictName(NMVanillaText.HomeId(x, y));
     }
 
+    // The journal id of a quest or point-of-interest mappin (a vendor's is e.g. "wbr_jpn_food_04"); "" when it has none.
+    public static func EntryId(gi: GameInstance, m: ref<IMappin>) -> String {
+        if !IsDefined(m) { return ""; }
+        let hash = NMVanillaTracking.JournalHash(m);
+        if hash == 0u { return ""; }
+        let jm = GameInstance.GetJournalManager(gi);
+        if !IsDefined(jm) { return ""; }
+        let e = jm.GetEntry(hash);
+        return IsDefined(e) ? e.GetId() : "";
+    }
+
+    // A shop's own name ("Ginger Panda") from the game's vendor record for the pin's journal id
+    // (Vendors.<id>.localizedName, or the record NMVendorData matches to a differently spelled id); "" when the
+    // record is missing, has no name, or only a shared label like "Food Vendor".
+    public static func VendorName(id: String) -> String {
+        if StrLen(id) == 0 { return ""; }
+        let alias = NMVendorData.Alias(id);
+        if Equals(alias, "-") { return ""; }
+        let rec = StrLen(alias) > 0 ? alias : id;
+        let raw = TweakDBInterface.GetString(TDBID.Create("Vendors." + rec + ".localizedName"), "");
+        if StrLen(raw) == 0 || NMVendorData.IsGeneric(raw) { return ""; }
+        return NMVanillaText.Loc(raw);
+    }
+
+    // The shopkeeper's own name ("Darius Clarke") for a shop without a name of its own; "" when the game has none.
+    public static func KeeperName(id: String) -> String {
+        if StrLen(id) == 0 { return ""; }
+        let key = NMVendorData.Keeper(id);
+        return StrLen(key) > 0 ? NMVanillaText.Loc(key) : "";
+    }
+
     // Fast-travel point name, else the mappin's display name, else the type label.
     public static func Title(m: ref<IMappin>, v: gamedataMappinVariant) -> String {
         if IsDefined(m) {
