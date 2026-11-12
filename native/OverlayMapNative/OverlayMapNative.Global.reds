@@ -5,6 +5,9 @@ public static native func OverlayMapNative_NowMs() -> Float
 // Photo pins: the whole of <game>/r6/storages/OverlayMap/photos.txt ("" when there is none yet), and an append to it.
 public static native func OverlayMapNative_PhotoStoreRead() -> String
 public static native func OverlayMapNative_PhotoStoreAppend(text: String) -> Bool
+// True when the plugin can read native parameters on this game build. False → never call PhotoStoreAppend: it can't
+// consume its argument, and the leftover bytecode crashes the caller's script.
+public static native func OverlayMapNative_ParamsReadable() -> Bool
 // Welcome screen: shown once per install (<game>/r6/storages/OverlayMap/welcome_seen).
 public static native func OverlayMapNative_WelcomeSeen() -> Bool
 public static native func OverlayMapNative_MarkWelcomeSeen() -> Bool
