@@ -74,12 +74,18 @@ inline uintptr_t RipTarget(uintptr_t aInstrAddr, const uint8_t* aInstr, int aDis
 inline constexpr const char* kHandlerTablePattern = "48 8D 0D ?? ?? ?? ?? 8B 05 ?? ?? ?? ?? 8D 90 FF 00 00 00 FF C0 "
                                                     "89 05 ?? ?? ?? ?? 48 8B C3 89 93 F0 00 00 00 48 8B 5C 24 30 "
                                                     "48 89 3C D1";
+// Before game 2.5 CBaseFunction was 0x40 bytes smaller, so regIndex sat at +0xB0.
+inline constexpr const char* kHandlerTablePatternPre25 = "48 8D 0D ?? ?? ?? ?? 8B 05 ?? ?? ?? ?? 8D 90 FF 00 00 00 FF C0 "
+                                                         "89 05 ?? ?? ?? ?? 48 8B C3 89 93 B0 00 00 00 48 8B 5C 24 30 "
+                                                         "48 89 3C D1";
 
 // Address of the native handler table, read from the ctor's code (`aCtor` = its first `aSize` bytes, loaded at
 // `aCtorAddr`). 0 if the pattern isn't there.
 inline uintptr_t HandlerTableFromCtor(const uint8_t* aCtor, std::size_t aSize, uintptr_t aCtorAddr)
 {
     auto at = Find(aCtor, aSize, kHandlerTablePattern);
+    if (at < 0)
+        at = Find(aCtor, aSize, kHandlerTablePatternPre25);
     if (at < 0)
         return 0;
     return RipTarget(aCtorAddr + static_cast<uintptr_t>(at), aCtor + at, 3, 7);

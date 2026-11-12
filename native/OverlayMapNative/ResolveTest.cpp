@@ -47,6 +47,13 @@ int main()
         Check(nmn::HandlerTableFromCtor(changed.data(), changed.size(), kCtorAddr) == 0, name);
     }
 
+    // Before 2.5 the ctor stores regIndex at +0xB0 instead of +0xF0.
+    {
+        std::vector<uint8_t> pre25(kCtor, kCtor + sizeof(kCtor));
+        pre25[0x45] = 0xB0;
+        Check(nmn::HandlerTableFromCtor(pre25.data(), pre25.size(), kCtorAddr) == kTable, "handler table from pre-2.5 ctor");
+    }
+
     // The matched lea's displacement may change between builds: only the target moves.
     {
         std::vector<uint8_t> moved(kCtor, kCtor + sizeof(kCtor));

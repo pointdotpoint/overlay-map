@@ -100,7 +100,8 @@ uintptr_t StaticTable()
     auto table = nmn::HandlerTableFromCtor(code, sizeof(code), ctorAddr);
     auto self = RED4ext::CRTTISystem::Get()->GetFunction("OverlayMapNative_Version");
     uint64_t entry = 0;
-    if (!table || !self || !SafeRead(table + 8ull * self->regIndex, entry) ||
+    // regIndex through IFunction::GetRegIndex (MSVC slot 3): the field moved from +0xB0 to +0xF0 in game 2.5.
+    if (!table || !self || !SafeRead(table + 8ull * VSlot<uint32_t>(self, 3), entry) ||
         entry != reinterpret_cast<uint64_t>(&Version))
         return 0;
     cached = table;
@@ -477,6 +478,58 @@ void PostRegisterTypes()
     track->AddParam("gameNewMappinID", "id");
     Commit(track);
 }
+// Game version from the exe's VERSIONINFO (2.5 = 3.0.88.x), or 0 when unreadable.
+uint64_t GameFileVersion()
+{
+    static const uint64_t version = []() -> uint64_t {
+        wchar_t exe[MAX_PATH * 4];
+        auto n = GetModuleFileNameW(nullptr, exe, static_cast<DWORD>(std::size(exe)));
+        if (n == 0 || n >= std::size(exe))
+            return 0;
+        DWORD ignored = 0;
+        auto size = GetFileVersionInfoSizeW(exe, &ignored);
+        if (!size)
+            return 0;
+        std::string block(size, '\0');
+        VS_FIXEDFILEINFO* fixed = nullptr;
+        UINT len = 0;
+        if (!GetFileVersionInfoW(exe, 0, size, block.data()) ||
+            !VerQueryValueW(block.data(), L"\\", reinterpret_cast<void**>(&fixed), &len) || !fixed ||
+            len < sizeof(VS_FIXEDFILEINFO))
+            return 0;
+        return (static_cast<uint64_t>(fixed->dwFileVersionMS) << 32) | fixed->dwFileVersionLS;
+    }();
+    return version;
+}
+
+// Before game 2.5 the engine's Callback held a 32-byte inline buffer (handler at +0x20); 2.5 made it 64 (+0x40), and
+// the SDK followed. Handing the old engine a 64-byte one leaves it a null handler and the game dies while starting.
+static_assert(sizeof(RED4ext::Callback<void (*)(), 32>) == 0x28, "pre-2.5 engine Callback: 32-byte buffer + handler");
+static_assert(sizeof(RED4ext::Callback<void (*)()>) == 0x48, "2.5 engine Callback: 64-byte buffer + handler");
+
+bool PreCallbackResize()
+{
+    auto version = GameFileVersion();
+    return version != 0 && version < ((3ull << 48) | (0ull << 32) | (88ull << 16));
+}
+
+// IRTTISystem::AddRegisterCallback (0xC0) / AddPostRegisterCallback (0xC8), with the Callback size this game expects.
+// MSVC passes the by-value Callback as a pointer to the caller's copy and the callee destroys it; a plain function
+// target's destructor does nothing, so our copy going out of scope afterwards is harmless.
+void AddRttiCallback(int aSlotOffset, void (*aFunc)())
+{
+    auto rtti = RED4ext::CRTTISystem::Get();
+    if (PreCallbackResize())
+    {
+        RED4ext::Callback<void (*)(), 32> callback(aFunc);
+        VSlot<void>(rtti, aSlotOffset / 8, &callback);
+    }
+    else
+    {
+        RED4ext::Callback<void (*)()> callback(aFunc);
+        VSlot<void>(rtti, aSlotOffset / 8, &callback);
+    }
+}
 } // namespace
 
 RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle, RED4ext::v1::EMainReason aReason,
@@ -486,11 +539,10 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle, RED4e
     {
         gSdk = aSdk;
         gPlugin = aHandle;
-        auto rtti = RED4ext::CRTTISystem::Get();
-        rtti->AddRegisterCallback(RegisterTypes);
-        rtti->AddPostRegisterCallback(PostRegisterTypes);
+        AddRttiCallback(0xC0, RegisterTypes);
+        AddRttiCallback(0xC8, PostRegisterTypes);
         aSdk->scripts->Add(aHandle, L"Scripts");
-        Log("OverlayMapNative loaded");
+        Log(PreCallbackResize() ? "OverlayMapNative loaded (pre-2.5 game)" : "OverlayMapNative loaded");
     }
     return true;
 }
