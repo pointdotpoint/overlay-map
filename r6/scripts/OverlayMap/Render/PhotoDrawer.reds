@@ -116,6 +116,10 @@ public class NMPhotoDrawer {
         this.actBox.SetSize(new Vector2(cw, 46.0 * s));
         this.actKey.SetText(keyName);
         this.actLabel.SetText("TELEPORT");
+        let canAct = StrLen(keyName) > 0;   // "" with Teleport off in Mod Settings: no action shown
+        this.actBox.SetVisible(canAct);
+        this.actKey.SetVisible(canAct);
+        this.actLabel.SetVisible(canAct);
         let p = this.actBox.GetTranslation();
         this.actLabel.SetTranslation(new Vector2(p.X + cw + 16.0 * s, p.Y + 7.0 * s));
         if spot.hash != this.shownHash {

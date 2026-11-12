@@ -224,5 +224,121 @@ public abstract class NMTeleportTests {
         let d12 = NMTeleportDriver.Create(home, m12, NMFakeGround.Create(m12, 312.0, 400.0), false);
         t.Check("teleport.driver_dismount_stuck", NMTeleportTests.Run(d12, 100) > 0 && Equals(d12.result, "failed|still mounted") && ArraySize(m12.moves) == 0, d12.result);
 
+        NMTeleportTests.RunWalk(t, start);
+    }
+
+    private static func PinTarget() -> ref<NMTeleportTarget> {
+        let p = NMTeleportTests.Target([55.0]);
+        p.exact = true;
+        p.z = 7.0;
+        p.walk = true;
+        p.walkPin = true;
+        p.anchor = new Vector4(p.x, p.y, 7.0, 1.0);
+        return p;
+    }
+
+    // The walkable spot after a landing (user reports 2026-11-12: inside a drop point, behind a shop's bars, on a roof).
+    private static func RunWalk(t: ref<NMSelfTest>, start: Vector4) {
+        let a = new Vector4(100.0, 200.0, 7.0, 1.0);
+        let spot: Vector4;
+
+        // Open ground: beside the pin (the nearest ring), never on it.
+        let open = NMFakeWalk.Create(100.0, 200.0, 7.0);
+        let ok1 = NMWalkSpot.Pick(open, a, true, spot);
+        let d1 = NMTeleportTests.Flat(spot, a);
+        t.Check("teleport.walk_pin_beside", ok1 && AbsF(d1 - 2.5) < 0.01 && spot.Z == 7.0, FloatToStringPrec(d1, 2));
+
+        // A cage 3 m round the pin (the shopkeeper behind bars): the first ring is inside and closed, so V stands outside.
+        let caged = NMFakeWalk.Create(100.0, 200.0, 7.0);
+        caged.cageR = 3.0;
+        let ok2 = NMWalkSpot.Pick(caged, a, true, spot);
+        let d2 = NMTeleportTests.Flat(spot, a);
+        t.Check("teleport.walk_pin_cage", ok2 && d2 > 3.0, FloatToStringPrec(d2, 2));
+
+        // A terminal 3 m wide on the pin (a drop point): no walkable floor there, so V stands past it.
+        let term = NMFakeWalk.Create(100.0, 200.0, 7.0);
+        term.blockR = 3.0;
+        let ok3 = NMWalkSpot.Pick(term, a, true, spot);
+        t.Check("teleport.walk_pin_terminal", ok3 && NMTeleportTests.Flat(spot, a) > 3.0, "");
+
+        // No navmesh at all: no spot.
+        let none = NMFakeWalk.Create(100.0, 200.0, 7.0);
+        none.none = true;
+        t.Check("teleport.walk_none", !NMWalkSpot.Pick(none, a, true, spot), "");
+
+        // The map centre: the anchor itself when open (the street, not the roof).
+        let street = new Vector4(100.0, 200.0, 7.0, 1.0);
+        let ok5 = NMWalkSpot.Pick(open, street, false, spot);
+        t.Check("teleport.walk_centre_street", ok5 && NMTeleportTests.Flat(spot, street) < 0.01 && spot.Z == 7.0, "");
+
+        // Driver: an exact pin on foot lands on the pin, then steps to the open spot.
+        let m1 = NMFakeMover.Create(start);
+        let w1 = NMFakeWalk.Create(100.0, 200.0, 7.0);
+        w1.cageR = 3.0;
+        let dr1 = NMTeleportDriver.Create(NMTeleportTests.PinTarget(), m1, NMFakeGround.Create(m1, 50.0, 100.0), false, w1);
+        let f1 = NMTeleportTests.Run(dr1, 10);
+        t.Check("teleport.driver_walk_pin", f1 > 1 && StrBeginsWith(dr1.result, "ok|walk|") && ArraySize(m1.moves) == 2
+            && NMTeleportTests.Flat(m1.Last(), a) > 3.0 && m1.LastZ() == 7.5, dr1.result);
+
+        // The navmesh never streams in: the landing on the pin stands, after the wait.
+        let m2 = NMFakeMover.Create(start);
+        let w2 = NMFakeWalk.Create(100.0, 200.0, 7.0);
+        w2.unstreamed = true;
+        let dr2 = NMTeleportDriver.Create(NMTeleportTests.PinTarget(), m2, NMFakeGround.Create(m2, 50.0, 100.0), false, w2);
+        let f2 = NMTeleportTests.Run(dr2, 200);
+        t.Check("teleport.driver_walk_unstreamed", f2 > NMTeleportDriver.WalkWaitFrames() && StrBeginsWith(dr2.result, "ok|marker|")
+            && StrContains(dr2.result, "walk=unstreamed") && ArraySize(m2.moves) == 1, dr2.result);
+
+        // In a vehicle there is no walk phase.
+        let m3 = NMFakeMover.Create(start);
+        let dr3 = NMTeleportDriver.Create(NMTeleportTests.Target([55.0]), m3, NMFakeGround.Create(m3, 50.0, 100.0), true, NMFakeWalk.Create(100.0, 200.0, 50.0));
+        NMTeleportTests.Run(dr3, 30);
+        t.Check("teleport.driver_walk_not_in_car", StrBeginsWith(dr3.result, "ok|ground|"), dr3.result);
+    }
+
+    private static func Flat(p: Vector4, a: Vector4) -> Float {
+        let dx = p.X - a.X;
+        let dy = p.Y - a.Y;
+        return SqrtF(dx * dx + dy * dy);
+    }
+}
+
+// Test seam: a flat walkable floor at `z` around (cx, cy). blockR: no floor within it (a terminal). cageR: floor, but
+// no path crosses its edge (bars). Paths elsewhere are straight.
+public class NMFakeWalk extends NMWalk {
+    public let cx: Float;
+    public let cy: Float;
+    public let z: Float;
+    public let blockR: Float;
+    public let cageR: Float;
+    public let none: Bool;
+    public let unstreamed: Bool;
+
+    public static func Create(cx: Float, cy: Float, z: Float) -> ref<NMFakeWalk> {
+        let w = new NMFakeWalk();
+        w.cx = cx;
+        w.cy = cy;
+        w.z = z;
+        return w;
+    }
+
+    private func R(p: Vector4) -> Float {
+        let dx = p.X - this.cx;
+        let dy = p.Y - this.cy;
+        return SqrtF(dx * dx + dy * dy);
+    }
+
+    public func Streamed(p: Vector4) -> Bool { return !this.unstreamed; }
+
+    public func Near(p: Vector4, r: Float, out q: Vector4) -> Bool {
+        if this.none || AbsF(p.Z - this.z) > r { return false; }
+        if this.R(p) < this.blockR { return false; }
+        q = new Vector4(p.X, p.Y, this.z, 1.0);
+        return true;
+    }
+
+    public func PathLen(a: Vector4, b: Vector4) -> Float {
+        if this.cageR > 0.0 && NotEquals(this.R(a) < this.cageR, this.R(b) < this.cageR) { return -1.0; }
+        return Vector4.Distance(a, b);
     }
 }

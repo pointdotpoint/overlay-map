@@ -962,7 +962,7 @@ public class OverlayMapSystem extends ScriptableSystem {
         }
         let carried = inVehicle && !t.dismount;   // V's vehicle comes along, except to V's home
         let obj: ref<GameObject> = carried ? vehicle : player;
-        this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), carried);
+        this.teleport = NMTeleportDriver.Create(t, NMGameMover.Create(obj), NMWorldGround.Create(gi), carried, NMWorldWalk.Create(gi));
         this.Close();
         this.teleportLastMs = NMClock.NowMs();
         this.ScheduleTeleport();
@@ -1448,7 +1448,8 @@ public class OverlayMapSystem extends ScriptableSystem {
         let pinK = isPhoto ? 1.0 : this.renderer.CandScale(c.sel);
         this.reticle.Update(l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5, c.selKind >= 0, c.selX, c.selY, isPhoto,
             NMItemRenderer.ThumbZoom(this.camera.mpp) * photoK, pinK, dt);
-        this.reticle.SetHold(this.mouseOwned ? this.input.HoldProgress(NMClock.NowMs()) : 0.0, l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5);
+        let holdOn = this.mouseOwned && IsDefined(this.Settings()) && this.Settings().teleportEnabled;   // no bar with Teleport off
+        this.reticle.SetHold(holdOn ? this.input.HoldProgress(NMClock.NowMs()) : 0.0, l.mapW * 0.5 - this.drawerShift, l.mapH * 0.5);
         if prof { this.perfSelMs = NMClock.NowMs() - sp; }
         if this.input.act {
             this.input.act = false;
@@ -1565,7 +1566,7 @@ public class OverlayMapSystem extends ScriptableSystem {
             dist = NMMath.FormatMeters(SqrtF(dx * dx + dy * dy));
         }
         let s = this.Settings();
-        this.drawer.Show(spot, dist, spot.district, IsDefined(s) ? (this.mouseOwned ? "HOLD LMB" : NMInput.KeyName(this.kbOwned ? s.keyMapTeleport : s.keyTeleport)) : "TELEPORT", this.Photos().Handler());
+        this.drawer.Show(spot, dist, spot.district, IsDefined(s) && !s.teleportEnabled ? "" : IsDefined(s) ? (this.mouseOwned ? "HOLD LMB" : NMInput.KeyName(this.kbOwned ? s.keyMapTeleport : s.keyTeleport)) : "TELEPORT", this.Photos().Handler());
     }
 
     private func DefaultDetails(L: ref<OverlayMapLayer>, id: Int32) -> ref<OverlayMapDetails> {
